@@ -1,0 +1,18 @@
+# Customer request quotation and fulfillment implementation contract
+Status: PROPOSED technical design, 2026-10-23. No client policy or production acceptance implied. Predecessor: deployed schema37 immutable unconfirmed requests. Full scope remains required.
+
+## Current source constraints verified
+customer_booking_requests and its submitted event are append-only, with actor/key replay, scoped customer/equipment and offer-revision foreign keys. Their DTO currently always reports requested/reserved=false. Do not update those immutable snapshots to model fulfillment, or falsely report their static status as the current lifecycle after adding quotation. Add separately scoped lifecycle tables and explicitly derive the combined projection.
+
+## Next implementation unit
+Create an immutable, versioned quotation attached to the exact scoped request/customer/equipment, including explicit currency, integer subtotal/tax/deposit, line descriptions and public terms. Preserve original request and original offer history. Draft edits require an observed version; issuance freezes a new revision. Quotation must be a quotation, not a tax invoice, payment evidence or capacity reservation. Use a new explicit location capability for quote issuance; bookings.manage alone must not silently gain price-setting authority. No actual grant, price, legal policy or quote seeded.
+
+Define strict authenticated staff draft/review/issue APIs and owned-customer read APIs using the existing scope/session authority. Quote totals are server-validated and exact; caller identity/status/scope and computed total are not trusted. Same actor/key/payload retries return the issued revision; changed replay conflicts. Audit failures roll back the quotation/revision/receipt. Expiry must be an explicit reviewed input if used, never an invented default. Do not auto-deliver external messages.
+
+## Following mandatory units
+Owned customer acceptance must identify the exact issued revision and capture immutable acceptance evidence. Revised or revoked quotes cannot be accepted through stale UI; identical original retries preserve evidence and recheck current ownership. Client legal acceptance text and cancellation/retention policy remain approval gates.
+
+Request-to-booking conversion must lock resources in the existing sorted resource order before reservation/booking locks, re-evaluate current rule/eligibility/capacity and enforce one conversion receipt per request. Capacity loss must leave quote/request/payment evidence intact and no partial booking. Payment requirements use verified server-side provider settlement allocated to exact merchant/customer/amount/currency, never a browser or staff checkbox. Approved no-deposit paths require explicit reviewed configuration; missing configuration fails closed. Hold/expiry/refund and customer cancellation/rescheduling policies remain pending.
+
+## Required verification
+Native PostgreSQL: cross-scope and revoked capabilities, optimistic edit/issue races, immutable revisions, same-key changed-payload conflict, audit rollback, owned-only reads and acceptance, stale/revised quotes, sorted-lock concurrent conversions, one reserved booking, capacity loss rollback, payment amount/currency/merchant mismatch and no provider-success fabrication. HTTP: unknown fields/forged scope/identity/price/status, origin/auth, strict body bounds, safe DTO. Browser: real components against disposable synthetic schemas, reload/retry, keyboard/error focus, price/revision changed underneath review and capacity lost before conversion. Production build, guarded matching runtime deployment, pinned TLS and aggregate unseeded application inventory. These are required future checks, not passed evidence.

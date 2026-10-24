@@ -1,0 +1,24 @@
+{
+  "changedFiles": [
+    {
+      "sha256": "A991AC00397A91F12630EE13FD90C857B843250F72DCA5A3E4C8ED3AD3B44708",
+      "file": "dapper-platform/apps/web/app/workspace/SchedulingEditor.tsx"
+    },
+    {
+      "sha256": "875B8D2275B21AD2068E8A9045750315E6A8B789A77A154775C842F6B58FEA47",
+      "file": "dapper-platform/apps/web/app/workspace/page.tsx"
+    },
+    {
+      "sha256": "E874CF77181ADDC2178A27A641A1E34F6F5AC310101AEE1CCD1A2E4BBB8F3F8C",
+      "file": "scripts/configure-synthetic-scheduling.ps1"
+    }
+  ],
+  "positiveEditorBrowserVerified": false,
+  "productionReady": false,
+  "verifiedAt": "2026-10-22T06:04:54.3547490Z",
+  "grantChangeApplied": false,
+  "existingHttpsGroups": 11,
+  "approvalReview": "rejected persistent synthetic scheduling.manage grant pending specific user authorization",
+  "scriptRuntimeVerified": false,
+  "build": "pass"
+}

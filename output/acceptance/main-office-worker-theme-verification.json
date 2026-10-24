@@ -1,0 +1,68 @@
+{
+  "timestamp": "2026-10-23T23:45:07.774319+00:00",
+  "buildId": "b9F5eoIzMRn1_6LPbR9Fr",
+  "mainOffice": {
+    "name": "Main Office",
+    "address": "660 The Kingsway, Peterborough, ON K9J 7C8, Canada",
+    "timezone": "America/Toronto",
+    "assignmentVersion": 1,
+    "kind": "actual internal commercial worksite; not an external dealership claim"
+  },
+  "workerRole": {
+    "name": "Worker",
+    "scope": "Main Office location only",
+    "capabilities": [
+      "attendance.record",
+      "attendance.read",
+      "bookings.read",
+      "bookings.create",
+      "customers.create",
+      "catalogue.read",
+      "scheduling.reserve",
+      "invoices.read",
+      "payments.record"
+    ],
+    "roleDefinitionAudit": true,
+    "assignmentAudit": true
+  },
+  "theme": {
+    "lightAndDark": "browser verified",
+    "darkPersistsAcrossReload": true,
+    "mobileWidth": 390,
+    "documentWidth": 375,
+    "sidebarAtPhoneWidth": "none"
+  },
+  "verification": {
+    "frontendWebpackTypeScript": "11 routes PASS",
+    "ingress": "7 checks PASS",
+    "assets": "Workspace/Master CSS+JS all200 expected MIME",
+    "authenticatedMainOffice": "visible",
+    "workerAttendance": "Clock in available; NOT clicked",
+    "bookingsAccess": "enabled; no bookings fabricated"
+  },
+  "notPerformed": [
+    "actual clock-in",
+    "customer booking",
+    "payment",
+    "invoice issuance",
+    "GPS collection",
+    "provider action",
+    "other account changes",
+    "existing location deletion/rename",
+    "Master capability expansion"
+  ],
+  "files": [
+    {
+      "path": "dapper-platform/apps/web/app/ThemeToggle.tsx",
+      "sha256": "7870c619a45f5a8476ed7ceb2296514eb632536ce958470c4eada382c05d4827"
+    },
+    {
+      "path": "dapper-platform/apps/web/app/workspace/EmployeeWorkspace.tsx",
+      "sha256": "4106e30e8c3ff0bf45133699cf6b33f1051af7111118ea5726fe6e35af617de2"
+    },
+    {
+      "path": "dapper-platform/apps/web/app/workspace/employee.module.css",
+      "sha256": "57f8dd4ebbc91d9549a6ae27781ff8d3ade52ab7b928e95225ade6262df2d9f8"
+    }
+  ]
+}

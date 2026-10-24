@@ -1,0 +1,47 @@
+diff --git "a/dapper-platform\\apps\\api\\internal\\workspace\\square_webhooks.go" "b/.cache\\codex-integration-review\\api\\internal\\workspace\\square_webhooks.go"
+index 5957498..dbfe23a 100644
+--- "a/dapper-platform\\apps\\api\\internal\\workspace\\square_webhooks.go"
++++ "b/.cache\\codex-integration-review\\api\\internal\\workspace\\square_webhooks.go"
+@@ -70,10 +70,14 @@ func registerSquareWebhookRoutes(mux *http.ServeMux, store *postgres.Store, sqCl
+ 				if obj.Payment.RefundedMoney != nil {
+ 					refundAmt = obj.Payment.RefundedMoney.Amount
+ 				}
+-				_ = store.HandleSquareWebhookPayment(r.Context(), obj.Payment.ID, obj.Payment.Status, refundAmt)
++				if err := store.HandleSquareWebhookPayment(r.Context(), obj.Payment.ID, obj.Payment.Status, refundAmt); err != nil {
++ reply(w, http.StatusServiceUnavailable, map[string]string{"error":"Payment notification persistence unavailable"})
++ return
++}
+ 			}
+ 		}
+ 
+ 		reply(w, 200, map[string]any{"received": true})
+ 	})
+ }
++
+diff --git "a/dapper-platform\\apps\\api\\internal\\workspace\\square_webhooks_test.go" "b/.cache\\codex-integration-review\\api\\internal\\workspace\\square_webhooks_test.go"
+index 992d9c1..72d7951 100644
+--- "a/dapper-platform\\apps\\api\\internal\\workspace\\square_webhooks_test.go"
++++ "b/.cache\\codex-integration-review\\api\\internal\\workspace\\square_webhooks_test.go"
+@@ -133,7 +133,15 @@ func verifySquareWebhookHTTP(t *testing.T, ctx context.Context, store *postgres.
+ 		},
+ 	}
+ 	completedJSON, _ := json.Marshal(completedEvent)
+-	resp := sendWebhook(handler, string(completedJSON), "valid-mock-signature")
++	 // Inject persistence failure only in this disposable schema.
++ if _,err=setup.Exec(ctx,`CREATE FUNCTION codex_reject_payment_write() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'synthetic persistence failure'; END $$; CREATE TRIGGER codex_reject_payment_write BEFORE UPDATE ON payments FOR EACH ROW EXECUTE FUNCTION codex_reject_payment_write()`);err!=nil{t.Fatal(err)}
++ failedResponse:=sendWebhook(handler,string(completedJSON),"valid-mock-signature")
++ var unchangedStatus string
++ if err=setup.QueryRow(ctx,`SELECT status FROM payments WHERE id=$1`,paymentID).Scan(&unchangedStatus);err!=nil{t.Fatal(err)}
++ if failedResponse.Code!=503||unchangedStatus!="pending"{t.Fatalf("diagnostic behavior changed: status%d/payment%s",failedResponse.Code,unchangedStatus)}
++ t.Log("VERIFIED: webhook replied503 when persistence failed; payment unchanged; replay succeeds after fault removal")
++ if _,err=setup.Exec(ctx,`DROP TRIGGER codex_reject_payment_write ON payments; DROP FUNCTION codex_reject_payment_write()`);err!=nil{t.Fatal(err)}
++ resp := sendWebhook(handler, string(completedJSON), "valid-mock-signature")
+ 	if resp.Code != 200 {
+ 		t.Fatalf("webhook payment.updated failed: code %d, body: %s", resp.Code, resp.Body.String())
+ 	}
+@@ -192,3 +200,5 @@ func verifySquareWebhookHTTP(t *testing.T, ctx context.Context, store *postgres.
+ 		t.Fatalf("expected invoice restored to issued (paid: 0, due: 1130), got paid: %d, due: %d, status: %s", invPaid, invDue, invStatus)
+ 	}
+ }
++
++

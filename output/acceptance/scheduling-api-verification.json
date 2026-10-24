@@ -1,0 +1,24 @@
+{
+  "browserSchedulingVerified": false,
+  "automaticGrantsAdded": false,
+  "verifiedAt": "2026-10-22T05:51:33.3846739Z",
+  "runtimeMigration": 14,
+  "positiveEvidence": "real HTTP handler and isolated PostgreSQL",
+  "productionReady": false,
+  "positiveLiveSchedulingVerified": false,
+  "changedFiles": [
+    {
+      "file": "dapper-platform/apps/api/internal/workspace/scheduling.go",
+      "sha256": "3A2E76837BC1BD436A6B8E4FC62422205700A1CDF3DD73DA86B30CE86DCB1E2F"
+    },
+    {
+      "file": "dapper-platform/apps/api/internal/workspace/scheduling_test.go",
+      "sha256": "8DBEBA677F54EDE88D608E9C9098918C3706CE071E34D5CADF6ECC5F21012FF2"
+    },
+    {
+      "file": "dapper-platform/apps/api/internal/postgres/scheduling_resources.go",
+      "sha256": "433963BB8A73047E320B47D741A3553ED1ECA8467E2A75F8E41372228108EA2D"
+    }
+  ],
+  "liveHttpsGroups": 10
+}

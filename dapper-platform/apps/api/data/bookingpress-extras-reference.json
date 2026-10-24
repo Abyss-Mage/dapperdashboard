@@ -1,0 +1,4060 @@
+{
+  "schemaVersion": 1,
+  "approvalStatus": "reference_only_pending_client_approval",
+  "transactionEnabled": false,
+  "currency": "not_explicitly_confirmed",
+  "source": "https://dapperdetailing.ca/wp-json/dapper-export/v1/catalogue",
+  "sourceSha256": "0e2d4922f468ae0a205fcf7422752b5834bbe359c6d4834f0f14af9f63594fc0",
+  "sourceBundleSha256": "0e2d4922f468ae0a205fcf7422752b5834bbe359c6d4834f0f14af9f63594fc0",
+  "capturedAt": "2026-10-22T06:27:23+00:00",
+  "sourceTimezone": "America/Toronto",
+  "categories": [
+    {
+      "sourceId": "1",
+      "name": "2 Wheeler"
+    },
+    {
+      "sourceId": "2",
+      "name": "HatchBack"
+    },
+    {
+      "sourceId": "3",
+      "name": "Sedan"
+    },
+    {
+      "sourceId": "4",
+      "name": "SUV"
+    },
+    {
+      "sourceId": "5",
+      "name": "Pickup"
+    },
+    {
+      "sourceId": "6",
+      "name": "Others"
+    },
+    {
+      "sourceId": "7",
+      "name": "Ceramic Coating"
+    },
+    {
+      "sourceId": "8",
+      "name": "Window Tint"
+    },
+    {
+      "sourceId": "9",
+      "name": "Van"
+    },
+    {
+      "sourceId": "10",
+      "name": "Aircraft"
+    },
+    {
+      "sourceId": "11",
+      "name": "Boat"
+    },
+    {
+      "sourceId": "12",
+      "name": "PPF"
+    }
+  ],
+  "services": [
+    {
+      "sourceId": "1",
+      "categorySourceId": "1",
+      "name": "2 Wheeler - 5 year Ceramic Coating",
+      "description": "Enhance and protect your motorcycle with a professional ceramic coating featuring a high-gloss hydrophobic finish, protection against UV rays and contaminants, and a 5-Year Ceramic Coating Warranty.",
+      "priceRaw": "299",
+      "durationRaw": "2",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "2",
+      "categorySourceId": "2",
+      "name": "HatchBack - Express Interior Detail",
+      "description": "1. Full interior vacuum — seats, — carpets, floor mats\n2. Trunk / cargo area vacuumed\n3. Dash, console & door panels wiped down\n4. Cupholders, vents & crevices dusted out\n5. Interior glass cleaned, streak-free\n6. Floor mats pulled, shaken & cleaned\n7. Light deodorize — fresh finish",
+      "priceRaw": "79",
+      "durationRaw": "30",
+      "durationUnitRaw": "m",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "16",
+      "categorySourceId": "6",
+      "name": "Headlight Restoration",
+      "description": "",
+      "priceRaw": "49",
+      "durationRaw": "1",
+      "durationUnitRaw": "m",
+      "reviewFlags": [
+        "one_minute_duration_review"
+      ]
+    },
+    {
+      "sourceId": "18",
+      "categorySourceId": "6",
+      "name": "Claybar Wax and Polish",
+      "description": "",
+      "priceRaw": "119",
+      "durationRaw": "1",
+      "durationUnitRaw": "m",
+      "reviewFlags": [
+        "one_minute_duration_review"
+      ]
+    },
+    {
+      "sourceId": "19",
+      "categorySourceId": "7",
+      "name": "Fortress Package - 5 Years Warranty Ceramic Coating",
+      "description": "This package includes premium-grade ceramic coating application, complete paint decontamination and surface preparation, enhanced hydrophobic protection, superior resistance to minor scratches, protection against UV rays and chemical contaminants, annual maintenance reminders, and is backed by a 5-Year Manufacturer Warranty.",
+      "priceRaw": "999",
+      "durationRaw": "6",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "20",
+      "categorySourceId": "7",
+      "name": "3 stage Paint Correction",
+      "description": "Achieve the highest level of paint refinement with our 3-Stage Paint Correction process. Designed to remove heavy swirl marks, scratches, oxidation, and paint defects, this service restores exceptional gloss, clarity, depth, and mirror-like reflections.",
+      "priceRaw": "1199",
+      "durationRaw": "6",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "21",
+      "categorySourceId": "6",
+      "name": "Golf Cart",
+      "description": "",
+      "priceRaw": "70",
+      "durationRaw": "30",
+      "durationUnitRaw": "m",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "22",
+      "categorySourceId": "6",
+      "name": "Small off Roader",
+      "description": "",
+      "priceRaw": "150",
+      "durationRaw": "30",
+      "durationUnitRaw": "m",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "23",
+      "categorySourceId": "6",
+      "name": "Big off Roader",
+      "description": "",
+      "priceRaw": "180",
+      "durationRaw": "30",
+      "durationUnitRaw": "m",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "24",
+      "categorySourceId": "2",
+      "name": "HatchBack - VIP Interior Detail",
+      "description": "This package includes interior revive and shine treatment, professional steam cleaning, deep cleaning of seats, interior air freshener application, and streak-free cleaning of all interior and exterior glass surfaces.",
+      "priceRaw": "169",
+      "durationRaw": "3",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "25",
+      "categorySourceId": "2",
+      "name": "HatchBack - Luxury Full Body Detail",
+      "description": "This package includes a complete interior detail from the dashboard to the trunk, a full exterior detail with protective wax application, and thorough cleaning and polishing of the rims and wheels for a refreshed appearance.",
+      "priceRaw": "229",
+      "durationRaw": "3",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "26",
+      "categorySourceId": "3",
+      "name": "Sedan - Express Interior Detail",
+      "description": "1. Full interior vacuum — seats, — carpets, floor mats\n2. Trunk / cargo area vacuumed\n3. Dash, console & door panels wiped down\n4. Cupholders, vents & crevices dusted out\n5. Interior glass cleaned, streak-free\n6. Floor mats pulled, shaken & cleaned\n7. Light deodorize — fresh finish",
+      "priceRaw": "89",
+      "durationRaw": "30",
+      "durationUnitRaw": "m",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "27",
+      "categorySourceId": "3",
+      "name": "Sedan - VIP Interior Detail",
+      "description": "This package includes interior revive and shine treatment, professional steam cleaning, deep cleaning of seats, interior air freshener application, and streak-free cleaning of all interior and exterior glass surfaces.",
+      "priceRaw": "189",
+      "durationRaw": "3",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "28",
+      "categorySourceId": "3",
+      "name": "Sedan - Luxury Full Body Detail",
+      "description": "This package includes a complete interior detail from the dashboard to the trunk, a full exterior detail with protective wax application, and thorough cleaning and polishing of the rims and wheels for a refreshed appearance.",
+      "priceRaw": "249",
+      "durationRaw": "3",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "29",
+      "categorySourceId": "4",
+      "name": "SUV - Express Interior Detail",
+      "description": "1. Full interior vacuum — seats, — carpets, floor mats\n2. Trunk / cargo area vacuumed\n3. Dash, console & door panels wiped down\n4. Cupholders, vents & crevices dusted out\n5. Interior glass cleaned, streak-free\n6. Floor mats pulled, shaken & cleaned\n7. Light deodorize — fresh finish",
+      "priceRaw": "99",
+      "durationRaw": "30",
+      "durationUnitRaw": "m",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "30",
+      "categorySourceId": "5",
+      "name": "Pickup - Express Interior Detail",
+      "description": "1. Full interior vacuum — seats, — carpets, floor mats\n2. Trunk / cargo area vacuumed\n3. Dash, console & door panels wiped down\n4. Cupholders, vents & crevices dusted out\n5. Interior glass cleaned, streak-free\n6. Floor mats pulled, shaken & cleaned\n7. Light deodorize — fresh finish",
+      "priceRaw": "99",
+      "durationRaw": "30",
+      "durationUnitRaw": "m",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "31",
+      "categorySourceId": "5",
+      "name": "Pickup - VIP Interior Detail",
+      "description": "This package includes interior revive and shine treatment, professional steam cleaning, deep cleaning of seats, interior air freshener application, and streak-free cleaning of all interior and exterior glass surfaces.",
+      "priceRaw": "189",
+      "durationRaw": "3",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "32",
+      "categorySourceId": "5",
+      "name": "Pickup - Luxury Full Body Detail",
+      "description": "This package includes a complete interior detail from the dashboard to the trunk, a full exterior detail with protective wax application, and thorough cleaning and polishing of the rims and wheels for a refreshed appearance.",
+      "priceRaw": "269",
+      "durationRaw": "3",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "33",
+      "categorySourceId": "4",
+      "name": "SUV - VIP Interior Detail",
+      "description": "This package includes interior revive and shine treatment, professional steam cleaning, deep cleaning of seats, interior air freshener application, and streak-free cleaning of all interior and exterior glass surfaces.",
+      "priceRaw": "189",
+      "durationRaw": "3",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "34",
+      "categorySourceId": "4",
+      "name": "SUV - Luxury Full Body Detail",
+      "description": "This package includes a complete interior detail from the dashboard to the trunk, a full exterior detail with protective wax application, and thorough cleaning and polishing of the rims and wheels for a refreshed appearance.",
+      "priceRaw": "269",
+      "durationRaw": "3",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "52",
+      "categorySourceId": "2",
+      "name": "HatchBack - Exterior Wash",
+      "description": "This package includes a thorough hand wash, wheel and tire cleaning, bug and tar removal, detailed cleaning of door jambs, and a protective 30-day wax coating to enhance shine and protect your vehicle's finish.",
+      "priceRaw": "75",
+      "durationRaw": "1",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "53",
+      "categorySourceId": "3",
+      "name": "Sedan - Exterior Wash",
+      "description": "This package includes a thorough hand wash, wheel and tire cleaning, bug and tar removal, detailed cleaning of door jambs, and a protective 30-day wax coating to enhance shine and protect your vehicle's finish.",
+      "priceRaw": "75",
+      "durationRaw": "1",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "54",
+      "categorySourceId": "4",
+      "name": "SUV - Exterior Wash",
+      "description": "This package includes a thorough hand wash, wheel and tire cleaning, bug and tar removal, detailed cleaning of door jambs, and a protective 30-day wax coating to enhance shine and protect your vehicle's finish.",
+      "priceRaw": "99",
+      "durationRaw": "1",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "55",
+      "categorySourceId": "5",
+      "name": "Pickup - Exterior Wash",
+      "description": "This package includes a thorough hand wash, wheel and tire cleaning, bug and tar removal, detailed cleaning of door jambs, and a protective 30-day wax coating to enhance shine and protect your vehicle's finish.",
+      "priceRaw": "99",
+      "durationRaw": "1",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "56",
+      "categorySourceId": "7",
+      "name": "Shield Package - 3 Years Ceramic Coating",
+      "description": "This package includes professional ceramic coating application, complete paint decontamination and surface preparation, a hydrophobic water-repelling layer, protection against harmful UV rays, a 6-hour professional installation process, post-cure care guidance, and is backed by a 3-Year Manufacturer Warranty.",
+      "priceRaw": "699",
+      "durationRaw": "6",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "57",
+      "categorySourceId": "8",
+      "name": "Single Window Tint",
+      "description": "Perfect for replacing or upgrading tint on a single window. Ideal for small fixes, privacy enhancement, or heat & UV protection on a specific window.",
+      "priceRaw": "59",
+      "durationRaw": "30",
+      "durationUnitRaw": "m",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "58",
+      "categorySourceId": "8",
+      "name": "Standard 4-Window Tint Package",
+      "description": "Complete tinting for all four side windows. Enhances privacy, reduces interior heat, blocks harmful UV rays, and gives your vehicle a sleek, uniform look.",
+      "priceRaw": "219",
+      "durationRaw": "60",
+      "durationUnitRaw": "m",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "59",
+      "categorySourceId": "8",
+      "name": "Full 5-Window Premium Tint Package",
+      "description": "",
+      "priceRaw": "289",
+      "durationRaw": "90",
+      "durationUnitRaw": "m",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "60",
+      "categorySourceId": "6",
+      "name": "Fabric Guard",
+      "description": "",
+      "priceRaw": "50",
+      "durationRaw": "1",
+      "durationUnitRaw": "m",
+      "reviewFlags": [
+        "one_minute_duration_review"
+      ]
+    },
+    {
+      "sourceId": "62",
+      "categorySourceId": "9",
+      "name": "VAN - VIP Interior Detail",
+      "description": "This package includes interior revive and shine treatment, professional steam cleaning, deep cleaning of seats, interior air freshener application, and streak-free cleaning of all interior and exterior glass surfaces.",
+      "priceRaw": "209",
+      "durationRaw": "4",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "63",
+      "categorySourceId": "9",
+      "name": "VAN - Luxury Full Body Detail",
+      "description": "This package includes a complete interior detail from the dashboard to the trunk, a full exterior detail with protective wax application, and thorough cleaning and polishing of the rims and wheels for a refreshed appearance.",
+      "priceRaw": "289",
+      "durationRaw": "5",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "64",
+      "categorySourceId": "2",
+      "name": "HatchBack - Ultimate Protection Package",
+      "description": "Includes everything from Full Body Luxury service, a 12–18 month ceramic coating (no paint correction), 12-month interior fabric protection, and full engine bay detailing.",
+      "priceRaw": "379",
+      "durationRaw": "6",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "65",
+      "categorySourceId": "3",
+      "name": "Sedan - Ultimate Protection Package",
+      "description": "Includes everything from Full Body Luxury service, a 12–18 month ceramic coating (no paint correction), 12-month interior fabric protection, and full engine bay detailing.",
+      "priceRaw": "429",
+      "durationRaw": "6",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "66",
+      "categorySourceId": "4",
+      "name": "SUV - Ultimate Protection Package",
+      "description": "Includes everything from Full Body Luxury service, a 12–18 month ceramic coating (no paint correction), 12-month interior fabric protection, and full engine bay detailing.",
+      "priceRaw": "449",
+      "durationRaw": "6",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "67",
+      "categorySourceId": "5",
+      "name": "Pickup - Ultimate Protection Package",
+      "description": "Includes everything from Full Body Luxury service, a 12–18 month ceramic coating (no paint correction), 12-month interior fabric protection, and full engine bay detailing.",
+      "priceRaw": "449",
+      "durationRaw": "6",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "68",
+      "categorySourceId": "9",
+      "name": "VAN - Ultimate Protection Package",
+      "description": "Includes everything from Full Body Luxury service, a 12–18 month ceramic coating (no paint correction), 12-month interior fabric protection, and full engine bay detailing.",
+      "priceRaw": "449",
+      "durationRaw": "6",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "75",
+      "categorySourceId": "7",
+      "name": "Armour up Package",
+      "description": "This package includes a full 3-stage paint correction to remove swirl marks, scratches, oxidation, and paint imperfections before applying a premium ceramic coating. The correction process creates the ideal surface for maximum coating adhesion while enhancing gloss, depth, and clarity. The package is backed by a 5-Year Manufacturer Warranty and includes before-and-after photos of the transformation.",
+      "priceRaw": "1999",
+      "durationRaw": "6",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "76",
+      "categorySourceId": "10",
+      "name": "Aircraft Small - Signature Full Detail",
+      "description": "Our most complete detailing package, combining both interior and exterior services to restore your aircraft's appearance, cleanliness, and overall condition in a single appointment.",
+      "priceRaw": "625",
+      "durationRaw": "8",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "77",
+      "categorySourceId": "10",
+      "name": "Aircraft Small - Exterior Detailing",
+      "description": "Comprehensive exterior cleaning and polishing designed to remove bugs, carbon buildup, dirt, and contaminants while restoring shine and helping protect your aircraft's finish.",
+      "priceRaw": "450",
+      "durationRaw": "5",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "78",
+      "categorySourceId": "10",
+      "name": "Aircraft Small - Interior Detailing",
+      "description": "A thorough interior refresh that includes cleaning, conditioning, and sanitizing seating, carpets, panels, windows, and cabin surfaces for a cleaner, more comfortable environment.",
+      "priceRaw": "250",
+      "durationRaw": "3",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "79",
+      "categorySourceId": "10",
+      "name": "Aircraft Small - Ceramic Coating",
+      "description": "A premium aviation-grade protective coating that enhances gloss while helping defend against UV exposure, contaminants, oxidation, and environmental wear.",
+      "priceRaw": "800",
+      "durationRaw": "10",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "80",
+      "categorySourceId": "10",
+      "name": "Aircraft Small - Paint Correction",
+      "description": "An advanced protective treatment designed to shield painted surfaces from UV damage, contaminants, weather exposure, and everyday wear while preserving a lasting finish.",
+      "priceRaw": "1000",
+      "durationRaw": "12",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "81",
+      "categorySourceId": "10",
+      "name": "Aircraft Medium - Signature Full Detail",
+      "description": "Our most complete detailing package, combining both interior and exterior services to restore your aircraft's appearance, cleanliness, and overall condition in a single appointment.",
+      "priceRaw": "1150",
+      "durationRaw": "12",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "82",
+      "categorySourceId": "10",
+      "name": "Aircraft Medium - Exterior Detailing",
+      "description": "Comprehensive exterior cleaning and polishing designed to remove bugs, carbon buildup, dirt, and contaminants while restoring shine and helping protect your aircraft's finish.",
+      "priceRaw": "750",
+      "durationRaw": "8",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "83",
+      "categorySourceId": "10",
+      "name": "Aircraft Medium - Interior Detailing",
+      "description": "A thorough interior refresh that includes cleaning, conditioning, and sanitizing seating, carpets, panels, windows, and cabin surfaces for a cleaner, more comfortable environment.",
+      "priceRaw": "450",
+      "durationRaw": "5",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "84",
+      "categorySourceId": "10",
+      "name": "Aircraft Medium - Ceramic Coating",
+      "description": "A premium aviation-grade protective coating that enhances gloss while helping defend against UV exposure, contaminants, oxidation, and environmental wear.",
+      "priceRaw": "1200",
+      "durationRaw": "15",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "85",
+      "categorySourceId": "10",
+      "name": "Aircraft Medium - Paint Correction",
+      "description": "An advanced protective treatment designed to shield painted surfaces from UV damage, contaminants, weather exposure, and everyday wear while preserving a lasting finish.",
+      "priceRaw": "1500",
+      "durationRaw": "18",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "86",
+      "categorySourceId": "10",
+      "name": "Aircraft Large - Signature Full Detail",
+      "description": "Our most complete detailing package, combining both interior and exterior services to restore your aircraft's appearance, cleanliness, and overall condition in a single appointment.",
+      "priceRaw": "2100",
+      "durationRaw": "18",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "87",
+      "categorySourceId": "10",
+      "name": "Aircraft Large - Exterior Detailing",
+      "description": "Comprehensive exterior cleaning and polishing designed to remove bugs, carbon buildup, dirt, and contaminants while restoring shine and helping protect your aircraft's finish.",
+      "priceRaw": "1500",
+      "durationRaw": "12",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "88",
+      "categorySourceId": "10",
+      "name": "Aircraft Large - Interior Detailing",
+      "description": "A thorough interior refresh that includes cleaning, conditioning, and sanitizing seating, carpets, panels, windows, and cabin surfaces for a cleaner, more comfortable environment.",
+      "priceRaw": "1000",
+      "durationRaw": "8",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "89",
+      "categorySourceId": "10",
+      "name": "Aircraft Large - Ceramic Coating",
+      "description": "A premium aviation-grade protective coating that enhances gloss while helping defend against UV exposure, contaminants, oxidation, and environmental wear.",
+      "priceRaw": "2000",
+      "durationRaw": "24",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "90",
+      "categorySourceId": "10",
+      "name": "Aircraft Large - Paint Correction",
+      "description": "An advanced protective treatment designed to shield painted surfaces from UV damage, contaminants, weather exposure, and everyday wear while preserving a lasting finish.",
+      "priceRaw": "2500",
+      "durationRaw": "24",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "91",
+      "categorySourceId": "11",
+      "name": "Boat Small - Signature Full Detail",
+      "description": "Our most complete detailing package, combining both interior and exterior services to restore your boat's appearance, cleanliness, and overall condition in a single visit.",
+      "priceRaw": "665",
+      "durationRaw": "4",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "92",
+      "categorySourceId": "11",
+      "name": "Boat Small - Exterior Detailing",
+      "description": "Comprehensive exterior cleaning and polishing designed to remove dirt, water stains, and buildup while restoring shine and helping protect your boat's finish from the elements.",
+      "priceRaw": "395",
+      "durationRaw": "2",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "93",
+      "categorySourceId": "11",
+      "name": "Boat Small - Interior Detailing",
+      "description": "A thorough interior refresh that includes cleaning, conditioning, and sanitizing seats, carpets, storage compartments, and other cabin surfaces for a cleaner, more comfortable environment.",
+      "priceRaw": "270",
+      "durationRaw": "2",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "94",
+      "categorySourceId": "11",
+      "name": "Boat Small - Ceramic Coating",
+      "description": "A premium marine-grade protective coating that enhances gloss while helping defend against UV exposure, water spots, oxidation, dirt buildup, and environmental contaminants.",
+      "priceRaw": "400",
+      "durationRaw": "4",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "95",
+      "categorySourceId": "11",
+      "name": "Boat Small - Paint Correction",
+      "description": "A professional restoration process that removes oxidation, light scratches, swirl marks, and surface imperfections to revive the depth, clarity, and shine of your boat's finish.",
+      "priceRaw": "600",
+      "durationRaw": "5",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "96",
+      "categorySourceId": "11",
+      "name": "Boat Medium - Signature Full Detail",
+      "description": "Our most complete detailing package, combining both interior and exterior services to restore your boat's appearance, cleanliness, and overall condition in a single visit.",
+      "priceRaw": "830",
+      "durationRaw": "7",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "97",
+      "categorySourceId": "11",
+      "name": "Boat Medium - Exterior Detailing",
+      "description": "Comprehensive exterior cleaning and polishing designed to remove dirt, water stains, and buildup while restoring shine and helping protect your boat's finish from the elements.",
+      "priceRaw": "550",
+      "durationRaw": "4",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "98",
+      "categorySourceId": "11",
+      "name": "Boat Medium - Interior Detailing",
+      "description": "A thorough interior refresh that includes cleaning, conditioning, and sanitizing seats, carpets, storage compartments, and other cabin surfaces for a cleaner, more comfortable environment.",
+      "priceRaw": "500",
+      "durationRaw": "3",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "99",
+      "categorySourceId": "11",
+      "name": "Boat Medium - Ceramic Coating",
+      "description": "A premium marine-grade protective coating that enhances gloss while helping defend against UV exposure, water spots, oxidation, dirt buildup, and environmental contaminants.",
+      "priceRaw": "650",
+      "durationRaw": "6",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "100",
+      "categorySourceId": "11",
+      "name": "Boat Medium - Paint Correction",
+      "description": "A professional restoration process that removes oxidation, light scratches, swirl marks, and surface imperfections to revive the depth, clarity, and shine of your boat's finish.",
+      "priceRaw": "850",
+      "durationRaw": "8",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "101",
+      "categorySourceId": "11",
+      "name": "Boat Large - Signature Full Detail",
+      "description": "Our most complete detailing package, combining both interior and exterior services to restore your boat's appearance, cleanliness, and overall condition in a single visit.",
+      "priceRaw": "960",
+      "durationRaw": "10",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "102",
+      "categorySourceId": "11",
+      "name": "Boat Large - Exterior Detailing",
+      "description": "Comprehensive exterior cleaning and polishing designed to remove dirt, water stains, and buildup while restoring shine and helping protect your boat's finish from the elements.",
+      "priceRaw": "700",
+      "durationRaw": "6",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "103",
+      "categorySourceId": "11",
+      "name": "Boat Large - Interior Detailing",
+      "description": "A thorough interior refresh that includes cleaning, conditioning, and sanitizing seats, carpets, storage compartments, and other cabin surfaces for a cleaner, more comfortable environment.",
+      "priceRaw": "600",
+      "durationRaw": "5",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "104",
+      "categorySourceId": "11",
+      "name": "Boat Large - Ceramic Coating",
+      "description": "A premium marine-grade protective coating that enhances gloss while helping defend against UV exposure, water spots, oxidation, dirt buildup, and environmental contaminants.",
+      "priceRaw": "1300",
+      "durationRaw": "10",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "105",
+      "categorySourceId": "11",
+      "name": "Boat Large - Paint Correction",
+      "description": "A professional restoration process that removes oxidation, light scratches, swirl marks, and surface imperfections to revive the depth, clarity, and shine of your boat's finish.",
+      "priceRaw": "1500",
+      "durationRaw": "12",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "106",
+      "categorySourceId": "9",
+      "name": "VAN - Exterior Wash",
+      "description": "This package includes a thorough hand wash, wheel and tire cleaning, bug and tar removal, detailed cleaning of door jambs, and a protective 30-day wax coating to enhance shine and protect your vehicle's finish.",
+      "priceRaw": "99",
+      "durationRaw": "1",
+      "durationUnitRaw": "h",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "107",
+      "categorySourceId": "9",
+      "name": "VAN - Express Interior Detail",
+      "description": "1. Full interior vacuum — seats, — carpets, floor mats\n2. Trunk / cargo area vacuumed\n3. Dash, console & door panels wiped down\n4. Cupholders, vents & crevices dusted out\n5. Interior glass cleaned, streak-free\n6. Floor mats pulled, shaken & cleaned\n7. Light deodorize — fresh finish",
+      "priceRaw": "119",
+      "durationRaw": "30",
+      "durationUnitRaw": "m",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "108",
+      "categorySourceId": "12",
+      "name": "Hatchback - Front PPF",
+      "description": "Includes Full Hood, Full Front Bumper & Both Front Fenders with professional installation and edge finishing.",
+      "priceRaw": "1499",
+      "durationRaw": "1",
+      "durationUnitRaw": "d",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "109",
+      "categorySourceId": "12",
+      "name": "Sedan - Front PPF",
+      "description": "Includes Full Hood, Full Front Bumper & Both Front Fenders with professional installation and edge finishing.",
+      "priceRaw": "1499",
+      "durationRaw": "1",
+      "durationUnitRaw": "d",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "110",
+      "categorySourceId": "12",
+      "name": "SUV - Front PPF",
+      "description": "Includes Full Hood, Full Front Bumper & Both Front Fenders with professional installation and edge finishing.",
+      "priceRaw": "2199",
+      "durationRaw": "1",
+      "durationUnitRaw": "d",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "111",
+      "categorySourceId": "12",
+      "name": "Pickup - Front PPF",
+      "description": "Includes Full Hood, Full Front Bumper & Both Front Fenders with professional installation and edge finishing.",
+      "priceRaw": "2199",
+      "durationRaw": "1",
+      "durationUnitRaw": "d",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "112",
+      "categorySourceId": "12",
+      "name": "VAN - Front PPF",
+      "description": "Includes Full Hood, Full Front Bumper & Both Front Fenders with professional installation and edge finishing.",
+      "priceRaw": "2199",
+      "durationRaw": "1",
+      "durationUnitRaw": "d",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "113",
+      "categorySourceId": "12",
+      "name": "Hatchback - Full PPF",
+      "description": "Includes Full Exterior Paint Coverage, including hood, bumpers, fenders, doors, quarter panels, roof, trunk and other painted exterior panels, with professional installation and edge finishing.",
+      "priceRaw": "4999",
+      "durationRaw": "2",
+      "durationUnitRaw": "d",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "114",
+      "categorySourceId": "12",
+      "name": "Sedan - Full PPF",
+      "description": "Includes Full Exterior Paint Coverage, including hood, bumpers, fenders, doors, quarter panels, roof, trunk and other painted exterior panels, with professional installation and edge finishing.",
+      "priceRaw": "4999",
+      "durationRaw": "2",
+      "durationUnitRaw": "d",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "115",
+      "categorySourceId": "12",
+      "name": "SUV - Full PPF",
+      "description": "Includes Full Exterior Paint Coverage, including hood, bumpers, fenders, doors, quarter panels, roof, trunk and other painted exterior panels, with professional installation and edge finishing.",
+      "priceRaw": "5999",
+      "durationRaw": "2",
+      "durationUnitRaw": "d",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "116",
+      "categorySourceId": "12",
+      "name": "Pickup - Full PPF",
+      "description": "Includes Full Exterior Paint Coverage, including hood, bumpers, fenders, doors, quarter panels, roof, trunk and other painted exterior panels, with professional installation and edge finishing.",
+      "priceRaw": "5999",
+      "durationRaw": "2",
+      "durationUnitRaw": "d",
+      "reviewFlags": []
+    },
+    {
+      "sourceId": "117",
+      "categorySourceId": "12",
+      "name": "VAN - Full PPF",
+      "description": "Includes Full Exterior Paint Coverage, including hood, bumpers, fenders, doors, quarter panels, roof, trunk and other painted exterior panels, with professional installation and edge finishing.",
+      "priceRaw": "5999",
+      "durationRaw": "2",
+      "durationUnitRaw": "d",
+      "reviewFlags": []
+    }
+  ],
+  "extras": [
+    {
+      "sourceId": "1",
+      "parentServiceSourceId": "2",
+      "name": "Pet hairs",
+      "description": "Please add this item in the cart if you got pet hairs in the car.",
+      "priceRaw": "29",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "2",
+      "parentServiceSourceId": "2",
+      "name": "Winter Salt Removal",
+      "description": "",
+      "priceRaw": "29",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "3",
+      "parentServiceSourceId": "2",
+      "name": "Headlight Restoration",
+      "description": "",
+      "priceRaw": "59",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "4",
+      "parentServiceSourceId": "2",
+      "name": "Ceramic Coating",
+      "description": "",
+      "priceRaw": "399",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "5",
+      "parentServiceSourceId": "2",
+      "name": "Claybar",
+      "description": "",
+      "priceRaw": "89",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "6",
+      "parentServiceSourceId": "2",
+      "name": "Wax",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "7",
+      "parentServiceSourceId": "24",
+      "name": "Pet hairs",
+      "description": "Please add this item in the cart if you got pet hairs in the car.",
+      "priceRaw": "49",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "8",
+      "parentServiceSourceId": "24",
+      "name": "Winter Salt Removal",
+      "description": "",
+      "priceRaw": "29",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "9",
+      "parentServiceSourceId": "24",
+      "name": "Headlight Restoration",
+      "description": "",
+      "priceRaw": "59",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "11",
+      "parentServiceSourceId": "24",
+      "name": "Claybar",
+      "description": "",
+      "priceRaw": "89",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "12",
+      "parentServiceSourceId": "24",
+      "name": "Wax",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "13",
+      "parentServiceSourceId": "25",
+      "name": "Pet hairs",
+      "description": "Please add this item in the cart if you got pet hairs in the car.",
+      "priceRaw": "49",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "14",
+      "parentServiceSourceId": "25",
+      "name": "Winter Salt Removal",
+      "description": "",
+      "priceRaw": "29",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "15",
+      "parentServiceSourceId": "25",
+      "name": "Headlight Restoration",
+      "description": "",
+      "priceRaw": "59",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "16",
+      "parentServiceSourceId": "25",
+      "name": "Ceramic Coating",
+      "description": "",
+      "priceRaw": "399",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "17",
+      "parentServiceSourceId": "25",
+      "name": "Claybar",
+      "description": "",
+      "priceRaw": "89",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "18",
+      "parentServiceSourceId": "25",
+      "name": "Wax",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "19",
+      "parentServiceSourceId": "26",
+      "name": "Pet hairs",
+      "description": "Please add this item in the cart if you got pet hairs in the car.",
+      "priceRaw": "29",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "20",
+      "parentServiceSourceId": "26",
+      "name": "Winter Salt Removal",
+      "description": "",
+      "priceRaw": "29",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "21",
+      "parentServiceSourceId": "26",
+      "name": "Headlight Restoration",
+      "description": "",
+      "priceRaw": "59",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "22",
+      "parentServiceSourceId": "26",
+      "name": "Ceramic Coating",
+      "description": "",
+      "priceRaw": "399",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "23",
+      "parentServiceSourceId": "26",
+      "name": "Claybar",
+      "description": "",
+      "priceRaw": "89",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "24",
+      "parentServiceSourceId": "26",
+      "name": "Wax",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "25",
+      "parentServiceSourceId": "27",
+      "name": "Pet hairs",
+      "description": "Please add this item in the cart if you got pet hairs in the car.",
+      "priceRaw": "49",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "26",
+      "parentServiceSourceId": "27",
+      "name": "Winter Salt Removal",
+      "description": "",
+      "priceRaw": "29",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "27",
+      "parentServiceSourceId": "27",
+      "name": "Headlight Restoration",
+      "description": "",
+      "priceRaw": "59",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "28",
+      "parentServiceSourceId": "27",
+      "name": "Ceramic Coating",
+      "description": "",
+      "priceRaw": "399",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "29",
+      "parentServiceSourceId": "27",
+      "name": "Claybar",
+      "description": "",
+      "priceRaw": "89",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "30",
+      "parentServiceSourceId": "27",
+      "name": "Wax",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "31",
+      "parentServiceSourceId": "28",
+      "name": "Pet hairs",
+      "description": "Please add this item in the cart if you got pet hairs in the car.",
+      "priceRaw": "49",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "32",
+      "parentServiceSourceId": "28",
+      "name": "Winter Salt Removal",
+      "description": "",
+      "priceRaw": "29",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "33",
+      "parentServiceSourceId": "28",
+      "name": "Headlight Restoration",
+      "description": "",
+      "priceRaw": "59",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "34",
+      "parentServiceSourceId": "28",
+      "name": "Ceramic Coating",
+      "description": "",
+      "priceRaw": "399",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "35",
+      "parentServiceSourceId": "28",
+      "name": "Claybar",
+      "description": "",
+      "priceRaw": "89",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "36",
+      "parentServiceSourceId": "28",
+      "name": "Wax",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "37",
+      "parentServiceSourceId": "29",
+      "name": "Pet hairs",
+      "description": "Please add this item in the cart if you got pet hairs in the car.",
+      "priceRaw": "49",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "38",
+      "parentServiceSourceId": "29",
+      "name": "Winter Salt Removal",
+      "description": "",
+      "priceRaw": "29",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "39",
+      "parentServiceSourceId": "29",
+      "name": "Headlight Restoration",
+      "description": "",
+      "priceRaw": "59",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "40",
+      "parentServiceSourceId": "29",
+      "name": "Ceramic Coating",
+      "description": "",
+      "priceRaw": "399",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "41",
+      "parentServiceSourceId": "29",
+      "name": "Claybar",
+      "description": "",
+      "priceRaw": "89",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "42",
+      "parentServiceSourceId": "29",
+      "name": "Wax",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "43",
+      "parentServiceSourceId": "30",
+      "name": "Pet hairs",
+      "description": "Please add this item in the cart if you got pet hairs in the car.",
+      "priceRaw": "49",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "44",
+      "parentServiceSourceId": "30",
+      "name": "Winter Salt Removal",
+      "description": "",
+      "priceRaw": "29",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "45",
+      "parentServiceSourceId": "30",
+      "name": "Headlight Restoration",
+      "description": "",
+      "priceRaw": "59",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "46",
+      "parentServiceSourceId": "30",
+      "name": "Ceramic Coating",
+      "description": "",
+      "priceRaw": "399",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "47",
+      "parentServiceSourceId": "30",
+      "name": "Claybar",
+      "description": "",
+      "priceRaw": "89",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "48",
+      "parentServiceSourceId": "30",
+      "name": "Wax",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "49",
+      "parentServiceSourceId": "31",
+      "name": "Pet hairs",
+      "description": "Please add this item in the cart if you got pet hairs in the car.",
+      "priceRaw": "49",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "50",
+      "parentServiceSourceId": "31",
+      "name": "Winter Salt Removal",
+      "description": "",
+      "priceRaw": "29",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "51",
+      "parentServiceSourceId": "31",
+      "name": "Headlight Restoration",
+      "description": "",
+      "priceRaw": "59",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "52",
+      "parentServiceSourceId": "31",
+      "name": "Ceramic Coating",
+      "description": "",
+      "priceRaw": "399",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "53",
+      "parentServiceSourceId": "31",
+      "name": "Claybar",
+      "description": "",
+      "priceRaw": "89",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "54",
+      "parentServiceSourceId": "31",
+      "name": "Wax",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "55",
+      "parentServiceSourceId": "32",
+      "name": "Pet hairs",
+      "description": "Please add this item in the cart if you got pet hairs in the car.",
+      "priceRaw": "49",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "56",
+      "parentServiceSourceId": "32",
+      "name": "Winter Salt Removal",
+      "description": "",
+      "priceRaw": "29",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "57",
+      "parentServiceSourceId": "32",
+      "name": "Headlight Restoration",
+      "description": "",
+      "priceRaw": "59",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "58",
+      "parentServiceSourceId": "32",
+      "name": "Ceramic Coating",
+      "description": "",
+      "priceRaw": "399",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "59",
+      "parentServiceSourceId": "32",
+      "name": "Claybar",
+      "description": "",
+      "priceRaw": "89",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "60",
+      "parentServiceSourceId": "32",
+      "name": "Wax",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "61",
+      "parentServiceSourceId": "33",
+      "name": "Pet hairs",
+      "description": "Please add this item in the cart if you got pet hairs in the car.",
+      "priceRaw": "49",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "62",
+      "parentServiceSourceId": "33",
+      "name": "Winter Salt Removal",
+      "description": "",
+      "priceRaw": "29",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "63",
+      "parentServiceSourceId": "33",
+      "name": "Headlight Restoration",
+      "description": "",
+      "priceRaw": "59",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "64",
+      "parentServiceSourceId": "33",
+      "name": "Ceramic Coating",
+      "description": "",
+      "priceRaw": "399",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "65",
+      "parentServiceSourceId": "33",
+      "name": "Claybar",
+      "description": "",
+      "priceRaw": "89",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "66",
+      "parentServiceSourceId": "33",
+      "name": "Wax",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "67",
+      "parentServiceSourceId": "34",
+      "name": "Pet hairs",
+      "description": "Please add this item in the cart if you got pet hairs in the car.",
+      "priceRaw": "49",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "68",
+      "parentServiceSourceId": "34",
+      "name": "Winter Salt Removal",
+      "description": "",
+      "priceRaw": "29",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "69",
+      "parentServiceSourceId": "34",
+      "name": "Headlight Restoration",
+      "description": "",
+      "priceRaw": "59",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "70",
+      "parentServiceSourceId": "34",
+      "name": "Ceramic Coating",
+      "description": "",
+      "priceRaw": "399",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "71",
+      "parentServiceSourceId": "34",
+      "name": "Claybar",
+      "description": "",
+      "priceRaw": "89",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "72",
+      "parentServiceSourceId": "34",
+      "name": "Wax",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "73",
+      "parentServiceSourceId": "2",
+      "name": "Engine Bay",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "74",
+      "parentServiceSourceId": "24",
+      "name": "Engine bay",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "75",
+      "parentServiceSourceId": "25",
+      "name": "Engine Bay",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "76",
+      "parentServiceSourceId": "26",
+      "name": "Engine Bay",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "77",
+      "parentServiceSourceId": "27",
+      "name": "Engine Bay",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "78",
+      "parentServiceSourceId": "28",
+      "name": "Engine bay",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "79",
+      "parentServiceSourceId": "29",
+      "name": "Engine bay",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "80",
+      "parentServiceSourceId": "33",
+      "name": "Engine bay",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "81",
+      "parentServiceSourceId": "34",
+      "name": "Engine Bay",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "82",
+      "parentServiceSourceId": "30",
+      "name": "Engine Bay",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "83",
+      "parentServiceSourceId": "31",
+      "name": "Engine Bay",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "84",
+      "parentServiceSourceId": "32",
+      "name": "Engine bay",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "169",
+      "parentServiceSourceId": "52",
+      "name": "Pet hairs",
+      "description": "Please add this item in the cart if you got pet hairs in the car.",
+      "priceRaw": "49",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "170",
+      "parentServiceSourceId": "52",
+      "name": "Winter Salt Removal",
+      "description": "",
+      "priceRaw": "29",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "171",
+      "parentServiceSourceId": "52",
+      "name": "Headlight Restoration",
+      "description": "",
+      "priceRaw": "59",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "172",
+      "parentServiceSourceId": "52",
+      "name": "Ceramic Coating",
+      "description": "",
+      "priceRaw": "399",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "173",
+      "parentServiceSourceId": "52",
+      "name": "Claybar",
+      "description": "",
+      "priceRaw": "89",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "174",
+      "parentServiceSourceId": "52",
+      "name": "Wax",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "175",
+      "parentServiceSourceId": "52",
+      "name": "Engine Bay",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "176",
+      "parentServiceSourceId": "53",
+      "name": "Pet hairs",
+      "description": "Please add this item in the cart if you got pet hairs in the car.",
+      "priceRaw": "49",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "177",
+      "parentServiceSourceId": "53",
+      "name": "Winter Salt Removal",
+      "description": "",
+      "priceRaw": "29",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "178",
+      "parentServiceSourceId": "53",
+      "name": "Headlight Restoration",
+      "description": "",
+      "priceRaw": "59",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "179",
+      "parentServiceSourceId": "53",
+      "name": "Ceramic Coating",
+      "description": "",
+      "priceRaw": "399",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "180",
+      "parentServiceSourceId": "53",
+      "name": "Claybar",
+      "description": "",
+      "priceRaw": "89",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "181",
+      "parentServiceSourceId": "53",
+      "name": "Wax",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "182",
+      "parentServiceSourceId": "53",
+      "name": "Engine Bay",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "183",
+      "parentServiceSourceId": "54",
+      "name": "Pet hairs",
+      "description": "Please add this item in the cart if you got pet hairs in the car.",
+      "priceRaw": "49",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "184",
+      "parentServiceSourceId": "54",
+      "name": "Winter Salt Removal",
+      "description": "",
+      "priceRaw": "29",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "185",
+      "parentServiceSourceId": "54",
+      "name": "Headlight Restoration",
+      "description": "",
+      "priceRaw": "59",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "186",
+      "parentServiceSourceId": "54",
+      "name": "Ceramic Coating",
+      "description": "",
+      "priceRaw": "399",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "187",
+      "parentServiceSourceId": "54",
+      "name": "Claybar",
+      "description": "",
+      "priceRaw": "89",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "188",
+      "parentServiceSourceId": "54",
+      "name": "Wax",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "189",
+      "parentServiceSourceId": "54",
+      "name": "Engine bay",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "190",
+      "parentServiceSourceId": "55",
+      "name": "Pet hairs",
+      "description": "Please add this item in the cart if you got pet hairs in the car.",
+      "priceRaw": "49",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "191",
+      "parentServiceSourceId": "55",
+      "name": "Winter Salt Removal",
+      "description": "",
+      "priceRaw": "29",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "192",
+      "parentServiceSourceId": "55",
+      "name": "Headlight Restoration",
+      "description": "",
+      "priceRaw": "59",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "193",
+      "parentServiceSourceId": "55",
+      "name": "Ceramic Coating",
+      "description": "",
+      "priceRaw": "399",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "194",
+      "parentServiceSourceId": "55",
+      "name": "Claybar",
+      "description": "",
+      "priceRaw": "89",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "195",
+      "parentServiceSourceId": "55",
+      "name": "Wax",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "196",
+      "parentServiceSourceId": "55",
+      "name": "Engine Bay",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "197",
+      "parentServiceSourceId": "31",
+      "name": "Quick Wash",
+      "description": "",
+      "priceRaw": "35",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "198",
+      "parentServiceSourceId": "33",
+      "name": "Quick Wash",
+      "description": "",
+      "priceRaw": "35",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "200",
+      "parentServiceSourceId": "24",
+      "name": "Exterior Wash",
+      "description": "",
+      "priceRaw": "35",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "201",
+      "parentServiceSourceId": "27",
+      "name": "Quick Wash",
+      "description": "",
+      "priceRaw": "35",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "202",
+      "parentServiceSourceId": "19",
+      "name": "Fabric Guard",
+      "description": "",
+      "priceRaw": "50",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "204",
+      "parentServiceSourceId": "56",
+      "name": "Fabric Guard",
+      "description": "",
+      "priceRaw": "50",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "205",
+      "parentServiceSourceId": "34",
+      "name": "Fabric Guard",
+      "description": "",
+      "priceRaw": "50",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "206",
+      "parentServiceSourceId": "33",
+      "name": "Fabric Guard",
+      "description": "",
+      "priceRaw": "50",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "207",
+      "parentServiceSourceId": "33",
+      "name": "3-Row",
+      "description": "",
+      "priceRaw": "25",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "208",
+      "parentServiceSourceId": "34",
+      "name": "3-Row",
+      "description": "",
+      "priceRaw": "25",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "216",
+      "parentServiceSourceId": "62",
+      "name": "Pet hairs",
+      "description": "Please add this item in the cart if you got pet hairs in the car.",
+      "priceRaw": "49",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "217",
+      "parentServiceSourceId": "62",
+      "name": "Winter Salt Removal",
+      "description": "",
+      "priceRaw": "29",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "218",
+      "parentServiceSourceId": "62",
+      "name": "Headlight Restoration",
+      "description": "",
+      "priceRaw": "59",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "219",
+      "parentServiceSourceId": "62",
+      "name": "Ceramic Coating",
+      "description": "",
+      "priceRaw": "399",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "220",
+      "parentServiceSourceId": "62",
+      "name": "Claybar",
+      "description": "",
+      "priceRaw": "89",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "221",
+      "parentServiceSourceId": "62",
+      "name": "Wax",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "222",
+      "parentServiceSourceId": "62",
+      "name": "Engine bay",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "223",
+      "parentServiceSourceId": "62",
+      "name": "Quick Wash",
+      "description": "",
+      "priceRaw": "35",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "2",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "224",
+      "parentServiceSourceId": "62",
+      "name": "Fabric Guard",
+      "description": "",
+      "priceRaw": "50",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "226",
+      "parentServiceSourceId": "63",
+      "name": "Pet hairs",
+      "description": "Please add this item in the cart if you got pet hairs in the car.",
+      "priceRaw": "49",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "227",
+      "parentServiceSourceId": "63",
+      "name": "Winter Salt Removal",
+      "description": "",
+      "priceRaw": "29",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "228",
+      "parentServiceSourceId": "63",
+      "name": "Headlight Restoration",
+      "description": "",
+      "priceRaw": "59",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "229",
+      "parentServiceSourceId": "63",
+      "name": "Ceramic Coating",
+      "description": "",
+      "priceRaw": "399",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "230",
+      "parentServiceSourceId": "63",
+      "name": "Claybar",
+      "description": "",
+      "priceRaw": "89",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "231",
+      "parentServiceSourceId": "63",
+      "name": "Wax",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "232",
+      "parentServiceSourceId": "63",
+      "name": "Engine Bay",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "233",
+      "parentServiceSourceId": "63",
+      "name": "Fabric Guard",
+      "description": "",
+      "priceRaw": "50",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "237",
+      "parentServiceSourceId": "64",
+      "name": "Pet hairs",
+      "description": "",
+      "priceRaw": "49",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "238",
+      "parentServiceSourceId": "64",
+      "name": "3 Stage Paint Correction",
+      "description": "",
+      "priceRaw": "799",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "239",
+      "parentServiceSourceId": "64",
+      "name": "Winter Salt Removal",
+      "description": "",
+      "priceRaw": "29",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "240",
+      "parentServiceSourceId": "64",
+      "name": "Headlight Restoration",
+      "description": "",
+      "priceRaw": "49",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "241",
+      "parentServiceSourceId": "65",
+      "name": "Pet hairs",
+      "description": "",
+      "priceRaw": "49",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "242",
+      "parentServiceSourceId": "65",
+      "name": "3 Stage Paint Correction",
+      "description": "",
+      "priceRaw": "799",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "243",
+      "parentServiceSourceId": "65",
+      "name": "Winter Salt Removal",
+      "description": "",
+      "priceRaw": "29",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "244",
+      "parentServiceSourceId": "65",
+      "name": "Headlight Restoration",
+      "description": "",
+      "priceRaw": "49",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "245",
+      "parentServiceSourceId": "66",
+      "name": "Pet hairs",
+      "description": "",
+      "priceRaw": "49",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "246",
+      "parentServiceSourceId": "66",
+      "name": "3 Stage Paint Correction",
+      "description": "",
+      "priceRaw": "799",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "247",
+      "parentServiceSourceId": "66",
+      "name": "Winter Salt Removal",
+      "description": "",
+      "priceRaw": "29",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "248",
+      "parentServiceSourceId": "66",
+      "name": "Headlight Restoration",
+      "description": "",
+      "priceRaw": "49",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "249",
+      "parentServiceSourceId": "67",
+      "name": "Pet hairs",
+      "description": "",
+      "priceRaw": "49",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "250",
+      "parentServiceSourceId": "67",
+      "name": "3 Stage Paint Correction",
+      "description": "",
+      "priceRaw": "799",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "251",
+      "parentServiceSourceId": "67",
+      "name": "Winter Salt Removal",
+      "description": "",
+      "priceRaw": "29",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "252",
+      "parentServiceSourceId": "67",
+      "name": "Headlight Restoration",
+      "description": "",
+      "priceRaw": "49",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "253",
+      "parentServiceSourceId": "68",
+      "name": "Pet hairs",
+      "description": "",
+      "priceRaw": "49",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "254",
+      "parentServiceSourceId": "68",
+      "name": "3 Stage Paint Correction",
+      "description": "",
+      "priceRaw": "799",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "255",
+      "parentServiceSourceId": "68",
+      "name": "Winter Salt Removal",
+      "description": "",
+      "priceRaw": "29",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "256",
+      "parentServiceSourceId": "68",
+      "name": "Headlight Restoration",
+      "description": "",
+      "priceRaw": "49",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "257",
+      "parentServiceSourceId": "66",
+      "name": "3rd Row",
+      "description": "",
+      "priceRaw": "25",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "281",
+      "parentServiceSourceId": "24",
+      "name": "Golfcart",
+      "description": "",
+      "priceRaw": "70",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "282",
+      "parentServiceSourceId": "24",
+      "name": "Fabric Guard",
+      "description": "",
+      "priceRaw": "50",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "283",
+      "parentServiceSourceId": "24",
+      "name": "Front Glass Windshield Ceramic Coating",
+      "description": "",
+      "priceRaw": "59",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "284",
+      "parentServiceSourceId": "25",
+      "name": "Golfcart",
+      "description": "",
+      "priceRaw": "70",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "285",
+      "parentServiceSourceId": "25",
+      "name": "Fabric Guard",
+      "description": "",
+      "priceRaw": "50",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "286",
+      "parentServiceSourceId": "25",
+      "name": "Front Glass Windshield Ceramic Coating",
+      "description": "",
+      "priceRaw": "59",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "287",
+      "parentServiceSourceId": "28",
+      "name": "Golfcart",
+      "description": "",
+      "priceRaw": "70",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "288",
+      "parentServiceSourceId": "28",
+      "name": "Fabric Guard",
+      "description": "",
+      "priceRaw": "50",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "289",
+      "parentServiceSourceId": "28",
+      "name": "Front Glass Windshield Ceramic Coating",
+      "description": "",
+      "priceRaw": "59",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "290",
+      "parentServiceSourceId": "27",
+      "name": "Golfcart",
+      "description": "",
+      "priceRaw": "70",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "291",
+      "parentServiceSourceId": "27",
+      "name": "Fabric Guard",
+      "description": "",
+      "priceRaw": "50",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "292",
+      "parentServiceSourceId": "27",
+      "name": "Front Glass Windshield Ceramic Coating",
+      "description": "",
+      "priceRaw": "59",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "293",
+      "parentServiceSourceId": "34",
+      "name": "Golfcart",
+      "description": "",
+      "priceRaw": "70",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "294",
+      "parentServiceSourceId": "34",
+      "name": "Front Glass Windshield Ceramic Coating",
+      "description": "",
+      "priceRaw": "59",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "295",
+      "parentServiceSourceId": "33",
+      "name": "Golfcart",
+      "description": "",
+      "priceRaw": "70",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "296",
+      "parentServiceSourceId": "33",
+      "name": "Front Glass Windshield Ceramic Coating",
+      "description": "",
+      "priceRaw": "59",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "298",
+      "parentServiceSourceId": "32",
+      "name": "Golfcart",
+      "description": "",
+      "priceRaw": "70",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "299",
+      "parentServiceSourceId": "32",
+      "name": "Fabric Guard",
+      "description": "",
+      "priceRaw": "50",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "300",
+      "parentServiceSourceId": "32",
+      "name": "Front Glass Windshield Ceramic Coating",
+      "description": "",
+      "priceRaw": "59",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "301",
+      "parentServiceSourceId": "31",
+      "name": "Golfcart",
+      "description": "",
+      "priceRaw": "70",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "302",
+      "parentServiceSourceId": "31",
+      "name": "Fabric Guard",
+      "description": "",
+      "priceRaw": "50",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "303",
+      "parentServiceSourceId": "31",
+      "name": "Front Glass Windshield Ceramic Coating",
+      "description": "",
+      "priceRaw": "59",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "304",
+      "parentServiceSourceId": "63",
+      "name": "Golfcart",
+      "description": "",
+      "priceRaw": "70",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "305",
+      "parentServiceSourceId": "63",
+      "name": "Front Glass Windshield Ceramic Coating",
+      "description": "",
+      "priceRaw": "59",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "306",
+      "parentServiceSourceId": "62",
+      "name": "Golfcart",
+      "description": "",
+      "priceRaw": "70",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "307",
+      "parentServiceSourceId": "62",
+      "name": "Front Glass Windshield Ceramic Coating",
+      "description": "",
+      "priceRaw": "59",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "308",
+      "parentServiceSourceId": "106",
+      "name": "Pet hairs",
+      "description": "Please add this item in the cart if you got pet hairs in the car.",
+      "priceRaw": "49",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "309",
+      "parentServiceSourceId": "106",
+      "name": "Winter Salt Removal",
+      "description": "",
+      "priceRaw": "29",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "310",
+      "parentServiceSourceId": "106",
+      "name": "Headlight Restoration",
+      "description": "",
+      "priceRaw": "59",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "311",
+      "parentServiceSourceId": "106",
+      "name": "Ceramic Coating",
+      "description": "",
+      "priceRaw": "399",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "312",
+      "parentServiceSourceId": "106",
+      "name": "Claybar",
+      "description": "",
+      "priceRaw": "89",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "313",
+      "parentServiceSourceId": "106",
+      "name": "Wax",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "314",
+      "parentServiceSourceId": "106",
+      "name": "Engine Bay",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "315",
+      "parentServiceSourceId": "2",
+      "name": "Interior Shampoo & Extraction",
+      "description": "",
+      "priceRaw": "29",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "316",
+      "parentServiceSourceId": "2",
+      "name": "Leather Clean & Condition",
+      "description": "",
+      "priceRaw": "35",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "317",
+      "parentServiceSourceId": "2",
+      "name": "Odour Treatment",
+      "description": "",
+      "priceRaw": "25",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "318",
+      "parentServiceSourceId": "2",
+      "name": "Exterior Foam wash & dry",
+      "description": "",
+      "priceRaw": "35",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "319",
+      "parentServiceSourceId": "26",
+      "name": "Interior Shampoo & Extraction",
+      "description": "",
+      "priceRaw": "29",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "320",
+      "parentServiceSourceId": "26",
+      "name": "Leather Clean & Condition",
+      "description": "",
+      "priceRaw": "35",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "321",
+      "parentServiceSourceId": "26",
+      "name": "Odour Treatment",
+      "description": "",
+      "priceRaw": "25",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "322",
+      "parentServiceSourceId": "26",
+      "name": "Exterior Foam wash & dry",
+      "description": "",
+      "priceRaw": "35",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "323",
+      "parentServiceSourceId": "29",
+      "name": "Interior Shampoo & Extraction",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "324",
+      "parentServiceSourceId": "29",
+      "name": "Leather Clean & Condition",
+      "description": "",
+      "priceRaw": "35",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "325",
+      "parentServiceSourceId": "29",
+      "name": "Odour Treatment",
+      "description": "",
+      "priceRaw": "25",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "326",
+      "parentServiceSourceId": "29",
+      "name": "Exterior Foam wash & dry",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "327",
+      "parentServiceSourceId": "30",
+      "name": "Interior Shampoo & Extraction",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "328",
+      "parentServiceSourceId": "30",
+      "name": "Leather Clean & Condition",
+      "description": "",
+      "priceRaw": "35",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "329",
+      "parentServiceSourceId": "30",
+      "name": "Odour Treatment",
+      "description": "",
+      "priceRaw": "25",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "330",
+      "parentServiceSourceId": "30",
+      "name": "Exterior Foam wash & dry",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "331",
+      "parentServiceSourceId": "30",
+      "name": "Bio hazard Removal",
+      "description": "",
+      "priceRaw": "49",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "332",
+      "parentServiceSourceId": "107",
+      "name": "Pet hairs",
+      "description": "Please add this item in the cart if you got pet hairs in the car.",
+      "priceRaw": "49",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "333",
+      "parentServiceSourceId": "107",
+      "name": "Winter Salt Removal",
+      "description": "",
+      "priceRaw": "29",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "334",
+      "parentServiceSourceId": "107",
+      "name": "Headlight Restoration",
+      "description": "",
+      "priceRaw": "59",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "335",
+      "parentServiceSourceId": "107",
+      "name": "Ceramic Coating",
+      "description": "",
+      "priceRaw": "399",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "336",
+      "parentServiceSourceId": "107",
+      "name": "Claybar",
+      "description": "",
+      "priceRaw": "89",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "337",
+      "parentServiceSourceId": "107",
+      "name": "Wax",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "338",
+      "parentServiceSourceId": "107",
+      "name": "Engine Bay",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "339",
+      "parentServiceSourceId": "107",
+      "name": "Interior Shampoo & Extraction",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "340",
+      "parentServiceSourceId": "107",
+      "name": "Leather Clean & Condition",
+      "description": "",
+      "priceRaw": "35",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "341",
+      "parentServiceSourceId": "107",
+      "name": "Odour Treatment",
+      "description": "",
+      "priceRaw": "25",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "342",
+      "parentServiceSourceId": "107",
+      "name": "Exterior Foam wash & dry",
+      "description": "",
+      "priceRaw": "39",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "343",
+      "parentServiceSourceId": "107",
+      "name": "Bio hazard Removal",
+      "description": "",
+      "priceRaw": "49",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "344",
+      "parentServiceSourceId": "29",
+      "name": "Bio Hazard Removal",
+      "description": "",
+      "priceRaw": "49",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "345",
+      "parentServiceSourceId": "26",
+      "name": "Bio Hazard Removal",
+      "description": "",
+      "priceRaw": "49",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "346",
+      "parentServiceSourceId": "2",
+      "name": "Bio Hazard removal",
+      "description": "",
+      "priceRaw": "49",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "347",
+      "parentServiceSourceId": "56",
+      "name": "All Windows",
+      "description": "",
+      "priceRaw": "149",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "348",
+      "parentServiceSourceId": "19",
+      "name": "All Windows",
+      "description": "",
+      "priceRaw": "149",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "349",
+      "parentServiceSourceId": "75",
+      "name": "All Window",
+      "description": "",
+      "priceRaw": "149",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    },
+    {
+      "sourceId": "350",
+      "parentServiceSourceId": "33",
+      "name": "Bio Hazard",
+      "description": "",
+      "priceRaw": "49",
+      "durationRaw": "0",
+      "durationUnitRaw": "m",
+      "minQuantityRaw": "1",
+      "maxQuantityRaw": "1",
+      "reviewFlags": [
+        "missing_or_zero_duration_review"
+      ]
+    }
+  ],
+  "reviewCount": 3,
+  "counts": {
+    "services": 79,
+    "categories": 12,
+    "extras": 228,
+    "extrasRequiringReview": 228
+  }
+}

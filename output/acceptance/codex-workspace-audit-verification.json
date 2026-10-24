@@ -1,0 +1,48 @@
+{
+  "date": "2026-10-24",
+  "scope": "Independent Workspace audit, no application edits",
+  "native": {
+    "session": 87199,
+    "exitCode": 0,
+    "testedPackages": 9,
+    "postgresSeconds": 71.673,
+    "workspaceSeconds": 15.633
+  },
+  "typecheck": {
+    "session": 32198,
+    "exitCode": 0
+  },
+  "vet": {
+    "session": 93493,
+    "exitCode": 0
+  },
+  "assets": {
+    "pages": [
+      "/workspace",
+      "/owner"
+    ],
+    "cssChecks": 4,
+    "jsChecks": 16,
+    "result": "All200correctMIME",
+    "certificate": "Pinned CA and hostname"
+  },
+  "darkShiftLabelContrast": 2.31,
+  "browserEvidence": "codex-workspace-audit-browser.json",
+  "skillRuntime": "Impeccable engine unavailable; manual context/audit reference fallback; Emil applied",
+  "sourceHashes": {
+    "dapper-platform/apps/web/app/workspace/SecureWorkspace.tsx": "662bde49d1839fb47e88f56fb55044a06a73b7c4dd1ab0ff45d106b36d5607ea",
+    "dapper-platform/apps/web/app/workspace/StructureEditor.tsx": "9a75963a88925a373702e035a7b64b82abaafc302344ffeb7c3ab3ffce79898e",
+    "dapper-platform/apps/web/app/workspace/AccessManager.tsx": "dad555db342c85901509bff4ae3efc534972f594fae16e26cf45a89c02f0678f",
+    "dapper-platform/apps/web/app/workspace/InvoiceManager.tsx": "87101eec709869018a2b42bdc9d486de86fcd36b651bbe493232f5ca12797b60",
+    "dapper-platform/apps/web/app/globals.css": "a2c06075b89160b52ee66f46a5cee37966029e5653cc37f5280ed445635764f3",
+    "dapper-platform/apps/api/internal/postgres/roles.go": "a90559eeebae4c3676c3664253ff0e02a16278121b0a821535708a933c35520e",
+    "dapper-platform/apps/api/internal/postgres/jobs.go": "ff2531f78e09aa02acedec2843593519263256fc590ff1a1ccc1625723eb94b7"
+  },
+  "notVerified": [
+    "Complete browser booking-to-payment persistence",
+    "Live provider delivery/charges/hardware",
+    "Physical mobile device",
+    "Screen reader",
+    "Role grant changes/deletion of existing real records"
+  ]
+}

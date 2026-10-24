@@ -1,0 +1,46 @@
+{
+  "recorded_date": "2026-10-21",
+  "selection": "ERPNext with HRMS on Frappe",
+  "imports": [
+    {
+      "repository": "frappe/hrms",
+      "commit": "2478afc7a8f4959d500f6d17522853f0d244e38f",
+      "tag": "v16.51.0",
+      "path": "dapper-platform/apps/hrms",
+      "archive_sha256": "0cd110aaf96d82a1ebd4f03d5e1cc593441804f9bfd12ec747487304e743d918",
+      "verified_git_blobs": 1664,
+      "license_files": [
+        "license.txt"
+      ],
+      "source_modified": false,
+      "runtime_verified": false
+    },
+    {
+      "repository": "frappe/frappe",
+      "commit": "4515014c87ece6cb20ee91d2cfb121c5cbd1ff4a",
+      "tag": "v16.52.0",
+      "path": "dapper-platform/apps/frappe",
+      "archive_sha256": "4f0fbfc8220a503ad7068f8f99f11417b5e78020c96b508c33719c28d1c66507",
+      "verified_git_blobs": 4141,
+      "license_files": [
+        "LICENSE"
+      ],
+      "source_modified": false,
+      "runtime_verified": false
+    },
+    {
+      "repository": "frappe/erpnext",
+      "commit": "5af6561f5aa48104559692fb4fd82f2580e8d338",
+      "tag": "v16.51.1",
+      "path": "dapper-platform/apps/erpnext",
+      "archive_sha256": "c5292754b51b576f27693cd94385951c99ed84d77056a8a206ecfc58d7874c7b",
+      "verified_git_blobs": 5454,
+      "license_files": [
+        "license.txt"
+      ],
+      "source_modified": false,
+      "runtime_verified": false
+    }
+  ],
+  "verification": "All imported regular files match GitHub Git-tree blob hashes; runtime not tested"
+}

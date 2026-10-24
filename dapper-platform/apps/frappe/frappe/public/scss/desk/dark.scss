@@ -1,0 +1,203 @@
+$check-icon-dark: url("data:image/svg+xml, <svg viewBox='0 0 8 7' fill='none' xmlns='http://www.w3.org/2000/svg'><path d='M1 4.00001L2.66667 5.80001L7 1.20001' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+
+[data-theme="dark"] {
+	--shadow-inset: var(--fg-color);
+
+	--highlight-shadow: 1px 1px 10px var(--blue-900), 0px 0px 4px var(--blue-500);
+
+	--shadow-base: 0px 4px 8px rgba(114, 176, 233, 0.06), 0px 0px 4px rgba(112, 172, 228, 0.12);
+
+	// sidebar toggle
+	.page-title .sidebar-toggle-btn {
+		--icon-stroke: var(--gray-300);
+	}
+
+	// progress bar
+
+	.progress {
+		background-color: var(--gray-700);
+	}
+
+	// checkbox
+	--checkbox-gradient: linear-gradient(
+		180deg,
+		var(--surface-gray-10) -124.51%,
+		var(--surface-gray-10) 100%
+	);
+	--checkbox-disabled-gradient: linear-gradient(
+		180deg,
+		var(--gray-400) -124.51%,
+		var(--gray-400) 100%
+	);
+	--checkbox-focus-shadow: var(--focus-default);
+
+	input[type="checkbox"] {
+		&:checked {
+			background-color: var(--surface-gray-10);
+			background-image: $check-icon-dark, var(--checkbox-gradient);
+		}
+
+		&.disabled-selected,
+		&:disabled:checked {
+			background-color: var(--gray-400);
+			background-image: $check-icon-dark, var(--checkbox-disabled-gradient);
+		}
+
+		&.disabled-deselected {
+			border: none;
+			background-color: var(--gray-700);
+		}
+	}
+
+	// grid
+	.grid-body .editable-row {
+		--control-bg: var(--gray-900);
+		--input-disabled-bg: var(--gray-800);
+	}
+
+	color-scheme: dark;
+
+	.frappe-card {
+		.btn-default {
+			background-color: var(--control-bg);
+
+			@media (hover: hover) {
+				&:hover {
+					background-color: var(--fg-hover-color);
+				}
+			}
+		}
+	}
+
+	.modal,
+	.form-in-grid {
+		--control-bg: var(--gray-800);
+		--border-color: var(--gray-800);
+	}
+
+	.print-format {
+		--text-color: var(--gray-900);
+		--border-color: var(--gray-100);
+	}
+
+	.ql-editor {
+		color: var(--text-on-gray);
+
+		&.read-mode {
+			span:not(.mention),
+			p,
+			u,
+			strong {
+				background-color: inherit !important;
+				color: inherit !important;
+			}
+		}
+	}
+
+	.comment-input-wrapper .ql-editor.ql-blank::before {
+		color: var(--text-color);
+	}
+
+	// --appreciation-color: var(--dark-green-100);
+	// --appreciation-bg: var(--dark-green-600);
+	// --criticism-color: var(--red-100);
+	// --criticism-bg: var(--red-600);
+
+	// Frappe Charts Colors
+	.chart-container {
+		--charts-label-color: var(--gray-300);
+		--charts-axis-line-color: var(--subtle-fg);
+
+		--charts-stroke-width: 5px;
+		--charts-dataset-circle-stroke: #ffffff;
+		--charts-dataset-circle-stroke-width: var(--charts-stroke-width);
+
+		--charts-tooltip-title: var(--charts-label-color);
+		--charts-tooltip-label: var(--charts-label-color);
+		--charts-tooltip-value: white;
+		--charts-tooltip-bg: var(--gray-900);
+
+		--charts-legend-label: var(--charts-label-color);
+	}
+
+	// find better fix
+	.heatmap-chart {
+		g > rect[fill="#ebedf0"] {
+			fill: var(--gray-700);
+		}
+	}
+
+	.rating {
+		// rating
+		--star-fill: var(--gray-500);
+
+		.star-hover {
+			--star-fill: var(--gray-400);
+		}
+	}
+
+	--right-arrow-svg: url("data: image/svg+xml;utf8, <svg width='6' height='8' viewBox='0 0 6 8' fill='none' xmlns='http://www.w3.org/2000/svg'><path d='M1.25 7.5L4.75 4L1.25 0.5' stroke='white' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+
+	--left-arrow-svg: url("data: image/svg+xml;utf8, <svg width='6' height='8' viewBox='0 0 6 8' fill='none' xmlns='http://www.w3.org/2000/svg'><path d='M7.5 9.5L4 6l3.5-3.5' stroke='white' stroke-linecap='round' stroke-linejoin='round'></path></svg>");
+
+	::selection {
+		color: var(--text-color);
+		background: var(--gray-500);
+	}
+
+	$indicator-colors: green, cyan, blue, orange, yellow, gray, grey, red, pink, darkgrey, purple,
+		light-blue, amber, violet;
+
+	@each $color in $indicator-colors {
+		.indicator {
+			--indicator-dot-#{"" + $color}: var(--bg-#{$color});
+		}
+	}
+
+	.frappe-control .help-box {
+		color: var(--text-muted);
+
+		code {
+			background-color: var(--gray-800);
+			color: var(--gray-200);
+			border-radius: var(--radius);
+			padding: 2px 6px;
+		}
+	}
+
+	.hljs {
+		background: var(--gray-800);
+		color: var(--gray-200);
+	}
+
+	.hljs-keyword,
+	.hljs-selector-tag,
+	.hljs-built_in {
+		color: var(--blue-300);
+	}
+
+	.hljs-string,
+	.hljs-title {
+		color: var(--yellow-200);
+	}
+
+	.hljs-number,
+	.hljs-literal {
+		color: var(--orange-300);
+	}
+
+	.hljs-comment {
+		color: var(--gray-500);
+	}
+
+	.hljs-meta,
+	.hljs-meta-keyword {
+		color: var(--gray-400);
+	}
+
+	.frappe-control pre,
+	.frappe-control pre code {
+		background-color: var(--gray-800);
+		color: var(--gray-200);
+	}
+}

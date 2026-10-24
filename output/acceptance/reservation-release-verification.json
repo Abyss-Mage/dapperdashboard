@@ -1,0 +1,33 @@
+{
+  "runtimeMigration": 14,
+  "restart": "pass",
+  "changedFiles": [
+    {
+      "file": "dapper-platform/apps/api/internal/postgres/reservation_release.sql",
+      "sha256": "87A7EC18D7E74B598D676FA33839E52445096EBED721F80A4729C8830C732EFB"
+    },
+    {
+      "file": "dapper-platform/apps/api/internal/postgres/reservation_release.go",
+      "sha256": "7C2EEFD1FCE4F1ED5C8956D6280A1E211F4B8D006404E1635659B9A134050BBE"
+    },
+    {
+      "file": "dapper-platform/apps/api/internal/postgres/reservations.go",
+      "sha256": "A76A329BC1B02733151DBD0D494B5BF8FE5474E4C0B3FDA90D9BCC6026F0CD3B"
+    },
+    {
+      "file": "dapper-platform/apps/api/internal/postgres/reservations_test.go",
+      "sha256": "F9F3C86B1A1D180F46EBB654E0731757DB4550CFD83AE7E0572A3CFC824177AC"
+    },
+    {
+      "file": "scripts/test-workspace-restore.ps1",
+      "sha256": "2B237D16ADE18B06E3B8A1B25686FBB0FDF4D6010478D4175433E8444BA47799"
+    }
+  ],
+  "restoreTableCount": 19,
+  "reservationEvidence": "isolated native PostgreSQL tests",
+  "existingHttpsGroups": 9,
+  "bookingApiExposed": false,
+  "sourceMigration": 14,
+  "productionReady": false,
+  "verifiedAt": "2026-10-22T05:48:05.9383082Z"
+}

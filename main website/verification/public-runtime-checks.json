@@ -1,0 +1,130 @@
+{
+  "date": "2026-10-24",
+  "server": "Isolated Next.js production build on loopback4175",
+  "checks": [
+    {
+      "path": "/",
+      "status": 200
+    },
+    {
+      "path": "/services",
+      "status": 200
+    },
+    {
+      "path": "/2-wheeler-detailing",
+      "status": 200
+    },
+    {
+      "path": "/hatchback-detailing",
+      "status": 200
+    },
+    {
+      "path": "/sedan-detailing",
+      "status": 200
+    },
+    {
+      "path": "/suv-detailing",
+      "status": 200
+    },
+    {
+      "path": "/pickup-detailing",
+      "status": 200
+    },
+    {
+      "path": "/van-detailing",
+      "status": 200
+    },
+    {
+      "path": "/ceramic-coating",
+      "status": 200
+    },
+    {
+      "path": "/ppf",
+      "status": 200
+    },
+    {
+      "path": "/aircraft-detailing",
+      "status": 200
+    },
+    {
+      "path": "/boat-detailing",
+      "status": 200
+    },
+    {
+      "path": "/portfolio",
+      "status": 200
+    },
+    {
+      "path": "/about-us",
+      "status": 200
+    },
+    {
+      "path": "/contact-us",
+      "status": 200
+    },
+    {
+      "path": "/account",
+      "status": 200
+    },
+    {
+      "path": "/booking",
+      "status": 200
+    },
+    {
+      "path": "/book-appointment",
+      "status": 307,
+      "relativeLocation": "/booking"
+    },
+    {
+      "path": "/my-bookings",
+      "status": 307,
+      "relativeLocation": "/account"
+    },
+    {
+      "path": "/home",
+      "status": 308,
+      "relativeLocation": "/"
+    },
+    {
+      "path": "/site/studio-loader.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "path": "/site/assets/three/three.module.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "path": "/site/assets/three/porsche-carrera-gt.glb",
+      "status": 200,
+      "contentType": "model/gltf-binary"
+    },
+    {
+      "path": "/site/pages.css",
+      "status": 200,
+      "contentType": "text/css; charset=UTF-8"
+    },
+    {
+      "path": "/site/portfolio-import.json",
+      "status": 404,
+      "sourceArchive": "not public"
+    },
+    {
+      "path": "/site/assets/portfolio/portfolio-01.jpg",
+      "status": 404,
+      "sourceArchive": "not public"
+    },
+    {
+      "path": "/robots.txt",
+      "status": 200,
+      "prelaunchIndexing": "blocked"
+    },
+    {
+      "path": "/sitemap.xml",
+      "status": 200,
+      "prelaunchIndexing": "blocked"
+    }
+  ],
+  "boundary": "No shared application deployment, API proxy, account login, provider operation or live cutover performed."
+}

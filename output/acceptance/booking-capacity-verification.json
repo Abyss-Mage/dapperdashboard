@@ -1,0 +1,90 @@
+{
+  "frontendBuildTypecheck": "PASS",
+  "schemaVersion": 34,
+  "goVet": "PASS",
+  "applicationTLSIngress": "PASS_5_OF_5",
+  "checkedAt": "2026-10-22T23:21:19.4546895+00:00",
+  "nativePostgresHTTP": "PASS",
+  "browser": {
+    "persistedVerifier": "PASS: isolated PostgreSQL pending_booking=1 capacity_reservation=1 retry_receipt=1 no_confirmation_or_payment",
+    "screenshots": [
+      "output/acceptance/booking-capacity-saved.png",
+      "output/acceptance/booking-capacity-conflict.png"
+    ],
+    "checks": [
+      "server configured service timing loaded",
+      "one pending booking and reservation saved together",
+      "occupied slot rejected on second request",
+      "failed inputs preserved and error focused"
+    ],
+    "cleanup": "PASS recorded frontend tree stopped",
+    "terminalGoPackage": "PASS including deferred schema cleanup",
+    "scope": "separate synthetic PostgreSQL schema and actual operator component/Go API"
+  },
+  "actualApplication": "34 migrations and zero accounts/bookings/reservations/receipts",
+  "moveCancellation": "Dedicated atomic staff/customer workflows not complete; independent mismatched moves/releases reject",
+  "productionAccepted": false,
+  "customerOnlineCheckout": "NOT_IMPLEMENTED pending pricing/payment/terms and owned booking adapter",
+  "sourceHashes": [
+    {
+      "sha256": "04fd4b8951db8093adc44dc22aee0cc00ef254013f6a979fe685cbfe0241babb",
+      "path": "dapper-platform/apps/api/internal/postgres/booking_capacity_requests.sql"
+    },
+    {
+      "sha256": "7311466c391533ac0ea0e98be0d233ea283dd864a1a247f93e2c0e2390d5ffaa",
+      "path": "dapper-platform/apps/api/internal/postgres/booking_capacity.go"
+    },
+    {
+      "sha256": "54523be65bd2edfe0f325913beb790f20a5f1370d181ee60f482444a9192fbcd",
+      "path": "dapper-platform/apps/api/internal/postgres/booking_capacity_options.go"
+    },
+    {
+      "sha256": "d05bfb6cd2c8410b70cbd02fc69124d723f631ef67ae5e07f2cd63fc9560a871",
+      "path": "dapper-platform/apps/api/internal/postgres/booking_capacity_test.go"
+    },
+    {
+      "sha256": "a19659e2f3113f8786437e4cd5ebaf9377c25066ca9dd064d8e073b5dd1d03f0",
+      "path": "dapper-platform/apps/api/internal/postgres/bookings.go"
+    },
+    {
+      "sha256": "9c20774bf1a1c99a72246fdb829c3652311d2193090b0566547ee0e4453a49e1",
+      "path": "dapper-platform/apps/api/internal/postgres/reservations.go"
+    },
+    {
+      "sha256": "ce12a96320e7d3c68ef40425f5e562beb98f14e021e9ce8d796cbb18e3842476",
+      "path": "dapper-platform/apps/api/internal/postgres/reservation_release.go"
+    },
+    {
+      "sha256": "85f06e714381dfa3433eb4de13c8ddf4c108d504708b629d194650c612e88be0",
+      "path": "dapper-platform/apps/api/internal/workspace/bookings.go"
+    },
+    {
+      "sha256": "35342172db57ebdb9c50aca270713314c5c3b53190d3d7225d430f62e6fc1f18",
+      "path": "dapper-platform/apps/api/internal/workspace/booking_capacity_test.go"
+    },
+    {
+      "sha256": "bf4b694251675b0532e85a4a33e9907f77f37d47e3b72d28672255046d442f45",
+      "path": "dapper-platform/apps/api/internal/workspace/invoice_browser_test.go"
+    },
+    {
+      "sha256": "b935c556b4b55af2062efac3ca6bd9e3de87782d5c9288068b12c5e9cfd1dca9",
+      "path": "dapper-platform/apps/web/app/workspace/ReservedBookingForm.tsx"
+    },
+    {
+      "sha256": "36dab4851592857541f262836c66da8f7baed188db26e74364cd290670d88954",
+      "path": "dapper-platform/apps/web/app/workspace/BookingManager.tsx"
+    },
+    {
+      "sha256": "90a837d1f2c2bcbc808ad6d25503a3e807a50bcba1bb8e5cbbb5dc695e9e5369",
+      "path": "dapper-platform/apps/web/app/workspace/page.tsx"
+    },
+    {
+      "sha256": "45f88f5012db3eea714c4d4e4e93bfcdbd52550c6be7d7c8917a5dbdc1160528",
+      "path": "scripts/test-invoice-browser.ps1"
+    },
+    {
+      "sha256": "e2bf677d88a9ba7a65b93147910e23673165212bfe230a9b295448b0c6950e82",
+      "path": "scripts/finish-invoice-browser.ps1"
+    }
+  ]
+}

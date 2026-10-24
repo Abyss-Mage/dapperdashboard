@@ -1,0 +1,20 @@
+/.cache/
+/BookingPress/
+/Employee Portal/
+**/.env
+**/.env.local
+**/.env.production
+**/node_modules/
+**/.next/
+**/demo-store.json
+**/demo-store.json.tmp
+**/tsconfig.tsbuildinfo
+**/next-env.d.ts
+**/*.test.exe
+**/venv/
+**/__pycache__/
+**/.obsidian/workspace*.json
+**/.obsidian/cache/
+
+# Customer data exports must never be committed (real customer emails/phones)
+/output/migration/bookingpress_migration_cutover.sql

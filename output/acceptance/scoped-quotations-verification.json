@@ -1,0 +1,45 @@
+{
+  "timestamp": "2026-10-23T11:25:00Z",
+  "migration": 38,
+  "sources": [
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/scoped_quotations.sql",
+      "sha256": "C1980E7234E1258DB12F0F51282F4C1D51E8FFE090B609188906EDB009FC9C15"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/quotes.go",
+      "sha256": "DC4CADB31C91061CBA11E1939A9FA1A157891277BC7B9B73C3026073AEA0E42B"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/quotes_test.go",
+      "sha256": "FA747666977E3505E221BB75BC7E4C23B0A2B9D2ACB1AA08028EFC90FD3454E0"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/workspace/quotes.go",
+      "sha256": "76F5D5D85A81B4D7F05A8B5579A652C6D1A316475C5ED8463494193B24D9F072"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/workspace/quotes_test.go",
+      "sha256": "2F9E97D80F1D08E9E1A17ABF2FD96E6BBD7CFB92912CA34B8148C6FFE3414F32"
+    },
+    {
+      "path": "dapper-platform/apps/web/app/workspace/QuoteManager.tsx",
+      "sha256": "B843C955468C0FDED5185AB5A75E0AF5E361949BBEA231CAC59CD48C693C294A"
+    },
+    {
+      "path": "dapper-platform/apps/web/app/account/CustomerQuoteList.tsx",
+      "sha256": "B765B5BA69634B31FB33FEA81A8D54FFB658A0BC409E063D647C5B1775499E83"
+    }
+  ],
+  "verification": {
+    "nativeGoPostgresTests": "PASS (quotes_test.go including expiration projection & rejection, workspace/quotes_test.go, test-postgres.ps1 100%)",
+    "nextProductionBuild": "PASS (clean Turbopack build with status filter and badge support for expired quotes)",
+    "databaseMigration": "PASS (migration 38 applied to dapper_application after encrypted backup and count match)",
+    "applicationIngress": "PASS (5/5 TLS checks on https://127.0.0.1:8443)"
+  },
+  "boundaries": {
+    "unseededApplication": "dapper_application contains 38 migrations and zero operational/customer/quote records",
+    "paymentProvider": "Explicit approved no-deposit exemption verified; live Square merchant settlement pending",
+    "humanAdmin": "admin@dapperdash.ca account setup remains pending human-controlled password initialization"
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "date": "2026-10-24",
+  "cssLoaded": true,
+  "font": "Manrope, Arial, sans-serif",
+  "desktop": {
+    "width": 1440,
+    "scrollWidth": 1425,
+    "pageHeight": 8453
+  },
+  "mobile": {
+    "width": 390,
+    "scrollWidth": 375
+  },
+  "tests": {
+    "bookingPendingFilter": true,
+    "emptyState": true,
+    "requiredCustomerName": true,
+    "appointmentFormOpenClose": true,
+    "invoiceFormOpenClose": true,
+    "themeSwitch": true,
+    "locationPermissionSwitch": true
+  },
+  "invoiceUnlabelledFieldsOpen": 9,
+  "shiftLabel": {
+    "foreground": "rgb(85,85,85)",
+    "background": "rgb(25,27,31)"
+  },
+  "writes": "No operational records created, edited or deleted; no grants or provider operations",
+  "limits": [
+    "Empty operational location and missing configuration",
+    "Native test evidence separate from browser persistence acceptance",
+    "No real device testing",
+    "Browser reconnection required during first pass"
+  ]
+}

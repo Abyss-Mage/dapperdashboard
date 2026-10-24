@@ -1,0 +1,25 @@
+{
+  "width": 390,
+  "viewportReset": true,
+  "screenshots": [
+    "scheduling-editor-browser.png",
+    "scheduling-editor-rule-revision.png",
+    "scheduling-editor-mobile.png"
+  ],
+  "browser": "IAB",
+  "productionReady": false,
+  "mode": "synthetic-development-only",
+  "documentWidth": 375,
+  "cases": [
+    "managed fixture login",
+    "explicit dated resource create",
+    "exact main and addon combination rule",
+    "revision1 to2 duration edit",
+    "reload persistence",
+    "dark visual inspection",
+    "phone390x844 no horizontal overflow"
+  ],
+  "realDurationsApproved": false,
+  "reservationCreated": false,
+  "verifiedAt": "2026-10-22T06:17:39.2195764Z"
+}

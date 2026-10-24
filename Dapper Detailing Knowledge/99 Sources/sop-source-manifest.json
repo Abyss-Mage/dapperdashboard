@@ -1,0 +1,37 @@
+[
+  {
+    "name": "addon_services_sop.pdf",
+    "pages": 6,
+    "sha256": "5208b6c0bbfcf9ba9df1efa5e40646a04e048915f1c84bd678fe26d739a9074b",
+    "status": "user_supplied_reference",
+    "date": "2026-04-03"
+  },
+  {
+    "name": "ceramic_coating_sop.pdf",
+    "pages": 5,
+    "sha256": "776a28a2e444c8fbb2850279a4488570968d0cac111488b399e04e93374102e5",
+    "status": "user_supplied_reference",
+    "date": "2026-04-03"
+  },
+  {
+    "name": "full_body_detail_sop.pdf",
+    "pages": 6,
+    "sha256": "dbe16870f4a2d6ffe3e0169ed25b65484cf7edd4e099e0d27e38a8fe5d4fd70d",
+    "status": "user_supplied_reference",
+    "date": "2026-04-03"
+  },
+  {
+    "name": "interior_detail_sop.pdf",
+    "pages": 7,
+    "sha256": "db5732a72dba4bfcb5455a846c30467a2c06910abf4e601a7d90efc9d377d587",
+    "status": "user_supplied_reference",
+    "date": "2026-04-03"
+  },
+  {
+    "name": "onboarding_policy.pdf",
+    "pages": 6,
+    "sha256": "3bd0ccbf8a3834d9e5abdccb3911f98c6d3f4fe07f7848eb428a5de1e7ba2999",
+    "status": "user_supplied_reference",
+    "date": "2026-04-03"
+  }
+]

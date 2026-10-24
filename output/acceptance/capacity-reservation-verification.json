@@ -1,0 +1,39 @@
+{
+  "verifiedAt": "2026-10-22T05:44:36.5000487Z",
+  "productionReady": false,
+  "runtimeDeployed": false,
+  "changedFiles": [
+    {
+      "sha256": "BC1E44F309762C3BBA4F8D2EE9DFC105BAFB54131CD14A3A62572A94267226CE",
+      "file": "dapper-platform/apps/api/internal/postgres/reservations.sql"
+    },
+    {
+      "sha256": "CD8495F63E08C600A37B1914E3DC0ABE36AA637F159D9C2BE7C69ECD496C4936",
+      "file": "dapper-platform/apps/api/internal/postgres/reservations.go"
+    },
+    {
+      "sha256": "BD8A3B5400D318B149169174189C3C3D8E6DA657DBA0A5DD267C5B9AA1B77E19",
+      "file": "dapper-platform/apps/api/internal/postgres/reservations_test.go"
+    },
+    {
+      "sha256": "A87AFACB3F18A4C10BA7F358162D7C98FB7604B94261AD978842C30B147F4DB3",
+      "file": "dapper-platform/apps/api/internal/scheduling/availability.go"
+    }
+  ],
+  "sourceMigration": 13,
+  "fullNativeSuite": "pass",
+  "goVet": "pass",
+  "evidenceLevel": "source-and-isolated-native-postgresql-tests",
+  "cases": [
+    "concurrent overlap single winner",
+    "adjacent DST actual instants",
+    "failed move preserves old slot",
+    "successful move releases old slot",
+    "stale version rejected",
+    "cross-scope resource denied",
+    "reserve and move audit rollback",
+    "revoked grant denied",
+    "submicrosecond instant rejected"
+  ],
+  "runtimeMigration": 12
+}

@@ -1,0 +1,29 @@
+{
+  "realApplicationAuthenticatedAcceptance": "NOT_RUN",
+  "frontendBuild": "PASS",
+  "sourceHashes": [
+    {
+      "path": "dapper-platform/apps/api/internal/workspace/invoice_browser_test.go",
+      "sha256": "E1863A474B0522FA1255285A71755422C6883977B03D16DD0AD335C760E9FA7D"
+    },
+    {
+      "path": "dapper-platform/apps/web/app/workspace/BookingManager.tsx",
+      "sha256": "0284F092742EF12B972511149E4A80C87D820FD6709162C3F799EB9CABD63462"
+    },
+    {
+      "path": "dapper-platform/tests/invoice-browser/app/page.tsx",
+      "sha256": "A9D4B34519C31FDEC21297C3F1C9BEB21817B4CEA15F46C57FE72DA6BEAF0D75"
+    },
+    {
+      "path": "scripts/test-invoice-browser.ps1",
+      "sha256": "2AD8527E81389EA1CC925B2206D3F45D1B7275DBEC04A47029C3209C105DA9CA"
+    }
+  ],
+  "deployment": "PASS guarded restart",
+  "databaseVerifier": "PASS cancelled1 releasedVersion2=1 event1; terminal Go test and schema cleanup",
+  "isolatedBrowser": "PASS cancellation, Escape and reload",
+  "schema": 34,
+  "quotaRemainingPercent": 94,
+  "observedAt": "2026-10-23T08:04:13.3061770Z",
+  "ingress": "PASS 5 verified TLS"
+}

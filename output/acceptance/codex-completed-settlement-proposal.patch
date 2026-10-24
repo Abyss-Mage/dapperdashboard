@@ -1,0 +1,89 @@
+diff --git "a/dapper-platform\\apps\\api\\internal\\postgres\\invoices.go" "b/.cache\\codex-integration-review\\api\\internal\\postgres\\invoices.go"
+index b20dadd..240f7e6 100644
+--- "a/dapper-platform\\apps\\api\\internal\\postgres\\invoices.go"
++++ "b/.cache\\codex-integration-review\\api\\internal\\postgres\\invoices.go"
+@@ -692,7 +692,7 @@ func (s *Store) CustomerPayInvoice(ctx context.Context, actorID, customerID, inv
+ 	if err != nil {
+ 		return Payment{}, Invoice{}, err
+ 	}
+-	if sqResp.Status != "COMPLETED" && sqResp.Status != "APPROVED" {
++	if sqResp.Status != "COMPLETED" {
+ 		return Payment{}, Invoice{}, ErrPaymentProvider
+ 	}
+ 	if sqResp.AmountCents != input.AmountCents || sqResp.Currency != "CAD" || strings.TrimSpace(sqResp.ID) == "" {
+@@ -887,7 +887,7 @@ func (s *Store) RecordSquarePayment(ctx context.Context, scope Scope, client squ
+ 	if err != nil {
+ 		return Payment{}, Invoice{}, err
+ 	}
+-	if sqResp.Status != "COMPLETED" && sqResp.Status != "APPROVED" {
++	if sqResp.Status != "COMPLETED" {
+ 		return Payment{}, Invoice{}, ErrPaymentProvider
+ 	}
+ 	if sqResp.AmountCents != input.AmountCents || sqResp.Currency != "CAD" || strings.TrimSpace(sqResp.ID) == "" {
+@@ -1099,7 +1099,7 @@ func (s *Store) HandleSquareWebhookPayment(ctx context.Context, sqPaymentID, sqS
+ 	scope := Scope{OrganizationID: pmt.OrganizationID, LocationID: pmt.LocationID, ActorID: pmt.ActorID}
+ 
+ 	switch sqStatus {
+-	case "COMPLETED", "APPROVED":
++	case "COMPLETED":
+ 		if pmt.Status != "completed" {
+ 			if _, err = tx.Exec(ctx, `UPDATE payments SET status='completed' WHERE id=$1`, pmt.ID); err != nil {
+ 				return err
+@@ -1204,3 +1204,4 @@ func (s *Store) HandleSquareWebhookPayment(ctx context.Context, sqPaymentID, sqS
+ 
+ 	return tx.Commit(ctx)
+ }
++
+diff --git "a/dapper-platform\\apps\\api\\internal\\postgres\\quotes.go" "b/.cache\\codex-integration-review\\api\\internal\\postgres\\quotes.go"
+index e20d6dc..47ecd9a 100644
+--- "a/dapper-platform\\apps\\api\\internal\\postgres\\quotes.go"
++++ "b/.cache\\codex-integration-review\\api\\internal\\postgres\\quotes.go"
+@@ -1366,7 +1366,7 @@ func (s *Store) CustomerPayQuoteDeposit(ctx context.Context, actorID, customerID
+ 	if err != nil {
+ 		return CustomerQuoteDepositResult{}, err
+ 	}
+-	if sqResp.Status != "COMPLETED" && sqResp.Status != "APPROVED" {
++	if sqResp.Status != "COMPLETED" {
+ 		return CustomerQuoteDepositResult{}, ErrPaymentProvider
+ 	}
+ 	if sqResp.AmountCents != depositCents || sqResp.Currency != "CAD" || strings.TrimSpace(sqResp.ID) == "" {
+@@ -1412,3 +1412,4 @@ func (s *Store) CustomerPayQuoteDeposit(ctx context.Context, actorID, customerID
+ 		ReceiptURL:  sqResp.ReceiptURL,
+ 	}, nil
+ }
++
+diff --git "a/dapper-platform\\apps\\api\\internal\\postgres\\invoices_test.go" "b/.cache\\codex-integration-review\\api\\internal\\postgres\\invoices_test.go"
+index 1bdf2da..93f6534 100644
+--- "a/dapper-platform\\apps\\api\\internal\\postgres\\invoices_test.go"
++++ "b/.cache\\codex-integration-review\\api\\internal\\postgres\\invoices_test.go"
+@@ -204,7 +204,15 @@ func verifyInvoices(t *testing.T, ctx context.Context, s *Store, a, b Scope, cus
+ 	}
+ 	inv3 = issueInvoiceForTest(t, ctx, s, a, inv3)
+ 
+-	mockSq := &square.MockClient{}
++	 approvedOnly := &square.MockClient{CreatePaymentFunc:func(_ context.Context, req square.PaymentRequest)(square.PaymentResponse,error){return square.PaymentResponse{ID:"synthetic-authorization-only",Status:"APPROVED",AmountCents:req.AmountCents,Currency:req.Currency},nil}}
++ _,_,authorizationErr:=s.RecordSquarePayment(ctx,a,approvedOnly,RecordSquarePaymentInput{InvoiceID:inv3.ID,AmountCents:5000,SourceID:"synthetic-authorized-source",IdempotencyKey:"codex-authorized-only-001",Method:"square_card"})
++ if !errors.Is(authorizationErr,ErrPaymentProvider){t.Fatalf("authorization counted as settled: %v",authorizationErr)}
++ var paidAfterAuthorization,paymentsAfterAuthorization int64
++ if err=s.pool.QueryRow(ctx,`SELECT paid_cents FROM invoices WHERE id=$1`,inv3.ID).Scan(&paidAfterAuthorization);err!=nil{t.Fatal(err)}
++ if err=s.pool.QueryRow(ctx,`SELECT count(*) FROM payments WHERE invoice_id=$1`,inv3.ID).Scan(&paymentsAfterAuthorization);err!=nil{t.Fatal(err)}
++ if paidAfterAuthorization!=0||paymentsAfterAuthorization!=0{t.Fatalf("authorization mutated balances/payment rows: %d/%d",paidAfterAuthorization,paymentsAfterAuthorization)}
++ t.Log("VERIFIED: APPROVED authorization rejected with zero invoice paid balance and zero payment rows")
++ mockSq := &square.MockClient{}
+ 
+ 	// Successful square_card partial payment
+ 	sqPmt1, updatedInv3, err := s.RecordSquarePayment(ctx, a, mockSq, RecordSquarePaymentInput{
+@@ -228,6 +236,7 @@ func verifyInvoices(t *testing.T, ctx context.Context, s *Store, a, b Scope, cus
+ 		t.Fatalf("unexpected invoice balance after square payment: %+v", updatedInv3)
+ 	}
+ 
++	
+ 	// Idempotent retry returns existing payment
+ 	retrySq, _, err := s.RecordSquarePayment(ctx, a, mockSq, RecordSquarePaymentInput{
+ 		InvoiceID:      inv3.ID,
+@@ -307,3 +316,5 @@ func verifyInvoices(t *testing.T, ctx context.Context, s *Store, a, b Scope, cus
+ 		t.Fatalf("expected nil for unknown payment ID, got %v", err)
+ 	}
+ }
++
++

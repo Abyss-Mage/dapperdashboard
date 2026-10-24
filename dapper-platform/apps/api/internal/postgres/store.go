@@ -1,0 +1,340 @@
+// Package postgres is an internal persistence foundation, not an HTTP auth layer.
+// Callers must obtain Scope from verified authorization, never request JSON.
+package postgres
+
+import (
+	"context"
+	"crypto/sha256"
+	_ "embed"
+	"errors"
+	"fmt"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"strings"
+)
+
+//go:embed schema.sql
+var schema string
+
+//go:embed authorization.sql
+var authorizationSchema string
+
+//go:embed vehicle_grants.sql
+var vehicleGrantSchema string
+
+//go:embed sessions.sql
+var sessionSchema string
+
+//go:embed session_invalidation.sql
+var sessionInvalidationSchema string
+
+//go:embed oidc_identities.sql
+var oidcIdentitySchema string
+
+//go:embed password_credentials.sql
+var passwordCredentialSchema string
+
+//go:embed jobs.sql
+var jobSchema string
+
+//go:embed services.sql
+var serviceSchema string
+
+//go:embed franchises.sql
+var franchiseSchema string
+
+//go:embed job_service_link.sql
+var jobServiceSchema string
+
+//go:embed job_addons.sql
+var jobAddonSchema string
+
+//go:embed reservations.sql
+var reservationSchema string
+
+//go:embed reservation_release.sql
+var reservationReleaseSchema string
+
+//go:embed scheduling_rules.sql
+var schedulingRuleSchema string
+
+//go:embed reservation_rules.sql
+var reservationRuleSchema string
+
+//go:embed reservation_history.sql
+var reservationHistorySchema string
+
+//go:embed scheduling_read.sql
+var schedulingReadSchema string
+
+//go:embed job_contributors.sql
+var jobContributorSchema string
+
+//go:embed central_catalogue.sql
+var centralCatalogueSchema string
+
+//go:embed attendance.sql
+var attendanceSchema string
+
+//go:embed bookings.sql
+var bookingSchema string
+
+//go:embed invoices.sql
+var invoiceSchema string
+
+//go:embed sop_documents.sql
+var sopDocumentSchema string
+
+//go:embed booking_vehicle_ownership.sql
+var bookingVehicleOwnershipSchema string
+
+//go:embed customer_accounts.sql
+var customerAccountSchema string
+
+//go:embed booking_job_requests.sql
+var bookingJobRequestSchema string
+
+//go:embed initial_administrator.sql
+var initialAdministratorSchema string
+
+//go:embed access_grant_events.sql
+var accessGrantEventsSchema string
+
+//go:embed invoice_issuance.sql
+var invoiceIssuanceSchema string
+
+//go:embed invoice_draft_revisions.sql
+var invoiceDraftRevisionSchema string
+
+//go:embed member_invitations.sql
+var memberInvitationSchema string
+
+//go:embed customer_account_management.sql
+var customerAccountManagementSchema string
+
+//go:embed booking_capacity_requests.sql
+var bookingCapacityRequestSchema string
+
+//go:embed booking_reschedule_requests.sql
+var bookingRescheduleRequestSchema string
+
+//go:embed booking_offers.sql
+var bookingOfferSchema string
+
+//go:embed customer_booking_requests.sql
+var customerBookingRequestSchema string
+
+//go:embed scoped_quotations.sql
+var scopedQuotationSchema string
+
+//go:embed dealership_b2b.sql
+var dealershipB2BSchema string
+
+//go:embed marketing_popups.sql
+var marketingPopupsSchema string
+
+//go:embed payment_refund_accounting.sql
+var paymentRefundAccountingSchema string
+
+//go:embed public_content.sql
+var publicContentSchema string
+
+//go:embed roles_and_scoped_assignments.sql
+var rolesAndScopedAssignmentsSchema string
+
+//go:embed central_service_links.sql
+var centralServiceLinksSchema string
+
+//go:embed employee_upload_views.sql
+var employeeUploadViewsSchema string
+
+//go:embed employee_upload_booking.sql
+var employeeUploadBookingSchema string
+
+//go:embed employee_worksite_location.sql
+var employeeWorksiteLocationSchema string
+
+//go:embed franchise_site.sql
+var franchiseSiteSchema string
+
+//go:embed employee_upload_retention.sql
+var employeeUploadRetentionSchema string
+
+//go:embed account_security.sql
+var accountSecuritySchema string
+
+//go:embed scheduling_weekly_hours.sql
+var schedulingWeeklyHoursSchema string
+
+//go:embed franchise_taxes.sql
+var franchiseTaxesSchema string
+
+//go:embed scheduling_working_time.sql
+var schedulingWorkingTimeSchema string
+
+//go:embed booking_capacity_working_time.sql
+var bookingCapacityWorkingTimeSchema string
+
+//go:embed employee_uploads.sql
+var employeeUploadsSchema string
+
+//go:embed square_payment_intents.sql
+var squarePaymentIntentsSchema string
+
+//go:embed gps_tracking.sql
+var gpsTrackingSchema string
+
+//go:embed employee_workspace.sql
+var employeeWorkspaceSchema string
+
+type migration struct {
+	version int
+	sql     string
+}
+
+func migrations() []migration {
+	return []migration{{1, schema}, {2, authorizationSchema}, {3, vehicleGrantSchema}, {4, sessionSchema}, {5, sessionInvalidationSchema}, {6, oidcIdentitySchema}, {7, passwordCredentialSchema}, {8, jobSchema}, {9, serviceSchema}, {10, franchiseSchema}, {11, jobServiceSchema}, {12, jobAddonSchema}, {13, reservationSchema}, {14, reservationReleaseSchema}, {15, schedulingRuleSchema}, {16, reservationRuleSchema}, {17, reservationHistorySchema}, {18, schedulingReadSchema}, {19, jobContributorSchema}, {20, centralCatalogueSchema}, {21, attendanceSchema}, {22, bookingSchema}, {23, invoiceSchema}, {24, sopDocumentSchema}, {25, bookingVehicleOwnershipSchema}, {26, customerAccountSchema}, {27, bookingJobRequestSchema}, {28, initialAdministratorSchema}, {29, accessGrantEventsSchema}, {30, invoiceIssuanceSchema}, {31, invoiceDraftRevisionSchema}, {32, memberInvitationSchema}, {33, customerAccountManagementSchema}, {34, bookingCapacityRequestSchema}, {35, bookingRescheduleRequestSchema}, {36, bookingOfferSchema}, {37, customerBookingRequestSchema}, {38, scopedQuotationSchema}, {39, dealershipB2BSchema}, {40, marketingPopupsSchema}, {41, paymentRefundAccountingSchema}, {43, publicContentSchema}, {44, rolesAndScopedAssignmentsSchema}, {45, centralServiceLinksSchema}, {46, employeeWorkspaceSchema}, {47, gpsTrackingSchema}, {48, squarePaymentIntentsSchema}, {49, employeeUploadsSchema}, {50, employeeUploadViewsSchema}, {51, employeeUploadBookingSchema}, {52, employeeWorksiteLocationSchema}, {53, franchiseSiteSchema}, {54, employeeUploadRetentionSchema}, {55, accountSecuritySchema}, {56, schedulingWeeklyHoursSchema}, {57, franchiseTaxesSchema}, {58, schedulingWorkingTimeSchema}, {59, bookingCapacityWorkingTimeSchema}}
+}
+
+// ValidateSchema is read-only. Runtime startup never applies migrations.
+func (s *Store) ValidateSchema(ctx context.Context) error {
+	var count int
+	if err := s.pool.QueryRow(ctx, `SELECT count(*) FROM dapper_schema_migrations`).Scan(&count); err != nil {
+		return errors.New("schema migration verification required")
+	}
+	if count != len(migrations()) {
+		return errors.New("schema version mismatch")
+	}
+	for _, m := range migrations() {
+		var checksum string
+		if err := s.pool.QueryRow(ctx, `SELECT checksum FROM dapper_schema_migrations WHERE version=$1`, m.version).Scan(&checksum); err != nil || checksum != fmt.Sprintf("%x", sha256.Sum256([]byte(m.sql))) {
+			return errors.New("schema checksum verification failed")
+		}
+	}
+	return nil
+}
+
+type Store struct {
+	pool           *pgxpool.Pool
+	squareResolver SquareCredentialResolver
+	// Public identifiers only (see SetSquareApplicationIDs).
+	squareApplicationIDs map[string]string
+	uploadDir            string
+	sopDir               string
+	mfaKey               []byte
+}
+type Scope struct{ OrganizationID, LocationID, ActorID string }
+type Customer struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
+	Phone string `json:"phone"`
+}
+
+var ErrScope = errors.New("verified organization, location and actor scope required")
+var ErrForbidden = errors.New("scope or action not granted")
+
+func Open(ctx context.Context, dsn string) (*Store, error) {
+	if strings.TrimSpace(dsn) == "" {
+		return nil, errors.New("database configuration required")
+	}
+	config, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		return nil, errors.New("invalid database configuration")
+	}
+	config.MaxConns = 8
+	pool, err := pgxpool.NewWithConfig(ctx, config)
+	if err != nil {
+		return nil, errors.New("could not initialize database pool")
+	}
+	if err = pool.Ping(ctx); err != nil {
+		pool.Close()
+		return nil, errors.New("database unavailable")
+	}
+	return &Store{pool: pool}, nil
+}
+func (s *Store) Close() { s.pool.Close() }
+
+// Migrate is explicit; opening the API never silently changes a schema.
+// A transaction lock serializes runners and a checksum detects edited history.
+func (s *Store) Migrate(ctx context.Context) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	if _, err = tx.Exec(ctx, `SELECT pg_advisory_xact_lock(761421031)`); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(ctx, `CREATE TABLE IF NOT EXISTS dapper_schema_migrations(version integer PRIMARY KEY, checksum text NOT NULL, applied_at timestamptz NOT NULL DEFAULT now())`); err != nil {
+		return err
+	}
+	for _, current := range migrations() {
+		checksum := fmt.Sprintf("%x", sha256.Sum256([]byte(current.sql)))
+		var previous string
+		err = tx.QueryRow(ctx, `SELECT checksum FROM dapper_schema_migrations WHERE version=$1`, current.version).Scan(&previous)
+		if err == nil {
+			if previous != checksum {
+				return errors.New("migration checksum changed; add a new migration")
+			}
+			continue
+		}
+		if !errors.Is(err, pgx.ErrNoRows) {
+			return err
+		}
+		if _, err = tx.Exec(ctx, current.sql); err != nil {
+			return err
+		}
+		if _, err = tx.Exec(ctx, `INSERT INTO dapper_schema_migrations(version,checksum) VALUES($1,$2)`, current.version, checksum); err != nil {
+			return err
+		}
+	}
+	return tx.Commit(ctx)
+}
+func (scope Scope) validate() error {
+	if scope.OrganizationID == "" || scope.LocationID == "" || scope.ActorID == "" {
+		return ErrScope
+	}
+	return nil
+}
+func (s *Store) CreateCustomer(ctx context.Context, scope Scope, name, email, phone string) (Customer, error) {
+	if err := s.authorize(ctx, scope, "customers.create"); err != nil {
+		return Customer{}, err
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return Customer{}, err
+	}
+	defer tx.Rollback(ctx)
+	var c Customer
+	err = tx.QueryRow(ctx, `INSERT INTO customers(organization_id,location_id,name,email,phone) VALUES($1,$2,$3,$4,$5) RETURNING id::text,name,email,phone`, scope.OrganizationID, scope.LocationID, name, email, phone).Scan(&c.ID, &c.Name, &c.Email, &c.Phone)
+	if err != nil {
+		return Customer{}, err
+	}
+	if _, err = tx.Exec(ctx, `INSERT INTO audit_events(organization_id,location_id,actor_id,action,entity_id) VALUES($1,$2,$3,'customer.created',$4)`, scope.OrganizationID, scope.LocationID, scope.ActorID, c.ID); err != nil {
+		return Customer{}, err
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return Customer{}, err
+	}
+	return c, nil
+}
+func (s *Store) Customers(ctx context.Context, scope Scope) ([]Customer, error) {
+	if err := s.authorize(ctx, scope, "customers.read"); err != nil {
+		return nil, err
+	}
+	rows, err := s.pool.Query(ctx, `SELECT id::text,name,email,phone FROM customers WHERE organization_id=$1 AND location_id=$2 ORDER BY created_at,id LIMIT 100`, scope.OrganizationID, scope.LocationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	result := []Customer{}
+	for rows.Next() {
+		var c Customer
+		if err = rows.Scan(&c.ID, &c.Name, &c.Email, &c.Phone); err != nil {
+			return nil, err
+		}
+		result = append(result, c)
+	}
+	return result, rows.Err()
+}

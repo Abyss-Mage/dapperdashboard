@@ -1,0 +1,48 @@
+{
+  "timestamp": "2026-10-23T22:02:08Z",
+  "scope": "workspace-visual-and-styling-acceptance",
+  "status": "PASS",
+  "css_active": true,
+  "screenshots": [
+    {
+      "target": "workspace-desktop",
+      "width": 1440,
+      "height": 900,
+      "file": "output\\acceptance\\workspace-desktop.png",
+      "size_bytes": 38106,
+      "url": "https://127.0.0.1:8443/workspace"
+    },
+    {
+      "target": "workspace-mobile",
+      "width": 390,
+      "height": 844,
+      "file": "output\\acceptance\\workspace-mobile.png",
+      "size_bytes": 29209,
+      "url": "https://127.0.0.1:8443/workspace"
+    },
+    {
+      "target": "owner-desktop",
+      "width": 1440,
+      "height": 900,
+      "file": "output\\acceptance\\owner-desktop.png",
+      "size_bytes": 32041,
+      "url": "https://127.0.0.1:8443/owner"
+    },
+    {
+      "target": "owner-mobile",
+      "width": 390,
+      "height": 844,
+      "file": "output\\acceptance\\owner-mobile.png",
+      "size_bytes": 19660,
+      "url": "https://127.0.0.1:8443/owner"
+    },
+    {
+      "target": "public-root-desktop",
+      "width": 1440,
+      "height": 900,
+      "file": "output\\acceptance\\public-root-desktop.png",
+      "size_bytes": 1275934,
+      "url": "https://127.0.0.1:8443/"
+    }
+  ]
+}

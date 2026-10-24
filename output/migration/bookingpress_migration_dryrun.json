@@ -1,0 +1,35 @@
+{
+  "deliverable": "DEL-22",
+  "launch_gate": "ACC-13",
+  "timestamp": "2026-10-23T14:37:40.836556+00:00",
+  "provenance": {
+    "source_file": "bookingpress_export_raw.json",
+    "sha256": "E7CA26002A4A8151113F4E599272E5FE03674142FFAE65B546C66F79C5D2C4FE",
+    "bytes": 19451569,
+    "verified_known_export": true,
+    "site_url": "https://dapperdetailing.ca",
+    "export_key": "3_1792764764"
+  },
+  "target": {
+    "organization_id": "9811de21-519e-4be1-ba2f-18fff3552e18",
+    "location_id": "8093cc38-90b4-43b1-ae1c-3c9054097748"
+  },
+  "metrics": {
+    "total_customers": 453,
+    "total_vehicles": 453,
+    "total_bookings": 584,
+    "status_breakdown": {
+      "completed": 364,
+      "cancelled": 77,
+      "confirmed": 143
+    },
+    "channel_breakdown": {
+      "walk_in": 584
+    },
+    "total_paid_cents": 17238515,
+    "total_due_cents": 1688662,
+    "total_volume_cents": 18927177
+  },
+  "status": "dry_run_validated",
+  "database_mutations": 0
+}

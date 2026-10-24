@@ -1,0 +1,46 @@
+{
+  "status": "PASS",
+  "before": [
+    {
+      "path": "internal/email/smtp.go",
+      "hash": "9EF1375B3A3224DE4DAAF127C1E43FCA4DD155976ED693BC22C119B82FDC9356"
+    },
+    {
+      "path": "internal/postgres/invoices.go",
+      "hash": "11A6C3843CDF782C0DFF6FBB7E648D84A5A4F1FCF6C9B8967E36360BB116C6FB"
+    },
+    {
+      "path": "internal/postgres/quotes.go",
+      "hash": "1602CB55F7270AA2E4AD3DE20A1590100E4ABDE8A2BB102E3E480848434E0092"
+    },
+    {
+      "path": "internal/workspace/square_webhooks.go",
+      "hash": "45B03094E4274E3DFEA1045FC2AB5B4BADE11DBA3AF0ABD5DB309717EEB6119E"
+    }
+  ],
+  "started": "2026-10-23T19:24:25.5964822+05:30",
+  "after": [
+    {
+      "path": "internal/email/smtp.go",
+      "hash": "9EF1375B3A3224DE4DAAF127C1E43FCA4DD155976ED693BC22C119B82FDC9356",
+      "matchesBefore": true
+    },
+    {
+      "path": "internal/postgres/invoices.go",
+      "hash": "11A6C3843CDF782C0DFF6FBB7E648D84A5A4F1FCF6C9B8967E36360BB116C6FB",
+      "matchesBefore": true
+    },
+    {
+      "path": "internal/postgres/quotes.go",
+      "hash": "1602CB55F7270AA2E4AD3DE20A1590100E4ABDE8A2BB102E3E480848434E0092",
+      "matchesBefore": true
+    },
+    {
+      "path": "internal/workspace/square_webhooks.go",
+      "hash": "45B03094E4274E3DFEA1045FC2AB5B4BADE11DBA3AF0ABD5DB309717EEB6119E",
+      "matchesBefore": true
+    }
+  ],
+  "verification": "scripts/test-postgres.ps1 full suite session94066 exit0;8 tested packages PASS; disposable schemas only",
+  "limitations": "Recorded hashes cover4Codex changed production files only; not full repository immutability or production/provider acceptance."
+}

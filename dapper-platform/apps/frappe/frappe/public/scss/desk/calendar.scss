@@ -1,0 +1,174 @@
+// FullCalendar v6 grid, colored with espresso tokens.
+// Per-event background/text colors are set inline in calendar.js
+// (prepare_colors) — the event colors here are only the fallback.
+
+.fc {
+	// FullCalendar's own theming hooks — set these instead of fighting
+	// its rules with !important
+	--fc-border-color: var(--outline-gray-1);
+	// today is marked on the date number, not by tinting the whole cell
+	--fc-today-bg-color: transparent;
+	--fc-highlight-color: var(--surface-blue-2);
+	--fc-now-indicator-color: var(--ink-red-5);
+	--fc-event-bg-color: var(--surface-blue-1);
+	--fc-event-text-color: var(--ink-blue-7);
+	// background of the "+n more" popover
+	--fc-page-bg-color: var(--surface-elevation-1);
+	--fc-neutral-bg-color: var(--surface-gray-2);
+}
+
+.fc-theme-standard {
+	color: var(--ink-gray-8) !important;
+}
+
+.fc-theme-standard a {
+	color: var(--ink-gray-8);
+}
+
+th.fc-col-header-cell {
+	padding: 10px 12px 10px 0 !important;
+	color: var(--ink-gray-6);
+	font-size: var(--text-base);
+	font-weight: var(--font-weight-regular);
+}
+
+.fc-theme-standard td.fc-day-sun {
+	background: var(--surface-gray-1);
+}
+
+.fc-theme-standard .fc-day-today .fc-daygrid-day-number {
+	background-color: var(--surface-gray-10);
+	border-radius: var(--radius);
+	color: var(--ink-gray-2);
+	height: 25px;
+	width: 25px;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	text-align: center;
+	padding: 0;
+}
+
+.fc-theme-standard .fc-day-other .fc-daygrid-day-number {
+	color: var(--ink-gray-4);
+}
+
+// fc dims out-of-month cells with opacity — we use ink-gray-4 instead,
+// and the two combined would be too faint
+.fc.fc-theme-standard .fc-day-other .fc-daygrid-day-top {
+	opacity: 1;
+}
+
+// FullCalendar injects its stylesheet at runtime, after ours — rules
+// that tie with one of fc's need the extra .fc to win the cascade
+.fc .fc-event {
+	border: none !important;
+	border-radius: var(--radius);
+}
+
+// title above, time below it
+.fc .fc-daygrid-event .fc-event-main-frame,
+.fc .fc-timegrid-event .fc-event-main-frame {
+	flex-direction: column-reverse;
+	min-width: 0;
+	flex: 1;
+}
+
+// chip anatomy: [accent bar] [title / time]
+.fc-daygrid-event .fc-event-main,
+.fc-timegrid-event .fc-event-main {
+	display: flex;
+	gap: 6px;
+}
+
+.fc .fc-timegrid-event .fc-event-main {
+	padding: 4px 5px;
+}
+
+// currentColor is the event's inline textColor (its ink-X-7 token),
+// so every chip's bar matches its own color without any JS
+.fc-daygrid-event .fc-event-main::before,
+.fc-timegrid-event .fc-event-main::before {
+	content: "";
+	width: 2px;
+	border-radius: 2px;
+	background-color: currentColor;
+	flex-shrink: 0;
+}
+
+// only timed events carry the accent bar (class set in calendar.js)
+.fc-event:not(.timed-event) .fc-event-main::before {
+	display: none;
+}
+
+// titles inherit the event's textColor (its ink-X-7 accent)
+.fc-daygrid-event .fc-event-title {
+	font-weight: var(--font-weight-medium);
+}
+
+// in the timegrid the title keeps the event color; the time goes quiet
+.fc-timegrid-event .fc-event-time {
+	color: var(--ink-gray-6);
+}
+
+.fc-event.fc-event-past {
+	opacity: 0.5;
+}
+
+.fc-daygrid-day-top {
+	margin: 5px 0 0 10px;
+	flex-direction: row !important;
+
+	.fc-daygrid-day-number {
+		float: left !important;
+	}
+}
+
+.fc-daygrid-dot-event {
+	padding: 3px;
+	display: flex;
+	flex-direction: column-reverse;
+	align-items: normal;
+	// no !important — per-event inline colors should win
+	color: var(--ink-blue-7);
+
+	.fc-event-time {
+		font-weight: normal;
+		margin-top: 2px;
+	}
+
+	.fc-event-title {
+		font-weight: 600;
+	}
+
+	.fc-daygrid-event-dot {
+		display: none;
+	}
+}
+
+.fc-daygrid-event {
+	border: none !important;
+	margin: 5px 4px 0 !important;
+	padding: 3px 5px !important;
+}
+
+.fc .fc-timegrid-slot-label,
+.fc .fc-timegrid-axis {
+	color: var(--ink-gray-5);
+}
+
+.fc .fc-timegrid-now-indicator-arrow {
+	display: none;
+}
+
+// the jump-to-date popover hugs the inline datepicker it contains
+.es-popover.calendar-date-jumper {
+	width: auto;
+	padding: 0;
+
+	.datepicker {
+		border: none;
+		background: transparent;
+		box-shadow: none;
+	}
+}

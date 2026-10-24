@@ -1,0 +1,110 @@
+{
+  "capturedAt": "2026-10-21T19:12:54.5222902Z",
+  "files": [
+    {
+      "path": "dapper-platform/apps/api/main.go",
+      "sha256": "5334ee277493b923a4cb6b0e0230bb9c7364e66438103d2262f635fbc9309888"
+    },
+    {
+      "path": "dapper-platform/apps/api/vehicles.go",
+      "sha256": "c3cb26d533e35a19891a01cdbdd26db39729800e3ae272572a8824305cbe3973"
+    },
+    {
+      "path": "dapper-platform/apps/api/catalogue.go",
+      "sha256": "a0b8108b5f1b8990b4b9f4436830f9af437a0916fc96251e223debde8f548076"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/store.go",
+      "sha256": "bee49fb99d754c7fa563c464a7cef06540efac37de527d07e77ffbf201d483b5"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/schema.sql",
+      "sha256": "cb80cf2a479ca7bb3b1e031a009e108fd7a67e3d9b69558d9f376510d6d3929b"
+    },
+    {
+      "path": "dapper-platform/apps/api/cmd/database/main.go",
+      "sha256": "b711e0f86676758f0a3787687fbe9550a99eec2461a55ad304f269552fcbaa3c"
+    },
+    {
+      "path": "dapper-platform/apps/api/go.mod",
+      "sha256": "7970738882c09922a43af96b2aef38f57a7f254362104245b7f7f4c207940734"
+    },
+    {
+      "path": "dapper-platform/apps/api/go.sum",
+      "sha256": "a5e7a8db07eba28dbde48bf9a54c4e9084a5a95ded581c0ff44c08b74e3dfe69"
+    },
+    {
+      "path": "dapper-platform/apps/web/app/page.tsx",
+      "sha256": "7a8974dbf8d61b05608a096b0c9cabec6458c6734adf4cb4c8c3d79092fc994b"
+    },
+    {
+      "path": "dapper-platform/apps/web/app/VehiclePanel.tsx",
+      "sha256": "f070a47f8d152a3c28a2f747511155a887d51798913cd136b548141d88a510f0"
+    },
+    {
+      "path": "dapper-platform/apps/web/app/globals.css",
+      "sha256": "ae554a2804966829dd10ceadc18d39225ac53ed0efac80a0164fd7cea315a885"
+    },
+    {
+      "path": "dapper-platform/apps/web/package-lock.json",
+      "sha256": "fce2f98f1221132f6f3c975a64a91c9c0104599f232adb9cce005b2f3897a618"
+    },
+    {
+      "path": "integrations/wordpress/dapper-data-exporter/dapper-data-exporter.php",
+      "sha256": "ef9c79e51083661f6a8fc590cd3104c9ba5a2ba00c109bfa90963e08f6f58c5a"
+    },
+    {
+      "path": "output/wordpress/dapper-data-exporter-0.1.0.zip",
+      "sha256": "b955273a60a71abeedcf05eda9ba1edcb2ff3262107b4715618cf20c8c6a2276"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/authorization.go",
+      "sha256": "a19b294afe2277d430a579441676156c43ec062e54c35721f7228d931967b5e1"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/authorization.sql",
+      "sha256": "c85b7fbb9419352a996bd5711dd9ddb2ed8b5531624e6fad0554fbcb34a0f1a0"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/store_test.go",
+      "sha256": "c0fee1defc5466cc90e39c3f7031a2f55700b3baa4199eafbebe697982747a27"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/vehicles.go",
+      "sha256": "a6ab7fb17bf7374ec49346fd27c96e9fc107c772c2254726322cbce5acc20718"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/vehicle_grants.sql",
+      "sha256": "4b7cf0eabbfa5fc226976aec886de578b6a5eab8570d567139706587df94c2d0"
+    },
+    {
+      "path": "dapper-platform/apps/web/app/ScheduleCalendar.tsx",
+      "sha256": "101f3433b27ea3bedb8403285ac21a2909c422d62b0d59630aa76fccfef30deb"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/sessions.go",
+      "sha256": "dd9436d858e452383f9ac390b1cb8761f48a1ad8e1f4f119fd397800a0241ce8"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/sessions.sql",
+      "sha256": "4041d6a6e4be1420c5195deb030e9a0d6eca26a4092e5b462c022c7a08ff50f8"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/sessions_test.go",
+      "sha256": "13b5e78f49d28b3c1142841e3300722ac5a2f24924446240d4e72ed0e6862a1b"
+    }
+  ],
+  "checks": [
+    "Go tests and vet passed",
+    "Real PostgreSQL integration tests passed before/after restart",
+    "Next production build and TypeScript passed",
+    "PHP exporter boundary tests passed",
+    "Browser customer/equipment creation, persistence and keyboard/mobile checks passed"
+  ],
+  "limits": [
+    "Synthetic demo only",
+    "HTTP demo is JSON-backed",
+    "Production identity/RBAC pending",
+    "No live WordPress/provider evidence"
+  ]
+}

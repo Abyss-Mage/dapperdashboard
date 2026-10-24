@@ -1,0 +1,24 @@
+{
+  "ruleBookingBinding": false,
+  "nativeSuite": "pass",
+  "changedFiles": [
+    {
+      "file": "dapper-platform/apps/api/internal/postgres/scheduling_rules.sql",
+      "sha256": "A90067758E2C1DEA257B67A8676276C9740DF546D99BD46CA39614B0F8546230"
+    },
+    {
+      "file": "dapper-platform/apps/api/internal/postgres/scheduling_rules.go",
+      "sha256": "C3A8375B45DBB39B4B24287359F48B0C301DF1D81D0461CF635760411872BE82"
+    },
+    {
+      "file": "dapper-platform/apps/api/internal/postgres/scheduling_rules_test.go",
+      "sha256": "BB8F99E942091997B4E858CC0E02104808BEA78B66A6B153C7E742FC78EB592C"
+    }
+  ],
+  "goVet": "pass",
+  "productionReady": false,
+  "sourceMigration": 15,
+  "verifiedAt": "2026-10-22T05:54:35.0716045Z",
+  "runtimeDeployed": false,
+  "runtimeMigration": 14
+}

@@ -1,0 +1,31 @@
+{
+  "exporterVersion": "0.1.3",
+  "mode": "authorized-read-only-catalogue",
+  "files": [
+    {
+      "file": "manifest.json",
+      "sha256": "817323af9b8c4fff7666e1d17cfef3416f5efc4145ae915bdf74fa775d9c3958"
+    },
+    {
+      "file": "catalogue-page-1.json",
+      "sha256": "4a20254e15938ba2ca6416a73bfcb8ccb4bfc974b37797af5f2d7b7b4146b101"
+    },
+    {
+      "file": "catalogue-page-2.json",
+      "sha256": "2268d325b3875161217a24350cc1adc8a6ac39f6b3b83d6a4b17f03e5ec1d469"
+    },
+    {
+      "file": "catalogue-page-3.json",
+      "sha256": "88eb6edae594e1814072a03d580673d43ae7ad226cf797c5c4ebda9630edf040"
+    }
+  ],
+  "sourceBundleSha256": "0e2d4922f468ae0a205fcf7422752b5834bbe359c6d4834f0f14af9f63594fc0",
+  "counts": {
+    "services": 79,
+    "categories": 12,
+    "extras": 228,
+    "extrasRequiringReview": 228
+  },
+  "transactionEnabled": false,
+  "privateRecordsExported": false
+}

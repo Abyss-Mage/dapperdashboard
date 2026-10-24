@@ -1,0 +1,87 @@
+{
+  "localApplicationTLSIngress": "PASS_5_OF_5",
+  "actualAuthenticatedApplicationBrowser": "NOT_RUN initial administrator human password pending",
+  "nativePostgresHTTP": "PASS",
+  "checkedAt": "2026-10-22T22:31:23.2258682+00:00",
+  "sourceHashes": [
+    {
+      "sha256": "b9e016d7107b81033a9dccfcc8da986f95f1a711951d94eaf48d79798bee08c6",
+      "path": "dapper-platform/apps/api/internal/postgres/invoice_draft_revisions.sql"
+    },
+    {
+      "sha256": "25658e1c67200d5f30883e90e26d1407dfdb7750b6615af171f4815b506c04bf",
+      "path": "dapper-platform/apps/api/internal/postgres/invoice_drafts.go"
+    },
+    {
+      "sha256": "93e13ccc25db115373f30084c9faf415692301c288024e379a02b669b369d4dc",
+      "path": "dapper-platform/apps/api/internal/postgres/invoice_drafts_test.go"
+    },
+    {
+      "sha256": "c6bdc09b34e2d126b00db442612ff39cf4d80848933fd240044a426c7af1f1e4",
+      "path": "dapper-platform/apps/api/internal/postgres/invoices.go"
+    },
+    {
+      "sha256": "29b4bfbfa389d6510d3c0d3ba7c51607f1cbee68ec870c011d7566923344d1c3",
+      "path": "dapper-platform/apps/api/internal/postgres/invoice_issuance.go"
+    },
+    {
+      "sha256": "306698e4dab1aba944660d40cb3e9c3febbcdeb64d20b41b1e1c20cfb5bb642f",
+      "path": "dapper-platform/apps/api/internal/workspace/invoices.go"
+    },
+    {
+      "sha256": "6e49a1eae933187d1ec37daae4699e8bc523fae6004c563ed138831b1fa5f92a",
+      "path": "dapper-platform/apps/api/internal/workspace/invoice_issuance.go"
+    },
+    {
+      "sha256": "7b7db20ed0a9150939be04eda3635b48f0d6a914d558009ff11dedd32100ea42",
+      "path": "dapper-platform/apps/api/internal/workspace/handler_test.go"
+    },
+    {
+      "sha256": "9636d17d898ff52d7b783e2184ede4ec841c08fcc3fe740dfa9e8091bab52c28",
+      "path": "dapper-platform/apps/api/internal/workspace/invoice_browser_test.go"
+    },
+    {
+      "sha256": "35c66d60f582bc641f1b1a9a8b5c728fa9f3b5cd6edc8a5c1f2cf05ad317e852",
+      "path": "dapper-platform/apps/web/app/workspace/InvoiceDraftEditor.tsx"
+    },
+    {
+      "sha256": "9978e60c6a3c5a4dec77342545007a5517e1d5b6e7e136ae52350bbdf198c29e",
+      "path": "dapper-platform/apps/web/app/workspace/InvoiceDraftHistory.tsx"
+    },
+    {
+      "sha256": "87101eec709869018a2b42bdc9d486de86fcd36b651bbe493232f5ca12797b60",
+      "path": "dapper-platform/apps/web/app/workspace/InvoiceManager.tsx"
+    },
+    {
+      "sha256": "7d2fc8f73aaf8babec0410d4026f9543d312742ba73b538560b099abd51a5c13",
+      "path": "dapper-platform/apps/web/app/globals.css"
+    },
+    {
+      "sha256": "058853cc4aae45c381d2276a04dd2d9503d23cc4a4e94fd81b6995b2e9bdb37b",
+      "path": "scripts/test-invoice-browser.ps1"
+    },
+    {
+      "sha256": "f8f49aba7141903a81b849ac9a3037b6121d6437c61e932ad476c3c8a27c7576",
+      "path": "scripts/finish-invoice-browser.ps1"
+    }
+  ],
+  "productionAccepted": false,
+  "goVet": "PASS",
+  "frontendBuildTypecheck": "PASS",
+  "schemaVersion": 31,
+  "applicationFixtureImport": "NONE aggregate real database counts all zero;31 migrations",
+  "browser": {
+    "persistedResult": "PASS: isolated PostgreSQL browser invoice version=4 revisions=2 status=issued",
+    "cleanup": "PASS disposable schema and recorded frontend tree",
+    "scope": "synthetic isolated disposable schema in postgres database; ports3007/8444; actual product InvoiceManager and Go handler",
+    "checks": [
+      "draft edits persist exact line/tax/total",
+      "two-tab stale409 preserves inputs and focuses error",
+      "before-after revision history",
+      "reviewed synthetic issuance BROWSER-1",
+      "Escape closes and returns focus to View/Pay"
+    ],
+    "screenshot": "output/acceptance/invoice-draft-issued.png",
+    "responsive": "Saved final390x844 screenshot visually inspected. Initial viewport DOM readings remained1280x720; no reliable mobile overflow measurement or full mobile journey acceptance claimed."
+  }
+}

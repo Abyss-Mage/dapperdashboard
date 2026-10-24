@@ -1,0 +1,20 @@
+{
+  "database": "dapper_application",
+  "counts": {
+    "migrations": 38,
+    "organizations": 0,
+    "principals": 0,
+    "customers": 0,
+    "bookings": 0,
+    "capacityReservations": 0,
+    "bookingOffers": 0,
+    "customerBookingRequests": 0,
+    "customerBookingRequestEvents": 0,
+    "scopedQuotations": 0,
+    "quotationAcceptances": 0,
+    "invoices": 0,
+    "payments": 0
+  },
+  "checkedAt": "2026-10-23T11:17:00Z",
+  "productionAccepted": false
+}

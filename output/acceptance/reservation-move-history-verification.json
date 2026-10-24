@@ -1,0 +1,29 @@
+{
+  "positiveBrowserVerified": false,
+  "productionReady": false,
+  "goVet": "pass",
+  "changedFiles": [
+    {
+      "sha256": "BB1578470F9F36B7E7E60FC97CCFDBA1D60BEC78A3B98E561AEA5094C1BCBD3D",
+      "file": "dapper-platform/apps/api/internal/postgres/reservation_history.sql"
+    },
+    {
+      "sha256": "35B85807F28A78C9266056B7A18EA6330411473F00BCE5EDF0096A4488E75259",
+      "file": "dapper-platform/apps/api/internal/postgres/reservation_history.go"
+    },
+    {
+      "sha256": "6224544D91BB8B32F88859C50741DBF55D52527A6A5787F3400CAF5C2590C7DB",
+      "file": "dapper-platform/apps/api/internal/postgres/reservation_rules.go"
+    },
+    {
+      "sha256": "68F0BD71B925C5263A9ACE1CDC1E8BE86D33CD4451775C728E0C7C9F1F752906",
+      "file": "dapper-platform/apps/api/internal/workspace/service_reservations.go"
+    }
+  ],
+  "nativeSuite": "pass",
+  "existingHttpsGroups": 11,
+  "newPositiveEvidence": "HTTP handler and isolated PostgreSQL",
+  "verifiedAt": "2026-10-22T06:09:16.7192304Z",
+  "permissionsChanged": false,
+  "runtimeMigration": 17
+}

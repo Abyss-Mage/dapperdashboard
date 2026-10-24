@@ -1,0 +1,29 @@
+{
+  "verifiedAt": "2026-10-22T06:01:09.8333555Z",
+  "existingHttpsGroups": 11,
+  "fullBookingConfirmed": false,
+  "browserVerified": false,
+  "goVet": "pass",
+  "nativeSuite": "pass",
+  "runtimeMigration": 16,
+  "productionReady": false,
+  "positiveRuleReservationEvidence": "HTTP handler and isolated PostgreSQL",
+  "changedFiles": [
+    {
+      "file": "dapper-platform/apps/api/internal/postgres/reservation_rules.sql",
+      "sha256": "24A23DE55787CD1EA222522FFE13D6D7343358A23551FD85C965D4C2D5BEB1D1"
+    },
+    {
+      "file": "dapper-platform/apps/api/internal/postgres/reservation_rules.go",
+      "sha256": "7304AEDDA4E4CAFDD616DF2A413F483B4E8B3915653442FB86A5B39247BBD044"
+    },
+    {
+      "file": "dapper-platform/apps/api/internal/postgres/reservations.go",
+      "sha256": "F65103591813138D02D0EA37C73C535ABBE567E9BF27524EC1FEC2C5A2DF60D2"
+    },
+    {
+      "file": "dapper-platform/apps/api/internal/workspace/service_reservations.go",
+      "sha256": "76D661CAD56DDBDF2CE196906C2DA37A6D68742B380B8D02B0B7986A93D7268E"
+    }
+  ]
+}

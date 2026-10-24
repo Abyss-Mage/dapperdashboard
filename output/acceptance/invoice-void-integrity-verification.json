@@ -1,0 +1,38 @@
+{
+  "goVet": "PASS",
+  "sourceHashes": [
+    {
+      "sha256": "34ad8cde5582e3a2f18b7fb2bdc5b8bbb33ef42593c622395ec25843aa476216",
+      "path": "dapper-platform/apps/api/internal/postgres/invoices.go"
+    },
+    {
+      "sha256": "090c5a290bd67c48ce75c5444d6d9f7b593071ac3c8cf2a5f770ab756a76d00d",
+      "path": "dapper-platform/apps/api/internal/postgres/invoice_void_test.go"
+    },
+    {
+      "sha256": "2ca9d2ebac9740d4a8d33c0fe4810dbf2d107b58f78cbf91b2faf6ba7020336f",
+      "path": "dapper-platform/apps/api/internal/postgres/store_test.go"
+    },
+    {
+      "sha256": "e5ae644098ce5a2b1a70e8a9998a766bbb4f3d5f9fd1afa32aa2ef60165589c8",
+      "path": "dapper-platform/apps/api/internal/workspace/handler_test.go"
+    }
+  ],
+  "actualAuthenticatedBrowserAcceptance": "NOT_RUN",
+  "nativePostgresSuite": "PASS",
+  "checkedAt": "2026-10-22T19:14:01.1464762+00:00",
+  "productionAccepted": false,
+  "localHTTPSIngress": "PASS_5_OF_5",
+  "cases": [
+    "manage-only successful mutation without implicit invoice-read",
+    "concurrent duplicate void produces one event",
+    "cash versus void exactly one winner and consistent ledger",
+    "audit failure rollback",
+    "recorded-payment conflict HTTP409",
+    "revoked grant and foreign scope denied",
+    "bounded notes and minimal response"
+  ],
+  "scope": "invoice-void-integrity",
+  "schemaVersion": 30,
+  "authenticatedIsolatedHTTP": "PASS"
+}

@@ -1,0 +1,90 @@
+{
+  "timestamp": "2026-10-23T12:20:00Z",
+  "migration": 38,
+  "sources": [
+    {
+      "path": "dapper-platform/apps/api/internal/email/smtp.go",
+      "sha256": "E1A8CA83333B2D4C793B7E22C9259773E92359A2AFC5F9D6504CE5BD0B504793"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/email/smtp_test.go",
+      "sha256": "281B2099D5C99ACF87FDF24F1DEB8494484192A3B9BE575A7E4CC31006581978"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/workspace/square_webhooks.go",
+      "sha256": "9BACF2D51584601379D54A938E43D4C7F9D70BE61DB6E3A98CB4DD841863C81B"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/workspace/square_webhooks_test.go",
+      "sha256": "DC5092589C852FD3B5F22B626EBA0AB9907D51D6FA989D7E92E46E2D1B54E8A4"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/workspace/member_invitations.go",
+      "sha256": "47D647FB412823E8C4359779D7E67BA7BCE293650762ED748A1AC1E29FA14986"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/workspace/member_invitations_test.go",
+      "sha256": "BE9A8B817FC935E83033633FA4F2424EB9DACBBA405370FC73487BFD81B01945"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/workspace/handler.go",
+      "sha256": "88E2A7C1AFC480BFBBE5A07B35AD5A8DDF0ABCEBDFE41042BD0DB77B5A443407"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/workspace/handler_test.go",
+      "sha256": "4F8592A8948EB4206D672AD20C199BEC502E7BB2108E42D5394D9D41E65C5931"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/workspace/invoices.go",
+      "sha256": "D9D744B50E2F9CB9A4D71D2566F9D3B3F1197A171CD3B30D014E0510845C6CDD"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/invoices.go",
+      "sha256": "7A040BF79DCD39D38E3AC98BF781F2C7719429DE00390DFE21973EDB9A5D751F"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/invoices_test.go",
+      "sha256": "0A8676BDA0C99377CB245B930E8B3891C00488B717DE5962ECBC5530D6412601"
+    },
+    {
+      "path": "dapper-platform/apps/api/cmd/workspace/main.go",
+      "sha256": "7F8306B89817CD086B18FDBA20DDCE36FBC2B6BECD4B9C031488BDE65B0A2094"
+    },
+    {
+      "path": "dapper-platform/apps/web/app/workspace/QuoteManager.tsx",
+      "sha256": "76DD29EC4309E8F0B2FC6014BB7D28C4D817833D731FA2892FD021F9D0E37FD3"
+    },
+    {
+      "path": "dapper-platform/apps/web/app/account/CustomerQuoteList.tsx",
+      "sha256": "28A42BB08BD1B73A514156663483E3CF124B2C6FCA421B6ED6670602AFC7CCE0"
+    }
+  ],
+  "verification": {
+    "nativeGoPostgresTests": "PASS (7/7 packages: cmd/gateway, internal/email, internal/identity, internal/postgres, internal/scheduling, internal/square, internal/workspace - 100%)",
+    "goVet": "PASS (exit code 0 across all API packages)",
+    "nextProductionBuild": "PASS (Turbopack production build clean exit code 0)",
+    "applicationIngress": "PASS (5/5 TLS checks on https://127.0.0.1:8443)"
+  },
+  "deliverablesAddressed": [
+    {
+      "id": "DEL-14",
+      "name": "Square online payments & webhooks",
+      "status": "Asynchronous payment webhook ingress with HMAC-SHA256 signature verification and invoice reconciliation completed in Go API"
+    },
+    {
+      "id": "DEL-19",
+      "name": "Automated email workflows",
+      "status": "Transactional SMTP email sender client and administrative invitation dispatch route with AES-256 decrypted delivery completed"
+    },
+    {
+      "id": "DEL-04",
+      "name": "Custom booking engine & quotation deposit flow",
+      "status": "Quotation deposit payment guidance banner and fulfillment payment linkage UI updated"
+    }
+  ],
+  "boundaries": {
+    "unseededApplication": "dapper_application contains 38 migrations and zero operational/customer records",
+    "credentials": "No live merchant credentials or SMTP secrets committed; graceful 503 fallback when unconfigured",
+    "humanAdmin": "admin@dapperdash.ca account setup remains pending human-controlled password initialization"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "changedFiles": [
+    {
+      "file": "scripts/build_bookingpress_extras.py",
+      "sha256": "5E16983BDB34F44E9197CD61A0563BB8F20501BDB759514C39726B04C2BA2EB7"
+    },
+    {
+      "file": "scripts/test_bookingpress_extras.py",
+      "sha256": "AB5D0DA489E8E38CC339029006C38738E11121676A2140C2C23D2CAB64256B1B"
+    },
+    {
+      "file": "dapper-platform/apps/api/data/bookingpress-extras-reference.json",
+      "sha256": "87936955B1F0F45E42F62AF9769A4EB5DFC75D3FC19B8CECE2E87EF837919319"
+    },
+    {
+      "file": "Dapper Detailing Knowledge/99 Sources/wordpress-extras-export-evidence.json",
+      "sha256": "9107A21FC5307A155CBA2EE6030B517845F24BA789F012558A55FD142B5A6502"
+    }
+  ],
+  "pythonBoundaryTests": 8,
+  "parentServices": 28,
+  "transactionEnabled": false,
+  "categories": 12,
+  "zeroDurationReview": 228,
+  "verifiedAt": "2026-10-22T06:32:57.3573344Z",
+  "privateRecordsExported": false,
+  "exporter": "0.1.3",
+  "extras": 228,
+  "services": 79,
+  "runtimeChanged": false
+}

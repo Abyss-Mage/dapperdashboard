@@ -1,0 +1,79 @@
+<div class="page-head flex">
+	<div class="container">
+		<div class="row flex-nowrap align-center page-head-content justify-between">
+			<div class="page-title">
+				<button class="btn-reset sidebar-toggle-btn navbar-brand">
+					<svg class="icon icon-md sidebar-toggle-placeholder">
+						<use href="#icon-menu"></use>
+					</svg>
+					<span class="sidebar-toggle-icon">
+						<svg class="icon icon-md">
+							<use href="#icon-panel-left-close">
+							</use>
+						</svg>
+					</span>
+				</button>
+				<div class="flex title-area ellipsis">
+					<nav class="es-breadcrumbs navbar-breadcrumbs {{frappe.is_mobile() ? "mobile-no-divider" : ""}}" aria-label="{{ __("Breadcrumb") }}"><ol></ol></nav>
+					<button class="btn btn-default more-button hide">
+						<svg class="icon icon-sm">
+							<use href="#icon-ellipsis">
+							</use>
+						</svg>
+					</button>
+					<span class="es-badge page-indicator-pill hide" data-testid="page-status"></span>
+				</div>
+			</div>
+			<div class="align-center flex standard-items-section">
+				<button id="small-search-button" class="btn-reset search-bar navbar-modal-search-mobile hidden" aria-label="{{ __("Search") }}">
+					<span class="search-icon">
+						<svg class="icon icon-sm"><use href="#icon-search"></use></svg>
+					</span>
+				</button>
+				<div class="flex col page-actions justify-content-end {% if frappe.is_mobile() %} pl-0 {% endif %}">
+					<!-- buttons -->
+					<div class="filters flex"></div>
+					<div class="custom-actions hide hidden-xs hidden-md"></div>
+					<div class="custom-mobile-actions"></div>
+					<div class="standard-actions flex">
+						<span class="page-icon-group hide hidden-xs hidden-sm"></span>
+						<div class="menu-btn-group hide">
+							{%= frappe.ui.button.html({
+								icon: "ellipsis",
+								title: __("Menu"),
+								css_class: "icon-btn menu-more-button",
+							}) %}
+							<!-- hidden item store, not UI: add_dropdown_item writes <li><a> here
+							(the returned jQuery is public API); frappe.ui.Dropdown snapshots it
+							into menu rows on every open — see page.js build_dropdown_options -->
+							<ul class="dropdown-menu dropdown-menu-right" role="presentation"></ul>
+						</div>
+						{%= frappe.ui.button.html({ css_class: "secondary-action hide" }) %}
+						<div class="actions-btn-group hide">
+							{%= frappe.ui.button.html({
+								label: __("Actions"),
+								icon_right: "chevrons-up-down",
+								variant: "solid",
+							}) %}
+							<ul class="dropdown-menu dropdown-menu-right" role="presentation">
+							</ul>
+						</div>
+						{%= frappe.ui.button.html({ variant: "solid", css_class: "primary-action hide" }) %}
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<div class="container page-body">
+	<div class="page-toolbar hide">
+		<div class="container">
+		</div>
+	</div>
+	<div class="page-wrapper">
+		<div class="page-content">
+			<div class="workflow-button-area btn-group pull-right hide"></div>
+			<div class="clearfix"></div>
+		</div>
+	</div>
+</div>

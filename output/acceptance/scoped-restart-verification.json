@@ -1,0 +1,10 @@
+{
+  "verifiedAt": "2026-10-22T05:47:33.892598+00:00",
+  "mode": "synthetic-development-only",
+  "result": "pass",
+  "sameSessionSurvivedRestart": true,
+  "scopedStateDigestUnchanged": true,
+  "stateSha256": "09749cda421f0bd43d9e52edf3847cc508f8253720f197ece8dbf0f456c0371d",
+  "certificateAndHostnameValidation": true,
+  "browserVerified": false
+}

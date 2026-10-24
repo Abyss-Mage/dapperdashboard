@@ -1,0 +1,31 @@
+{
+  "limits": [
+    "No runtime customer account links created",
+    "No public enrollment flow",
+    "No customer booking/rebooking/payment mutation",
+    "Positive linked-account behavior verified in isolated PostgreSQL/HTTP tests only",
+    "No production or live-provider acceptance"
+  ],
+  "checks": {
+    "browserAnonymousHttpsSignIn": "PASS",
+    "nextProductionBuildTypecheck": "PASS",
+    "nativeGoPostgres": "PASS",
+    "browserDarkTheme": "PASS",
+    "browserPositiveLinkedAccount": "NOT_RUN",
+    "goVet": "PASS",
+    "browserInvalidSignIn": "PASS",
+    "encryptedSyntheticRestore": "PASS",
+    "liveHttpsGroups": 20,
+    "browserPhone390NoHorizontalOverflow": "PASS"
+  },
+  "timestamp": "2026-10-22T18:01:02.7592025Z",
+  "sourceHashes": {
+    "dapper-platform/apps/web/app/account/page.tsx": "00331E2CCE0CC81EAE443C6F1AB05051AC8C1A186D99A9E406EDA7AB31DFB6B6",
+    "dapper-platform/apps/api/internal/postgres/customer_portal_test.go": "284802FE8D3685F38399DDF237DB48680A88D0FB9E41E2D2EB972F5C5CCF713B",
+    "dapper-platform/apps/api/internal/workspace/customer_portal.go": "397E2B175C5904EDB21C3C2963FD79CCF9C2D89DFD47031816B3E1B6382C8B9E",
+    "scripts/verify-workspace-runtime.py": "9DF787ADBE31CD8FD8AB184775CBC19C52832A0EA5EB456E7D1D5E4057B83AA5",
+    "dapper-platform/apps/api/internal/postgres/customer_portal.go": "B98A646930C8F8C030F4246B494C18B1DD5B7A854CDB619031DF621067276E34",
+    "dapper-platform/apps/api/internal/postgres/customer_accounts.sql": "2BD240211DEB9201C5EA2FAFA04393B98C8A0AFC2420F5217D042C5D6DF0E0C1"
+  },
+  "mode": "synthetic-development-only"
+}

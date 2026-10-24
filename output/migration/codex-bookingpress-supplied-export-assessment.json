@@ -1,0 +1,97 @@
+{
+  "source": {
+    "path": "C:\\Users\\apexp\\Downloads\\HPQThVYzbN.txt",
+    "sha256": "e7ca26002a4a8151113f4e599272e5fe03674142ffae65b546c66f79c5d2c4fe",
+    "bytes": 19451569,
+    "format": "BookingPress JSON full export"
+  },
+  "counts": {
+    "all_active_addon": 8,
+    "bpa_wpoption_data": 1,
+    "settings": 758,
+    "customize": 410,
+    "default_daysoff": 3,
+    "default_workhours": 7,
+    "customers": 453,
+    "appointments": 584,
+    "services": 79,
+    "category": 12,
+    "bookingpress_servicesmeta": 1453,
+    "custom_fields": 11,
+    "service_workhours": 0,
+    "service_daysoff": 0,
+    "service_special_day": 0,
+    "extra_services": 228,
+    "coupon": 18,
+    "notifications": 32
+  },
+  "duplicates": {
+    "customer_ids": 0,
+    "appointment_ids": 0,
+    "service_ids": 0,
+    "normalized_customer_emails": 0,
+    "missing_customer_email": 0
+  },
+  "relationships": {
+    "appointment_customer_missing": 0,
+    "appointment_service_missing": 105,
+    "service_category_missing": 0,
+    "extra_service_missing": 0,
+    "missing_service_reference_empty_or_zero": 0,
+    "missing_service_reference_nonzero": 105
+  },
+  "legacy_status_codes": {
+    "6": 364,
+    "3": 76,
+    "4": 1,
+    "1": 143
+  },
+  "appointment_date_partition": {
+    "past": 583,
+    "on_or_after_2026_10_23": 1
+  },
+  "date_basis": "2026-10-23; source-local date only, no UTC conversion or approved timezone inference",
+  "amount_parse_flags": {},
+  "nested_payment_data_populated": 584,
+  "sensitive_structure": {
+    "credential_named_fields": 453,
+    "token_named_fields": 583,
+    "credential_named_settings_populated": 7
+  },
+  "safety": {
+    "raw_copied_to_workspace": false,
+    "database_writes": 0,
+    "legacy_mutations": 0,
+    "tokens_used": false
+  },
+  "mapping_decisions_pending": [
+    "Do not auto-merge customers by email or auto-link WordPress accounts.",
+    "Verify actual status semantics/timezones/locations/ownership.",
+    "Historical payment_data is evidence to reconcile, not a verified new Square settlement.",
+    "Secrets/tokens/password hashes must be excluded from import and public derivatives.",
+    "Approve dry-run mappings and retention before operational import."
+  ],
+  "wordpress_user_password_field_populated": 0,
+  "missing_service_snapshot_coverage": {
+    "appointments": 105,
+    "distinct_missing_service_ids": 12,
+    "with_recorded_service_name": 105,
+    "with_recorded_service_price": 105,
+    "with_recorded_duration_value_and_unit": 105
+  },
+  "timezone_field_presence": {
+    "bookingpress_appointment_timezone": 438,
+    "bookingpress_dst_timezone": 584
+  },
+  "status_source_evidence": {
+    "upstream_meanings": {
+      "1": "approved",
+      "2": "pending",
+      "6": "completed"
+    },
+    "source": "https://github.com/reputeinfosystems/bookingpress-appointment-booking/blob/main/src/api/DashboardRoutes.php",
+    "evidence": "upstream dashboard summary queries, verified2026-10-23",
+    "installed_plugin_version_match": "NOT_VERIFIED",
+    "codes_3_4": "UNVERIFIED; do not assume existing draft mapping is correct"
+  }
+}

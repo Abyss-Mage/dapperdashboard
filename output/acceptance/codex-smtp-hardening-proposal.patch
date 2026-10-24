@@ -1,0 +1,133 @@
+diff --git a/dapper-platform/apps/api/internal/email/smtp.go b/.cache/codex-integration-review/smtp/smtp.go
+index 8271850..c01f7a8 100644
+--- a/dapper-platform/apps/api/internal/email/smtp.go
++++ b/.cache/codex-integration-review/smtp/smtp.go
+@@ -4,10 +4,14 @@ import (
+ 	"context"
+ 	"crypto/rand"
+ 	"crypto/tls"
++	"crypto/x509"
+ 	"encoding/hex"
+ 	"errors"
+ 	"fmt"
++	"mime"
++	"mime/quotedprintable"
+ 	"net"
++	"net/mail"
+ 	"net/smtp"
+ 	"strings"
+ 	"time"
+@@ -30,6 +34,7 @@ type Config struct {
+ }
+ 
+ type SMTPSender struct {
++	tlsRoots           *x509.CertPool
+ 	host               string
+ 	port               int
+ 	username           string
+@@ -42,7 +47,7 @@ type SMTPSender struct {
+ func NewSMTPSender(cfg Config) (*SMTPSender, error) {
+ 	host := strings.TrimSpace(cfg.Host)
+ 	from := strings.TrimSpace(cfg.FromAddress)
+-	if host == "" || from == "" || !strings.Contains(from, "@") {
++	if cfg.InsecureSkipVerify || host == "" || !validMailbox(from) || strings.ContainsAny(cfg.FromName, "\r\n") {
+ 		return nil, ErrSMTPConfig
+ 	}
+ 	port := cfg.Port
+@@ -66,7 +71,7 @@ func NewSMTPSender(cfg Config) (*SMTPSender, error) {
+ 
+ func (s *SMTPSender) SendEmail(ctx context.Context, recipient, subject, bodyHTML, bodyText string) (string, error) {
+ 	recipient = strings.TrimSpace(recipient)
+-	if recipient == "" || !strings.Contains(recipient, "@") {
++	if !validMailbox(recipient) || strings.ContainsAny(subject, "\r\n") {
+ 		return "", ErrInvalidEmail
+ 	}
+ 
+@@ -80,9 +85,9 @@ func (s *SMTPSender) SendEmail(ctx context.Context, recipient, subject, bodyHTML
+ 	boundary := fmt.Sprintf("=_dapper_%d_%s", time.Now().UnixNano(), hex.EncodeToString(nonce[:4]))
+ 
+ 	var msg strings.Builder
+-	msg.WriteString(fmt.Sprintf("From: \"%s\" <%s>\r\n", s.fromName, s.fromAddress))
++	msg.WriteString(fmt.Sprintf("From: %s\r\n", (&mail.Address{Name: s.fromName, Address: s.fromAddress}).String()))
+ 	msg.WriteString(fmt.Sprintf("To: <%s>\r\n", recipient))
+-	msg.WriteString(fmt.Sprintf("Subject: %s\r\n", subject))
++	msg.WriteString(fmt.Sprintf("Subject: %s\r\n", mime.QEncoding.Encode("UTF-8", subject)))
+ 	msg.WriteString(fmt.Sprintf("Message-ID: %s\r\n", messageID))
+ 	msg.WriteString(fmt.Sprintf("Date: %s\r\n", time.Now().UTC().Format(time.RFC1123Z)))
+ 	msg.WriteString("MIME-Version: 1.0\r\n")
+@@ -92,16 +97,16 @@ func (s *SMTPSender) SendEmail(ctx context.Context, recipient, subject, bodyHTML
+ 	// Text Part
+ 	msg.WriteString(fmt.Sprintf("--%s\r\n", boundary))
+ 	msg.WriteString("Content-Type: text/plain; charset=\"UTF-8\"\r\n")
+-	msg.WriteString("Content-Transfer-Encoding: 7bit\r\n\r\n")
+-	msg.WriteString(bodyText)
++	msg.WriteString("Content-Transfer-Encoding: quoted-printable\r\n\r\n")
++	msg.WriteString(encodeBody(bodyText))
+ 	msg.WriteString("\r\n\r\n")
+ 
+ 	// HTML Part
+ 	if bodyHTML != "" {
+ 		msg.WriteString(fmt.Sprintf("--%s\r\n", boundary))
+ 		msg.WriteString("Content-Type: text/html; charset=\"UTF-8\"\r\n")
+-		msg.WriteString("Content-Transfer-Encoding: 7bit\r\n\r\n")
+-		msg.WriteString(bodyHTML)
++		msg.WriteString("Content-Transfer-Encoding: quoted-printable\r\n\r\n")
++		msg.WriteString(encodeBody(bodyHTML))
+ 		msg.WriteString("\r\n\r\n")
+ 	}
+ 
+@@ -114,19 +119,33 @@ func (s *SMTPSender) SendEmail(ctx context.Context, recipient, subject, bodyHTML
+ 		return "", fmt.Errorf("%w: connection failed: %v", ErrSMTPSend, err)
+ 	}
+ 	defer conn.Close()
++	deadline := time.Now().Add(30 * time.Second)
++	if requested, ok := ctx.Deadline(); ok && requested.Before(deadline) {
++		deadline = requested
++	}
++	if err = conn.SetDeadline(deadline); err != nil {
++		return "", ErrSMTPSend
++	}
++	stopCancel := context.AfterFunc(ctx, func() { _ = conn.Close() })
++	defer stopCancel()
+ 
+ 	c, err := smtp.NewClient(conn, s.host)
+ 	if err != nil {
+ 		return "", fmt.Errorf("%w: smtp client failed: %v", ErrSMTPSend, err)
+ 	}
+-	defer c.Quit()
++	defer c.Close()
+ 
+ 	tlsConfig := &tls.Config{
+ 		ServerName:         s.host,
++		RootCAs:            s.tlsRoots,
++		MinVersion:         tls.VersionTLS12,
+ 		InsecureSkipVerify: s.insecureSkipVerify,
+ 	}
+ 
+-	if ok, _ := c.Extension("STARTTLS"); ok {
++	if ok, _ := c.Extension("STARTTLS"); !ok {
++		return "", fmt.Errorf("%w: STARTTLS required", ErrSMTPSend)
++	}
++	{
+ 		if err = c.StartTLS(tlsConfig); err != nil {
+ 			return "", fmt.Errorf("%w: starttls failed: %v", ErrSMTPSend, err)
+ 		}
+@@ -160,3 +179,18 @@ func (s *SMTPSender) SendEmail(ctx context.Context, recipient, subject, bodyHTML
+ 
+ 	return providerRef, nil
+ }
++
++func validMailbox(value string) bool {
++	if strings.ContainsAny(value, "\r\n") {
++		return false
++	}
++	parsed, err := mail.ParseAddress(value)
++	return err == nil && parsed.Address == value && parsed.Name == ""
++}
++func encodeBody(value string) string {
++	var out strings.Builder
++	writer := quotedprintable.NewWriter(&out)
++	_, _ = writer.Write([]byte(value))
++	_ = writer.Close()
++	return out.String()
++}
