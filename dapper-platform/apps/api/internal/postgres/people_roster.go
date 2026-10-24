@@ -52,7 +52,7 @@ LEFT JOIN member_mfa mfa ON mfa.principal_id=p.id
 LEFT JOIN employee_worksite_assignments w ON w.principal_id=p.id AND w.organization_id=m.organization_id
 LEFT JOIN locations l ON l.id=w.location_id AND l.organization_id=m.organization_id
 LEFT JOIN dealership_accounts da ON da.id=w.dealership_id AND da.organization_id=w.organization_id AND da.location_id=w.location_id
-WHERE m.organization_id=$1
+WHERE m.organization_id=$1 AND p.external_subject NOT LIKE 'system:%'
 ORDER BY c.email, p.id LIMIT 200`, org, employeeAckTrack)
 	if err != nil {
 		return nil, err

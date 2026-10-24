@@ -133,6 +133,8 @@ func NewHandlerWithFullServices(store *postgres.Store, origin string, invitation
 	registerAccessManagementRoutes(mux, store)
 	registerInvoiceIssuanceRoutes(mux, store)
 	registerInvoiceTemplateRoutes(mux, store)
+	registerRuleAvailabilityRoutes(mux, store)
+	registerPublicBookingRoutes(mux, store)
 	registerMemberInvitationRoutes(mux, store, invitations, emailSender)
 	registerCustomerAccountManagementRoutes(mux, store)
 	registerQuoteRoutes(mux, store, sqClient)

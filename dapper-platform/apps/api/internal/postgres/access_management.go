@@ -189,7 +189,7 @@ func (s *Store) ManagedAccess(ctx context.Context, actor, org string) (AccessMan
 	if err = accessReadGrant(ctx, tx, actor, org); err != nil {
 		return AccessManagement{}, err
 	}
-	rows, err := tx.Query(ctx, `SELECT p.id::text,coalesce(c.email,''),p.active FROM organization_memberships m JOIN principals p ON p.id=m.principal_id LEFT JOIN password_credentials c ON c.principal_id=p.id WHERE m.organization_id=$1 ORDER BY c.email,p.id LIMIT 100`, org)
+	rows, err := tx.Query(ctx, `SELECT p.id::text,coalesce(c.email,''),p.active FROM organization_memberships m JOIN principals p ON p.id=m.principal_id LEFT JOIN password_credentials c ON c.principal_id=p.id WHERE m.organization_id=$1 AND p.external_subject NOT LIKE 'system:%' ORDER BY c.email,p.id LIMIT 100`, org)
 	if err != nil {
 		return AccessManagement{}, err
 	}
