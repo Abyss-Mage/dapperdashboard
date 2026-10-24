@@ -22,6 +22,10 @@ func invoiceFailure(w http.ResponseWriter, err error) {
 		reply(w, 409, map[string]string{"error": "Invoice changed since review. Reload the invoice and review the current draft before saving or issuing."})
 		return
 	}
+	if errors.Is(err, postgres.ErrInvoiceAlreadyRaised) {
+		reply(w, 409, map[string]string{"error": "This booking already has an invoice. Open it instead of creating another; void it first only if it was raised by mistake."})
+		return
+	}
 	if errors.Is(err, postgres.ErrInvoiceIssuer) {
 		reply(w, 409, map[string]string{"error": "An explicit invoice issuer, location binding and available numbering sequence are required before issuance"})
 		return

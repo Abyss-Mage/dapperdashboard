@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FileText, Plus, Trash2 } from 'lucide-react';
 import styles from './employee.module.css';
+import { printInvoiceDocument, usePrintTemplate, type PrintInvoice } from './InvoicePrint';
 
 type Booking = { id: string; customerName: string; serviceName: string; bookingTime: string; status: string; addons: { name: string }[] };
 type Invoice = { id: string; invoiceNumber: string; status: string; totalCents: number; dueCents: number; subtotalCents: number; taxCents: number; customerName: string; bookingId?: string; createdAt: string };
@@ -47,6 +48,7 @@ export default function EmployeeInvoices({ bookings, canCreate, canIssue, timezo
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const printTemplate = usePrintTemplate('/api/v1/employee/invoice-template');
 
   const load = useCallback(async () => {
     try {
@@ -104,6 +106,17 @@ export default function EmployeeInvoices({ bookings, canCreate, canIssue, timezo
     }
   }
 
+  async function print(inv: Invoice) {
+    setError('');
+    try {
+      const found = inv.bookingId ? ((await readJson(await fetch(`/api/v1/employee/bookings/${inv.bookingId}/invoices`, { cache: 'no-store' }))).items as (Invoice & PrintInvoice)[]).find((x) => x.id === inv.id) : undefined;
+      if (!found) throw new Error('This invoice could not be opened for printing.');
+      printInvoiceDocument(found, printTemplate);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'This invoice could not be opened for printing.');
+    }
+  }
+
   async function issue(inv: Invoice) {
     setBusy(true);
     setError('');
@@ -124,7 +137,8 @@ export default function EmployeeInvoices({ bookings, canCreate, canIssue, timezo
     const f = filter === 'all' || (filter === 'draft' && i.status === 'draft') || (filter === 'open' && (i.status === 'issued' || i.status === 'partially_paid')) || (filter === 'paid' && i.status === 'paid');
     return f && (!q || i.invoiceNumber.toLowerCase().includes(q) || i.customerName.toLowerCase().includes(q));
   });
-  const canSave = lines.some((l) => l.description.trim() && cents(l.price) > 0 && Number(l.quantity) >= 1);
+  const alreadyRaised = !!prefill && prefill.existing.some((x) => x.status !== 'void');
+  const canSave = !alreadyRaised && lines.some((l) => l.description.trim() && cents(l.price) > 0 && Number(l.quantity) >= 1);
 
   return (
     <section className={styles.invPage}>
@@ -147,8 +161,8 @@ export default function EmployeeInvoices({ bookings, canCreate, canIssue, timezo
               {sortedBookings.map((b) => <option key={b.id} value={b.id}>{bookingLabel(b)}</option>)}
             </select>
           </label>
-          {prefill && prefill.existing.length > 0 && <p className={styles.help}>This booking already has: {prefill.existing.map((x) => `${x.invoiceNumber} (${x.status})`).join(', ')}.</p>}
-          {prefill && (
+          {prefill && prefill.existing.length > 0 && <p className={alreadyRaised ? styles.error : styles.help} role={alreadyRaised ? 'alert' : undefined}>{alreadyRaised ? 'This booking already has an invoice, so a second one cannot be raised: ' : 'Earlier invoices for this booking: '}{prefill.existing.map((x) => `${x.invoiceNumber.startsWith('DRAFT-') ? 'Draft' : x.invoiceNumber} (${x.status.replace('_', ' ')})`).join(', ')}.{alreadyRaised ? ' Open it from the list below (void it first only if it was raised by mistake).' : ''}</p>}
+          {prefill && !alreadyRaised && (
             <>
               <div className={styles.invLines}>
                 <div className={styles.invLineHead} aria-hidden="true"><span>Item</span><span>Qty</span><span>Price</span><span /></div>
@@ -193,6 +207,7 @@ export default function EmployeeInvoices({ bookings, canCreate, canIssue, timezo
             <div className={styles.invAmount}><strong>{money(i.totalCents)}</strong>{i.dueCents > 0 && i.status !== 'draft' && <span>{money(i.dueCents)} due</span>}</div>
             <div className={styles.invRowActions}>
               {i.status === 'draft' && canIssue && <button type="button" className={styles.invSecondary} disabled={busy} onClick={() => void issue(i)}>Issue</button>}
+              {i.status !== 'draft' && i.status !== 'void' && i.bookingId && <button type="button" className={styles.invSecondary} onClick={() => void print(i)}>Print</button>}
               {(i.status === 'issued' || i.status === 'partially_paid') && i.bookingId && <button type="button" className={styles.invPrimary} onClick={() => onPay(i.bookingId as string)}>Take payment</button>}
             </div>
           </li>

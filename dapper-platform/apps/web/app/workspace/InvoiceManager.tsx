@@ -3,6 +3,7 @@ import {useCallback, useEffect, useRef, useState} from 'react';
 import InvoiceDraftEditor from './InvoiceDraftEditor';
 import InvoiceDraftHistory from './InvoiceDraftHistory';
 import SquareCardPayment from './SquareCardPayment';
+import { printInvoiceDocument, usePrintTemplate } from './InvoicePrint';
 
 type InvoiceItem = {
   id: string;
@@ -87,6 +88,7 @@ export default function InvoiceManager({
   canRecordPayment: boolean;
   canIssue: boolean;
 }) {
+  const printTemplate = usePrintTemplate(`${base.split('/locations/')[0]}/invoice-template`);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -805,8 +807,8 @@ export default function InvoiceManager({
                 )}
               </div>
               <div style={{display: 'flex', gap: '0.5rem'}}>
-                <button type="button" className="secondary" onClick={() => window.print()}>
-                  Print document
+                <button type="button" className="secondary" onClick={() => printInvoiceDocument(activeInvoice, printTemplate)}>
+                  Print invoice
                 </button>
                 <button type="button" className="primary" onClick={() => setActiveInvoice(null)}>
                   Done

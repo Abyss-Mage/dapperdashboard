@@ -126,6 +126,7 @@ func TestPostgresScopedPersistence(t *testing.T) {
 	}
 	verifyFranchiseTaxes(t, ctx, s, scopeA, scopeB)
 	verifyInvoiceTaxCalculation(t, ctx, s, scopeA)
+	verifyInvoicePrintTemplate(t, ctx, s, scopeA, scopeB)
 	// Remove the temporary role so later membership clean-up in this test is unaffected.
 	for _, q := range []string{
 		`DELETE FROM member_role_assignments WHERE role_id IN (SELECT id FROM roles WHERE name='Synthetic tax admin')`,
@@ -152,6 +153,7 @@ func TestPostgresScopedPersistence(t *testing.T) {
 	verifyInvoiceIssuance(t, ctx, s, scopeA, scopeB, c.ID)
 	verifyInvoiceVoid(t, ctx, s, scopeA, scopeB, c.ID)
 	verifyInvoiceDrafts(t, ctx, s, scopeA, scopeB, c.ID)
+	verifyOneInvoicePerBooking(t, ctx, s, scopeA, c.ID)
 	verifySOPDocuments(t, ctx, s, scopeA, scopeB)
 	if err != nil || len(own) != 1 || own[0].ID != c.ID {
 		t.Fatal("own scoped customer missing")

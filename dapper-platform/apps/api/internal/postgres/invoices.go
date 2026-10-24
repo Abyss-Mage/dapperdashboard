@@ -19,6 +19,7 @@ var (
 	ErrInvoiceNotFound       = errors.New("invoice not found in this scope")
 	ErrInvoiceInput          = errors.New("valid customer, invoice number and at least one item required")
 	ErrInvoiceStatusConflict = errors.New("invoice status does not allow this operation")
+	ErrInvoiceAlreadyRaised  = errors.New("this booking already has an invoice")
 	ErrPaymentInput          = errors.New("valid payment amount and method required")
 	ErrPaymentProvider       = errors.New("provider payment requires verified provider confirmation")
 	ErrPaymentRequest        = errors.New("payment request key conflicts with an earlier payment")
@@ -199,6 +200,24 @@ func (s *Store) CreateInvoice(ctx context.Context, scope Scope, input CreateInvo
 	}
 	if !customerExists {
 		return Invoice{}, ErrInvoiceInput
+	}
+
+	if input.BookingID != nil {
+		// Serialize invoice creation per booking, then refuse a second invoice while one that is not void exists.
+		var locked string
+		if err := tx.QueryRow(ctx, `SELECT id::text FROM bookings WHERE organization_id=$1 AND location_id=$2 AND id=$3 FOR UPDATE`, scope.OrganizationID, scope.LocationID, *input.BookingID).Scan(&locked); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return Invoice{}, ErrInvoiceInput
+			}
+			return Invoice{}, err
+		}
+		var raised bool
+		if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM invoices WHERE organization_id=$1 AND location_id=$2 AND booking_id=$3 AND status<>'void')`, scope.OrganizationID, scope.LocationID, *input.BookingID).Scan(&raised); err != nil {
+			return Invoice{}, err
+		}
+		if raised {
+			return Invoice{}, ErrInvoiceAlreadyRaised
+		}
 	}
 
 	var newID string

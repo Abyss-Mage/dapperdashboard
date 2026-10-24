@@ -22,6 +22,7 @@ import CustomerBookingRequestList from '../account/CustomerBookingRequestList';
 import InvoiceManager from '../workspace/InvoiceManager';
 import SOPCompliancePanel from '../workspace/SOPCompliancePanel';
 import InvoiceIssuerEditor from '../workspace/InvoiceIssuerEditor';
+import InvoiceTemplateEditor from '../workspace/InvoiceTemplateEditor';
 import SquareMerchantPanel from '../workspace/SquareMerchantPanel';
 import { MfaSetup } from '../workspace/AccountSecurity';
 import SchedulingEditor from '../workspace/SchedulingEditor';
@@ -769,6 +770,12 @@ export default function OwnerDashboardClient() {
                 .filter((org) => org.id === scope.organizationId && org.actions.includes('invoices.configure'))
                 .map((org) => (
                   <InvoiceIssuerEditor key={'issuer-' + org.id} organizationId={org.id} revision={accessRevision} />
+                ))}
+
+              {organizations
+                .filter((org) => org.id === scope.organizationId && org.actions.includes('invoices.configure'))
+                .map((org) => (
+                  <InvoiceTemplateEditor key={'template-' + org.id} organizationId={org.id} revision={accessRevision} />
                 ))}
 
               {organizations.some((org) => org.id === scope.organizationId && org.actions.includes('invoices.configure')) && scope.actions.includes('payments.read') && (

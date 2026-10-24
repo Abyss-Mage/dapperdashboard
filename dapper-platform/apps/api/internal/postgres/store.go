@@ -178,6 +178,12 @@ var bookingCapacityWorkingTimeSchema string
 //go:embed service_prices.sql
 var servicePricesSchema string
 
+//go:embed invoice_print_template.sql
+var invoicePrintTemplateSchema string
+
+//go:embed invoice_one_per_booking.sql
+var invoiceOnePerBookingSchema string
+
 //go:embed employee_uploads.sql
 var employeeUploadsSchema string
 
@@ -196,7 +202,7 @@ type migration struct {
 }
 
 func migrations() []migration {
-	return []migration{{1, schema}, {2, authorizationSchema}, {3, vehicleGrantSchema}, {4, sessionSchema}, {5, sessionInvalidationSchema}, {6, oidcIdentitySchema}, {7, passwordCredentialSchema}, {8, jobSchema}, {9, serviceSchema}, {10, franchiseSchema}, {11, jobServiceSchema}, {12, jobAddonSchema}, {13, reservationSchema}, {14, reservationReleaseSchema}, {15, schedulingRuleSchema}, {16, reservationRuleSchema}, {17, reservationHistorySchema}, {18, schedulingReadSchema}, {19, jobContributorSchema}, {20, centralCatalogueSchema}, {21, attendanceSchema}, {22, bookingSchema}, {23, invoiceSchema}, {24, sopDocumentSchema}, {25, bookingVehicleOwnershipSchema}, {26, customerAccountSchema}, {27, bookingJobRequestSchema}, {28, initialAdministratorSchema}, {29, accessGrantEventsSchema}, {30, invoiceIssuanceSchema}, {31, invoiceDraftRevisionSchema}, {32, memberInvitationSchema}, {33, customerAccountManagementSchema}, {34, bookingCapacityRequestSchema}, {35, bookingRescheduleRequestSchema}, {36, bookingOfferSchema}, {37, customerBookingRequestSchema}, {38, scopedQuotationSchema}, {39, dealershipB2BSchema}, {40, marketingPopupsSchema}, {41, paymentRefundAccountingSchema}, {43, publicContentSchema}, {44, rolesAndScopedAssignmentsSchema}, {45, centralServiceLinksSchema}, {46, employeeWorkspaceSchema}, {47, gpsTrackingSchema}, {48, squarePaymentIntentsSchema}, {49, employeeUploadsSchema}, {50, employeeUploadViewsSchema}, {51, employeeUploadBookingSchema}, {52, employeeWorksiteLocationSchema}, {53, franchiseSiteSchema}, {54, employeeUploadRetentionSchema}, {55, accountSecuritySchema}, {56, schedulingWeeklyHoursSchema}, {57, franchiseTaxesSchema}, {58, schedulingWorkingTimeSchema}, {59, bookingCapacityWorkingTimeSchema}, {60, servicePricesSchema}}
+	return []migration{{1, schema}, {2, authorizationSchema}, {3, vehicleGrantSchema}, {4, sessionSchema}, {5, sessionInvalidationSchema}, {6, oidcIdentitySchema}, {7, passwordCredentialSchema}, {8, jobSchema}, {9, serviceSchema}, {10, franchiseSchema}, {11, jobServiceSchema}, {12, jobAddonSchema}, {13, reservationSchema}, {14, reservationReleaseSchema}, {15, schedulingRuleSchema}, {16, reservationRuleSchema}, {17, reservationHistorySchema}, {18, schedulingReadSchema}, {19, jobContributorSchema}, {20, centralCatalogueSchema}, {21, attendanceSchema}, {22, bookingSchema}, {23, invoiceSchema}, {24, sopDocumentSchema}, {25, bookingVehicleOwnershipSchema}, {26, customerAccountSchema}, {27, bookingJobRequestSchema}, {28, initialAdministratorSchema}, {29, accessGrantEventsSchema}, {30, invoiceIssuanceSchema}, {31, invoiceDraftRevisionSchema}, {32, memberInvitationSchema}, {33, customerAccountManagementSchema}, {34, bookingCapacityRequestSchema}, {35, bookingRescheduleRequestSchema}, {36, bookingOfferSchema}, {37, customerBookingRequestSchema}, {38, scopedQuotationSchema}, {39, dealershipB2BSchema}, {40, marketingPopupsSchema}, {41, paymentRefundAccountingSchema}, {43, publicContentSchema}, {44, rolesAndScopedAssignmentsSchema}, {45, centralServiceLinksSchema}, {46, employeeWorkspaceSchema}, {47, gpsTrackingSchema}, {48, squarePaymentIntentsSchema}, {49, employeeUploadsSchema}, {50, employeeUploadViewsSchema}, {51, employeeUploadBookingSchema}, {52, employeeWorksiteLocationSchema}, {53, franchiseSiteSchema}, {54, employeeUploadRetentionSchema}, {55, accountSecuritySchema}, {56, schedulingWeeklyHoursSchema}, {57, franchiseTaxesSchema}, {58, schedulingWorkingTimeSchema}, {59, bookingCapacityWorkingTimeSchema}, {60, servicePricesSchema}, {61, invoicePrintTemplateSchema}, {62, invoiceOnePerBookingSchema}}
 }
 
 // ValidateSchema is read-only. Runtime startup never applies migrations.
