@@ -579,12 +579,12 @@ export default function BookingManager({
 
       {reschedulingBooking && <BookingRescheduler base={base} booking={reschedulingBooking} onSaved={loadBookings} onClose={() => setReschedulingBooking(null)}/>}
       {cancellingBooking && (
-        <dialog ref={cancellationDialog} aria-labelledby="booking-cancel-title" onCancel={(event) => {event.preventDefault(); if (!busy) closeCancellation();}} style={{maxWidth:'min(32rem, calc(100vw - 2rem))',padding:'1.5rem',background:'var(--panel, #fff)',color:'var(--text, var(--text, #1a0b0d))',border:'1px solid var(--border, #f0dcde)',borderRadius:'12px'}}>
+        <dialog ref={cancellationDialog} aria-labelledby="booking-cancel-title" onCancel={(event) => {event.preventDefault(); if (!busy) closeCancellation();}} style={{maxWidth:'min(32rem, calc(100vw - 2rem))',padding:'1.5rem',background:'var(--surface, #fff)',color:'var(--text, var(--text, #1a0b0d))',border:'1px solid var(--border, #f0dcde)',borderRadius:'12px'}}>
           <form onSubmit={(event) => {event.preventDefault(); updateStatus(cancellingBooking.id, 'cancelled', cancellationReason);}}>
             <h3 id="booking-cancel-title">Cancel booking</h3>
             <p>{cancellingBooking.customerName} · {cancellingBooking.serviceName}</p>
-            <p>This cancels the booking and releases its reserved capacity. Payment and work order changes require their own actions.</p>
-            <label>Cancellation reason<textarea autoFocus maxLength={2000} value={cancellationReason} disabled={busy} onChange={(event) => setCancellationReason(event.target.value)} style={{display:'block',width:'100%',boxSizing:'border-box'}} /></label>
+            <p>This cancels the booking and frees up the time. Payments and jobs are not changed automatically.</p>
+            <label>Why is it being cancelled? (optional)<textarea autoFocus maxLength={2000} value={cancellationReason} disabled={busy} onChange={(event) => setCancellationReason(event.target.value)} style={{display:'block',width:'100%',boxSizing:'border-box'}} /></label>
             {error && <p ref={cancellationError} role="alert" tabIndex={-1}>{error}</p>}
             <div style={{display:'flex',gap:'.75rem',marginTop:'1rem',flexWrap:'wrap'}}>
               <button type="button" className="secondary" disabled={busy} onClick={closeCancellation}>Keep booking</button>
@@ -610,7 +610,7 @@ export default function BookingManager({
         >
           <div
             style={{
-              background: 'var(--panel)',
+              background: 'var(--surface)',
               padding: '1.5rem',
               borderRadius: '8px',
               maxWidth: '550px',

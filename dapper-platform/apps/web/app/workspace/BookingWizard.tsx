@@ -254,6 +254,7 @@ export default function BookingWizard(p: WizardProps) {
         <p className={styles.kicker}>Step {step + 1} of {steps.length} · {name}</p>
         <div className={styles.bar} aria-hidden="true">{steps.map((_, i) => <i key={i} className={i <= step ? styles.on : ''} />)}</div>
       </div>
+      <div className={styles.layout}>
       <section className={styles.panel}>
         {name === 'Welcome' && <>
           <h2 ref={topRef} tabIndex={-1} className={styles.title}>Have you booked with us before?</h2>
@@ -362,8 +363,8 @@ export default function BookingWizard(p: WizardProps) {
               {found && (found.length ? <div className={styles.choices} style={{ marginTop: 8 }}>{found.map((c) => <button key={c.id} type="button" className={styles.choice} onClick={() => { setMe({ id: c.id, name: c.name, email: c.email, phone: c.phone }); setFound(null); }}><span><strong>{c.name}</strong><small>{c.email || 'No email'} · {c.phone}</small></span></button>)}</div> : <p className={styles.help}>No customer with that number.</p>)}</div>}
             <label className={`${styles.field} ${styles.wide}`}>Notes (optional)<textarea rows={3} maxLength={1000} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything we should know?" /></label>
           </div>
-          <div><strong>Were they referred?</strong>
-            <div className={styles.seg} style={{ marginTop: 8 }}><button type="button" aria-pressed={referred} onClick={() => setReferred(true)}>Yes</button><button type="button" aria-pressed={!referred} onClick={() => setReferred(false)}>No</button></div>
+          <div><div className={styles.ask}><strong>Were they referred?</strong>
+            <div className={styles.seg}><button type="button" aria-pressed={referred} onClick={() => setReferred(true)}>Yes</button><button type="button" aria-pressed={!referred} onClick={() => setReferred(false)}>No</button></div></div>
             {referred && <div className={styles.fields} style={{ marginTop: 10 }}>
               <label className={styles.field}>Who referred them?<input value={ref.name} onChange={(e) => setRef({ ...ref, name: e.target.value })} /></label>
               <label className={styles.field}>Their phone number<input type="tel" value={ref.phone} onChange={(e) => setRef({ ...ref, phone: e.target.value })} /></label>
@@ -387,6 +388,19 @@ export default function BookingWizard(p: WizardProps) {
             : <button type="button" className={styles.next} disabled={!stepOk || busy} onClick={() => void save()}>{busy ? (p.deposit && payMethod === 'card' ? 'Taking deposit…' : 'Saving…') : p.deposit ? (payMethod === 'card' ? `Pay ${money(deposit)} and book` : 'Book it') : 'Save booking'}</button>}
         </div>
       </section>
+      <aside className={styles.side} aria-label="Your booking so far">
+        <h3>Your booking</h3>
+        <dl>
+          <div><dt>Service</dt><dd>{group || 'Not chosen yet'}</dd></div>
+          {where !== 'shop' && <div><dt>Where</dt><dd>{where === 'mobile' ? 'We come to them' : 'Valet'}</dd></div>}
+          {vehicle && <div><dt>Vehicle</dt><dd>{vehicle}</dd></div>}
+          <div><dt>Package</dt><dd>{rule ? parsed.get(rule.id)!.pack : 'Not chosen yet'}</dd></div>
+          {picked.length > 0 && <div><dt>Extras</dt><dd>{picked.map((id) => extras.find((e) => e.serviceId === id)?.name).filter(Boolean).join(', ')}</dd></div>}
+          {start && <div><dt>When</dt><dd>{new Date(zoned(start, tz).date + 'T12:00:00').toLocaleDateString('en-CA', { weekday: 'short', month: 'short', day: 'numeric' })} at {slotLabel(start, tz)}</dd></div>}
+        </dl>
+        {rule && <div className={styles.sideTotal}><span>{taxes ? 'Total with tax' : 'Subtotal'}</span><strong>{money(taxes ? total : subtotal)}</strong></div>}
+      </aside>
+      </div>
     </div>
   );
 }

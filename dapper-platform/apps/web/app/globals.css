@@ -15,6 +15,7 @@
   --muted: var(--text-muted);
   --border-color: var(--border);
   --panel-subtle: var(--surface-alt);
+  --panel: var(--surface); --bg-subtle: var(--surface-alt); --border-subtle: var(--border); --card-bg: var(--surface); --foreground: var(--text); --text-main: var(--text);
   --brand-primary: var(--primary);
   --danger: var(--error);
 }
@@ -152,3 +153,12 @@ select{font:inherit}.vehicle-form{max-width:650px;padding-top:12px}.form-field s
 .booking-reschedule p, .booking-reschedule h3 { margin: 0; overflow-wrap: anywhere; }
 .booking-reschedule { max-height: calc(100dvh - 2rem); box-sizing: border-box; overflow: auto; }
 .booking-reschedule::backdrop { background: rgb(0 0 0 / 35%); }
+
+/* Dialogs and the controls inside them follow the theme (light and dark). */
+dialog{background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:18px}
+dialog::backdrop{background:rgba(8,10,13,.62);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+dialog :is(h1,h2,h3,h4,p,label,legend,small,span){color:inherit}
+dialog label{display:grid;gap:6px;font-weight:650;font-size:.9rem}
+dialog :is(input:not([type=checkbox]):not([type=radio]),select,textarea){width:100%;background:var(--surface-alt);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:.7rem .85rem;font:inherit;font-size:16px;min-height:46px}
+dialog :is(input,select,textarea)::placeholder{color:var(--text-muted)}
+dialog :is(input,select,textarea):focus-visible{outline:2px solid var(--primary);outline-offset:1px}
