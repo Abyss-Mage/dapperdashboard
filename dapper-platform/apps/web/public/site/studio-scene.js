@@ -103,7 +103,7 @@ function splitSurface(geo,accept){
  return [yes,no].map(list=>{if(!list.length)return null;const out=new THREE.BufferGeometry();for(const [key,a]of Object.entries(geo.attributes)){const values=new Float32Array(list.length*a.itemSize);list.forEach((index,i)=>{for(let k=0;k<a.itemSize;k++)values[i*a.itemSize+k]=a.getComponent(index,k)});out.setAttribute(key,new THREE.BufferAttribute(values,a.itemSize));}return out;});
 }
 async function loadCar(){
- const loader=new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);const asset=await loader.loadAsync('./assets/three/porsche-carrera-gt.glb');const model=asset.scene;model.updateMatrixWorld(true);
+ const loader=new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);const asset=await loader.loadAsync(new URL('./assets/three/porsche-carrera-gt.glb',import.meta.url).href);const model=asset.scene;model.updateMatrixWorld(true);
  const box=new THREE.Box3().setFromObject(model),sz=box.getSize(new THREE.Vector3()),center=box.getCenter(new THREE.Vector3()),scale=4.7/Math.max(sz.x,sz.z);model.scale.multiplyScalar(scale);model.position.set(-center.x*scale,-box.min.y*scale,-center.z*scale);model.updateMatrixWorld(true);
  car=new THREE.Group();scene.add(car);door=new THREE.Group();door.position.set(.78,.50,.67);car.add(door);
  const cache=new Map(),wheelBuckets=new Map(),tyreGroups=new Set();
