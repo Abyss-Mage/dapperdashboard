@@ -5,7 +5,8 @@ import Link from 'next/link';
 import styles from './owner.module.css';
 import ConfirmDialog from '../workspace/ConfirmDialog';
 
-type Service = { id: string; name: string; kind: string; parentId: string | null; version: number; archived: boolean; centralServiceId?: string | null };
+type Service = { id: string; name: string; kind: string; parentId: string | null; version: number; archived: boolean; centralServiceId?: string | null; priceCents?: number | null };
+const money = (c: number) => `$${(c / 100).toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 type Filter = 'active' | 'main' | 'addon' | 'archived';
 type Target = { action: 'delete' | 'archive'; item: Service };
 
@@ -27,6 +28,7 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
   const [name, setName] = useState('');
   const [kind, setKind] = useState('main');
   const [parentId, setParentId] = useState('');
+  const [price, setPrice] = useState('');
   const [target, setTarget] = useState<Target | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -72,6 +74,7 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
     setName(next === 'new' ? '' : next.name);
     setKind(next === 'new' ? 'main' : next.kind);
     setParentId(next === 'new' ? '' : next.parentId ?? '');
+    setPrice(next === 'new' || next.priceCents == null ? '' : (next.priceCents / 100).toFixed(2));
   }
 
   async function run(fn: () => Promise<string>) {
@@ -91,7 +94,7 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
     e.preventDefault();
     const was = editing;
     void run(async () => {
-      await readJson(await fetch(was === 'new' || !was ? listUrl : `${listUrl}/${was.id}`, send(was === 'new' || !was ? 'POST' : 'PUT', { name: name.trim(), kind, parentId: kind === 'addon' ? parentId : null, ...(was && was !== 'new' ? { version: was.version } : {}) })));
+      await readJson(await fetch(was === 'new' || !was ? listUrl : `${listUrl}/${was.id}`, send(was === 'new' || !was ? 'POST' : 'PUT', { name: name.trim(), kind, parentId: kind === 'addon' ? parentId : null, ...(mode === 'central' ? { priceCents: price.trim() === '' ? null : Math.round(Number(price) * 100) } : {}), ...(was && was !== 'new' ? { version: was.version } : {}) })));
       setEditing(null);
       return `Service “${name.trim()}” saved.`;
     });
@@ -108,7 +111,7 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
       <div className={styles.svcMain}>
         <strong>{s.name}</strong>
         <span className={styles.personSub}>
-          {s.kind === 'addon' ? `Add-on to ${nameOf(s.parentId)}` : 'Main service'} · revision {s.version}
+          {s.kind === 'addon' ? `Add-on to ${nameOf(s.parentId)}` : 'Main service'} · {s.priceCents != null ? `${money(s.priceCents)} before tax` : 'no price set'} · revision {s.version}
         </span>
       </div>
       <div className={styles.svcTags}>
@@ -117,7 +120,7 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
       </div>
       {canManage && !s.archived && (
         <div className={styles.svcActions}>
-          {!s.centralServiceId && <button type="button" className="secondary" disabled={busy || !!editing} onClick={() => open(s)}>Edit</button>}
+          {(mode === 'central' || !s.centralServiceId) && <button type="button" className="secondary" disabled={busy || !!editing} onClick={() => open(s)}>Edit</button>}
           <button type="button" className="secondary" disabled={busy} onClick={() => setTarget({ action: 'archive', item: s })}>Archive</button>
           <button type="button" className="secondary" disabled={busy} onClick={() => setTarget({ action: 'delete', item: s })}>Delete</button>
         </div>
@@ -149,6 +152,11 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
                 <option value="addon">Add-on</option>
               </select>
             </label>
+            {mode === 'central' && (
+              <label className="form-field">Price before tax (CAD)
+                <input type="number" inputMode="decimal" min="0" step="0.01" placeholder="Not set" value={price} onChange={(e) => setPrice(e.target.value)} disabled={busy} />
+              </label>
+            )}
             {kind === 'addon' && (
               <label className="form-field">Belongs to
                 <select required value={parentId} onChange={(e) => setParentId(e.target.value)} disabled={busy}>
@@ -159,10 +167,10 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
             )}
           </div>
           <div className={styles.rowBetween}>
-            <button className="primary" disabled={busy || name.trim().length < 2 || (kind === 'addon' && !parentId)}>{busy ? 'Saving…' : editing === 'new' ? 'Add service' : 'Save revision'}</button>
+            <button className="primary" disabled={busy || name.trim().length < 2 || (kind === 'addon' && !parentId) || (price.trim() !== '' && !(Number(price) >= 0))}>{busy ? 'Saving…' : editing === 'new' ? 'Add service' : 'Save revision'}</button>
             <button type="button" className="secondary" disabled={busy} onClick={() => setEditing(null)}>Cancel</button>
           </div>
-          <p className={styles.footnote}>Names only: prices, durations and deposits are set elsewhere and need your approved values. Each save keeps a revision; past work orders and invoices keep the name they were created with.</p>
+          <p className={styles.footnote}>{mode === 'central' ? 'The price is entered before tax; each franchise adds its own taxes. Durations and deposits are set elsewhere and need approved values. ' : 'Prices come from the central catalogue. '}Each save keeps a revision; past work orders and invoices keep the name they were created with.</p>
         </form>
       )}
 

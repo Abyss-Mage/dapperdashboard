@@ -2,6 +2,7 @@ package workspace
 
 import (
 	"dapper.local/platform/internal/postgres"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"strconv"
@@ -64,6 +65,8 @@ func registerCentralServiceRoutes(mux *http.ServeMux, store *postgres.Store) {
 				Kind     string  `json:"kind"`
 				ParentID *string `json:"parentId"`
 				Version  int     `json:"version"`
+				// Price is optional: absent = leave unchanged, null = clear, number = set (whole cents, CAD, before tax).
+				Price json.RawMessage `json:"priceCents"`
 			}
 			if !decode(w, r, &input) {
 				return
@@ -92,12 +95,26 @@ func registerCentralServiceRoutes(mux *http.ServeMux, store *postgres.Store) {
 				reply(w, 422, map[string]any{"errors": fields})
 				return
 			}
+			price := postgres.CentralServiceInput{}
+			if input.Price != nil {
+				price.PriceSet = true
+				if string(input.Price) != "null" {
+					var cents int64
+					if err := json.Unmarshal(input.Price, &cents); err != nil || cents < 0 || cents > 100000000000 {
+						reply(w, 422, map[string]any{"errors": map[string]string{"priceCents": "Enter a price of 0 or more"}})
+						return
+					}
+					price.PriceCents = &cents
+				}
+			}
 			item, err := store.SaveCentralService(r.Context(), actor, org, postgres.CentralServiceInput{
-				ID:       id,
-				Name:     input.Name,
-				Kind:     input.Kind,
-				ParentID: input.ParentID,
-				Version:  input.Version,
+				ID:         id,
+				Name:       input.Name,
+				Kind:       input.Kind,
+				ParentID:   input.ParentID,
+				Version:    input.Version,
+				PriceSet:   price.PriceSet,
+				PriceCents: price.PriceCents,
 			})
 			if err != nil {
 				centralServiceFailure(w, err)

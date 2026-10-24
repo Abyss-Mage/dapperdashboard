@@ -9,8 +9,8 @@ import (
 
 var ErrTaxInclusiveUnsupported = errors.New("franchise prices include tax; invoices cannot use that setting yet")
 
-// InvoiceDraftPrefill is what the Workspace shows before an invoice is created from a booking: the lines to bill (names only, the
-// price is typed by the employee) and the franchise taxes that will be added.
+// InvoiceDraftPrefill is what the Workspace shows before an invoice is created from a booking: the lines to bill (with the catalogue
+// price when one is set; the employee can change it) and the franchise taxes that will be added.
 type InvoiceDraftPrefill struct {
 	BookingID    string         `json:"bookingId"`
 	CustomerName string         `json:"customerName"`
@@ -20,6 +20,8 @@ type InvoiceDraftPrefill struct {
 }
 type PrefillLine struct {
 	Description string `json:"description"`
+	// PriceCents is the catalogue price before tax when one is set; the employee can still change it.
+	PriceCents *int64 `json:"priceCents"`
 }
 type InvoiceBrief struct {
 	ID            string `json:"id"`
@@ -116,9 +118,17 @@ func (s *Store) EmployeeInvoiceDraft(ctx context.Context, actor, booking string)
 		return out, err
 	}
 	out.CustomerName = b.CustomerName
-	out.Lines = append(out.Lines, PrefillLine{Description: b.ServiceName})
+	price := func(id *string) *int64 {
+		var p *int64
+		if id != nil {
+			_ = tx.QueryRow(ctx, `SELECT price_cents FROM catalog_services WHERE organization_id=$1 AND location_id=$2 AND id=$3`, a.OrganizationID, a.LocationID, *id).Scan(&p)
+		}
+		return p
+	}
+	out.Lines = append(out.Lines, PrefillLine{Description: b.ServiceName, PriceCents: price(b.ServiceID)})
 	for _, addon := range b.Addons {
-		out.Lines = append(out.Lines, PrefillLine{Description: addon.Name})
+		id := addon.ServiceID
+		out.Lines = append(out.Lines, PrefillLine{Description: addon.Name, PriceCents: price(&id)})
 	}
 	rows, err := tx.Query(ctx, `SELECT id::text,invoice_number,status,total_cents FROM invoices WHERE organization_id=$1 AND location_id=$2 AND booking_id=$3 ORDER BY created_at DESC LIMIT 20`, a.OrganizationID, a.LocationID, booking)
 	if err != nil {

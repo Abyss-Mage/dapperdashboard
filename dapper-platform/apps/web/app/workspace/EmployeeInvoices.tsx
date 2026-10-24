@@ -7,7 +7,7 @@ import styles from './employee.module.css';
 type Booking = { id: string; customerName: string; serviceName: string; bookingTime: string; status: string; addons: { name: string }[] };
 type Invoice = { id: string; invoiceNumber: string; status: string; totalCents: number; dueCents: number; subtotalCents: number; taxCents: number; customerName: string; bookingId?: string; createdAt: string };
 type Rate = { id: string; name: string; rateBasisPoints: number; active: boolean };
-type Prefill = { bookingId: string; customerName: string; lines: { description: string }[]; taxes: { rates: Rate[]; settings: { pricesIncludeTax: boolean; rounding: string | null } }; existing: { id: string; invoiceNumber: string; status: string; totalCents: number }[] };
+type Prefill = { bookingId: string; customerName: string; lines: { description: string; priceCents: number | null }[]; taxes: { rates: Rate[]; settings: { pricesIncludeTax: boolean; rounding: string | null } }; existing: { id: string; invoiceNumber: string; status: string; totalCents: number }[] };
 type Line = { description: string; quantity: string; price: string };
 
 const money = (cents: number) => new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(cents / 100);
@@ -71,7 +71,7 @@ export default function EmployeeInvoices({ bookings, canCreate, canIssue, timezo
     try {
       const p: Prefill = await readJson(await fetch(`/api/v1/employee/bookings/${id}/invoice-draft`, { cache: 'no-store' }));
       setPrefill(p);
-      setLines(p.lines.map((l) => ({ description: l.description, quantity: '1', price: '' })));
+      setLines(p.lines.map((l) => ({ description: l.description, quantity: '1', price: l.priceCents != null ? (l.priceCents / 100).toFixed(2) : '' })));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'This booking could not be prepared.');
     }

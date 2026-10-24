@@ -22,7 +22,8 @@ import (
 type export struct {
 	Services []struct {
 		ID   string `json:"bookingpress_service_id"`
-		Name string `json:"bookingpress_service_name"`
+		Name  string `json:"bookingpress_service_name"`
+		Price string `json:"bookingpress_service_price"`
 	} `json:"services"`
 	Meta []struct {
 		ServiceID string `json:"bookingpress_service_id"`
@@ -32,6 +33,7 @@ type export struct {
 	Extras []struct {
 		ServiceID string `json:"bookingpress_service_id"`
 		Name      string `json:"bookingpress_extra_service_name"`
+		Price     string `json:"bookingpress_extra_service_price"`
 	} `json:"extra_services"`
 }
 
@@ -40,6 +42,7 @@ func main() {
 	code := flag.String("franchise", "", "franchise code to enable the services at")
 	file := flag.String("export", "", "path to the BookingPress export JSON")
 	apply := flag.Bool("apply", false, "write the changes (default: report only)")
+	prices := flag.Bool("prices", false, "set the export's prices (before tax) on the existing central services and add-ons instead of creating anything")
 	hiddenArchived := flag.Bool("hidden-as-archived", false, "also import the services hidden on the old site, already archived so they stay off booking")
 	flag.Parse()
 	if *email == "" || *code == "" || *file == "" {
@@ -102,14 +105,14 @@ func main() {
 	defer store.Close()
 	// Read straight from the table (no list limit) so a re-run recognises everything it created before.
 	central := map[string]postgres.CentralService{} // key: parent|name
-	crows, err := pool.Query(ctx, `SELECT id::text,name,kind,parent_id::text,version FROM central_catalog_services WHERE organization_id=$1 AND NOT archived`, org)
+	crows, err := pool.Query(ctx, `SELECT id::text,name,kind,parent_id::text,version,price_cents FROM central_catalog_services WHERE organization_id=$1 AND NOT archived`, org)
 	if err != nil {
 		log.Fatal("cannot read the central catalogue")
 	}
 	existing := 0
 	for crows.Next() {
 		var c postgres.CentralService
-		if err = crows.Scan(&c.ID, &c.Name, &c.Kind, &c.ParentID, &c.Version); err != nil {
+		if err = crows.Scan(&c.ID, &c.Name, &c.Kind, &c.ParentID, &c.Version, &c.PriceCents); err != nil {
 			log.Fatal("cannot read the central catalogue")
 		}
 		p := ""
@@ -136,6 +139,10 @@ func main() {
 			}
 		}
 		newAddons++
+	}
+	if *prices {
+		setPrices(ctx, store, actor, org, ex, visible, central, byCentralMain, *apply)
+		return
 	}
 	fmt.Printf("Central catalogue: %d existing active, would create %d services and %d add-ons\n", existing, newMains, newAddons)
 	// Hidden services: imported already archived (a name that exists at all, archived or not, is left alone).
@@ -229,4 +236,80 @@ func main() {
 		archived++
 	}
 	fmt.Printf("Done. Created %d central services and %d add-ons; enabled %d at %s; imported %d hidden services as archived.\n", newMains, newAddons, enabled, locName, archived)
+}
+
+// cents turns a BookingPress price such as "149.99" or "150" into whole cents; ok is false for anything else.
+func cents(v string) (int64, bool) {
+	v = strings.TrimSpace(v)
+	whole, frac, _ := strings.Cut(v, ".")
+	if whole == "" || len(frac) > 2 {
+		return 0, false
+	}
+	for _, r := range whole + frac {
+		if r < '0' || r > '9' {
+			return 0, false
+		}
+	}
+	for len(frac) < 2 {
+		frac += "0"
+	}
+	var w, f int64
+	fmt.Sscan(whole, &w)
+	fmt.Sscan(frac, &f)
+	return w*100 + f, true
+}
+
+// setPrices writes the export's prices (CAD, before tax) on the matching central services; linked franchise services follow through
+// the central revision. Only price changes are sent, so the report lists exactly what differs.
+func setPrices(ctx context.Context, store *postgres.Store, actor, org string, ex export, visible map[string]bool, central map[string]postgres.CentralService, byMain map[string]string, apply bool) {
+	type change struct {
+		label string
+		c     postgres.CentralService
+		price int64
+	}
+	var todo []change
+	var missing, same int
+	add := func(label string, c postgres.CentralService, ok bool, raw string) {
+		p, valid := cents(raw)
+		if !ok || !valid {
+			missing++
+			fmt.Printf("  no price set: %s (%s)\n", label, map[bool]string{true: "unusable price " + raw, false: "not in the active central catalogue"}[ok])
+			return
+		}
+		if c.PriceCents != nil && *c.PriceCents == p {
+			same++
+			return
+		}
+		todo = append(todo, change{label, c, p})
+	}
+	for _, sv := range ex.Services {
+		if !visible[sv.ID] {
+			fmt.Printf("  hidden on the old site, archived here, price not set: %s (%s)\n", strings.TrimSpace(sv.Name), sv.Price)
+			continue
+		}
+		c, ok := central["|"+strings.ToLower(strings.TrimSpace(sv.Name))]
+		add(strings.TrimSpace(sv.Name), c, ok, sv.Price)
+	}
+	for _, e := range ex.Extras {
+		if !visible[e.ServiceID] {
+			continue
+		}
+		c, ok := central[byMain[e.ServiceID]+"|"+strings.ToLower(strings.TrimSpace(e.Name))]
+		add("add-on "+strings.TrimSpace(e.Name), c, ok, e.Price)
+	}
+	for _, t := range todo {
+		fmt.Printf("  %s: %d.%02d\n", t.label, t.price/100, t.price%100)
+	}
+	fmt.Printf("Prices: %d to set, %d already correct, %d without a usable match\n", len(todo), same, missing)
+	if !apply {
+		fmt.Println("Preview only. Re-run with -apply to write them.")
+		return
+	}
+	for _, t := range todo {
+		p := t.price
+		if _, err := store.SaveCentralService(ctx, actor, org, postgres.CentralServiceInput{ID: t.c.ID, Name: t.c.Name, Kind: t.c.Kind, ParentID: t.c.ParentID, Version: t.c.Version, PriceSet: true, PriceCents: &p}); err != nil {
+			log.Fatalf("price for %q failed: %v", t.label, err)
+		}
+	}
+	fmt.Printf("Done. Set %d prices.\n", len(todo))
 }

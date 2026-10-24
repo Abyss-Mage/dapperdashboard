@@ -57,15 +57,25 @@ func verifyCentralServices(t *testing.T, ctx context.Context, s *Store, a, b Sco
 		t.Fatalf("expected parent ID %s, got %v", main.ID, addon.ParentID)
 	}
 
-	// 5. Update central service with version increment
+	// 5. Update central service with version increment (and a price)
+	price := int64(15000)
+	bad := int64(-1)
+	if _, err = s.SaveCentralService(ctx, a.ActorID, a.OrganizationID, CentralServiceInput{ID: main.ID, Name: main.Name, Kind: "main", Version: 1, PriceSet: true, PriceCents: &bad}); err != ErrCentralServiceInput {
+		t.Fatalf("negative price accepted: %v", err)
+	}
 	updatedMain, err := s.SaveCentralService(ctx, a.ActorID, a.OrganizationID, CentralServiceInput{
-		ID:      main.ID,
-		Name:    "Central Ultra Luxury Detail",
-		Kind:    "main",
-		Version: 1,
+		ID:         main.ID,
+		Name:       "Central Ultra Luxury Detail",
+		Kind:       "main",
+		Version:    1,
+		PriceSet:   true,
+		PriceCents: &price,
 	})
 	if err != nil {
 		t.Fatalf("failed to update central main: %v", err)
+	}
+	if updatedMain.PriceCents == nil || *updatedMain.PriceCents != 15000 {
+		t.Fatalf("central price not stored: %+v", updatedMain.PriceCents)
 	}
 	if updatedMain.Version != 2 || updatedMain.Name != "Central Ultra Luxury Detail" {
 		t.Fatalf("expected version 2 and updated name, got %+v", updatedMain)

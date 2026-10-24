@@ -26,7 +26,8 @@ func (s *Store) ImportCentralService(ctx context.Context, scope Scope, centralID
 	}
 	var name, kind string
 	var centralParent, parent *string
-	err = tx.QueryRow(ctx, `SELECT name,kind,parent_id::text FROM central_catalog_services WHERE organization_id=$1 AND id=$2 AND version=$3 AND NOT archived FOR SHARE`, scope.OrganizationID, centralID, version).Scan(&name, &kind, &centralParent)
+	var price *int64
+	err = tx.QueryRow(ctx, `SELECT name,kind,parent_id::text,price_cents FROM central_catalog_services WHERE organization_id=$1 AND id=$2 AND version=$3 AND NOT archived FOR SHARE`, scope.OrganizationID, centralID, version).Scan(&name, &kind, &centralParent, &price)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return CatalogService{}, ErrServiceConflict
 	}
@@ -44,7 +45,7 @@ func (s *Store) ImportCentralService(ctx context.Context, scope Scope, centralID
 		}
 		parent = &id
 	}
-	service, err := scanService(tx.QueryRow(ctx, `INSERT INTO catalog_services(organization_id,location_id,name,kind,parent_id,central_service_id) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING RETURNING `+serviceColumns, scope.OrganizationID, scope.LocationID, name, kind, parent, centralID))
+	service, err := scanService(tx.QueryRow(ctx, `INSERT INTO catalog_services(organization_id,location_id,name,kind,parent_id,central_service_id,price_cents) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT DO NOTHING RETURNING `+serviceColumns, scope.OrganizationID, scope.LocationID, name, kind, parent, centralID, price))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return CatalogService{}, ErrServiceConflict
 	}

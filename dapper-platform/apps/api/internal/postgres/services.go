@@ -20,13 +20,14 @@ type CatalogService struct {
 	Archived         bool    `json:"archived"`
 	Version          int     `json:"version"`
 	CentralServiceID *string `json:"centralServiceId"`
+	PriceCents       *int64  `json:"priceCents"` // CAD cents before tax; comes from the central service when linked
 }
 
-const serviceColumns = `id::text,name,kind,parent_id::text,archived,version,central_service_id::text`
+const serviceColumns = `id::text,name,kind,parent_id::text,archived,version,central_service_id::text,price_cents`
 
 func scanService(row pgx.Row) (CatalogService, error) {
 	var service CatalogService
-	err := row.Scan(&service.ID, &service.Name, &service.Kind, &service.ParentID, &service.Archived, &service.Version, &service.CentralServiceID)
+	err := row.Scan(&service.ID, &service.Name, &service.Kind, &service.ParentID, &service.Archived, &service.Version, &service.CentralServiceID, &service.PriceCents)
 	return service, err
 }
 func (s *Store) Services(ctx context.Context, scope Scope) ([]CatalogService, error) {

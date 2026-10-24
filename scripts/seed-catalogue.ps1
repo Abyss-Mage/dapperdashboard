@@ -1,3 +1,4 @@
+# With -Prices it instead writes the export's prices (before tax) onto the existing central services and add-ons.
 # Pre-fills the service catalogue (names only, no prices/durations/deposits) from the owner-supplied BookingPress export:
 # visible services become central main services, their extras become add-ons, then the chosen franchise enables them.
 # Hidden BookingPress services are skipped unless -IncludeHiddenAsArchived (then imported already archived, off booking). Preview by default; -Apply writes. Safe to re-run (existing names are skipped).
@@ -6,6 +7,7 @@ param(
  [Parameter(Mandatory=$true)][string]$Franchise,
  [Parameter(Mandatory=$true)][string]$ExportPath,
  [switch]$IncludeHiddenAsArchived,
+ [switch]$Prices,
  [switch]$Apply
 )
 $ErrorActionPreference='Stop'
@@ -19,6 +21,7 @@ try{
  Push-Location (Join-Path $root 'dapper-platform/apps/api')
  $arguments=@('run','./cmd/seed-catalogue','-email',$Email,'-franchise',$Franchise,'-export',$ExportPath)
  if($IncludeHiddenAsArchived){$arguments+='-hidden-as-archived'}
+ if($Prices){$arguments+='-prices'}
  if($Apply){$arguments+='-apply'}
  & go @arguments
  if($LASTEXITCODE -ne 0){throw 'Catalogue seeding did not complete.'}

@@ -14,13 +14,14 @@ var ErrCentralServiceConflict = errors.New("central service edit conflict; curre
 var ErrCentralServiceHasChildren = errors.New("cannot archive central service while active add-on services reference it")
 
 type CentralService struct {
-	ID        string  `json:"id"`
-	Name      string  `json:"name"`
-	Kind      string  `json:"kind"`
-	ParentID  *string `json:"parentId"`
-	Archived  bool    `json:"archived"`
-	Version   int     `json:"version"`
-	CreatedAt string  `json:"createdAt"`
+	ID         string  `json:"id"`
+	Name       string  `json:"name"`
+	Kind       string  `json:"kind"`
+	ParentID   *string `json:"parentId"`
+	Archived   bool    `json:"archived"`
+	Version    int     `json:"version"`
+	CreatedAt  string  `json:"createdAt"`
+	PriceCents *int64  `json:"priceCents"` // CAD cents before tax; nil = not set
 }
 
 type CentralServiceInput struct {
@@ -29,13 +30,16 @@ type CentralServiceInput struct {
 	Kind     string
 	ParentID *string
 	Version  int
+	// PriceSet says whether PriceCents is part of this save. When false an edit leaves the stored price alone.
+	PriceSet   bool
+	PriceCents *int64
 }
 
-const centralServiceColumns = `id::text,name,kind,parent_id::text,archived,version,to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')`
+const centralServiceColumns = `id::text,name,kind,parent_id::text,archived,version,to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),price_cents`
 
 func scanCentralService(row pgx.Row) (CentralService, error) {
 	var s CentralService
-	err := row.Scan(&s.ID, &s.Name, &s.Kind, &s.ParentID, &s.Archived, &s.Version, &s.CreatedAt)
+	err := row.Scan(&s.ID, &s.Name, &s.Kind, &s.ParentID, &s.Archived, &s.Version, &s.CreatedAt, &s.PriceCents)
 	return s, err
 }
 
@@ -112,6 +116,9 @@ func (s *Store) SaveCentralService(ctx context.Context, actor, org string, input
 	if input.Kind != "main" && input.Kind != "addon" {
 		return CentralService{}, ErrCentralServiceInput
 	}
+	if input.PriceSet && input.PriceCents != nil && (*input.PriceCents < 0 || *input.PriceCents > 100000000000) {
+		return CentralService{}, ErrCentralServiceInput
+	}
 	if input.Kind == "main" && input.ParentID != nil {
 		return CentralService{}, ErrCentralServiceInput
 	}
@@ -160,10 +167,10 @@ func (s *Store) SaveCentralService(ctx context.Context, actor, org string, input
 	var action string
 	if input.ID == "" {
 		action = "central_service.created"
-		svc, err = scanCentralService(tx.QueryRow(ctx, `INSERT INTO central_catalog_services(organization_id,name,kind,parent_id) VALUES($1,$2,$3,$4) RETURNING `+centralServiceColumns, org, input.Name, input.Kind, input.ParentID))
+		svc, err = scanCentralService(tx.QueryRow(ctx, `INSERT INTO central_catalog_services(organization_id,name,kind,parent_id,price_cents) VALUES($1,$2,$3,$4,$5) RETURNING `+centralServiceColumns, org, input.Name, input.Kind, input.ParentID, input.PriceCents))
 	} else {
 		action = "central_service.updated"
-		svc, err = scanCentralService(tx.QueryRow(ctx, `UPDATE central_catalog_services SET name=$3,kind=$4,parent_id=$5,version=version+1 WHERE organization_id=$1 AND id=$2 RETURNING `+centralServiceColumns, org, input.ID, input.Name, input.Kind, input.ParentID))
+		svc, err = scanCentralService(tx.QueryRow(ctx, `UPDATE central_catalog_services SET name=$3,kind=$4,parent_id=$5,price_cents=CASE WHEN $6 THEN $7 ELSE price_cents END,version=version+1 WHERE organization_id=$1 AND id=$2 RETURNING `+centralServiceColumns, org, input.ID, input.Name, input.Kind, input.ParentID, input.PriceSet, input.PriceCents))
 	}
 	if err != nil {
 		return CentralService{}, err
