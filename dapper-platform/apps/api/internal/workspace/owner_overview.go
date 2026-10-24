@@ -40,7 +40,7 @@ func registerOwnerOverviewRoutes(mux *http.ServeMux, store *postgres.Store) {
 		}
 		result, err := store.OwnerTrends(r.Context(), postgres.Scope{ActorID: requestSession(r).principalID, OrganizationID: org, LocationID: loc}, from, to, tz, q.Get("channel"))
 		if errors.Is(err, postgres.ErrTrendsInput) {
-			reply(w, 422, map[string]string{"error": "Choose a date range of at most 366 days, a valid timezone and a known channel"})
+			reply(w, 422, map[string]string{"error": "Choose a date range of at most ten years, a valid timezone and a known channel"})
 			return
 		}
 		if err != nil {
@@ -63,7 +63,7 @@ func registerOwnerOverviewRoutes(mux *http.ServeMux, store *postgres.Store) {
 		}
 		result, err := store.OwnerInsights(r.Context(), postgres.Scope{ActorID: requestSession(r).principalID, OrganizationID: org, LocationID: loc}, q.Get("section"), q.Get("from"), q.Get("to"), tz)
 		if errors.Is(err, postgres.ErrTrendsInput) {
-			reply(w, 422, map[string]string{"error": "Choose finance, work or customers, a date range of at most 366 days and a valid timezone"})
+			reply(w, 422, map[string]string{"error": "Choose finance, work or customers, a date range of at most ten years and a valid timezone"})
 			return
 		}
 		if err != nil {

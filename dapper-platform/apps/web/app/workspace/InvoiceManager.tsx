@@ -168,6 +168,18 @@ export default function InvoiceManager({
     loadCustomers();
   }, [loadInvoices, loadCustomers]);
 
+  // Prints an already generated invoice straight from the list (the list rows lack the line items, so load the full invoice first).
+  const printListedInvoice = async (id: string) => {
+    setError('');
+    try {
+      const res = await fetch(`${base}/invoices/${id}`, {cache: 'no-store'});
+      if (!res.ok) throw new Error('This invoice could not be opened for printing.');
+      printInvoiceDocument(await res.json(), printTemplate);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'This invoice could not be opened for printing.');
+    }
+  };
+
   const loadInvoiceDetail = async (id: string) => {
     try {
       const res = await fetch(`${base}/invoices/${id}`);
@@ -619,6 +631,15 @@ export default function InvoiceManager({
                 >
                   View / Pay
                 </button>
+                {inv.status !== 'draft' && inv.status !== 'void' && (
+                  <button
+                    className="secondary"
+                    style={{padding: '0.25rem 0.6rem', fontSize: '0.8rem'}}
+                    onClick={() => void printListedInvoice(inv.id)}
+                  >
+                    Print
+                  </button>
+                )}
               </div>
             </div>
           </article>

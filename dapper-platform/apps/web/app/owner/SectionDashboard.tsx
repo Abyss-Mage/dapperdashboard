@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import styles from './owner.module.css';
+import RangeBar, { resolveRange, type Custom, type RangePresetId } from './DateRange';
 import { BarList, ColumnChart, DataTable, LineChart, Sparkline, compact, dollars, dollarsCompact, shortDate, wholeNumber } from './charts';
 
 type Key = { key: string; count: number; cents: number; dueCents: number };
@@ -19,26 +20,7 @@ type Insights = {
 };
 export type DashSection = 'finance' | 'work' | 'customers';
 
-const PRESETS = [
-  { id: 'last7', label: 'Last 7 days' },
-  { id: 'last30', label: 'Last 30 days' },
-  { id: 'last90', label: 'Last 90 days' },
-  { id: 'month', label: 'This month' },
-  { id: 'year', label: 'This year' },
-] as const;
-type PresetId = (typeof PRESETS)[number]['id'];
-const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-function rangeFor(id: PresetId) {
-  const t = new Date();
-  const back = (n: number) => { const d = new Date(t); d.setDate(d.getDate() - n); return d; };
-  switch (id) {
-    case 'last7': return { from: ymd(back(6)), to: ymd(t) };
-    case 'last90': return { from: ymd(back(89)), to: ymd(t) };
-    case 'month': return { from: ymd(new Date(t.getFullYear(), t.getMonth(), 1)), to: ymd(t) };
-    case 'year': return { from: ymd(new Date(t.getFullYear(), 0, 1)), to: ymd(t) };
-    default: return { from: ymd(back(29)), to: ymd(t) };
-  }
-}
+const PRESETS: RangePresetId[] = ['last7', 'last30', 'last90', 'month', 'year'];
 const nice = (s: string) => s.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
 // Fixed display order for the overdue buckets so the chart reads from healthy to late.
 const AGING_ORDER = ['Not yet due', 'No due date', '1–30 days overdue', '31–60 days overdue', 'Over 60 days overdue'];
@@ -81,13 +63,14 @@ function Tile({ label, value, foot, spark, grant }: { label: string; value: stri
 }
 
 export default function SectionDashboard({ section, base }: { section: DashSection; base: string }) {
-  const [preset, setPreset] = useState<PresetId>('last30');
+  const [preset, setPreset] = useState<RangePresetId>('last30');
+  const [custom, setCustom] = useState<Custom>(() => resolveRange('last30', { from: '', to: '' }));
   const [trends, setTrends] = useState<Trends | null>(null);
   const [ins, setIns] = useState<Insights | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [refresh, setRefresh] = useState(0);
-  const range = useMemo(() => rangeFor(preset), [preset]);
+  const range = useMemo(() => resolveRange(preset, custom), [preset, custom]);
   const tz = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', []);
 
   useEffect(() => {
@@ -121,9 +104,7 @@ export default function SectionDashboard({ section, base }: { section: DashSecti
       <summary>Insights</summary>
       <div className={styles.stack}>
         <div className={styles.filterBar} role="group" aria-label="Insight filters">
-          <div className={styles.segments} role="group" aria-label="Date range">
-            {PRESETS.map((p) => <button key={p.id} type="button" className={styles.segment} aria-pressed={preset === p.id} onClick={() => setPreset(p.id)}>{p.label}</button>)}
-          </div>
+          <RangeBar presets={PRESETS} preset={preset} custom={custom} onPreset={setPreset} onCustom={setCustom} />
           <button type="button" className="secondary" disabled={loading} onClick={() => setRefresh((n) => n + 1)}>{loading ? 'Refreshing…' : 'Refresh'}</button>
         </div>
         {error && <p role="alert" className="field-error">{error}</p>}
@@ -181,7 +162,6 @@ export default function SectionDashboard({ section, base }: { section: DashSecti
                 <div className={styles.tiles}>
                   <Tile label="Created" value={jobs ? wholeNumber.format(jobs.created) : null} foot={rangeText} spark={jobs?.createdByDay.map((d) => d.count)} grant="jobs.read" />
                   <Tile label="Completed" value={jobs ? wholeNumber.format(jobs.completed) : null} foot={rangeText} spark={jobs?.completedByDay.map((d) => d.count)} grant="jobs.read" />
-                  <Tile label="Open now" value={jobs ? wholeNumber.format(jobs.open) : null} foot="Not yet completed" grant="jobs.read" />
                   <Tile label="Average time to complete" value={w ? (w.avgHoursToComplete === null ? 'No data' : w.avgHoursToComplete < 48 ? `${w.avgHoursToComplete.toFixed(1)} h` : `${(w.avgHoursToComplete / 24).toFixed(1)} days`) : null} foot={`${w?.completed ?? 0} completed ${rangeText}`} grant="jobs.read" />
                 </div>
                 <div className={styles.chartGrid}>
@@ -194,9 +174,6 @@ export default function SectionDashboard({ section, base }: { section: DashSecti
                   ) : <Locked title="Work orders" grant="jobs.read" />}
                   {w && (
                     <>
-                      <Card title="Open work orders by age" sub="Right now">
-                        <BarList rows={order(w.openAge, OPEN_ORDER).map((k) => ({ label: k.key, value: k.count }))} emptyText="No open work orders." />
-                      </Card>
                       <Card title="Top services" sub={`Work orders created ${rangeText}`}>
                         <BarList rows={w.byService.map((k) => ({ label: k.key, value: k.count }))} emptyText="No work orders created in this period." />
                       </Card>

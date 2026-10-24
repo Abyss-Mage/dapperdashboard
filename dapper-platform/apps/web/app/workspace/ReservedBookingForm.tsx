@@ -6,11 +6,32 @@ type Rule = {id: string; resourceId: string; serviceName: string; addons: {servi
 type Customer = {id: string; name: string};
 type Vehicle = {id: string; customerId: string; description: string};
 
+// The person types a clock time at the shop; this turns it into the exact moment in the shop's own time zone.
+function zonedIso(local: string, zone: string): string | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(local);
+  if (!m) return null;
+  const wall = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]);
+  const offsetAt = (utc: number) => {
+    const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', {timeZone: zone, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit'}).formatToParts(new Date(utc)).map(x => [x.type, x.value]));
+    return Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second) - utc;
+  };
+  let utc = wall - offsetAt(wall);
+  utc = wall - offsetAt(utc);
+  return Number.isFinite(utc) ? new Date(utc).toISOString() : null;
+}
+// Minutes under an hour stay minutes, then hours, then days.
+function span(total: number) {
+  if (total < 60) return `${total} min`;
+  if (total < 1440) { const h = Math.floor(total / 60), r = total % 60; return `${h} hr${h === 1 ? '' : 's'}${r ? ` ${r} min` : ''}`; }
+  const d = Math.floor(total / 1440), h = Math.floor((total % 1440) / 60);
+  return `${d} day${d === 1 ? '' : 's'}${h ? ` ${h} hr${h === 1 ? '' : 's'}` : ''}`;
+}
+
 export default function ReservedBookingForm({base, actorId, onSaved}: {base: string; actorId: string; onSaved?: () => Promise<void>}) {
   const [resources, setResources] = useState<Resource[]>([]), [rules, setRules] = useState<Rule[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]), [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [resource, setResource] = useState(''), [rule, setRule] = useState(''), [customer, setCustomer] = useState(''), [vehicle, setVehicle] = useState('');
-  const [start, setStart] = useState(''), [channel, setChannel] = useState('internal'), [notes, setNotes] = useState('');
+  const [start, setStart] = useState(''), [channel, setChannel] = useState('walk_in'), [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(true), [busy, setBusy] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState('');
   const errorRef = useRef<HTMLParagraphElement>(null);
   const load = useCallback(async () => {
@@ -29,12 +50,11 @@ export default function ReservedBookingForm({base, actorId, onSaved}: {base: str
   const selectedRule = rules.find(item => item.id === rule && item.resourceId === resource);
   async function save(event: React.FormEvent) {
     event.preventDefault(); if (!selectedRule || !customer) return;
-    // Offset-bearing timestamps avoid silently interpreting a location time in
-    // the operator browser's timezone, including repeated DST wall times.
-    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/.test(start) || !Number.isFinite(new Date(start).getTime())) {setError('Enter a valid appointment timestamp with Z or an explicit UTC offset.'); return;}
+    const startIso = selectedResource ? zonedIso(start, selectedResource.timezone) : null;
+    if (!startIso) {setError('Pick the date and time of the booking.'); return;}
     setBusy(true); setError(''); setNotice('');
     try {
-      const payload = {customerId: customer, vehicleId: vehicle || null, resourceId: resource, ruleId: rule, ruleVersion: selectedRule.version, start: new Date(start).toISOString(), channel, notes: notes.trim()};
+      const payload = {customerId: customer, vehicleId: null, resourceId: resource, ruleId: rule, ruleVersion: selectedRule.version, start: startIso, channel, notes: notes.trim()};
       const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify({actorId, payload})));
       const fingerprint = Array.from(new Uint8Array(digest), value => value.toString(16).padStart(2, '0')).join('');
       const storageKey = `dapper-booking-capacity:${base}:${fingerprint}`;
@@ -44,30 +64,25 @@ export default function ReservedBookingForm({base, actorId, onSaved}: {base: str
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? body.errors?.booking ?? 'Booking could not be reserved. Your details are preserved.');
       sessionStorage.removeItem(storageKey);
-      setNotice(`Pending booking ${body.id} saved with its capacity reservation. No payment or customer confirmation has been recorded.`);
+      setNotice('Booking saved. The time is held for this job. Nothing has been paid yet.');
       setStart(''); setNotes('');
       try {await onSaved?.();} catch {setError('Booking saved, but the list could not refresh. Refresh bookings before taking another action.');}
     } catch (failure) {setError(failure instanceof Error ? failure.message : 'Request could not be confirmed. Retry unchanged details to reuse the request key.');}
     finally {setBusy(false);}
   }
-  return <section className="panel detail-card" aria-label="Booking with capacity">
-    <h2>Booking with capacity</h2>
-    <p>Create one pending booking and its service reservation together. Timing, buffers and resource units come from the selected configured rule.</p>
+  return <section className="panel detail-card" aria-label="New booking">
+    <h2>New booking</h2>
+    <p>Pick the customer, the service, and the day and time.</p>
     {error && <p ref={errorRef} role="alert" tabIndex={-1} className="field-error">{error}</p>}
     {notice && <p role="status">{notice}</p>}
-    <button className="secondary" disabled={busy || loading} onClick={load}>Refresh booking choices</button>
-    {loading ? <p role="status">Loading booking choices…</p> : <form onSubmit={save} className="management-form">
-      <label className="form-field">Booking customer<select required value={customer} disabled={busy} onChange={event => {setCustomer(event.target.value); setVehicle('');}}><option value="">Choose customer</option>{customers.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
-      <label className="form-field">Owned equipment (optional)<select value={vehicle} disabled={busy} onChange={event => setVehicle(event.target.value)}><option value="">No equipment selected</option>{vehicles.filter(item => item.customerId === customer).map(item => <option key={item.id} value={item.id}>{item.description}</option>)}</select></label>
-      <label className="form-field">Booking resource<select required value={resource} disabled={busy} onChange={event => {setResource(event.target.value); setRule('');}}><option value="">Choose resource</option>{resources.map(item => <option key={item.id} value={item.id}>{item.name} · {item.timezone}</option>)}</select></label>
-      <label className="form-field">Configured service combination<select required value={rule} disabled={busy || !resource} onChange={event => setRule(event.target.value)}><option value="">Choose combination</option>{rules.filter(item => item.resourceId === resource).map(item => <option key={item.id} value={item.id}>{item.serviceName}{item.addons.length ? ` + ${item.addons.map(addon => addon.name).join(', ')}` : ''} · {item.durationMinutes} min</option>)}</select></label>
-      {selectedRule && <p>{selectedRule.durationMinutes} minutes · Buffers {selectedRule.beforeMinutes}/{selectedRule.afterMinutes} minutes · {selectedRule.units} resource units · Rule revision {selectedRule.version}</p>}
-      <label className="form-field">Appointment timestamp with UTC offset<input required type="text" value={start} disabled={busy} onChange={event => setStart(event.target.value)} aria-describedby="booking-offset-guidance" /></label>
-      <p id="booking-offset-guidance">Include Z or ±HH:MM after the time. Resource timezone: {selectedResource?.timezone ?? 'select a resource'}. Capacity is checked when saved.</p>
-      <label className="form-field">Intake channel<select value={channel} disabled={busy} onChange={event => setChannel(event.target.value)}><option value="internal">Internal</option><option value="phone">Phone</option><option value="walk_in">Walk-in</option><option value="dealership">Dealership</option></select></label>
-      <label className="form-field">Booking notes<textarea maxLength={2000} value={notes} disabled={busy} onChange={event => setNotes(event.target.value)} /></label>
-      <button className="primary" disabled={busy || !selectedRule || !customer}>{busy ? 'Reserving…' : 'Reserve capacity and save pending booking'}</button>
-      {!rules.length && <p>No active scheduling combinations are configured. Ask an authorized operator to configure approved service timing and resource windows.</p>}
+    {loading ? <p role="status">Loading…</p> : <form onSubmit={save} className="management-form">
+      <label className="form-field">Customer<select required value={customer} disabled={busy} onChange={event => setCustomer(event.target.value)}><option value="">Choose a customer</option>{customers.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+      <label className="form-field">Service<select required value={rule} disabled={busy} onChange={event => {const next = rules.find(item => item.id === event.target.value); setRule(event.target.value); setResource(next?.resourceId ?? '');}}><option value="">Choose a service</option>{rules.map(item => <option key={item.id} value={item.id}>{item.serviceName}{item.addons.length ? ` + ${item.addons.map(addon => addon.name).join(', ')}` : ''} · {span(item.durationMinutes)}{resources.length > 1 ? ` · ${resources.find(r => r.id === item.resourceId)?.name ?? ''}` : ''}</option>)}</select></label>
+      <label className="form-field">Date and time<input required type="datetime-local" value={start} disabled={busy} onChange={event => setStart(event.target.value)} /></label>
+      <label className="form-field">How did they book?<select value={channel} disabled={busy} onChange={event => setChannel(event.target.value)}><option value="walk_in">Walk-in</option><option value="online">Online</option></select></label>
+      <label className="form-field">Notes (optional)<textarea maxLength={2000} value={notes} disabled={busy} onChange={event => setNotes(event.target.value)} /></label>
+      <button className="primary" disabled={busy || !selectedRule || !customer || !start}>{busy ? 'Saving…' : 'Save booking'}</button>
+      {!rules.length && <p>No services are set up for booking yet. Add them in Locations &amp; Setup first.</p>}
     </form>}
   </section>;
 }

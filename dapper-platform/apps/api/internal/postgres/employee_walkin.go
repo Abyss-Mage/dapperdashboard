@@ -32,6 +32,8 @@ type EmployeeWalkInInput struct {
 	LocalStart  string `json:"localStart"`
 	// AddonIDs attach add-ons to a base rule. Add-ons do not change the appointment length (the legacy catalogue gave them no time).
 	AddonIDs []string `json:"addonIds"`
+	// Notes carry the vehicle, where the work happens, any referral and the customer's own notes (shown to staff on the booking).
+	Notes string `json:"notes"`
 }
 
 func normalizeEmployeeContact(name, email, phone string) (string, string, string, error) {
@@ -111,6 +113,10 @@ func (s *Store) CreateEmployeeWalkIn(ctx context.Context, actor string, input Em
 	input.Name, input.Email, input.Phone, err = normalizeEmployeeContact(input.Name, input.Email, input.Phone)
 	if err != nil {
 		return Booking{}, err
+	}
+	input.Notes = strings.TrimSpace(input.Notes)
+	if utf8.RuneCountInString(input.Notes) > 2000 {
+		return Booking{}, ErrBookingInput
 	}
 	if !employeeRequestKey.MatchString(input.RequestKey) || input.RuleID == "" || input.ResourceID == "" || input.RuleVersion < 1 {
 		return Booking{}, ErrBookingInput
@@ -195,7 +201,7 @@ func (s *Store) CreateEmployeeWalkIn(ctx context.Context, actor string, input Em
 		}
 		addons = append([]string{}, input.AddonIDs...)
 	}
-	b, err := s.createBookingInTransaction(ctx, tx, scope, Booking{CustomerID: customer, ServiceID: &rule.ServiceID, AddonIDs: addons, ReservationID: &reservation.ID, Channel: "walk_in", Status: "pending", BookingTime: start})
+	b, err := s.createBookingInTransaction(ctx, tx, scope, Booking{CustomerID: customer, ServiceID: &rule.ServiceID, AddonIDs: addons, ReservationID: &reservation.ID, Channel: "walk_in", Status: "pending", BookingTime: start, Notes: input.Notes})
 	if err != nil {
 		return Booking{}, bookingWriteError(err)
 	}

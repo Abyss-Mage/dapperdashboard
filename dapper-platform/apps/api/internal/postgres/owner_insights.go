@@ -57,7 +57,7 @@ func (s *Store) OwnerInsights(ctx context.Context, scope Scope, section, from, t
 	}
 	f, errF := time.Parse("2006-01-02", from)
 	t, errT := time.Parse("2006-01-02", to)
-	if errF != nil || errT != nil || t.Before(f) || t.Sub(f) > 365*24*time.Hour {
+	if errF != nil || errT != nil || t.Before(f) || t.Sub(f) > 3660*24*time.Hour {
 		return OwnerInsights{}, ErrTrendsInput
 	}
 	tx, err := s.pool.Begin(ctx)

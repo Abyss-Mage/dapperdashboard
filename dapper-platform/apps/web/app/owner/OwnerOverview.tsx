@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import styles from './owner.module.css';
 import { OwnerIcon, type OwnerIconName } from './OwnerIcons';
+import RangeBar, { resolveRange, type Custom, type RangePresetId } from './DateRange';
 import { BarList, ColumnChart, DataTable, LineChart, Sparkline, compact, dollars, dollarsCompact, shortDate, wholeNumber } from './charts';
 
 type Overview = { generatedAt: string; windowEnd: string; metrics: Record<string, number | null> };
@@ -24,43 +25,14 @@ interface OwnerOverviewProps {
   onNavigate?: (tab: string) => void;
 }
 
-const PRESETS = [
-  { id: 'last7', label: 'Last 7 days' },
-  { id: 'last30', label: 'Last 30 days' },
-  { id: 'last90', label: 'Last 90 days' },
-  { id: 'next7', label: 'Next 7 days' },
-  { id: 'next30', label: 'Next 30 days' },
-  { id: 'month', label: 'This month' },
-] as const;
-type PresetId = (typeof PRESETS)[number]['id'];
+const PRESETS: RangePresetId[] = ['last7', 'last30', 'last90', 'next7', 'next30', 'month'];
 
 const CHANNELS = [
-  { id: '', label: 'All channels' },
+  { id: '', label: 'All bookings' },
   { id: 'online', label: 'Online' },
-  { id: 'internal', label: 'Internal' },
-  { id: 'phone', label: 'Phone' },
   { id: 'walk_in', label: 'Walk-in' },
-  { id: 'dealership', label: 'Dealership' },
 ];
 const nice = (s: string) => s.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
-
-const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-function rangeFor(id: PresetId) {
-  const today = new Date();
-  const add = (n: number) => {
-    const d = new Date(today);
-    d.setDate(d.getDate() + n);
-    return d;
-  };
-  switch (id) {
-    case 'last7': return { from: ymd(add(-6)), to: ymd(today) };
-    case 'last90': return { from: ymd(add(-89)), to: ymd(today) };
-    case 'next7': return { from: ymd(today), to: ymd(add(6)) };
-    case 'next30': return { from: ymd(today), to: ymd(add(29)) };
-    case 'month': return { from: ymd(new Date(today.getFullYear(), today.getMonth(), 1)), to: ymd(new Date(today.getFullYear(), today.getMonth() + 1, 0)) };
-    default: return { from: ymd(add(-29)), to: ymd(today) };
-  }
-}
 
 function Card({ title, sub, legend, span = 1, children }: { title: string; sub?: string; legend?: ReactNode; span?: 1 | 2; children: ReactNode }) {
   return (
@@ -86,7 +58,8 @@ function Locked({ title, grant }: { title: string; grant: string }) {
 }
 
 export default function OwnerOverview({ base, location, organizationName, onNavigate }: OwnerOverviewProps) {
-  const [preset, setPreset] = useState<PresetId>('last30');
+  const [preset, setPreset] = useState<RangePresetId>('last30');
+  const [custom, setCustom] = useState<Custom>(() => resolveRange('last30', { from: '', to: '' }));
   const [channel, setChannel] = useState('');
   const [overview, setOverview] = useState<Overview | null>(null);
   const [trends, setTrends] = useState<Trends | null>(null);
@@ -94,7 +67,7 @@ export default function OwnerOverview({ base, location, organizationName, onNavi
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
   const errorRef = useRef<HTMLParagraphElement>(null);
-  const range = useMemo(() => rangeFor(preset), [preset]);
+  const range = useMemo(() => resolveRange(preset, custom), [preset, custom]);
   const tz = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', []);
 
   useEffect(() => {
@@ -160,15 +133,9 @@ export default function OwnerOverview({ base, location, organizationName, onNavi
       </div>
 
       <div className={styles.filterBar} role="group" aria-label="Overview filters">
-        <div className={styles.segments} role="group" aria-label="Date range">
-          {PRESETS.map((p) => (
-            <button key={p.id} type="button" className={styles.segment} aria-pressed={preset === p.id} onClick={() => setPreset(p.id)}>
-              {p.label}
-            </button>
-          ))}
-        </div>
+        <RangeBar presets={PRESETS} preset={preset} custom={custom} onPreset={setPreset} onCustom={setCustom} />
         <label className={styles.filterSelect}>
-          <span>Channel</span>
+          <span>Booked</span>
           <select value={channel} onChange={(e) => setChannel(e.target.value)}>
             {CHANNELS.map((c) => (
               <option key={c.id} value={c.id}>{c.label}</option>
@@ -193,7 +160,6 @@ export default function OwnerOverview({ base, location, organizationName, onNavi
             {tile('Net recorded payments', trends?.payments ? dollars(trends.payments.netCents) : null, rangeText, 'finance', 'finance', trends?.payments?.byDay.map((d) => d.cents), 'payments.read')}
             {tile('Work orders completed', trends?.jobs ? wholeNumber.format(trends.jobs.completed) : null, `${trends?.jobs?.created ?? 0} created · ${rangeText}`, 'operations', 'work', trends?.jobs?.completedByDay.map((d) => d.count), 'jobs.read')}
             {tile('Outstanding balance', money('outstandingCents') === null ? null : dollars(money('outstandingCents') as number), 'Issued and partly paid, right now', 'finance', 'finance', undefined, 'invoices.read')}
-            {tile('Open work orders', money('openJobs') === null ? null : wholeNumber.format(money('openJobs') as number), 'Not yet completed, right now', 'operations', 'work', undefined, 'jobs.read')}
             {tile('Customers', money('customers') === null ? null : wholeNumber.format(money('customers') as number), 'Recorded at this franchise, all time', 'customers', 'customers', undefined, 'customers.read')}
           </div>
 

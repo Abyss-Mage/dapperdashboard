@@ -103,8 +103,8 @@ func TestOwnerTrendsAreScopedFilteredAndAuthorizedPerBlock(t *testing.T) {
 	if _, err = s.OwnerTrends(ctx, scope, "2026-10-19", "2026-10-22", "Not/AZone", ""); !errors.Is(err, ErrTrendsInput) {
 		t.Fatal("bad timezone accepted", err)
 	}
-	if _, err = s.OwnerTrends(ctx, scope, "2026-01-01", "2027-12-31", "UTC", ""); !errors.Is(err, ErrTrendsInput) {
-		t.Fatal("range over 366 days accepted", err)
+	if _, err = s.OwnerTrends(ctx, scope, "2010-01-01", "2027-12-31", "UTC", ""); !errors.Is(err, ErrTrendsInput) {
+		t.Fatal("range over ten years accepted", err)
 	}
 	if _, err = s.OwnerTrends(ctx, Scope{ActorID: actor, OrganizationID: org, LocationID: otherSite}, "2026-10-19", "2026-10-22", "UTC", ""); !errors.Is(err, ErrForbidden) {
 		t.Fatal("another site's trends were readable", err)

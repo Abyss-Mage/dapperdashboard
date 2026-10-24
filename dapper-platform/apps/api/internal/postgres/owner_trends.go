@@ -58,9 +58,10 @@ type OwnerTrends struct {
 	Jobs        *TrendJobs     `json:"jobs"`
 }
 
-var trendChannels = map[string]bool{"": true, "online": true, "internal": true, "phone": true, "walk_in": true, "dealership": true}
+// Only the two ways a customer actually books are offered as filters; other channels still appear in the "by channel" split.
+var trendChannels = map[string]bool{"": true, "online": true, "walk_in": true}
 
-// OwnerTrends returns daily series and breakdowns for one franchise over an inclusive date range (max 366 days).
+// OwnerTrends returns daily series and breakdowns for one franchise over an inclusive date range (max about ten years, so "all time" works).
 // Dates are calendar days in the supplied IANA timezone. Every block is authorized separately.
 func (s *Store) OwnerTrends(ctx context.Context, scope Scope, from, to, tz, channel string) (OwnerTrends, error) {
 	if err := scope.validate(); err != nil {
@@ -71,7 +72,7 @@ func (s *Store) OwnerTrends(ctx context.Context, scope Scope, from, to, tz, chan
 	}
 	f, errF := time.Parse("2006-01-02", from)
 	t, errT := time.Parse("2006-01-02", to)
-	if errF != nil || errT != nil || t.Before(f) || t.Sub(f) > 365*24*time.Hour {
+	if errF != nil || errT != nil || t.Before(f) || t.Sub(f) > 3660*24*time.Hour {
 		return OwnerTrends{}, ErrTrendsInput
 	}
 	tx, err := s.pool.Begin(ctx)

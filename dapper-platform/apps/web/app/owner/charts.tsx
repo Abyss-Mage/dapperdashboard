@@ -43,9 +43,33 @@ export function shortDate(iso: string) {
   return d.toLocaleDateString('en-CA', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 }
 
+/* Long ranges (such as "All time") would be thousands of thin bars, so daily figures are added up into weeks, then months. */
+type Bucketed = { labels: string[]; values: number[][]; label: (iso: string) => string };
+function bucketize(labels: string[], values: number[][]): Bucketed {
+  if (labels.length <= 100) return { labels, values, label: shortDate };
+  const month = labels.length > 400;
+  const keyOf = (iso: string) => {
+    if (month) return iso.slice(0, 7) + '-01';
+    const d = new Date(iso + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); // Monday of that week
+    return d.toISOString().slice(0, 10);
+  };
+  const keys: string[] = [];
+  const out: number[][] = values.map(() => []);
+  labels.forEach((l, i) => {
+    const k = keyOf(l);
+    if (keys[keys.length - 1] !== k) { keys.push(k); out.forEach((o) => o.push(0)); }
+    values.forEach((v, si) => { out[si][keys.length - 1] += v[i] ?? 0; });
+  });
+  const label = month
+    ? (iso: string) => new Date(iso + 'T00:00:00Z').toLocaleDateString('en-CA', { month: 'short', year: 'numeric', timeZone: 'UTC' })
+    : (iso: string) => 'Week of ' + shortDate(iso);
+  return { labels: keys, values: out, label };
+}
+
 const M = { top: 12, right: 14, bottom: 26, left: 40 };
 
-function Axes({ w, h, max, fmt, labels, ticks }: { w: number; h: number; max: number; fmt: (n: number) => string; labels: string[]; ticks: number }) {
+function Axes({ w, h, max, fmt, labels, ticks, lf = shortDate }: { w: number; h: number; max: number; fmt: (n: number) => string; labels: string[]; ticks: number; lf?: (iso: string) => string }) {
   const iw = w - M.left - M.right;
   const ih = h - M.top - M.bottom;
   const every = Math.max(1, Math.ceil(labels.length / Math.max(2, Math.floor(iw / 70))));
@@ -62,16 +86,18 @@ function Axes({ w, h, max, fmt, labels, ticks }: { w: number; h: number; max: nu
       })}
       {labels.map((l, i) =>
         i % every === 0 ? (
-          <text key={i} x={M.left + (iw * (i + 0.5)) / labels.length} y={h - 6} textAnchor="middle" className={styles.tick}>{shortDate(l)}</text>
+          <text key={i} x={M.left + (iw * (i + 0.5)) / labels.length} y={h - 6} textAnchor="middle" className={styles.tick}>{lf(l)}</text>
         ) : null
       )}
     </g>
   );
 }
 
-export function ColumnChart({ points, fmt = (n) => wholeNumber.format(n), unit, height = 220, ariaLabel }: { points: Point[]; fmt?: (n: number) => string; unit: string; height?: number; ariaLabel: string }) {
+export function ColumnChart({ points: rawPoints, fmt = (n) => wholeNumber.format(n), unit, height = 220, ariaLabel }: { points: Point[]; fmt?: (n: number) => string; unit: string; height?: number; ariaLabel: string }) {
   const [ref, w] = useWidth<HTMLDivElement>();
   const [hover, setHover] = useState<number | null>(null);
+  const grouped = bucketize(rawPoints.map((p) => p.label), [rawPoints.map((p) => p.value)]);
+  const points: Point[] = grouped.labels.map((label, i) => ({ label, value: grouped.values[0][i] }));
   const max = niceMax(Math.max(0, ...points.map((p) => p.value)));
   const iw = w - M.left - M.right;
   const ih = height - M.top - M.bottom;
@@ -80,7 +106,7 @@ export function ColumnChart({ points, fmt = (n) => wholeNumber.format(n), unit, 
   return (
     <div ref={ref} className={styles.chartBox}>
       <svg width={w} height={height} role="img" aria-label={ariaLabel} onPointerLeave={() => setHover(null)}>
-        <Axes w={w} h={height} max={max} fmt={fmt} labels={points.map((p) => p.label)} ticks={4} />
+        <Axes w={w} h={height} max={max} fmt={fmt} labels={points.map((p) => p.label)} ticks={4} lf={grouped.label} />
         {points.map((p, i) => {
           const bh = Math.max(p.value > 0 ? 2 : 0, (p.value / max) * ih);
           const x = M.left + band * i + (band - bar) / 2;
@@ -104,7 +130,7 @@ export function ColumnChart({ points, fmt = (n) => wholeNumber.format(n), unit, 
         <div className={styles.tooltip} style={{ left: Math.min(w - 150, Math.max(4, M.left + band * (hover + 0.5) - 70)), top: 4 }} role="status">
           <strong>{fmt(points[hover].value)}</strong>
           <span>{unit}</span>
-          <small>{shortDate(points[hover].label)}</small>
+          <small>{grouped.label(points[hover].label)}</small>
         </div>
       )}
     </div>
@@ -113,9 +139,12 @@ export function ColumnChart({ points, fmt = (n) => wholeNumber.format(n), unit, 
 
 export type Series = { name: string; values: number[]; cls: 'seriesStroke1' | 'seriesStroke2'; dot: 'seriesFill1' | 'seriesFill2' };
 
-export function LineChart({ labels, series, fmt = (n) => wholeNumber.format(n), height = 220, ariaLabel, wash = false }: { labels: string[]; series: Series[]; fmt?: (n: number) => string; height?: number; ariaLabel: string; wash?: boolean }) {
+export function LineChart({ labels: rawLabels, series: rawSeries, fmt = (n) => wholeNumber.format(n), height = 220, ariaLabel, wash = false }: { labels: string[]; series: Series[]; fmt?: (n: number) => string; height?: number; ariaLabel: string; wash?: boolean }) {
   const [ref, w] = useWidth<HTMLDivElement>();
   const [hover, setHover] = useState<number | null>(null);
+  const grouped = bucketize(rawLabels, rawSeries.map((s) => s.values));
+  const labels = grouped.labels;
+  const series: Series[] = rawSeries.map((s, i) => ({ ...s, values: grouped.values[i] }));
   const max = niceMax(Math.max(0, ...series.flatMap((s) => s.values)));
   const iw = w - M.left - M.right;
   const ih = height - M.top - M.bottom;
@@ -130,7 +159,7 @@ export function LineChart({ labels, series, fmt = (n) => wholeNumber.format(n), 
   return (
     <div ref={ref} className={styles.chartBox}>
       <svg width={w} height={height} role="img" aria-label={ariaLabel} onPointerLeave={() => setHover(null)}>
-        <Axes w={w} h={height} max={max} fmt={fmt} labels={labels} ticks={4} />
+        <Axes w={w} h={height} max={max} fmt={fmt} labels={labels} ticks={4} lf={grouped.label} />
         {wash && series[0] && n > 1 && (
           <path d={`${path(series[0].values)} L${x(n - 1)},${M.top + ih} L${x(0)},${M.top + ih} Z`} className={styles.seriesFill1} opacity={0.1} />
         )}
@@ -146,7 +175,7 @@ export function LineChart({ labels, series, fmt = (n) => wholeNumber.format(n), 
       </svg>
       {hover !== null && (
         <div className={styles.tooltip} style={{ left: Math.min(w - 170, Math.max(4, x(hover) + 10)), top: 4 }} role="status">
-          <small>{shortDate(labels[hover])}</small>
+          <small>{grouped.label(labels[hover])}</small>
           {series.map((s) => (
             <span key={s.name} className={styles.tipRow}>
               <i className={styles[s.cls.replace('Stroke', 'Key')]} aria-hidden="true" />
