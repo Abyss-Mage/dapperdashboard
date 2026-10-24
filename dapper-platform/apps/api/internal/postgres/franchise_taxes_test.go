@@ -60,3 +60,37 @@ func verifyFranchiseTaxes(t *testing.T, ctx context.Context, s *Store, a, b Scop
 		t.Fatal("double delete accepted", err)
 	}
 }
+
+func verifyInvoiceTaxCalculation(t *testing.T, ctx context.Context, s *Store, a Scope) {
+	t.Helper()
+	exec := func(q string, args ...any) {
+		t.Helper()
+		if _, err := s.pool.Exec(ctx, q, args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	exec(`DELETE FROM franchise_tax_settings WHERE organization_id=$1 AND location_id=$2`, a.OrganizationID, a.LocationID) // the earlier tax test leaves settings behind
+	exec(`INSERT INTO franchise_tax_rates(organization_id,location_id,name,rate_bp) VALUES($1,$2,'Synthetic five',500),($1,$2,'Synthetic off',900)`, a.OrganizationID, a.LocationID)
+	exec(`UPDATE franchise_tax_rates SET active=false WHERE organization_id=$1 AND location_id=$2 AND name='Synthetic off'`, a.OrganizationID, a.LocationID)
+	defer exec(`DELETE FROM franchise_tax_rates WHERE organization_id=$1 AND location_id=$2`, a.OrganizationID, a.LocationID)
+	defer exec(`DELETE FROM franchise_tax_settings WHERE organization_id=$1 AND location_id=$2`, a.OrganizationID, a.LocationID)
+	// No rounding chosen yet: half-up is used and reported. Only the active 5% applies (10100 * 5% = 505).
+	tax, assumed, err := s.taxOnSubtotal(ctx, a, 10100)
+	if err != nil || tax != 505 || !assumed {
+		t.Fatalf("tax on 10100 at 5%%: %d assumed=%v %v", tax, assumed, err)
+	}
+	// 1010 cents * 5% = 50.5 cents: half-up 51, half-even 50, down 50.
+	for _, c := range []struct {
+		mode string
+		want int64
+	}{{"half_up", 51}, {"half_even", 50}, {"down", 50}} {
+		exec(`INSERT INTO franchise_tax_settings(organization_id,location_id,prices_include_tax,rounding) VALUES($1,$2,false,$3) ON CONFLICT(organization_id,location_id) DO UPDATE SET rounding=excluded.rounding`, a.OrganizationID, a.LocationID, c.mode)
+		if got, assumed, err := s.taxOnSubtotal(ctx, a, 1010); err != nil || got != c.want || assumed {
+			t.Fatalf("%s: got %d want %d assumed=%v %v", c.mode, got, c.want, assumed, err)
+		}
+	}
+	exec(`UPDATE franchise_tax_settings SET prices_include_tax=true WHERE organization_id=$1 AND location_id=$2`, a.OrganizationID, a.LocationID)
+	if _, _, err = s.taxOnSubtotal(ctx, a, 1000); !errors.Is(err, ErrTaxInclusiveUnsupported) {
+		t.Fatal("tax-inclusive prices were accepted for invoices", err)
+	}
+}

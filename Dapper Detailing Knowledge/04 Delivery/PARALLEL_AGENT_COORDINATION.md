@@ -1272,3 +1272,5 @@ User decisions: location mandatory at clock-in; tags 30 days / cars permanent; a
 - 2026-10-24 Claude FINISH live verification + migration 59 (booking consistency trigger) + add-on popup picker: full Go suite, migrate with backup, build, restart, TLS 7/7 PASS; reservation released.
 
 - 2026-10-24 Claude FINISH phone-width fixes (Marketing header, filter pills) and clearer walk-in conflict message: Go tests, build, restart, TLS 7/7 PASS; reservation released.
+
+- 2026-10-24 Claude FINISH logo/brand, Master franchise selector, Workspace invoices (create/issue from bookings, server-side franchise tax): Go suite, build, restart, TLS 7/7 PASS; reservation released.

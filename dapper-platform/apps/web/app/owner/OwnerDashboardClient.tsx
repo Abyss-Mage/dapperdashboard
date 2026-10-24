@@ -409,9 +409,13 @@ export default function OwnerDashboardClient() {
         onClick={() => setMobileOpen(false)}
       />
       <aside id="owner-sidebar" className={`${styles.sidebar} ${mobileOpen ? styles.mobileOpen : ''}`} aria-label="Master navigation">
-        <Link className={styles.brand} href="/owner">
-          DAPPER
-          <span>MASTER DASHBOARD</span>
+        <Link className={styles.brand} href="/owner" aria-label="Dapper Detailing Pros, Master dashboard">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className={styles.brandLogo} src="/site/assets/logo.webp" alt="" width={44} height={44} />
+          <span>
+            <strong>Dapper Detailing Pros</strong>
+            <em>Master dashboard</em>
+          </span>
         </Link>
 
         <div className={styles.scopeBox}>
@@ -429,10 +433,16 @@ export default function OwnerDashboardClient() {
                   setError('');
                 }}
               >
-                {locations.map((loc) => (
-                  <option key={loc.locationId} value={loc.locationId}>
-                    {loc.organizationName} · {loc.locationName}
-                  </option>
+                {[...new Set(locations.map((l) => l.organizationName))].map((orgName) => (
+                  <optgroup key={orgName} label={orgName}>
+                    {locations
+                      .filter((l) => l.organizationName === orgName)
+                      .map((loc) => (
+                        <option key={loc.locationId} value={loc.locationId}>
+                          {loc.locationName}
+                        </option>
+                      ))}
+                  </optgroup>
                 ))}
               </select>
             </>

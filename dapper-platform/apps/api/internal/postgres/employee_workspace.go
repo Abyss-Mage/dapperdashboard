@@ -247,7 +247,7 @@ func (s *Store) EmployeeWorkspace(ctx context.Context, actor string) (EmployeeDe
 		return r, err
 	}
 	scope := employeeScope(a)
-	for _, action := range []string{"attendance.record", "attendance.read", "bookings.read", "catalogue.read", "bookings.create", "payments.record", "invoices.read"} {
+	for _, action := range []string{"attendance.record", "attendance.read", "bookings.read", "catalogue.read", "bookings.create", "payments.record", "invoices.read", "invoices.create", "invoices.issue"} {
 		if e := authorizeTransaction(ctx, tx, scope, action); e == nil {
 			r.Actions = append(r.Actions, action)
 		} else if !errors.Is(e, ErrForbidden) {
