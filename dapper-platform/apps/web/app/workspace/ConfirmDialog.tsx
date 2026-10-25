@@ -1,168 +1,110 @@
 'use client';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
+import styles from './ConfirmDialog.module.css';
+
+gsap.registerPlugin(useGSAP);
 
 export type ConfirmDialogProps = {
   isOpen: boolean;
   title: string;
-  entityName: string;
-  entityType: string;
-  actionType: 'delete' | 'archive';
-  explanation: string;
+  /** Needed for delete / archive; the name is shown in the question. */
+  entityName?: string;
+  entityType?: string;
+  /** "confirm" is a plain yes / no question that uses `message`. */
+  actionType: 'delete' | 'archive' | 'confirm';
+  explanation?: string;
+  message?: string;
   impactNotice?: string;
   isBusy?: boolean;
   confirmLabel?: string;
+  /** danger turns the confirm button red; delete is always danger. */
+  tone?: 'danger' | 'default';
   onConfirm: () => void | Promise<void>;
   onCancel: () => void;
 };
 
-export default function ConfirmDialog({
-  isOpen,
-  title,
-  entityName,
-  entityType,
-  actionType,
-  explanation,
-  impactNotice,
-  isBusy = false,
-  confirmLabel,
-  onConfirm,
-  onCancel,
-}: ConfirmDialogProps) {
-  const cancelBtnRef = useRef<HTMLButtonElement>(null);
-  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+const reduced = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const Icon = ({ kind }: { kind: ConfirmDialogProps['actionType'] }) => (
+  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    {kind === 'delete' && <path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 002 2h6a2 2 0 002-2l1-12M9 7V4h6v3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />}
+    {kind === 'archive' && <path d="M4 7h16v3H4zM6 10v8a2 2 0 002 2h8a2 2 0 002-2v-8M10 14h4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />}
+    {kind === 'confirm' && <><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.7" /><path d="M12 7.5v5.2M12 16.3v.2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></>}
+  </svg>
+);
+
+export default function ConfirmDialog({ isOpen, title, entityName, entityType = 'item', actionType, explanation, message, impactNotice, isBusy = false, confirmLabel, tone, onConfirm, onCancel }: ConfirmDialogProps) {
+  const [mounted, setMounted] = useState(false);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const previouslyFocused = useRef<HTMLElement | null>(null);
+  const danger = tone ? tone === 'danger' : actionType === 'delete';
 
   useEffect(() => {
-    if (isOpen) {
-      previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
-      // Safe initial focus on Cancel to prevent accidental destruction
-      const timer = setTimeout(() => {
-        cancelBtnRef.current?.focus();
-      }, 50);
-      return () => clearTimeout(timer);
-    } else if (previouslyFocusedRef.current) {
-      // Return focus to triggering element on close
-      previouslyFocusedRef.current.focus();
-    }
+    if (isOpen) { previouslyFocused.current = document.activeElement as HTMLElement | null; setMounted(true); return; }
+    if (!mounted) return;
+    const overlay = overlayRef.current, card = cardRef.current;
+    const done = () => { setMounted(false); previouslyFocused.current?.focus?.(); };
+    if (!overlay || !card || reduced()) { done(); return; }
+    const tl = gsap.timeline({ onComplete: done });
+    tl.to(card, { autoAlpha: 0, y: 14, scale: 0.97, duration: 0.18, ease: 'power2.in' }, 0).to(overlay, { autoAlpha: 0, duration: 0.2 }, 0);
+    return () => { tl.kill(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
+
+  useGSAP(() => {
+    if (!mounted || !isOpen || !overlayRef.current || !cardRef.current) return;
+    const tl = gsap.timeline();
+    if (!reduced()) {
+      tl.fromTo(overlayRef.current, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.25, ease: 'power1.out' }, 0)
+        .fromTo(cardRef.current, { autoAlpha: 0, y: 26, scale: 0.92 }, { autoAlpha: 1, y: 0, scale: 1, duration: 0.45, ease: 'back.out(1.5)' }, 0.03)
+        .fromTo(cardRef.current.querySelectorAll('[data-in]'), { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0, duration: 0.35, stagger: 0.06, ease: 'power2.out', clearProps: 'opacity,visibility,transform' }, 0.14);
+    }
+    // Safe initial focus on Cancel to prevent accidental destruction.
+    const t = window.setTimeout(() => cancelRef.current?.focus(), 60);
+    return () => { window.clearTimeout(t); tl.kill(); };
+  }, { dependencies: [mounted, isOpen] });
 
   useEffect(() => {
     if (!isOpen) return;
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape' && !isBusy) {
-        e.preventDefault();
-        onCancel();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isBusy) { e.preventDefault(); e.stopPropagation(); onCancel(); }
+      if (e.key === 'Tab') { // keep focus inside the dialog
+        const els = cardRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled)');
+        if (!els?.length) return;
+        const first = els[0], last = els[els.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
       }
-    }
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
   }, [isOpen, isBusy, onCancel]);
 
-  if (!isOpen) return null;
+  if (!mounted) return null;
+  const verb = actionType === 'delete' ? 'delete' : 'archive';
+  const defaultLabel = actionType === 'delete' ? `Delete ${entityType}` : actionType === 'archive' ? `Archive ${entityType}` : 'Confirm';
 
-  const defaultConfirmLabel = actionType === 'delete' ? `Delete ${entityType}` : `Archive ${entityType}`;
-
-  return (
-    <div
-      className="modal-overlay"
-      role="presentation"
-      style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.75)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 9999,
-        padding: '1rem',
-      }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !isBusy) onCancel();
-      }}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="confirm-dialog-title"
-        aria-describedby="confirm-dialog-desc"
-        className="detail-card panel"
-        style={{
-          maxWidth: '520px',
-          width: '100%',
-          margin: 'auto',
-          backgroundColor: '#17171b',
-          color: '#ffffff',
-          borderRadius: '8px',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
-          padding: '1.5rem',
-        }}
-      >
-        <h2 id="confirm-dialog-title" style={{ marginTop: 0, fontSize: '1.25rem', color: '#f5f5f7' }}>
-          {title}
-        </h2>
-
-        <div id="confirm-dialog-desc" style={{ marginTop: '0.75rem', fontSize: '0.9375rem', lineHeight: '1.5' }}>
-          <p style={{ margin: '0 0 0.75rem 0' }}>
-            Are you sure you want to {actionType === 'delete' ? 'delete' : 'archive'}{' '}
-            <strong>{entityName}</strong>?
-          </p>
-          <p style={{ margin: '0 0 0.75rem 0', opacity: 0.9 }}>
-            {explanation}
-          </p>
-          {impactNotice && (
-            <div
-              style={{
-                margin: '0.75rem 0',
-                padding: '0.75rem',
-                backgroundColor: 'rgba(255, 107, 119, 0.15)',
-                borderLeft: '3px solid #ff6b77',
-                fontSize: '0.875rem',
-                borderRadius: '4px',
-              }}
-            >
-              <strong>Dependency notice:</strong> {impactNotice}
-            </div>
-          )}
+  return createPortal(
+    <div ref={overlayRef} className={styles.overlay} role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget && !isBusy) onCancel(); }}>
+      <div ref={cardRef} className={styles.card} role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title" aria-describedby="confirm-dialog-desc">
+        <span className={`${styles.badge} ${danger ? styles.badgeDanger : ''}`} data-in="" aria-hidden="true"><Icon kind={actionType} /></span>
+        <h2 id="confirm-dialog-title" className={styles.title} data-in="">{title}</h2>
+        <div id="confirm-dialog-desc" className={styles.body} data-in="">
+          {actionType === 'confirm' ? <p>{message}</p> : <p>Are you sure you want to {verb} <strong>{entityName}</strong>?</p>}
+          {explanation && <p className={styles.muted}>{explanation}</p>}
+          {impactNotice && <div className={styles.notice}><strong>Dependency notice:</strong> {impactNotice}</div>}
         </div>
-
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'flex-end',
-            gap: '0.75rem',
-            marginTop: '1.5rem',
-          }}
-        >
-          <button
-            ref={cancelBtnRef}
-            type="button"
-            className="secondary"
-            onClick={onCancel}
-            disabled={isBusy}
-            style={{
-              padding: '0.5rem 1rem',
-              fontSize: '0.875rem',
-              cursor: 'pointer',
-            }}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="primary"
-            onClick={onConfirm}
-            disabled={isBusy}
-            style={{
-              padding: '0.5rem 1rem',
-              fontSize: '0.875rem',
-              backgroundColor: actionType === 'delete' ? '#d10f1f' : undefined,
-              borderColor: actionType === 'delete' ? '#a30b18' : undefined,
-              cursor: isBusy ? 'wait' : 'pointer',
-            }}
-          >
-            {isBusy ? 'Processing…' : (confirmLabel || defaultConfirmLabel)}
-          </button>
+        <div className={styles.actions} data-in="">
+          <button ref={cancelRef} type="button" className="secondary" onClick={onCancel} disabled={isBusy}>Cancel</button>
+          <button type="button" className={`primary ${danger ? styles.danger : ''}`} onClick={onConfirm} disabled={isBusy}>{isBusy ? 'Processing…' : (confirmLabel || defaultLabel)}</button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

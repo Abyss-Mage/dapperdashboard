@@ -51,3 +51,11 @@ Owner direction (2026-10-25): stop the 3D home page for now (owner will supply c
 - Charts: lines draw, areas fade in, columns grow, bar lists fill, last-point dot pops (CSS keyframes, with pathLength so no measuring).
 - Global CSS (`globals.css`): button lift / press / sheen, card lift, input focus glow, dialog and alert and status entrances, light/dark colour crossfade (class `dd-theme-fade` set by the theme toggle).
 - Checked in the running app: sidebar bar, page slide, card fades mid-flight, wizard step slide, no element left invisible, no horizontal overflow. Frame rate in the capture tool is low, so timing feel was not judged by eye; phone sizes and the staff workspace motion beyond the entrance fade are not yet reviewed.
+
+## Native controls replaced (2026-10-25, later)
+- `app/Pickers.tsx`: `DatePicker`, `TimePicker`, `DateTimePicker`, `ColorPicker` replace every browser date, time, datetime-local and colour input (20 places, 15 files). Same props as the inputs (value, onChange(e.target.value), min, max, required, name, aria-label). Date: month grid with a gliding selected-day pill, month/year switcher, Today / Clear, full keyboard (arrows, Page Up/Down, Home/End). Time: hour / minute (5-minute steps) / AM-PM wheels with gliding pills, "End of day" where a franchise closes at midnight. Colour: swatches plus hex. Phones get a bottom sheet.
+- `workspace/ConfirmDialog.tsx` redrawn as a glass, theme-aware, animated dialog; `app/confirm.tsx` (`askConfirm`) replaces the four browser "Are you sure?" boxes (void invoice, issue quotation, delete popup form, discard invoice edits).
+- `app/motion/Tooltips.tsx`: glass tooltips replace the browser's title tooltips (shown after a short pause, instantly on keyboard focus; no touch).
+- Global CSS: custom checkboxes and radios, a real toggle for switch rows, no number spinners, glass file button, thin scrollbars, turning chevron on expanders, quiet textarea grip, brand text selection, autofill colours.
+- Services: the central catalogue and each service's add-ons can be folded (remembered per device); very tall lists fade instead of resizing.
+- Not done: the public marketing pages under `main website` (separate static site, its own forms), number steppers (+ / −), and a phone-size review of the new pickers.

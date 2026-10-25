@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import styles from './owner.module.css';
+import { TimePicker } from '../Pickers';
 
 /* A franchise is one place with one set of opening hours. Behind the scenes the franchise may book work on more than one
    bay or crew; the hours entered here are saved to all of them, so the owner only ever sets hours once. */
@@ -74,9 +75,9 @@ export default function OpeningHours({ base, franchiseName, canManage }: { base:
                   </label>
                   {days[d].map((w, i) => (
                     <div key={i} className={styles.weekWindow}>
-                      <input type="time" aria-label={`${name} opens`} value={w.start} onChange={(e) => set(d, i, 'start', e.target.value)} disabled={busy || !canManage} />
+                      <TimePicker aria-label={`${name} opens`} value={w.start} onChange={(e) => set(d, i, 'start', e.target.value)} disabled={busy || !canManage} />
                       <span aria-hidden="true">to</span>
-                      <input type="time" aria-label={`${name} closes`} value={w.end} onChange={(e) => set(d, i, 'end', e.target.value)} disabled={busy || !canManage} />
+                      <TimePicker allowEndOfDay aria-label={`${name} closes`} value={w.end} onChange={(e) => set(d, i, 'end', e.target.value)} disabled={busy || !canManage} />
                       {i > 0 && <button type="button" className="secondary" disabled={busy || !canManage} onClick={() => remove(d, i)} aria-label={`Remove this ${name} time`}>Remove</button>}
                     </div>
                   ))}

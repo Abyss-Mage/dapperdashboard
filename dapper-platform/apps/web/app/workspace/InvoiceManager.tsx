@@ -5,6 +5,7 @@ import InvoiceDraftHistory from './InvoiceDraftHistory';
 import SquareCardPayment from './SquareCardPayment';
 import { printInvoiceDocument, usePrintTemplate } from './InvoicePrint';
 import Select from '../GlassSelect';
+import { askConfirm } from '../confirm';
 
 type InvoiceItem = {
   id: string;
@@ -360,7 +361,7 @@ export default function InvoiceManager({
 
   const handleVoidInvoice = async () => {
     if (!activeInvoice) return;
-    if (!confirm(`Are you sure you want to void invoice ${activeInvoice.invoiceNumber}? This action cannot be undone.`)) {
+    if (!(await askConfirm({title: 'Void this invoice?', message: `Void invoice ${activeInvoice.invoiceNumber}?`, detail: 'This cannot be undone.', confirmLabel: 'Void invoice', tone: 'danger'}))) {
       return;
     }
     setLoading(true);

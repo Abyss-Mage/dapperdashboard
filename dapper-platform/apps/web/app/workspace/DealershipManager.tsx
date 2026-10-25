@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Select from '../GlassSelect';
+import { ColorPicker } from '../Pickers';
 
 type DealershipTag = {
   id: string;
@@ -657,8 +658,7 @@ export default function DealershipManager({
                       onChange={(e) => setNewTagName(e.target.value)}
                       style={{ padding: '0.3rem', fontSize: '0.8rem' }}
                     />
-                    <input
-                      type="color"
+                    <ColorPicker
                       value={newTagColor}
                       onChange={(e) => setNewTagColor(e.target.value)}
                       style={{ width: '32px', height: '28px', padding: 0, border: 0 }}

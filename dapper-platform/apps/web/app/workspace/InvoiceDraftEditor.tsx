@@ -1,6 +1,7 @@
 'use client';
 
 import {useEffect, useRef, useState} from 'react';
+import { askConfirm } from '../confirm';
 
 export type EditableInvoiceDraft = {
   id: string; version: number; taxCents: number; notes: string;
@@ -65,7 +66,7 @@ export default function InvoiceDraftEditor({base, invoice, onSaved, onCancel, on
       <div style={{display: 'flex', gap: '.5rem', flexWrap: 'wrap'}}>
         <button className="primary" type="submit">{busy ? 'Saving draft…' : 'Save draft changes'}</button>
         <button className="secondary" type="button" onClick={onCancel}>Cancel editing</button>
-        {conflict && <button className="secondary" type="button" onClick={async () => {if (confirm('Discard these unsaved edits and reload the current invoice?')) {setBusy(true); try {await onReload();} finally {setBusy(false);}}}}>Discard edits and reload</button>}
+        {conflict && <button className="secondary" type="button" onClick={async () => {if (await askConfirm({title: 'Discard your edits?', message: 'Discard these unsaved edits and reload the current invoice?', confirmLabel: 'Discard and reload', tone: 'danger'})) {setBusy(true); try {await onReload();} finally {setBusy(false);}}}}>Discard edits and reload</button>}
       </div>
     </fieldset>
   </form>;

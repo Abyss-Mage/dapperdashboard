@@ -2,6 +2,7 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import BookingRescheduler from './BookingRescheduler';
 import Select from '../GlassSelect';
+import { DateTimePicker } from '../Pickers';
 
 type Customer = {id: string; name: string; email: string; phone: string};
 type Vehicle = {id: string; customerId: string; description: string; identifier: string};
@@ -406,8 +407,7 @@ export default function BookingManager({
             </label>
             <label className="form-field">
               Appointment date & time
-              <input
-                type="datetime-local"
+              <DateTimePicker
                 required
                 disabled={busy}
                 value={bookingTime}

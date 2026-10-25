@@ -1,6 +1,7 @@
 'use client';
 import {useCallback, useEffect, useRef, useState} from 'react';
 import Select from '../GlassSelect';
+import { DateTimePicker } from '../Pickers';
 
 type Resource = {id: string; name: string; timezone: string};
 type Rule = {id: string; resourceId: string; serviceName: string; addons: {serviceId: string; name: string}[]; durationMinutes: number; beforeMinutes: number; afterMinutes: number; units: number; version: number};
@@ -79,7 +80,7 @@ export default function ReservedBookingForm({base, actorId, onSaved}: {base: str
     {loading ? <p role="status">Loading…</p> : <form onSubmit={save} className="management-form">
       <label className="form-field">Customer<Select required value={customer} disabled={busy} onChange={event => setCustomer(event.target.value)}><option value="">Choose a customer</option>{customers.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</Select></label>
       <label className="form-field">Service<Select required value={rule} disabled={busy} onChange={event => {const next = rules.find(item => item.id === event.target.value); setRule(event.target.value); setResource(next?.resourceId ?? '');}}><option value="">Choose a service</option>{rules.map(item => <option key={item.id} value={item.id}>{item.serviceName}{item.addons.length ? ` + ${item.addons.map(addon => addon.name).join(', ')}` : ''} · {span(item.durationMinutes)}{resources.length > 1 ? ` · ${resources.find(r => r.id === item.resourceId)?.name ?? ''}` : ''}</option>)}</Select></label>
-      <label className="form-field">Date and time<input required type="datetime-local" value={start} disabled={busy} onChange={event => setStart(event.target.value)} /></label>
+      <label className="form-field">Date and time<DateTimePicker required value={start} disabled={busy} onChange={event => setStart(event.target.value)} /></label>
       <label className="form-field">How did they book?<Select value={channel} disabled={busy} onChange={event => setChannel(event.target.value)}><option value="walk_in">Walk-in</option><option value="online">Online</option></Select></label>
       <label className="form-field">Notes (optional)<textarea maxLength={2000} value={notes} disabled={busy} onChange={event => setNotes(event.target.value)} /></label>
       <button className="primary" disabled={busy || !selectedRule || !customer || !start}>{busy ? 'Saving…' : 'Save booking'}</button>

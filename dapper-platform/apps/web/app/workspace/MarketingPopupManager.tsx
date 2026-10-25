@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { askConfirm } from '../confirm';
 
 type PopupFormField = {
   name: string;
@@ -220,7 +221,7 @@ export default function MarketingPopupManager({
   };
 
   const handleDeleteForm = async (id: string) => {
-    if (!canManage || !confirm('Are you sure you want to delete this popup form?')) return;
+    if (!canManage || !(await askConfirm({title: 'Delete this popup form?', message: 'Are you sure you want to delete this popup form?', confirmLabel: 'Delete form', tone: 'danger'}))) return;
     try {
       const res = await fetch(`${base}/popups/${id}`, { method: 'DELETE' });
       if (res.ok) {

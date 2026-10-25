@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import styles from './owner.module.css';
 import { OwnerIcon } from './OwnerIcons';
+import { DatePicker, TimePicker } from '../Pickers';
 
 type Window = { start: string; end: string };
 type Hour = { day: number; start: string; end: string };
@@ -75,9 +76,9 @@ function WeeklyEditor({ resource, base, onSaved }: { resource: Resource; base: s
               {days[d].length === 0 && <span className={styles.personSub}>Closed</span>}
               {days[d].map((w, i) => (
                 <div key={i} className={styles.weekWindow}>
-                  <input type="time" aria-label={`${name} opens`} value={w.start} onChange={(e) => set(d, i, 'start', e.target.value)} disabled={busy} />
+                  <TimePicker aria-label={`${name} opens`} value={w.start} onChange={(e) => set(d, i, 'start', e.target.value)} disabled={busy} />
                   <span aria-hidden="true">to</span>
-                  <input type="time" aria-label={`${name} closes`} value={w.end === '24:00' ? '23:59' : w.end} onChange={(e) => set(d, i, 'end', e.target.value)} disabled={busy} />
+                  <TimePicker aria-label={`${name} closes`} value={w.end === '24:00' ? '23:59' : w.end} onChange={(e) => set(d, i, 'end', e.target.value)} disabled={busy} />
                   <button type="button" className={styles.linkBtn} onClick={() => remove(d, i)} disabled={busy} aria-label={`Remove ${name} window`}>
                     <OwnerIcon name="close" size={14} />
                   </button>
@@ -123,7 +124,7 @@ function Closures({ resource, base, onSaved }: { resource: Resource; base: strin
   return (
     <div className={styles.stack}>
       <form className={styles.inlineForm} onSubmit={(e) => { e.preventDefault(); if (date) void run(async () => { await readJson(await fetch(`${base}/scheduling/resources/${resource.id}/closures`, json('POST', { date }))); setDate(''); }); }}>
-        <label className="form-field">Close for a whole day (holiday, maintenance)<input type="date" required value={date} onChange={(e) => setDate(e.target.value)} disabled={busy} /></label>
+        <label className="form-field">Close for a whole day (holiday, maintenance)<DatePicker required value={date} onChange={(e) => setDate(e.target.value)} disabled={busy} /></label>
         <button className="secondary" disabled={busy || !date}>Add closure</button>
       </form>
       {error && <p role="alert" className="field-error">{error}</p>}

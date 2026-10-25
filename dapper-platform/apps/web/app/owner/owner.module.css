@@ -840,6 +840,7 @@
 
 /* Inline filter dropdowns size to their content instead of filling the row. */
 .filterSelect [data-glass-select] { width: auto; min-width: 150px; }
+.filterSelect [data-glass-select]:has(button[aria-haspopup=dialog]) { min-width: 196px; }
 .filterSelect :is(button[role=combobox]) { min-height: 38px; border-radius: 10px; }
 
 /* ---------- Motion ---------- */
@@ -864,3 +865,13 @@
   .popDot { transform-box: fill-box; transform-origin: center; animation: pop .55s cubic-bezier(.3, 1.6, .5, 1) 1.15s backwards; }
 }
 @media (prefers-reduced-motion: reduce) { .drawLine { stroke-dasharray: none; stroke-dashoffset: 0; } }
+
+/* Fold buttons (Services) */
+.foldHead { display: flex; align-items: flex-start; gap: 12px; min-width: 0; }
+.foldBtn { flex: none; display: inline-grid; place-items: center; width: 32px; height: 32px; margin-top: -2px; border-radius: 10px; border: 1px solid var(--glass-line); background: var(--glass-strong); color: var(--text-muted); cursor: pointer; transition: transform .35s cubic-bezier(.2, .8, .2, 1), color .2s ease, border-color .2s ease; }
+.foldBtn:hover { color: var(--text); border-color: color-mix(in srgb, var(--brand) 55%, var(--glass-line)); }
+.foldBtn:focus-visible { outline: 2px solid var(--focus, var(--link)); outline-offset: 2px; }
+.foldOpen { transform: rotate(90deg); }
+.svcKids { list-style: none; padding: 0; margin: 0; }
+.svc:has(> .foldBtn) { grid-template-columns: auto minmax(0, 1fr) auto auto; }
+@media (max-width: 760px) { .svc:has(> .foldBtn) { grid-template-columns: auto minmax(0, 1fr); } }

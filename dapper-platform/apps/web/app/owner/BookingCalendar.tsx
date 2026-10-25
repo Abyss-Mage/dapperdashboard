@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, RefreshCw, X } from 'lucide-react';
 import { calendarRange, dateOffset, readableDay, worksiteDate } from '../workspace/employee_helpers';
 import styles from '../workspace/employee.module.css';
 import owner from './owner.module.css';
+import { DatePicker } from '../Pickers';
 
 /* Master's bookings calendar: the same month / week / day calendar as the staff workspace, for the selected franchise. */
 
@@ -49,7 +50,7 @@ export default function BookingCalendar({ base, timezone, calendarLink }: { base
         </div>
         <div className={styles.calendarViews} aria-label="Calendar view">{(['month', 'week', 'day'] as const).map((v) => <button key={v} className={styles.secondary} aria-pressed={view === v} onClick={() => setView(v)}>{v}</button>)}</div>
         <button className={styles.secondary} onClick={() => setDay(today)}>Today</button>
-        <label>Go to date<input type="date" value={day} onChange={(e) => e.target.value && setDay(e.target.value)} /></label>
+        <label>Go to date<DatePicker value={day} onChange={(e) => e.target.value && setDay(e.target.value)} /></label>
         <button className={styles.iconButton} aria-label="Reload calendar" onClick={() => setRevision((v) => v + 1)}><RefreshCw size={18} /></button>
         <button className={styles.secondary} onClick={() => { void navigator.clipboard?.writeText(link).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2500); }); }} title="Add this link to Google Calendar or Apple Calendar to see bookings on your phone">{copied ? 'Link copied' : 'Link Calendar'}</button>
       </div>

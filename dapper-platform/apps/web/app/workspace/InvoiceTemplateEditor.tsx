@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { DEFAULT_PRINT_TEMPLATE, InvoiceDocument, printInvoiceDocument, STARTER_CSS, STARTER_HTML, TEMPLATE_PLACEHOLDERS, type PrintInvoice, type PrintTemplate } from './InvoicePrint';
 import Select from '../GlassSelect';
+import { ColorPicker } from '../Pickers';
 
 /* Owner / Super Admin editor for the printed invoice layout. Wording and look only; amounts and parties always come from the invoice. */
 
@@ -68,7 +69,7 @@ export default function InvoiceTemplateEditor({ organizationId, revision }: { or
         <div className="management-form">
           {text('title', 'Document title', 40)}
           <label className="form-field">Accent colour
-            <input type="color" value={form.accentColor} disabled={busy || !loaded} onChange={(e) => set('accentColor', e.target.value)} />
+            <ColorPicker value={form.accentColor} disabled={busy || !loaded} onChange={(e) => set('accentColor', e.target.value)} />
           </label>
           <label className="form-field">Paper size
             <Select value={form.paperSize} disabled={busy || !loaded} onChange={(e) => set('paperSize', e.target.value as 'letter' | 'a4')}>

@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Select from '../GlassSelect';
+import { DateTimePicker } from '../Pickers';
+import { askConfirm } from '../confirm';
 
 type QuoteItem = {
   id: string;
@@ -244,7 +246,7 @@ export default function QuoteManager({
   }
 
   async function handleIssueQuote(quote: Quote) {
-    if (!confirm(`Issue quotation ${quote.referenceNumber} to customer? Price amounts will be frozen.`)) {
+    if (!(await askConfirm({title: 'Issue this quotation?', message: `Issue quotation ${quote.referenceNumber} to the customer?`, detail: 'Price amounts will be frozen once it is issued.', confirmLabel: 'Issue quotation'}))) {
       return;
     }
     setError('');
@@ -383,9 +385,8 @@ export default function QuoteManager({
             </div>
             <div>
               <label htmlFor="q-expires">Expiry (Optional)</label>
-              <input
+              <DateTimePicker
                 id="q-expires"
-                type="datetime-local"
                 value={formExpiresAt}
                 onChange={(e) => setFormExpiresAt(e.target.value)}
               />

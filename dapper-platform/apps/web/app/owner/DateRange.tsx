@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import styles from './owner.module.css';
+import { DatePicker } from '../Pickers';
 
 /* One date filter for every Master page: quick choices, "All time", or two dates of your own. */
 
@@ -54,8 +55,8 @@ export default function RangeBar({ presets, preset, custom, onPreset, onCustom, 
       </div>
       {preset === 'custom' && (
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <label className={styles.filterSelect}><span>From</span><input type="date" value={draft.from} max={draft.to || undefined} onChange={(e) => change({ ...draft, from: e.target.value })} /></label>
-          <label className={styles.filterSelect}><span>To</span><input type="date" value={draft.to} min={draft.from || undefined} onChange={(e) => change({ ...draft, to: e.target.value })} /></label>
+          <label className={styles.filterSelect}><span>From</span><DatePicker value={draft.from} max={draft.to || undefined} onChange={(e) => change({ ...draft, from: e.target.value })} /></label>
+          <label className={styles.filterSelect}><span>To</span><DatePicker value={draft.to} min={draft.from || undefined} onChange={(e) => change({ ...draft, to: e.target.value })} /></label>
           {problem && <span role="alert" className="field-error">{problem}</span>}
         </div>
       )}
