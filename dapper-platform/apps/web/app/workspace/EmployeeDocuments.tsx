@@ -11,7 +11,7 @@ const categoryLabel: Record<string, string> = { onboarding: 'Onboarding', safety
 export default function DocumentsCard({ timezone, onChanged }: { timezone: string; onChanged?: () => void }) {
   const [docs, setDocs] = useState<Doc[] | null>(null), [error, setError] = useState(''), [open, setOpen] = useState(''), [name, setName] = useState(''), [read, setRead] = useState(false), [busy, setBusy] = useState(false), [notice, setNotice] = useState('');
   const nameField = useRef<HTMLInputElement>(null);
-  const load = useCallback(() => fetch('/api/v1/employee/documents', { cache: 'no-store' }).then(async r => { const b = await r.json().catch(() => ({})); if (!r.ok) throw new Error(b.error ?? 'Documents are unavailable.'); setDocs(b.items); setError(''); }).catch(e => setError(e.message)), []);
+  const load = useCallback(() => fetch('/api/v1/employee/documents', { cache: 'no-store' }).then(async r => { const b = await r.json().catch(() => ({})); if (!r.ok) throw new Error(b.error ?? 'SOP & Compliance is unavailable.'); setDocs(b.items); setError(''); }).catch(e => setError(e.message)), []);
   useEffect(() => { void load(); }, [load]);
   useEffect(() => { if (open) nameField.current?.focus(); }, [open]);
   const day = (v: string) => new Intl.DateTimeFormat('en-CA', { dateStyle: 'medium', timeZone: timezone }).format(new Date(v));
@@ -26,7 +26,7 @@ export default function DocumentsCard({ timezone, onChanged }: { timezone: strin
     finally { setBusy(false); }
   }
   return <section className={styles.documentsCard} aria-labelledby="documents-title">
-    <div className={styles.sectionTop}><h2 id="documents-title">Documents</h2><span className={styles.count}>Policy</span></div>
+    <div className={styles.sectionTop}><h2 id="documents-title">SOP &amp; Compliance</h2><span className={styles.count}>Policy</span></div>
     {error && <p role="alert" className={styles.error}>{error}</p>}{notice && <p role="status" className={styles.notice}><Check size={18} aria-hidden="true" />{notice}</p>}
     {docs === null && !error ? <p className={styles.help}>Loading documents…</p> : docs && !docs.length ? <p className={styles.emptyNote}>Your administrator has not published any documents yet.</p> : docs && <ul className={styles.docList}>
       {docs.map(d => <li key={d.id} className={styles.docItem}>

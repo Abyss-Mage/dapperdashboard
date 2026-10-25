@@ -23,6 +23,8 @@
   background-attachment: fixed;
 }
 :global(:root[data-theme=dark]) .shell {
+  /* plain dark background: no coloured glows behind the panels */
+  background: var(--bg);
   --glass: color-mix(in srgb, var(--surface) 58%, transparent);
   --glass-strong: color-mix(in srgb, var(--surface) 74%, transparent);
   --glass-edge: rgba(255, 255, 255, .13);
@@ -645,6 +647,8 @@
     var(--bg) !important;
   background-attachment: fixed !important;
 }
+/* Dark mode: a plain background, no coloured glows. */
+:global(:root[data-theme=dark]) .shell { background-image: none !important; background-color: var(--bg) !important; }
 .main, .tabPanel { background: transparent !important; }
 .tabPanel :global(.panel), .tabPanel :global(.detail-card) { background: var(--glass) !important; }
 .tabPanel :global(.panel) :global(.panel), .tabPanel :global(.panel) :global(.detail-card), .tabPanel :global(.detail-card) :global(.panel), .tabPanel :global(.detail-card) :global(.detail-card) { background: transparent !important; }
@@ -811,3 +815,16 @@
   backdrop-filter: blur(30px) saturate(190%);
   border-bottom: 1px solid color-mix(in srgb, var(--glass-edge) 55%, transparent);
 }
+
+/* Plain data table (staff hours, customer records) */
+.table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.table :is(th, td) { padding: 9px 10px; text-align: left; border-bottom: 1px solid var(--glass-line); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.table thead th { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); }
+.table tfoot :is(th, td) { border-bottom: 0; border-top: 2px solid var(--glass-line); }
+.filterSelect input { min-height: 38px; border-radius: 10px; border: 1px solid var(--glass-line); background: var(--glass-strong); color: var(--text); padding: 0 10px; font: inherit; }
+/* Customer details drawer */
+.drawer { position: fixed; inset: 0 0 0 auto; width: min(560px, 100vw); z-index: 60; overflow-y: auto; padding: 24px; background: var(--surface); border-left: 1px solid var(--glass-line); box-shadow: var(--glass-shadow-lg); }
+.drawerScrim { position: fixed; inset: 0; z-index: 59; background: rgba(0, 0, 0, .45); border: 0; }
+.personButton { all: unset; cursor: pointer; display: flex; flex-direction: column; gap: 2px; min-width: 0; border-radius: 8px; }
+.personButton:focus-visible { outline: 2px solid var(--focus, var(--link)); outline-offset: 3px; }
+.personButton:hover .personName { text-decoration: underline; }

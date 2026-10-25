@@ -158,7 +158,7 @@ export default function OwnerOverview({ base, location, organizationName, onNavi
           <div className={styles.tiles}>
             {tile('Bookings', trends?.bookings ? wholeNumber.format(trends.bookings.total) : null, rangeText, 'bookings', 'calendar', trends?.bookings?.byDay.map((d) => d.count), 'bookings.read')}
             {tile('Net recorded payments', trends?.payments ? dollars(trends.payments.netCents) : null, rangeText, 'finance', 'finance', trends?.payments?.byDay.map((d) => d.cents), 'payments.read')}
-            {tile('Work orders completed', trends?.jobs ? wholeNumber.format(trends.jobs.completed) : null, `${trends?.jobs?.created ?? 0} created · ${rangeText}`, 'operations', 'work', trends?.jobs?.completedByDay.map((d) => d.count), 'jobs.read')}
+            {tile('Bookings completed', trends?.jobs ? wholeNumber.format(trends.jobs.completed) : null, `${trends?.jobs?.created ?? 0} created · ${rangeText}`, 'operations', 'work', trends?.jobs?.completedByDay.map((d) => d.count), 'jobs.read')}
             {tile('Outstanding balance', money('outstandingCents') === null ? null : dollars(money('outstandingCents') as number), 'Issued and partly paid, right now', 'finance', 'finance', undefined, 'invoices.read')}
             {tile('Customers', money('customers') === null ? null : wholeNumber.format(money('customers') as number), 'Recorded at this franchise, all time', 'customers', 'customers', undefined, 'customers.read')}
           </div>
@@ -199,7 +199,7 @@ export default function OwnerOverview({ base, location, organizationName, onNavi
             )}
 
             {trends?.jobs ? (
-              <Card title="Work orders created and completed" sub={rangeText} span={2} legend={
+              <Card title="Bookings started and completed" sub={rangeText} span={2} legend={
                 <ul className={styles.legend} aria-label="Legend">
                   <li><i className={styles.seriesKey1} aria-hidden="true" />Created</li>
                   <li><i className={styles.seriesKey2} aria-hidden="true" />Completed</li>
@@ -211,12 +211,12 @@ export default function OwnerOverview({ base, location, organizationName, onNavi
                     { name: 'Created', values: trends.jobs.createdByDay.map((d) => d.count), cls: 'seriesStroke1', dot: 'seriesFill1' },
                     { name: 'Completed', values: trends.jobs.completedByDay.map((d) => d.count), cls: 'seriesStroke2', dot: 'seriesFill2' },
                   ]}
-                  ariaLabel={`Work orders created and completed per day, ${rangeText}`}
+                  ariaLabel={`Bookings started and completed per day, ${rangeText}`}
                 />
-                <DataTable caption="Work orders per day" head={['Date', 'Created', 'Completed']} rows={trends.jobs.createdByDay.map((d, i) => [d.date, d.count, trends.jobs?.completedByDay[i]?.count ?? 0])} />
+                <DataTable caption="Bookings per day" head={['Date', 'Created', 'Completed']} rows={trends.jobs.createdByDay.map((d, i) => [d.date, d.count, trends.jobs?.completedByDay[i]?.count ?? 0])} />
               </Card>
             ) : (
-              <Locked title="Work orders" grant="jobs.read" />
+              <Locked title="Bookings completed" grant="jobs.read" />
             )}
 
             {trends?.invoices ? (

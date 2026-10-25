@@ -3,6 +3,7 @@
 package postgres
 
 import (
+	"dapper.local/platform/internal/square"
 	"context"
 	"crypto/sha256"
 	_ "embed"
@@ -199,13 +200,16 @@ var gpsTrackingSchema string
 //go:embed employee_workspace.sql
 var employeeWorkspaceSchema string
 
+//go:embed customer_unique_availability_review.sql
+var customerUniqueAvailabilityReviewSchema string
+
 type migration struct {
 	version int
 	sql     string
 }
 
 func migrations() []migration {
-	return []migration{{1, schema}, {2, authorizationSchema}, {3, vehicleGrantSchema}, {4, sessionSchema}, {5, sessionInvalidationSchema}, {6, oidcIdentitySchema}, {7, passwordCredentialSchema}, {8, jobSchema}, {9, serviceSchema}, {10, franchiseSchema}, {11, jobServiceSchema}, {12, jobAddonSchema}, {13, reservationSchema}, {14, reservationReleaseSchema}, {15, schedulingRuleSchema}, {16, reservationRuleSchema}, {17, reservationHistorySchema}, {18, schedulingReadSchema}, {19, jobContributorSchema}, {20, centralCatalogueSchema}, {21, attendanceSchema}, {22, bookingSchema}, {23, invoiceSchema}, {24, sopDocumentSchema}, {25, bookingVehicleOwnershipSchema}, {26, customerAccountSchema}, {27, bookingJobRequestSchema}, {28, initialAdministratorSchema}, {29, accessGrantEventsSchema}, {30, invoiceIssuanceSchema}, {31, invoiceDraftRevisionSchema}, {32, memberInvitationSchema}, {33, customerAccountManagementSchema}, {34, bookingCapacityRequestSchema}, {35, bookingRescheduleRequestSchema}, {36, bookingOfferSchema}, {37, customerBookingRequestSchema}, {38, scopedQuotationSchema}, {39, dealershipB2BSchema}, {40, marketingPopupsSchema}, {41, paymentRefundAccountingSchema}, {43, publicContentSchema}, {44, rolesAndScopedAssignmentsSchema}, {45, centralServiceLinksSchema}, {46, employeeWorkspaceSchema}, {47, gpsTrackingSchema}, {48, squarePaymentIntentsSchema}, {49, employeeUploadsSchema}, {50, employeeUploadViewsSchema}, {51, employeeUploadBookingSchema}, {52, employeeWorksiteLocationSchema}, {53, franchiseSiteSchema}, {54, employeeUploadRetentionSchema}, {55, accountSecuritySchema}, {56, schedulingWeeklyHoursSchema}, {57, franchiseTaxesSchema}, {58, schedulingWorkingTimeSchema}, {59, bookingCapacityWorkingTimeSchema}, {60, servicePricesSchema}, {61, invoicePrintTemplateSchema}, {62, invoiceOnePerBookingSchema}, {63, publicBookingSchema}}
+	return []migration{{1, schema}, {2, authorizationSchema}, {3, vehicleGrantSchema}, {4, sessionSchema}, {5, sessionInvalidationSchema}, {6, oidcIdentitySchema}, {7, passwordCredentialSchema}, {8, jobSchema}, {9, serviceSchema}, {10, franchiseSchema}, {11, jobServiceSchema}, {12, jobAddonSchema}, {13, reservationSchema}, {14, reservationReleaseSchema}, {15, schedulingRuleSchema}, {16, reservationRuleSchema}, {17, reservationHistorySchema}, {18, schedulingReadSchema}, {19, jobContributorSchema}, {20, centralCatalogueSchema}, {21, attendanceSchema}, {22, bookingSchema}, {23, invoiceSchema}, {24, sopDocumentSchema}, {25, bookingVehicleOwnershipSchema}, {26, customerAccountSchema}, {27, bookingJobRequestSchema}, {28, initialAdministratorSchema}, {29, accessGrantEventsSchema}, {30, invoiceIssuanceSchema}, {31, invoiceDraftRevisionSchema}, {32, memberInvitationSchema}, {33, customerAccountManagementSchema}, {34, bookingCapacityRequestSchema}, {35, bookingRescheduleRequestSchema}, {36, bookingOfferSchema}, {37, customerBookingRequestSchema}, {38, scopedQuotationSchema}, {39, dealershipB2BSchema}, {40, marketingPopupsSchema}, {41, paymentRefundAccountingSchema}, {43, publicContentSchema}, {44, rolesAndScopedAssignmentsSchema}, {45, centralServiceLinksSchema}, {46, employeeWorkspaceSchema}, {47, gpsTrackingSchema}, {48, squarePaymentIntentsSchema}, {49, employeeUploadsSchema}, {50, employeeUploadViewsSchema}, {51, employeeUploadBookingSchema}, {52, employeeWorksiteLocationSchema}, {53, franchiseSiteSchema}, {54, employeeUploadRetentionSchema}, {55, accountSecuritySchema}, {56, schedulingWeeklyHoursSchema}, {57, franchiseTaxesSchema}, {58, schedulingWorkingTimeSchema}, {59, bookingCapacityWorkingTimeSchema}, {60, servicePricesSchema}, {61, invoicePrintTemplateSchema}, {62, invoiceOnePerBookingSchema}, {63, publicBookingSchema}, {64, customerUniqueAvailabilityReviewSchema}}
 }
 
 // ValidateSchema is read-only. Runtime startup never applies migrations.
@@ -229,6 +233,7 @@ func (s *Store) ValidateSchema(ctx context.Context) error {
 type Store struct {
 	pool           *pgxpool.Pool
 	squareResolver SquareCredentialResolver
+	squareOAuth    map[string]square.OAuthApp
 	// Public identifiers only (see SetSquareApplicationIDs).
 	squareApplicationIDs map[string]string
 	uploadDir            string
@@ -322,7 +327,7 @@ func (s *Store) CreateCustomer(ctx context.Context, scope Scope, name, email, ph
 	var c Customer
 	err = tx.QueryRow(ctx, `INSERT INTO customers(organization_id,location_id,name,email,phone) VALUES($1,$2,$3,$4,$5) RETURNING id::text,name,email,phone`, scope.OrganizationID, scope.LocationID, name, email, phone).Scan(&c.ID, &c.Name, &c.Email, &c.Phone)
 	if err != nil {
-		return Customer{}, err
+		return Customer{}, customerUniqueness(err)
 	}
 	if _, err = tx.Exec(ctx, `INSERT INTO audit_events(organization_id,location_id,actor_id,action,entity_id) VALUES($1,$2,$3,'customer.created',$4)`, scope.OrganizationID, scope.LocationID, scope.ActorID, c.ID); err != nil {
 		return Customer{}, err
@@ -336,7 +341,7 @@ func (s *Store) Customers(ctx context.Context, scope Scope) ([]Customer, error) 
 	if err := s.authorize(ctx, scope, "customers.read"); err != nil {
 		return nil, err
 	}
-	rows, err := s.pool.Query(ctx, `SELECT id::text,name,email,phone FROM customers WHERE organization_id=$1 AND location_id=$2 ORDER BY created_at,id LIMIT 100`, scope.OrganizationID, scope.LocationID)
+	rows, err := s.pool.Query(ctx, `SELECT id::text,name,email,phone FROM customers WHERE organization_id=$1 AND location_id=$2 AND removed_at IS NULL ORDER BY created_at,id LIMIT 1000`, scope.OrganizationID, scope.LocationID)
 	if err != nil {
 		return nil, err
 	}

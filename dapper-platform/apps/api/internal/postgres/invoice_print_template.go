@@ -30,6 +30,10 @@ type InvoicePrintTemplate struct {
 	PaymentInstructions string `json:"paymentInstructions"`
 	FooterNote          string `json:"footerNote"`
 	PaperSize           string `json:"paperSize"`
+	// Optional owner-written layout. When CustomHTML is set it replaces the built-in layout; {{placeholders}} are filled from the
+	// invoice when printing, and it is shown in a sandbox where scripts never run.
+	CustomHTML string `json:"customHtml"`
+	CustomCSS  string `json:"customCss"`
 }
 
 // InvoicePrintTemplateState is what the API returns: the template plus its revision (0 = built-in default, never saved).
@@ -62,6 +66,17 @@ func (t *InvoicePrintTemplate) normalize() error {
 	}
 	if !templateColor.MatchString(t.AccentColor) || t.PaperSize != "letter" && t.PaperSize != "a4" {
 		return ErrInvoiceTemplateInput
+	}
+	t.CustomHTML, t.CustomCSS = strings.TrimSpace(t.CustomHTML), strings.TrimSpace(t.CustomCSS)
+	if len(t.CustomHTML) > 60000 || len(t.CustomCSS) > 60000 {
+		return ErrInvoiceTemplateInput
+	}
+	// Layouts are HTML and CSS only: no scripts, frames or plug-ins.
+	lower := strings.ToLower(t.CustomHTML + t.CustomCSS)
+	for _, banned := range []string{"<script", "javascript:", "<iframe", "<object", "<embed", "<base", "<meta"} {
+		if strings.Contains(lower, banned) {
+			return ErrInvoiceTemplateInput
+		}
 	}
 	return nil
 }

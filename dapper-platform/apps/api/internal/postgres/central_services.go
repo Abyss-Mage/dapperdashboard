@@ -260,6 +260,19 @@ func (s *Store) DeleteCentralService(ctx context.Context, actor, org, id string,
 		return DeleteResult{}, ErrCentralServiceHasChildren
 	}
 
+	// Franchise copies that were switched on automatically and never used go with it; if any copy is used (bookings, jobs,
+	// invoices, rules...), everything is kept and the service is archived instead.
+	if _, err = tx.Exec(ctx, `SAVEPOINT unused_copies`); err != nil {
+		return DeleteResult{}, err
+	}
+	if _, err = tx.Exec(ctx, `DELETE FROM catalog_service_revisions WHERE service_id IN (SELECT id FROM catalog_services WHERE central_service_id=$1)`, id); err == nil {
+		_, err = tx.Exec(ctx, `DELETE FROM catalog_services WHERE central_service_id=$1`, id)
+	}
+	if err != nil {
+		if _, e := tx.Exec(ctx, `ROLLBACK TO SAVEPOINT unused_copies`); e != nil {
+			return DeleteResult{}, e
+		}
+	}
 	var linked bool
 	err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM catalog_services WHERE central_service_id=$1) OR EXISTS(SELECT 1 FROM central_catalog_services WHERE parent_id=$1)`, id).Scan(&linked)
 	if err != nil {

@@ -5,6 +5,8 @@ import styles from './owner.module.css';
 import ConfirmDialog from '../workspace/ConfirmDialog';
 
 type Customer = { id: string; name: string; email: string; phone: string; createdAt: string; vehicles: number; bookings: number; jobs: number; invoices: number };
+type Line = { id: string; title: string; status: string; at: string; cents?: number | null };
+type Records = { vehicles: Line[]; bookings: Line[]; jobs: Line[]; invoices: Line[] };
 
 async function readJson(r: Response) {
   const body = await r.json().catch(() => ({}));
@@ -12,9 +14,12 @@ async function readJson(r: Response) {
   return body;
 }
 const send = (method: string, body?: unknown): RequestInit => ({ method, headers: { 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
+const when = (iso: string) => new Date(iso).toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' });
+const money = (c: number) => new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(c / 100);
+const digits = (v: string) => v.replace(/\D/g, '');
 
-/* Customers of the selected franchise: search, add, edit, delete. A customer with bookings, work orders or invoices cannot be deleted
-   (their history must stay intact); edit their details instead. */
+/* Customers of the selected franchise: search, add, edit and delete. Each email and phone number belongs to one customer.
+   The list stays short; a customer's vehicles, bookings, jobs and invoices open when you click their name. */
 export default function CustomerManager({ base, canCreate, canDelete, onChanged }: { base: string; canCreate: boolean; canDelete: boolean; onChanged: () => void }) {
   const [items, setItems] = useState<Customer[] | null>(null);
   const [query, setQuery] = useState('');
@@ -24,6 +29,8 @@ export default function CustomerManager({ base, canCreate, canDelete, onChanged 
   const [phone, setPhone] = useState('');
   const [fields, setFields] = useState<Record<string, string>>({});
   const [target, setTarget] = useState<Customer | null>(null);
+  const [open, setOpen] = useState<Customer | null>(null);
+  const [records, setRecords] = useState<Records | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -37,27 +44,33 @@ export default function CustomerManager({ base, canCreate, canDelete, onChanged 
       setError(e instanceof Error ? e.message : 'Customers could not be loaded.');
     }
   }, [base]);
-  useEffect(() => {
-    setEditing(null);
-    setNotice('');
-    void load();
-  }, [load]);
+  useEffect(() => { setEditing(null); setOpen(null); setNotice(''); void load(); }, [load]);
 
-  function open(c: Customer | 'new') {
-    setEditing(c);
-    setError('');
-    setNotice('');
-    setFields({});
-    setName(c === 'new' ? '' : c.name);
-    setEmail(c === 'new' ? '' : c.email);
-    setPhone(c === 'new' ? '' : c.phone);
+  useEffect(() => {
+    if (!open) { setRecords(null); return; }
+    let live = true;
+    setRecords(null);
+    fetch(`${base}/customers/${open.id}/records`, { cache: 'no-store' }).then(readJson).then((b) => live && setRecords(b)).catch((e) => live && setError(e.message));
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(null); };
+    window.addEventListener('keydown', onKey);
+    return () => { live = false; window.removeEventListener('keydown', onKey); };
+  }, [open, base]);
+
+  function edit(c: Customer | 'new') {
+    setEditing(c); setError(''); setNotice(''); setFields({});
+    setName(c === 'new' ? '' : c.name); setEmail(c === 'new' ? '' : c.email); setPhone(c === 'new' ? '' : c.phone);
   }
+
+  // Before saving, point out a customer who already has this email or phone (the server refuses duplicates too).
+  const clash = useMemo(() => {
+    const self = editing && editing !== 'new' ? editing.id : '';
+    const e = email.trim().toLowerCase(), p = digits(phone);
+    return (items ?? []).find((c) => c.id !== self && ((e && c.email.toLowerCase() === e) || (p.length >= 7 && digits(c.phone) === p)));
+  }, [items, editing, email, phone]);
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
-    setBusy(true);
-    setError('');
-    setFields({});
+    setBusy(true); setError(''); setFields({});
     try {
       const was = editing;
       await readJson(await fetch(was === 'new' || !was ? `${base}/customers` : `${base}/customers/${was.id}`, send(was === 'new' || !was ? 'POST' : 'PUT', { name, email, phone })));
@@ -68,27 +81,22 @@ export default function CustomerManager({ base, canCreate, canDelete, onChanged 
     } catch (err) {
       setFields((err as { fields?: Record<string, string> }).fields ?? {});
       setError(err instanceof Error ? err.message : 'The customer could not be saved.');
-    } finally {
-      setBusy(false);
-    }
+    } finally { setBusy(false); }
   }
 
   async function remove() {
     if (!target) return;
-    setBusy(true);
-    setError('');
+    setBusy(true); setError('');
     try {
-      await readJson(await fetch(`${base}/customers/${target.id}`, send('DELETE')));
-      setNotice(`${target.name} deleted.`);
-      setTarget(null);
+      const r = await readJson(await fetch(`${base}/customers/${target.id}`, send('DELETE')));
+      setNotice(r.removed ? `${target.name} was deleted from your customers. Their issued invoices and payments are kept for your tax records.` : `${target.name} and their records were deleted.`);
+      setTarget(null); setOpen(null);
       await load();
       onChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'The customer could not be deleted.');
       setTarget(null);
-    } finally {
-      setBusy(false);
-    }
+    } finally { setBusy(false); }
   }
 
   const visible = useMemo(() => {
@@ -96,14 +104,21 @@ export default function CustomerManager({ base, canCreate, canDelete, onChanged 
     return (items ?? []).filter((c) => !q || c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q) || c.phone.toLowerCase().includes(q));
   }, [items, query]);
 
+  const section = (title: string, list: Line[], render: (l: Line) => string) => (
+    <section style={{ marginTop: 18 }}>
+      <h3 style={{ fontSize: 15, margin: '0 0 6px' }}>{title} <span className={styles.personSub}>({list.length})</span></h3>
+      {list.length === 0 ? <p className={styles.personSub}>None.</p> : <ul className={styles.people} style={{ gap: 6 }}>{list.map((l) => <li key={l.id} className={styles.personSub} style={{ color: 'var(--text)' }}>{render(l)}</li>)}</ul>}
+    </section>
+  );
+
   return (
     <div className={styles.stack}>
       <div className={styles.rowBetween}>
         <div>
           <h2 className={styles.setupTitle} style={{ fontSize: 20, margin: 0 }}>Customers</h2>
-          <p className={styles.personSub}>People this franchise serves. Adding a customer does not subscribe them to marketing.</p>
+          <p className={styles.personSub}>Click a name to see their vehicles, bookings, jobs and invoices. Each email and phone number belongs to one customer.</p>
         </div>
-        {canCreate && !editing && <button type="button" className="primary" onClick={() => open('new')}>New customer</button>}
+        {canCreate && !editing && <button type="button" className="primary" onClick={() => edit('new')}>New customer</button>}
       </div>
       {error && <p role="alert" className="field-error">{error}</p>}
       {notice && <p role="status" className={styles.status}>{notice}</p>}
@@ -116,8 +131,9 @@ export default function CustomerManager({ base, canCreate, canDelete, onChanged 
             <label className="form-field">Email (optional)<input type="email" maxLength={254} autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={busy} aria-invalid={!!fields.email} />{fields.email && <span className="field-error">{fields.email}</span>}</label>
             <label className="form-field">Phone (optional)<input type="tel" maxLength={30} autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} disabled={busy} aria-invalid={!!fields.phone} />{fields.phone && <span className="field-error">{fields.phone}</span>}</label>
           </div>
+          {clash && <p role="alert" className="field-error">{clash.name} already has this {clash.email.toLowerCase() === email.trim().toLowerCase() && email.trim() ? 'email' : 'phone number'}. Open that customer instead of adding a second one.</p>}
           <div className={styles.rowBetween}>
-            <button className="primary" disabled={busy || name.trim().length < 2}>{busy ? 'Saving…' : editing === 'new' ? 'Add customer' : 'Save changes'}</button>
+            <button className="primary" disabled={busy || name.trim().length < 2 || !!clash}>{busy ? 'Saving…' : editing === 'new' ? 'Add customer' : 'Save changes'}</button>
             <button type="button" className="secondary" disabled={busy} onClick={() => setEditing(null)}>Cancel</button>
           </div>
         </form>
@@ -131,34 +147,46 @@ export default function CustomerManager({ base, canCreate, canDelete, onChanged 
       {!items && !error && <div className={`${styles.card} ${styles.skeleton}`} role="status" aria-label="Loading customers" />}
       {items && visible.length === 0 && <p className={styles.status}>{items.length ? 'Nothing matches your search.' : 'No customers yet.'}</p>}
       <ul className={styles.people}>
-        {visible.map((c) => {
-          const history = c.bookings + c.jobs + c.invoices;
-          return (
-            <li key={c.id} className={styles.person} style={{ gridTemplateColumns: 'minmax(0,1.2fr) minmax(0,1.2fr) auto', alignItems: 'center' }}>
-              <div className={styles.personMain}>
-                <strong className={styles.personName}>{c.name}</strong>
-                <span className={styles.personSub}>{c.email || 'No email'}{c.phone ? ` · ${c.phone}` : ''}</span>
-              </div>
-              <div className={styles.svcTags}>
-                <span className={styles.chip}>{c.vehicles} vehicle{c.vehicles === 1 ? '' : 's'}</span>
-                <span className={styles.chip}>{c.bookings} booking{c.bookings === 1 ? '' : 's'}</span>
-                <span className={styles.chip}>{c.jobs} work order{c.jobs === 1 ? '' : 's'}</span>
-                <span className={styles.chip}>{c.invoices} invoice{c.invoices === 1 ? '' : 's'}</span>
-              </div>
-              <div className={styles.svcActions}>
-                {canCreate && <button type="button" className="secondary" disabled={busy || !!editing} onClick={() => open(c)}>Edit</button>}
-                {canDelete && (
-                  <button type="button" className="secondary" disabled={busy || !!editing || history > 0} title={history > 0 ? 'Has bookings, work orders or invoices, so it cannot be deleted. Edit the details instead.' : undefined} onClick={() => { setError(''); setTarget(c); }}>Delete</button>
-                )}
-              </div>
-            </li>
-          );
-        })}
+        {visible.map((c) => (
+          <li key={c.id} className={styles.person} style={{ gridTemplateColumns: 'minmax(0,1fr) auto', alignItems: 'center' }}>
+            <button type="button" className={styles.personButton} onClick={() => setOpen(c)} aria-label={`Open ${c.name}`}>
+              <strong className={styles.personName}>{c.name}</strong>
+              <span className={styles.personSub}>{c.email || 'No email'}{c.phone ? ` · ${c.phone}` : ''}</span>
+            </button>
+            <div className={styles.svcActions}>
+              {canCreate && <button type="button" className="secondary" disabled={busy || !!editing} onClick={() => edit(c)}>Edit</button>}
+              {canDelete && <button type="button" className="secondary" disabled={busy || !!editing} onClick={() => { setError(''); setTarget(c); }}>Delete</button>}
+            </div>
+          </li>
+        ))}
       </ul>
 
+      {open && <>
+        <button type="button" className={styles.drawerScrim} aria-label="Close customer details" onClick={() => setOpen(null)} />
+        <aside className={styles.drawer} role="dialog" aria-modal="true" aria-label={`${open.name}, customer details`}>
+          <div className={styles.rowBetween}>
+            <div>
+              <h2 className={styles.setupTitle} style={{ fontSize: 22, margin: 0 }}>{open.name}</h2>
+              <p className={styles.personSub}>{open.email || 'No email'}{open.phone ? ` · ${open.phone}` : ''} · customer since {when(open.createdAt)}</p>
+            </div>
+            <button type="button" className="secondary" onClick={() => setOpen(null)}>Close</button>
+          </div>
+          {!records && <div className={`${styles.card} ${styles.skeleton}`} role="status" aria-label="Loading records" style={{ marginTop: 16 }} />}
+          {records && <>
+            {section('Vehicles', records.vehicles, (l) => `${l.title}${l.status ? ` · ${l.status}` : ''}`)}
+            {section('Bookings', records.bookings, (l) => `${l.title} · ${when(l.at)} · ${l.status.replaceAll('_', ' ')}`)}
+            {section('Jobs', records.jobs, (l) => `${l.title} · ${when(l.at)} · ${l.status === 'completed' ? 'finished' : l.status.replaceAll('_', ' ')}`)}
+            {section('Invoices', records.invoices, (l) => `${l.title} · ${when(l.at)} · ${l.status.replaceAll('_', ' ')}${l.cents != null ? ` · ${money(l.cents)}` : ''}`)}
+          </>}
+          <div className={styles.rowBetween} style={{ marginTop: 24 }}>
+            {canCreate && <button type="button" className="secondary" onClick={() => { const c = open; setOpen(null); edit(c); }}>Edit details</button>}
+            {canDelete && <button type="button" className="secondary" onClick={() => setTarget(open)}>Delete customer</button>}
+          </div>
+        </aside>
+      </>}
+
       <ConfirmDialog isOpen={target !== null} title="Delete customer" entityName={target?.name ?? ''} entityType="Customer" actionType="delete" isBusy={busy}
-        explanation="The customer and their saved vehicles are removed for good. Customers with bookings, work orders or invoices cannot be deleted."
-        impactNotice={target && target.vehicles > 0 ? `${target.vehicles} saved vehicle${target.vehicles === 1 ? '' : 's'} will be removed too.` : undefined}
+        explanation="The customer is deleted with their vehicles, bookings, jobs and draft invoices. If they have issued invoices or payments, those are kept for your tax records and the customer is removed from every list."
         confirmLabel="Delete customer" onConfirm={remove} onCancel={() => { if (!busy) setTarget(null); }} />
     </div>
   );

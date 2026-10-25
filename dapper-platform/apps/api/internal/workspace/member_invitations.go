@@ -66,6 +66,8 @@ func registerMemberInvitationRoutes(mux *http.ServeMux, store *postgres.Store, s
 		var input struct {
 			Email            string `json:"email"`
 			ExpiresInMinutes int    `json:"expiresInMinutes"`
+			RoleID           string `json:"roleId"`
+			LocationID       string `json:"locationId"`
 		}
 		if !decode(w, r, &input) {
 			return
@@ -74,7 +76,15 @@ func registerMemberInvitationRoutes(mux *http.ServeMux, store *postgres.Store, s
 			invitationFailure(w, postgres.ErrInvitationInput)
 			return
 		}
-		invitation, err := service.Create(r.Context(), requestSession(r).principalID, r.PathValue("organization"), input.Email, time.Duration(input.ExpiresInMinutes)*time.Minute)
+		var preset *postgres.InvitationRole
+		if input.RoleID != "" || input.LocationID != "" {
+			if !uuid(input.RoleID) || !uuid(input.LocationID) {
+				invitationFailure(w, postgres.ErrInvitationInput)
+				return
+			}
+			preset = &postgres.InvitationRole{RoleID: input.RoleID, LocationID: input.LocationID}
+		}
+		invitation, err := service.CreateWithRole(r.Context(), requestSession(r).principalID, r.PathValue("organization"), input.Email, time.Duration(input.ExpiresInMinutes)*time.Minute, preset)
 		if err != nil {
 			invitationFailure(w, err)
 			return

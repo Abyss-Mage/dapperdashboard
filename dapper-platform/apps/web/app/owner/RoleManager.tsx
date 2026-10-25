@@ -10,11 +10,11 @@ export type Role = { id: string; name: string; description: string; version: num
 const GROUPS: { label: string; caps: string[] }[] = [
   { label: 'Customers & vehicles', caps: ['customers.read', 'customers.create', 'customer_accounts.manage', 'vehicles.read', 'vehicles.create'] },
   { label: 'Bookings & scheduling', caps: ['bookings.read', 'bookings.create', 'bookings.manage', 'scheduling.read', 'scheduling.manage', 'scheduling.reserve', 'scheduling.release'] },
-  { label: 'Work orders', caps: ['jobs.read', 'jobs.create', 'jobs.complete', 'jobs.contribute'] },
+  { label: 'Jobs', caps: ['jobs.read', 'jobs.create', 'jobs.complete', 'jobs.contribute'] },
   { label: 'Quotes', caps: ['quotes.read', 'quotes.create', 'quotes.manage', 'quotes.issue'] },
   { label: 'Invoices & payments', caps: ['invoices.read', 'invoices.create', 'invoices.issue', 'invoices.manage', 'invoices.configure', 'payments.read', 'payments.record'] },
   { label: 'Staff time & location', caps: ['attendance.record', 'attendance.read', 'attendance.manage'] },
-  { label: 'Documents', caps: ['sop.read', 'sop.acknowledge', 'sop.manage'] },
+  { label: 'SOP & Compliance', caps: ['sop.read', 'sop.acknowledge', 'sop.manage'] },
   { label: 'Partner dealerships', caps: ['dealership.read', 'dealership.manage'] },
   { label: 'Catalogue, marketing & content', caps: ['catalogue.read', 'catalogue.manage', 'marketing.read', 'marketing.manage', 'content.manage'] },
   { label: 'Organization settings & people', caps: ['structure.read', 'structure.manage', 'access.manage', 'roles.manage', 'roles.assign'] },

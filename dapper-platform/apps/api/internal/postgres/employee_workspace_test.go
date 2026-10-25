@@ -90,7 +90,7 @@ func TestEmployeeWorkspacePersistence(t *testing.T) {
 	exec(`INSERT INTO organization_memberships(organization_id,principal_id) VALUES($1,$2),($1,$3),($4,$5)`, org, owner, employee, otherOrg, foreign)
 	exec(`INSERT INTO organization_grants(organization_id,principal_id,action) VALUES($1,$2,'access.manage')`, org, owner)
 	dealer := func(o, l, code string) string {
-		customer := id(`INSERT INTO customers(organization_id,location_id,name,email,phone) VALUES($1,$2,'Synthetic dealer customer','dealer@example.invalid','+15555550100') RETURNING id::text`, o, l)
+		customer := id(`INSERT INTO customers(organization_id,location_id,name,email,phone) VALUES($1,$2,'Synthetic dealer customer',lower($3)||'@example.invalid','') RETURNING id::text`, o, l, code)
 		return id(`INSERT INTO dealership_accounts(organization_id,location_id,customer_id,account_name,account_code,account_type,contact_name,contact_email) VALUES($1,$2,$3,'Synthetic dealership',$4,'dealership','Synthetic contact','dealer@example.invalid') RETURNING id::text`, o, l, customer, code)
 	}
 	a, b, c := dealer(org, loc, "SYN-A"), dealer(org, loc, "SYN-B"), dealer(otherOrg, otherLoc, "SYN-C")

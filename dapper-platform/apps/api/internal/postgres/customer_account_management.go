@@ -47,7 +47,7 @@ func (s *Store) ManagedCustomerAccounts(ctx context.Context, scope Scope) (Custo
 	if err = customerAccountManagementGrant(ctx, tx, scope); err != nil {
 		return result, err
 	}
-	rows, err := tx.Query(ctx, `SELECT id::text,name,email FROM customers WHERE organization_id=$1 AND location_id=$2 ORDER BY name,id LIMIT 100`, scope.OrganizationID, scope.LocationID)
+	rows, err := tx.Query(ctx, `SELECT id::text,name,email FROM customers WHERE organization_id=$1 AND location_id=$2 AND removed_at IS NULL ORDER BY name,id LIMIT 100`, scope.OrganizationID, scope.LocationID)
 	if err != nil {
 		return result, err
 	}

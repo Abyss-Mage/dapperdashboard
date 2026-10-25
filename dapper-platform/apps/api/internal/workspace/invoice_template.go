@@ -10,7 +10,7 @@ func registerInvoiceTemplateRoutes(mux *http.ServeMux, store *postgres.Store) {
 	templateFailure := func(w http.ResponseWriter, err error) {
 		switch {
 		case errors.Is(err, postgres.ErrInvoiceTemplateInput):
-			reply(w, 422, map[string]string{"error": "Check the template: titles and labels are required, the colour must be a hex value like #111111, and notes have length limits."})
+			reply(w, 422, map[string]string{"error": "Check the template: titles and labels are required, the colour must be a hex value like #111111, notes have length limits, and a custom layout must be HTML and CSS only (no scripts, frames or plug-ins, at most 60,000 characters each)."})
 		case errors.Is(err, postgres.ErrInvoiceTemplateConflict):
 			reply(w, 409, map[string]string{"error": "The template was changed by someone else. Reload it before saving."})
 		default:

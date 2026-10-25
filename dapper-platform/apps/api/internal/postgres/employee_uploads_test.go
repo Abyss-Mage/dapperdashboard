@@ -81,7 +81,7 @@ func verifyEmployeeUploads(t *testing.T, ctx context.Context, s *Store, employee
 		t.Fatalf("tag did not keep the chosen dealership %v", err)
 	}
 	var internalAccount string
-	if err = s.pool.QueryRow(ctx, `WITH c AS (INSERT INTO customers(organization_id,location_id,name,email,phone) VALUES($1,$2,'Synthetic internal customer','internal@example.invalid','+15555550101') RETURNING id) INSERT INTO dealership_accounts(organization_id,location_id,customer_id,account_name,account_code,account_type,contact_name,contact_email) SELECT $1,$2,id,'Synthetic Main Office','SYN-INTERNAL','commercial','Synthetic contact','internal@example.invalid' FROM c RETURNING id::text`, owner.OrganizationID, owner.LocationID).Scan(&internalAccount); err != nil {
+	if err = s.pool.QueryRow(ctx, `WITH c AS (INSERT INTO customers(organization_id,location_id,name,email,phone) VALUES($1,$2,'Synthetic internal customer','internal@example.invalid','+15555550111') RETURNING id) INSERT INTO dealership_accounts(organization_id,location_id,customer_id,account_name,account_code,account_type,contact_name,contact_email) SELECT $1,$2,id,'Synthetic Main Office','SYN-INTERNAL','commercial','Synthetic contact','internal@example.invalid' FROM c RETURNING id::text`, owner.OrganizationID, owner.LocationID).Scan(&internalAccount); err != nil {
 		t.Fatal(err)
 	}
 	if choices, _ = s.EmployeeUploadDealerships(ctx, employee); len(choices) != 2 {

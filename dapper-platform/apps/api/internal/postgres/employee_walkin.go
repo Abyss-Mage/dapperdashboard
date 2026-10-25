@@ -178,12 +178,18 @@ func (s *Store) CreateEmployeeWalkIn(ctx context.Context, actor string, input Em
 	if reservation.Rule == nil {
 		return Booking{}, ErrSchedulingRule
 	}
-	var customer string
-	if err = tx.QueryRow(ctx, `INSERT INTO customers(organization_id,location_id,name,email,phone) VALUES($1,$2,$3,$4,$5) RETURNING id::text`, a.OrganizationID, a.LocationID, input.Name, input.Email, input.Phone).Scan(&customer); err != nil {
+	// One customer per email and phone at a franchise: a returning walk-in is booked under their existing record.
+	customer, err := existingCustomer(ctx, tx, a.OrganizationID, a.LocationID, input.Email, input.Phone)
+	if err != nil {
 		return Booking{}, err
 	}
-	if _, err = tx.Exec(ctx, `INSERT INTO audit_events(organization_id,location_id,actor_id,action,entity_id) VALUES($1,$2,$3,'customer.created',$4)`, a.OrganizationID, a.LocationID, actor, customer); err != nil {
-		return Booking{}, err
+	if customer == "" {
+		if err = tx.QueryRow(ctx, `INSERT INTO customers(organization_id,location_id,name,email,phone) VALUES($1,$2,$3,$4,$5) RETURNING id::text`, a.OrganizationID, a.LocationID, input.Name, input.Email, input.Phone).Scan(&customer); err != nil {
+			return Booking{}, customerUniqueness(err)
+		}
+		if _, err = tx.Exec(ctx, `INSERT INTO audit_events(organization_id,location_id,actor_id,action,entity_id) VALUES($1,$2,$3,'customer.created',$4)`, a.OrganizationID, a.LocationID, actor, customer); err != nil {
+			return Booking{}, err
+		}
 	}
 	rule := reservation.Rule
 	addons := rule.AddonIDs

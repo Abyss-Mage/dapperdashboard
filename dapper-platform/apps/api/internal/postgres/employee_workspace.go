@@ -87,6 +87,8 @@ type EmployeeLocationChoice struct {
 	Code           string `json:"code"`
 }
 type EmployeeAvailabilityReview struct {
+	ID             string          `json:"id"`
+	LocationID     string          `json:"locationId"`
 	LocationName   string          `json:"locationName"`
 	PrincipalID    string          `json:"principalId"`
 	DealershipName string          `json:"dealershipName"`
@@ -96,6 +98,10 @@ type EmployeeAvailabilityReview struct {
 	Notes          string          `json:"notes"`
 	Version        int             `json:"version"`
 	SubmittedAt    time.Time       `json:"submittedAt"`
+	// Review: submitted (waiting), approved or rejected by the franchise owner or the Owner/Super Admin.
+	Status     string     `json:"status"`
+	ReviewedAt *time.Time `json:"reviewedAt"`
+	ReviewNote string     `json:"reviewNote"`
 }
 type EmployeeAdministration struct {
 	Assignments []EmployeeWorksite           `json:"assignments"`
@@ -165,13 +171,13 @@ func (s *Store) EmployeeWorksiteAdministration(ctx context.Context, actor, org s
 	if err != nil {
 		return r, err
 	}
-	rows, err = tx.Query(ctx, `SELECT s.principal_id::text,COALESCE(d.account_name,''),l.name,s.week_start::text,s.timezone,s.intervals,s.notes,s.version,s.submitted_at FROM employee_availability_submissions s JOIN locations l ON l.organization_id=s.organization_id AND l.id=s.location_id LEFT JOIN dealership_accounts d ON d.organization_id=s.organization_id AND d.location_id=s.location_id AND d.id=s.dealership_id WHERE s.organization_id=$1 AND s.week_start>=current_date-7 ORDER BY s.week_start,s.submitted_at DESC LIMIT 100`, org)
+	rows, err = tx.Query(ctx, `SELECT s.id::text,s.location_id::text,s.principal_id::text,COALESCE(d.account_name,''),l.name,s.week_start::text,s.timezone,s.intervals,s.notes,s.version,s.submitted_at,s.review_status,s.reviewed_at,s.review_note FROM employee_availability_submissions s JOIN locations l ON l.organization_id=s.organization_id AND l.id=s.location_id LEFT JOIN dealership_accounts d ON d.organization_id=s.organization_id AND d.location_id=s.location_id AND d.id=s.dealership_id WHERE s.organization_id=$1 AND s.week_start>=current_date-28 ORDER BY (s.review_status='submitted') DESC,s.week_start DESC,s.submitted_at DESC LIMIT 200`, org)
 	if err != nil {
 		return r, err
 	}
 	for rows.Next() {
 		var a EmployeeAvailabilityReview
-		if err = rows.Scan(&a.PrincipalID, &a.DealershipName, &a.LocationName, &a.WeekStart, &a.Timezone, &a.Intervals, &a.Notes, &a.Version, &a.SubmittedAt); err != nil {
+		if err = rows.Scan(&a.ID, &a.LocationID, &a.PrincipalID, &a.DealershipName, &a.LocationName, &a.WeekStart, &a.Timezone, &a.Intervals, &a.Notes, &a.Version, &a.SubmittedAt, &a.Status, &a.ReviewedAt, &a.ReviewNote); err != nil {
 			rows.Close()
 			return r, err
 		}
@@ -481,7 +487,7 @@ func (s *Store) SubmitEmployeeAvailability(ctx context.Context, actor string, in
 	if id == "" {
 		err = tx.QueryRow(ctx, `INSERT INTO employee_availability_submissions(organization_id,location_id,dealership_id,principal_id,week_start,timezone,intervals,notes) VALUES($1,$2,NULLIF($3,'')::uuid,$4,$5::date,$6,$7,$8) RETURNING id::text,version,submitted_at`, a.OrganizationID, a.LocationID, a.DealershipID, actor, week, a.Timezone, data, input.Notes).Scan(&id, &input.Version, &stamp)
 	} else {
-		err = tx.QueryRow(ctx, `UPDATE employee_availability_submissions SET intervals=$2,notes=$3,version=version+1,submitted_at=now() WHERE id=$1 RETURNING version,submitted_at`, id, data, input.Notes).Scan(&input.Version, &stamp)
+		err = tx.QueryRow(ctx, `UPDATE employee_availability_submissions SET intervals=$2,notes=$3,version=version+1,submitted_at=now(),review_status='submitted',reviewed_by=NULL,reviewed_at=NULL,review_note='' WHERE id=$1 RETURNING version,submitted_at`, id, data, input.Notes).Scan(&input.Version, &stamp)
 	}
 	if err != nil {
 		return input, err
@@ -557,4 +563,53 @@ func (s *Store) LinkEmployeeBooking(ctx context.Context, actor, org, location, d
 		return err
 	}
 	return tx.Commit(ctx)
+}
+
+// ReviewEmployeeAvailability approves or rejects a staff member's weekly availability. Allowed for the Owner/Super Admin
+// (access.manage on the organization) or the franchise owner (attendance.manage at that franchise). The version must match,
+// so a decision is never made on a submission that changed in the meantime.
+func (s *Store) ReviewEmployeeAvailability(ctx context.Context, actor, org, id, decision, note string, version int) (EmployeeAvailabilityReview, error) {
+	var out EmployeeAvailabilityReview
+	if (decision != "approved" && decision != "rejected") || len(note) > 500 || version < 1 {
+		return out, ErrEmployeeInput
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return out, err
+	}
+	defer tx.Rollback(ctx)
+	var loc string
+	var current int
+	err = tx.QueryRow(ctx, `SELECT location_id::text,version FROM employee_availability_submissions WHERE organization_id=$1 AND id=$2 FOR UPDATE`, org, id).Scan(&loc, &current)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return out, ErrEmployeeInput
+	}
+	if err != nil {
+		return out, err
+	}
+	if _, e := tx.Exec(ctx, `SAVEPOINT review_grant`); e != nil {
+		return out, e
+	}
+	if e := accessManagementGrant(ctx, tx, actor, org); e != nil {
+		if _, e2 := tx.Exec(ctx, `ROLLBACK TO SAVEPOINT review_grant`); e2 != nil {
+			return out, e2
+		}
+		if e = authorizeTransaction(ctx, tx, Scope{OrganizationID: org, LocationID: loc, ActorID: actor}, "attendance.manage"); e != nil {
+			return out, e
+		}
+	}
+	if current != version {
+		return out, ErrEmployeeVersion
+	}
+	err = tx.QueryRow(ctx, `UPDATE employee_availability_submissions s SET review_status=$3,reviewed_by=$4,reviewed_at=now(),review_note=$5
+ FROM locations l WHERE l.organization_id=s.organization_id AND l.id=s.location_id AND s.organization_id=$1 AND s.id=$2
+ RETURNING s.id::text,s.location_id::text,s.principal_id::text,'',l.name,s.week_start::text,s.timezone,s.intervals,s.notes,s.version,s.submitted_at,s.review_status,s.reviewed_at,s.review_note`, org, id, decision, actor, note).Scan(
+		&out.ID, &out.LocationID, &out.PrincipalID, &out.DealershipName, &out.LocationName, &out.WeekStart, &out.Timezone, &out.Intervals, &out.Notes, &out.Version, &out.SubmittedAt, &out.Status, &out.ReviewedAt, &out.ReviewNote)
+	if err != nil {
+		return out, err
+	}
+	if err = employeeEvent(ctx, tx, actor, org, id, "employee.availability_"+decision, map[string]string{"note": note}); err != nil {
+		return out, err
+	}
+	return out, tx.Commit(ctx)
 }

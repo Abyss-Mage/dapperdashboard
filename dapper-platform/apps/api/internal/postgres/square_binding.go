@@ -13,7 +13,6 @@ var ErrSquareBinding = errors.New("a reviewed Square merchant binding is require
 
 // SetSquareCredentialResolver installs server-held credentials (never request data).
 func (s *Store) SetSquareCredentialResolver(r SquareCredentialResolver) { s.squareResolver = r }
-func (s *Store) SquareCredentialResolver() SquareCredentialResolver     { return s.squareResolver }
 
 // SetSquareApplicationIDs installs the PUBLIC Square application IDs (per environment) the browser
 // card SDK needs. They are not secrets; access tokens never use this path.

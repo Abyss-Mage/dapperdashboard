@@ -33,7 +33,7 @@ export default function OnboardingGate({ timezone, onChanged }: { timezone: stri
     </div></section>
     <section className={glass.stage}><div className={glass.card}>
       <div className={glass.head}><h2 className={glass.title}>{done(docsDone)} 3. Read and acknowledge your documents</h2></div>
-      {!status.assigned ? <p className={glass.lede}>Documents appear here once your administrator assigns you to a franchise. You can finish steps 1 and 2 now and come back.</p> : <>
+      {!status.assigned ? <p className={glass.lede}>SOP & Compliance documents appear here once your administrator assigns you to a franchise. You can finish steps 1 and 2 now and come back.</p> : <>
         <p className={glass.lede}>{status.documentsPending === 0 ? 'All documents are acknowledged.' : `${status.documentsPending} of ${status.documentsTotal} still need your acknowledgment. Open each PDF, read it, then acknowledge.`}{status.documentsUnavailable > 0 ? ` ${status.documentsUnavailable} could not be loaded; ask your administrator.` : ''}</p>
         <DocumentsCard timezone={timezone} onChanged={() => void load()} />
       </>}

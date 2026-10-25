@@ -84,7 +84,7 @@ export default function MarketingPopupManager({
   locationId: string;
   canManage: boolean;
 }) {
-  const [tab, setTab] = useState<'popups' | 'consents' | 'settings'>('popups');
+  const [tab, setTab] = useState<'popups' | 'consents' | 'settings'>('settings');
   const [popups, setPopups] = useState<PopupForm[]>([]);
   const [consents, setConsents] = useState<MarketingConsent[]>([]);
   const [settings, setSettings] = useState<MailchimpSettings | null>(null);
@@ -110,7 +110,7 @@ export default function MarketingPopupManager({
   const [formPages, setFormPages] = useState('/');
 
   // Settings form state
-  const [serverPrefix, setServerPrefix] = useState('us21');
+  const [serverPrefix, setServerPrefix] = useState('');
   const [defaultListId, setDefaultListId] = useState('');
   const [doubleOptIn, setDoubleOptIn] = useState(false);
   const [syncEnabled, setSyncEnabled] = useState(true);
@@ -138,7 +138,7 @@ export default function MarketingPopupManager({
       if (settingsRes.ok) {
         const data = await settingsRes.json();
         setSettings(data);
-        setServerPrefix(data.serverPrefix || 'us21');
+        setServerPrefix(data.serverPrefix || '');
         setDefaultListId(data.defaultListId || '');
         setDoubleOptIn(data.doubleOptIn || false);
         setSyncEnabled(data.syncEnabled ?? true);
@@ -279,33 +279,10 @@ export default function MarketingPopupManager({
     <section className="dealership-panel" style={{ marginTop: '1.5rem', border: '1px solid var(--glass-line)', padding: '1.25rem', borderRadius: '8px' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--glass-line)', paddingBottom: '0.75rem' }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Marketing &amp; Popup Form Builder (DEL-20 &amp; DEL-21)</h2>
+          <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Mailchimp</h2>
           <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-            CASL-compliant marketing consent ledger, Mailchimp audience integration, and customizable lead-capture popups.
+            Customers who agree to hear from you are added to your Mailchimp audience.
           </p>
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-          <button
-            type="button"
-            onClick={() => setTab('popups')}
-            style={{ fontWeight: tab === 'popups' ? 'bold' : 'normal', padding: '0.4rem 0.8rem' }}
-          >
-            Popup Forms ({popups.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab('consents')}
-            style={{ fontWeight: tab === 'consents' ? 'bold' : 'normal', padding: '0.4rem 0.8rem' }}
-          >
-            Consent Ledger ({consents.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab('settings')}
-            style={{ fontWeight: tab === 'settings' ? 'bold' : 'normal', padding: '0.4rem 0.8rem' }}
-          >
-            Mailchimp Settings
-          </button>
         </div>
       </div>
 
@@ -594,9 +571,9 @@ export default function MarketingPopupManager({
 
       {tab === 'settings' && (
         <div>
-          <h3 style={{ margin: '0 0 0.5rem 0' }}>Mailchimp API v3 Provider Configuration</h3>
+          <h3 style={{ margin: '0 0 0.5rem 0' }}>Mailchimp settings</h3>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-            Configure audience synchronization, datacenter prefix, and double opt-in settings for this location.
+            Your Mailchimp server prefix (the part before .api.mailchimp.com, e.g. us21), the audience to add people to, and whether Mailchimp sends a confirmation email first.
           </p>
 
           <form onSubmit={handleSaveSettings} style={{ maxWidth: '500px', background: 'var(--glass-strong)', padding: '1rem', borderRadius: '6px', border: '1px solid var(--glass-line)' }}>

@@ -119,6 +119,20 @@ func main() {
 		"sandbox":    os.Getenv("DAPPER_SQUARE_SANDBOX_APPLICATION_ID"),
 		"production": os.Getenv("DAPPER_SQUARE_PRODUCTION_APPLICATION_ID"),
 	})
+	// Franchises connect their own Square accounts with the application's secret (never logged, never sent to a browser).
+	store.SetSquareOAuthApps(map[string]square.OAuthApp{
+		"sandbox":    {Environment: "sandbox", ApplicationID: os.Getenv("DAPPER_SQUARE_SANDBOX_APPLICATION_ID"), Secret: os.Getenv("DAPPER_SQUARE_SANDBOX_APPLICATION_SECRET")},
+		"production": {Environment: "production", ApplicationID: os.Getenv("DAPPER_SQUARE_PRODUCTION_APPLICATION_ID"), Secret: os.Getenv("DAPPER_SQUARE_PRODUCTION_APPLICATION_SECRET")},
+	})
+	go func() {
+		// Square asks for OAuth access tokens to be renewed every 7 days or less; check every 6 hours.
+		for {
+			if _, err := store.RefreshSquareConnections(context.Background()); err != nil {
+				log.Print("Square token renewal check failed")
+			}
+			time.Sleep(6 * time.Hour)
+		}
+	}()
 	var emailSender postgres.EmailSender
 	if smtpHost := os.Getenv("DAPPER_SMTP_HOST"); smtpHost != "" {
 		smtpPort := 587

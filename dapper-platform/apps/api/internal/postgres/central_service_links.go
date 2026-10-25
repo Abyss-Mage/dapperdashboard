@@ -47,7 +47,12 @@ func (s *Store) ImportCentralService(ctx context.Context, scope Scope, centralID
 	}
 	service, err := scanService(tx.QueryRow(ctx, `INSERT INTO catalog_services(organization_id,location_id,name,kind,parent_id,central_service_id,price_cents) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT DO NOTHING RETURNING `+serviceColumns, scope.OrganizationID, scope.LocationID, name, kind, parent, centralID, price))
 	if errors.Is(err, pgx.ErrNoRows) {
-		return CatalogService{}, ErrServiceConflict
+		// Central services are switched on at every franchise automatically, so it may already be here: return that one.
+		existing, e := scanService(tx.QueryRow(ctx, `SELECT `+serviceColumns+` FROM catalog_services WHERE organization_id=$1 AND location_id=$2 AND central_service_id=$3 AND NOT archived`, scope.OrganizationID, scope.LocationID, centralID))
+		if e != nil {
+			return CatalogService{}, ErrServiceConflict
+		}
+		return existing, tx.Commit(ctx)
 	}
 	if err != nil {
 		return service, err

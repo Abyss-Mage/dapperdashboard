@@ -1,8 +1,8 @@
 {
   "database": "dapper_application",
-  "restore": "PASS",
-  "backup": "639284424538321294.dump.dpapi",
-  "timestamp": "2026-10-24T12:41:03.8389767Z",
+  "timestamp": "2026-10-25T05:15:19.9131292Z",
+  "backup": "639285021145521206.dump.dpapi",
+  "productionOffSiteRecovery": "NOT_QUALIFIED",
   "verification": "all public table counts; no row-content equality claim",
-  "productionOffSiteRecovery": "NOT_QUALIFIED"
+  "restore": "PASS"
 }

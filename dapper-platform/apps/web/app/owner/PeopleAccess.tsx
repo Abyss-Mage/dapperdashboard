@@ -117,7 +117,7 @@ function Roster({ organizationId, revision }: { organizationId: string; revision
               <div className={styles.personState}>
                 <span className={`${styles.badge} ${styles['badge_' + p.onboardingStatus]}`}>{STATUS_LABEL[p.onboardingStatus]}</span>
                 <span className={styles.personSub}>
-                  Details {p.profileComplete ? 'done' : 'missing'} · Authenticator {p.mfaEnabled ? 'on' : p.mfaSetupStarted ? 'in setup' : p.administrator ? 'required' : 'off'} · Documents {p.documentsAcknowledged}/{p.documentsTotal}
+                  Details {p.profileComplete ? 'done' : 'missing'} · Authenticator {p.mfaEnabled ? 'on' : p.mfaSetupStarted ? 'in setup' : p.administrator ? 'required' : 'off'} · SOP & Compliance {p.documentsAcknowledged}/{p.documentsTotal}
                 </span>
                 {p.missing.length > 0 && <span className={styles.personSub}>Waiting on: {p.missing.map((m) => MISSING_LABEL[m] ?? m).join(', ')}</span>}
                 {p.administrator && <span className={styles.chip}>Administrator</span>}

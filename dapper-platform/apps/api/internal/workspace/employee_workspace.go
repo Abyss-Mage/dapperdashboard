@@ -1,6 +1,7 @@
 package workspace
 
 import (
+	"strings"
 	"dapper.local/platform/internal/postgres"
 	"errors"
 	"net/http"
@@ -129,6 +130,27 @@ func registerEmployeeWorkspaceRoutes(mux *http.ServeMux, store *postgres.Store) 
 			return
 		}
 		reply(w, 200, data)
+	})
+	mux.HandleFunc("POST /api/v1/organizations/{organization}/employee-availability/{submission}/review", func(w http.ResponseWriter, r *http.Request) {
+		org, id := r.PathValue("organization"), r.PathValue("submission")
+		if !uuid(org) || !uuid(id) {
+			reply(w, 400, map[string]string{"error": "Valid organization and submission required"})
+			return
+		}
+		var input struct {
+			Decision string `json:"decision"`
+			Note     string `json:"note"`
+			Version  int    `json:"version"`
+		}
+		if !decode(w, r, &input) {
+			return
+		}
+		item, err := store.ReviewEmployeeAvailability(r.Context(), requestSession(r).principalID, org, id, input.Decision, strings.TrimSpace(input.Note), input.Version)
+		if err != nil {
+			employeeFailure(w, err)
+			return
+		}
+		reply(w, 200, item)
 	})
 	mux.HandleFunc("GET /api/v1/employee/workspace", func(w http.ResponseWriter, r *http.Request) {
 		// No location selectors, actor override, or inferred first authorized worksite.

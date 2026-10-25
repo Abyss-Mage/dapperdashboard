@@ -1,0 +1,39 @@
+# Master dashboard simplification and owner requests (2026-10-25)
+
+Owner direction (2026-10-25): stop the 3D home page for now (owner will supply car videos and garage images); focus on the dashboard. Items and what was done:
+
+## Booking wizard (staff "New booking", walk-in and website booking share it)
+- Categories: Detailing, Ceramic coating, Paint protection film, Window tinting. Shield, Fortress, 3 Stage Paint Correction and Armour Up are Ceramic coating packages.
+- Vehicle order as on the website: 2 Wheeler, Hatchback, Sedan, SUV, Pickup, Van, Aircraft S/M/L, Boat S/M/L. Packages without a vehicle in the name (ceramic packages, tint) apply to the car types.
+- Tax shows its percentage ("Tax (13%)"); the "Deposit due now (30%)" lines were removed from the details summary (the website's deposit step itself is unchanged).
+- Mobile and email share one row, half each.
+- Window tint added to the central catalogue and Main Office using the owner's legacy BookingPress prices and times: Single window $59 / 30 min, Standard 4-window $219 / 60 min, Full 5-window premium $289 / 90 min (bays resource, 1 unit).
+
+## Dashboard structure
+- Every section is its own page with its own address (`/owner#customers`, `#staff-hours`, …), grouped Every day / Team / Money / Settings; pages a person cannot use are hidden.
+- Removed from Master: Invoice issuers page, Customer booking offers ("Packages"), the scheduling resources/service-combination editor, the setup checklist, B2B fleet queue, popup form builder and consent ledger. "Phone calendar" became the **Link Calendar** button on Bookings.
+- "Work orders completed" → "Bookings completed" (overview and numbers pages). "Documents" → "SOP & Compliance" everywhere.
+- Dark mode: the coloured background glows are gone.
+
+## New or changed pages
+- **Bookings**: month / week / day calendar (same as the staff workspace), franchise time zone.
+- **Customers**: short list; clicking a name opens their vehicles, bookings, jobs and invoices. Every customer can be deleted: everything removable is deleted; if issued invoices, payments or signed records exist those stay (tax records) and the customer is removed from all lists (`customers.removed_at`). One customer per email and per phone number at a franchise (database unique indexes); walk-ins and website bookings reuse the existing customer.
+- **Staff hours**: live map of clocked-in staff (OpenStreetMap tiles, attribution shown) and time worked per person by day / week / month with the site's date filters. No clock-in buttons here.
+- **Staff availability**: approve or reject each week's submission; a changed submission goes back to waiting.
+- **Team → Invitations**: choose the role and franchise before sending; assigned on acceptance by the inviter.
+- **Services**: central catalogue on top; changes (name, price, archive) apply to every franchise, and new central services switch on everywhere automatically. Below it, only the franchise's own extra services.
+- **Opening hours**: one set of hours per franchise, saved to all its bays behind the scenes.
+- **Invoice template**: optional owner-written HTML + CSS with `{{placeholders}}` (escaped values), shown and printed in a sandboxed frame with no scripts; scripts/frames/plug-ins are refused by the server.
+- **Card payments**: each franchise connects its own Square account (Square OAuth code flow, scopes PAYMENTS_WRITE, PAYMENTS_READ, MERCHANT_PROFILE_READ), then picks the Square location; Square confirms it (active, CAD, card processing). Tokens are stored encrypted with the server key, renewed every ≤ 7 days (Square guidance), checked every 6 hours. Needs `scripts/set-square-app-secret.ps1` and the redirect URL `https://127.0.0.1:8443/api/v1/integrations/square/oauth/callback` registered in the Square Developer Dashboard. **Not yet tested against Square** (no app secret on this machine).
+- **Dealerships**: add / edit / switch off dealerships (each is also a customer). **Invoice Ninja**: owner saves the https address and API token (checked, stored encrypted); issued dealership invoices get a "Send to Invoice Ninja" button (creates or reuses the client, copies lines, sent once). **Not yet tested against a real Invoice Ninja account.**
+- **Mailchimp** is the only marketing page; no prefilled server prefix.
+
+## Data
+- Test/demo records deleted on 2026-10-25 (customers incl. ZZ tests, bookings, holds, jobs, 2 paid test invoices and payments, attendance, test dealership, requests). Kept: organization, franchise, catalogue and prices, taxes, hours, rules, roles, Super Admin and the website system account, SOP documents, invoice template and issuer. Encrypted-at-rest backup taken first (`.cache/backups`, local only).
+- Migration 64 (`customer_unique_availability_review.sql`) applied after the migration script's encrypted backup and restore check.
+
+## Evidence
+- Source + static: Go build/vet, TypeScript check, production web build.
+- Runtime tests: full Go/PostgreSQL suite passed (customer delete, duplicates, records, invitations, central auto-link).
+- Live checks in the running app: pages load; duplicate email/phone refused; customer delete works; wizard categories and vehicle order; dark mode plain.
+- Not live-verified: Square OAuth connection, Invoice Ninja sending, staff map with real GPS (no staff on shift).

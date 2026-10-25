@@ -48,6 +48,9 @@
 .field textarea{min-height:90px;resize:vertical}
 .field input:focus,.field textarea:focus{outline:2px solid var(--primary);outline-offset:1px}
 .wide{grid-column:1/-1}
+/* mobile and email share one row, each half the width; stacked on phones */
+.fields:has(.half){grid-template-columns:1fr 1fr}
+@media (max-width:560px){.fields:has(.half){grid-template-columns:1fr}}
 .err{color:var(--error);font-size:14px;margin:0}
 .nav{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:4px}
 .total{font-size:12px;color:var(--text-muted);text-align:center}

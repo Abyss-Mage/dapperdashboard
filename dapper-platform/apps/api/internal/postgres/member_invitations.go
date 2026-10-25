@@ -35,7 +35,13 @@ type MemberInvitation struct {
 	ExpiresAt      time.Time `json:"expiresAt"`
 	Status         string    `json:"status"`
 	DeliveryState  string    `json:"deliveryState"`
+	// The role and franchise the member gets on accepting (empty when none was chosen).
+	RoleName     string `json:"roleName"`
+	LocationName string `json:"locationName"`
 }
+
+// InvitationRole is the role (at one franchise location) given to the member when they accept.
+type InvitationRole struct{ RoleID, LocationID string }
 
 // InvitationService is explicitly configured with the server's enrollment origin
 // and encryption key. Raw enrollment tokens exist only in encrypted delivery
@@ -63,15 +69,20 @@ func NewInvitationService(store *Store, origin string, key []byte) (*InvitationS
 	return &InvitationService{store: store, origin: origin, seal: seal, slots: make(chan struct{}, 2)}, nil
 }
 
-const memberInvitationColumns = `i.id::text,i.organization_id::text,i.email,i.created_by::text,i.created_at,i.expires_at,i.status,d.state`
+const memberInvitationColumns = `i.id::text,i.organization_id::text,i.email,i.created_by::text,i.created_at,i.expires_at,i.status,d.state,COALESCE((SELECT r.name FROM roles r WHERE r.id=i.preset_role_id),''),COALESCE((SELECT l.name FROM locations l WHERE l.id=i.preset_location_id),'')`
 
 func scanMemberInvitation(row pgx.Row) (MemberInvitation, error) {
 	var i MemberInvitation
-	err := row.Scan(&i.ID, &i.OrganizationID, &i.Email, &i.CreatedBy, &i.CreatedAt, &i.ExpiresAt, &i.Status, &i.DeliveryState)
+	err := row.Scan(&i.ID, &i.OrganizationID, &i.Email, &i.CreatedBy, &i.CreatedAt, &i.ExpiresAt, &i.Status, &i.DeliveryState, &i.RoleName, &i.LocationName)
 	return i, err
 }
 
 func (s *InvitationService) Create(ctx context.Context, actor, org, email string, lifetime time.Duration) (MemberInvitation, error) {
+	return s.CreateWithRole(ctx, actor, org, email, lifetime, nil)
+}
+
+// CreateWithRole queues an invitation; when preset is given, the new member gets that role at that franchise on accepting.
+func (s *InvitationService) CreateWithRole(ctx context.Context, actor, org, email string, lifetime time.Duration, preset *InvitationRole) (MemberInvitation, error) {
 	email, valid := normalizedEmail(email)
 	if !valid || lifetime < 15*time.Minute || lifetime > 24*time.Hour {
 		return MemberInvitation{}, ErrInvitationInput
@@ -108,8 +119,20 @@ func (s *InvitationService) Create(ctx context.Context, actor, org, email string
 	if pending {
 		return MemberInvitation{}, ErrInvitationPending
 	}
+	var roleID, locationID *string
+	if preset != nil {
+		// The role must be one of this organization's roles and the franchise one of its locations.
+		var ok bool
+		if err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM roles WHERE id=$2::uuid AND organization_id=$1) AND EXISTS(SELECT 1 FROM locations WHERE id=$3::uuid AND organization_id=$1)`, org, preset.RoleID, preset.LocationID).Scan(&ok); err != nil {
+			return MemberInvitation{}, err
+		}
+		if !ok {
+			return MemberInvitation{}, ErrInvitationInput
+		}
+		roleID, locationID = &preset.RoleID, &preset.LocationID
+	}
 	var result MemberInvitation
-	if err = tx.QueryRow(ctx, `INSERT INTO member_invitations(organization_id,email,token_hash,created_by,expires_at) VALUES($1,$2,$3,$4,now()+make_interval(secs=>$5)) RETURNING id::text,organization_id::text,email,created_by::text,created_at,expires_at,status`, org, email, digest[:], actor, lifetime.Seconds()).Scan(&result.ID, &result.OrganizationID, &result.Email, &result.CreatedBy, &result.CreatedAt, &result.ExpiresAt, &result.Status); err != nil {
+	if err = tx.QueryRow(ctx, `INSERT INTO member_invitations(organization_id,email,token_hash,created_by,expires_at,preset_role_id,preset_location_id) VALUES($1,$2,$3,$4,now()+make_interval(secs=>$5),$6,$7) RETURNING id::text,organization_id::text,email,created_by::text,created_at,expires_at,status,COALESCE((SELECT name FROM roles WHERE id=$6),''),COALESCE((SELECT name FROM locations WHERE id=$7),'')`, org, email, digest[:], actor, lifetime.Seconds(), roleID, locationID).Scan(&result.ID, &result.OrganizationID, &result.Email, &result.CreatedBy, &result.CreatedAt, &result.ExpiresAt, &result.Status, &result.RoleName, &result.LocationName); err != nil {
 		return MemberInvitation{}, err
 	}
 	var organizationName string
@@ -507,6 +530,16 @@ func (s *InvitationService) Accept(ctx context.Context, token, password, session
 		return err
 	}
 	if _, err = tx.Exec(ctx, `UPDATE member_invitations SET status='accepted',accepted_by=$2,accepted_at=now() WHERE id=$1`, id, actor); err != nil {
+		return err
+	}
+	// The role chosen when inviting, at that franchise, assigned by the person who invited them.
+	if _, err = tx.Exec(ctx, `WITH preset AS (SELECT preset_role_id AS role_id, preset_location_id AS location_id FROM member_invitations WHERE id=$1 AND preset_role_id IS NOT NULL),
+ added AS (INSERT INTO member_role_assignments(organization_id,principal_id,role_id,scope_type,scope_id,location_id,version,assigned_by)
+  SELECT $2,$3,p.role_id,'location',p.location_id,p.location_id,1,$4 FROM preset p
+  WHERE NOT EXISTS(SELECT 1 FROM member_role_assignments a WHERE a.organization_id=$2 AND a.principal_id=$3 AND a.role_id=p.role_id AND a.scope_type='location' AND a.scope_id=p.location_id)
+  RETURNING role_id, scope_id)
+ INSERT INTO role_assignment_events(organization_id,actor_id,principal_id,role_id,scope_type,scope_id,action,version)
+  SELECT $2,$4,$3,role_id,'location',scope_id,'assigned',1 FROM added`, id, org, actor, creator); err != nil {
 		return err
 	}
 	if _, err = tx.Exec(ctx, `UPDATE member_invitation_deliveries SET state='cancelled' WHERE invitation_id=$1 AND state IN ('queued','failed')`, id); err != nil {

@@ -8,28 +8,26 @@ import { OwnerIcon, type OwnerIconName } from './OwnerIcons';
 // Operational & Management Component Imports
 import OwnerOverview from './OwnerOverview';
 import PeopleAccess from './PeopleAccess';
-import LocationsSetup from './LocationsSetup';
-import SectionDashboard from './SectionDashboard';
-import AttendancePanel from '../workspace/AttendancePanel';
-import GpsPanel from '../workspace/GpsPanel';
 import EmployeeUploadsReview from '../workspace/EmployeeUploadsReview';
-import BookingManager from '../workspace/BookingManager';
-import SubPages from './SubPages';
 import CustomerManager from './CustomerManager';
 import StaffBookingWizard from '../workspace/StaffBookingWizard';
-import BookingOfferManager from '../workspace/BookingOfferManager';
 import CustomerBookingRequestList from '../account/CustomerBookingRequestList';
 import InvoiceManager from '../workspace/InvoiceManager';
 import SOPCompliancePanel from '../workspace/SOPCompliancePanel';
-import InvoiceIssuerEditor from '../workspace/InvoiceIssuerEditor';
 import InvoiceTemplateEditor from '../workspace/InvoiceTemplateEditor';
 import MyAccount from './MyAccount';
 import SquareMerchantPanel from '../workspace/SquareMerchantPanel';
 import { MfaSetup } from '../workspace/AccountSecurity';
-import SchedulingEditor from '../workspace/SchedulingEditor';
 import QuoteManager from '../workspace/QuoteManager';
-import DealershipManager from '../workspace/DealershipManager';
 import MarketingPopupManager from '../workspace/MarketingPopupManager';
+import BookingCalendar from './BookingCalendar';
+import StaffHours from './StaffHours';
+import AvailabilityReview from './AvailabilityReview';
+import Dealerships from './Dealerships';
+import OpeningHours from './OpeningHours';
+import ServicesManager from './ServicesManager';
+import TaxSettings from './TaxSettings';
+import FranchiseManager from './FranchiseManager';
 
 import styles from './owner.module.css';
 
@@ -58,44 +56,57 @@ type Job = {
   contributors: { principalId: string; startedAt: string }[];
 };
 
+// Every section is its own page with its own address (/owner#customers), so one screen does one job.
 type TabId =
-  | 'overview'
-  | 'bookings'
-  | 'customers'
-  | 'operations'
-  | 'finance'
-  | 'dealership'
-  | 'marketing'
-  | 'people'
-  | 'setup'
+  | 'overview' | 'calendar' | 'new-booking' | 'requests' | 'customers' | 'jobs' | 'staff-hours' | 'availability' | 'photos'
+  | 'invoices' | 'quotes' | 'dealerships' | 'marketing'
+  | 'team' | 'franchises' | 'services' | 'hours' | 'taxes' | 'sop' | 'invoice-template' | 'payments'
   | 'account';
 
+type Ctx = { scope: Access | undefined; organizations: Org[]; orgActions: string[] };
 interface TabDefinition {
   id: TabId;
   label: string;
   icon: OwnerIconName;
-  requiredGrants: string[];
   description: string;
+  show: (c: Ctx) => boolean;
 }
 
+const has = (c: Ctx, ...actions: string[]) => actions.some((a) => c.scope?.actions.includes(a));
+const org = (c: Ctx, ...actions: string[]) => actions.some((a) => c.orgActions.includes(a));
+
 const TABS: TabDefinition[] = [
-  { id: 'overview', label: 'Overview', icon: 'overview', requiredGrants: [], description: 'How the business is doing' },
-  { id: 'bookings', label: 'Bookings', icon: 'calendar', requiredGrants: ['bookings.read', 'bookings.create', 'scheduling.manage'], description: 'Who is booked and when' },
-  { id: 'customers', label: 'Customers', icon: 'customers', requiredGrants: ['customers.read', 'customers.create', 'customer_accounts.manage'], description: 'Your customers' },
-  { id: 'operations', label: 'Work & Staff', icon: 'work', requiredGrants: ['jobs.read', 'jobs.create', 'attendance.read', 'sop.read'], description: 'Jobs and your team' },
-  { id: 'finance', label: 'Invoices & Payments', icon: 'finance', requiredGrants: ['invoices.read', 'invoices.create', 'quotes.read', 'invoices.configure'], description: 'Invoices, quotes and card payments' },
-  { id: 'dealership', label: 'Partner Dealerships', icon: 'dealership', requiredGrants: ['dealership.read', 'dealership.manage'], description: 'Dealerships you work with' },
-  { id: 'marketing', label: 'Marketing', icon: 'marketing', requiredGrants: ['marketing.read', 'marketing.manage'], description: 'Pop-up sign-up forms and email list' },
-  { id: 'people', label: 'People', icon: 'customers', requiredGrants: ['access.manage'], description: 'Your team, invitations and what each person can do' },
-  { id: 'setup', label: 'Setup', icon: 'admin', requiredGrants: ['structure.read', 'catalogue.manage', 'scheduling.manage'], description: 'Locations, services, prices and opening hours' },
-  { id: 'account', label: 'My account', icon: 'customers', requiredGrants: [], description: 'Your name, phone and two-factor sign-in' },
+  { id: 'overview', label: 'Overview', icon: 'overview', description: 'How the business is doing', show: () => true },
+  { id: 'calendar', label: 'Bookings', icon: 'calendar', description: 'Who is booked and when', show: (c) => has(c, 'bookings.read') },
+  { id: 'new-booking', label: 'New booking', icon: 'calendar', description: 'Book a walk-in or a phone call', show: (c) => ['bookings.create', 'scheduling.reserve', 'customers.read', 'vehicles.read'].every((a) => c.scope?.actions.includes(a)) },
+  { id: 'requests', label: 'Online requests', icon: 'calendar', description: 'Requests sent from the website', show: (c) => has(c, 'bookings.read') },
+  { id: 'customers', label: 'Customers', icon: 'customers', description: 'Your customers', show: (c) => has(c, 'customers.read') },
+  { id: 'jobs', label: 'Jobs', icon: 'work', description: 'Work the team is doing or has finished', show: (c) => has(c, 'jobs.read') },
+  { id: 'staff-hours', label: 'Staff hours', icon: 'work', description: 'Where your team is and how long they worked', show: (c) => has(c, 'attendance.read') },
+  { id: 'availability', label: 'Staff availability', icon: 'work', description: 'Approve or reject the times staff can work', show: (c) => has(c, 'attendance.manage') || org(c, 'access.manage') },
+  { id: 'photos', label: 'Staff photos', icon: 'work', description: 'Before and after photos from the team', show: (c) => has(c, 'attendance.read') },
+  { id: 'invoices', label: 'Invoices', icon: 'finance', description: 'Invoices and payments', show: (c) => has(c, 'invoices.read') },
+  { id: 'quotes', label: 'Quotes', icon: 'finance', description: 'Price quotes for customers', show: (c) => has(c, 'quotes.read') },
+  { id: 'dealerships', label: 'Dealerships', icon: 'dealership', description: 'Car dealerships you work with', show: (c) => has(c, 'dealership.read') },
+  { id: 'marketing', label: 'Mailchimp', icon: 'marketing', description: 'Your Mailchimp email list', show: (c) => has(c, 'marketing.read') },
+  { id: 'team', label: 'Team', icon: 'customers', description: 'Your team, invitations and roles', show: (c) => org(c, 'access.manage') },
+  { id: 'franchises', label: 'Franchises', icon: 'admin', description: 'Your franchises and their details', show: (c) => org(c, 'structure.read') },
+  { id: 'services', label: 'Services', icon: 'admin', description: 'Services and prices', show: (c) => has(c, 'catalogue.read') || org(c, 'catalogue.read') },
+  { id: 'hours', label: 'Opening hours', icon: 'admin', description: 'When this franchise takes bookings', show: (c) => has(c, 'scheduling.manage') },
+  { id: 'taxes', label: 'Taxes', icon: 'finance', description: 'Tax rates for this franchise', show: (c) => !!c.scope && org(c, 'invoices.configure') },
+  { id: 'sop', label: 'SOP & Compliance', icon: 'admin', description: 'Standard operating procedures your team must read', show: (c) => has(c, 'sop.read') },
+  { id: 'invoice-template', label: 'Invoice template', icon: 'finance', description: 'How printed invoices look', show: (c) => org(c, 'invoices.configure') },
+  { id: 'payments', label: 'Card payments', icon: 'finance', description: 'This franchise’s Square account', show: (c) => org(c, 'invoices.configure') && has(c, 'payments.read') },
+  { id: 'account', label: 'My account', icon: 'customers', description: 'Your name, phone and two-factor sign-in', show: () => true },
 ];
 
 const NAV_GROUPS: { label: string; ids: TabId[] }[] = [
-  { label: 'Operate', ids: ['overview', 'bookings', 'customers', 'operations'] },
-  { label: 'Business', ids: ['finance', 'dealership', 'marketing'] },
-  { label: 'Administer', ids: ['people', 'setup'] },
+  { label: 'Every day', ids: ['overview', 'calendar', 'new-booking', 'requests', 'customers', 'jobs'] },
+  { label: 'Team', ids: ['staff-hours', 'availability', 'photos', 'sop'] },
+  { label: 'Money', ids: ['invoices', 'quotes', 'payments', 'dealerships', 'marketing'] },
+  { label: 'Settings', ids: ['services', 'hours', 'taxes', 'franchises', 'team', 'invoice-template'] },
 ];
+const isTab = (v: string): v is TabId => TABS.some((t) => t.id === v);
 
 export default function OwnerDashboardClient() {
   const [principal, setPrincipal] = useState('');
@@ -108,7 +119,16 @@ export default function OwnerDashboardClient() {
   const [organizations, setOrganizations] = useState<Org[]>([]);
   const [selectedLocationId, setSelectedLocationId] = useState('');
   const [activeTab, setActiveTab] = useState<TabId>('overview');
+  // The page lives in the address (#customers), so each page can be bookmarked and Back works.
+  useEffect(() => {
+    const read = () => { const h = window.location.hash.slice(1); setActiveTab(isTab(h) ? h : 'overview'); };
+    read();
+    window.addEventListener('hashchange', read);
+    return () => window.removeEventListener('hashchange', read);
+  }, []);
   const [mobileOpen, setMobileOpen] = useState(false);
+  // The franchise's own time zone (from its booking calendar), so times read the same as in the shop.
+  const [franchiseZone, setFranchiseZone] = useState('');
 
   const [jobs, setJobs] = useState<Job[]>([]);
   const [customerRevision, setCustomerRevision] = useState(0);
@@ -172,6 +192,14 @@ export default function OwnerDashboardClient() {
       live = false;
     };
   }, [refresh]);
+
+  useEffect(() => {
+    setFranchiseZone('');
+    if (!base || !scope?.actions.includes('scheduling.read') && !scope?.actions.includes('scheduling.manage')) return;
+    let live = true;
+    fetch(`${base}/scheduling/resources`, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).then((b) => { if (live && b?.items?.[0]?.timezone) setFranchiseZone(b.items[0].timezone); }).catch(() => undefined);
+    return () => { live = false; };
+  }, [base, scope]);
 
   const loadJobs = useCallback(async () => {
     if (!base) {
@@ -391,15 +419,15 @@ export default function OwnerDashboardClient() {
     );
   }
 
+  const orgActions = organizations.find((o) => o.id === scope?.organizationId)?.actions ?? organizations[0]?.actions ?? [];
+  const ctx: Ctx = { scope, organizations, orgActions };
   const currentTabDef = TABS.find((t) => t.id === activeTab) || TABS[0];
-  const canConfigureInvoices = !!scope && organizations.some((org) => org.id === scope.organizationId && org.actions.includes('invoices.configure'));
-  const hasTabPermission =
-    activeTab === 'overview' ||
-    currentTabDef.requiredGrants.length === 0 ||
-    currentTabDef.requiredGrants.some((g) => scope?.actions.includes(g)) ||
-    ((activeTab === 'setup' || activeTab === 'people') && organizations.some((o) => o.actions.some((a) => currentTabDef.requiredGrants.includes(a))));
+  const hasTabPermission = currentTabDef.show(ctx);
+  const currentOrg = organizations.find((o) => o.id === scope?.organizationId);
+  const timezone = franchiseZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   const goTo = (id: TabId) => {
+    if (window.location.hash !== '#' + id) window.location.hash = id;
     setActiveTab(id);
     setMobileOpen(false);
   };
@@ -460,10 +488,10 @@ export default function OwnerDashboardClient() {
         </div>
 
         <nav className={styles.nav} aria-label="Master sections">
-          {NAV_GROUPS.map((group) => (
+          {NAV_GROUPS.filter((group) => group.ids.some((id) => TABS.find((t) => t.id === id)!.show(ctx))).map((group) => (
             <div key={group.label} className={styles.navGroup}>
               <p className={styles.navGroupLabel}>{group.label}</p>
-              {group.ids.map((id) => {
+              {group.ids.filter((id) => TABS.find((t) => t.id === id)!.show(ctx)).map((id) => {
                 const tab = TABS.find((t) => t.id === id)!;
                 return (
                   <button
@@ -540,245 +568,74 @@ export default function OwnerDashboardClient() {
               <p>
                 Your account does not have the permissions this section needs at <strong>{scope.locationName}</strong>.
               </p>
-              <p>
-                Needs one of: {currentTabDef.requiredGrants.map((g) => (
-                  <code key={g}>{g} </code>
-                ))}
-              </p>
               <p>Ask an organization administrator to review your role.</p>
             </div>
           )}
 
-          {/* TAB 1: EXECUTIVE OVERVIEW */}
           {activeTab === 'overview' && scope && (
-            <OwnerOverview
-              base={base}
-              location={scope.locationName}
-              organizationName={scope.organizationName}
-              onNavigate={(tab) => setActiveTab(tab as TabId)}
-            />
+            <OwnerOverview base={base} location={scope.locationName} organizationName={scope.organizationName} onNavigate={(tab) => goTo(isTab(tab) ? tab : tab === 'operations' ? 'jobs' : tab === 'finance' ? 'invoices' : tab === 'bookings' ? 'calendar' : 'overview')} />
           )}
-
-          {/* BOOKINGS */}
-          {activeTab === 'bookings' && scope && (
-            <SubPages
-              key={'bookings-' + base}
-              label="Booking pages"
-              pages={[
-                {
-                  id: 'list', label: 'All bookings', show: scope.actions.includes('bookings.read'),
-                  node: () => (
-                    <BookingManager revision={accessRevision} base={base} canCreate={scope.actions.includes('bookings.create')} canManage={scope.actions.includes('bookings.manage')} canCreateWorkOrders={scope.actions.includes('jobs.create')} onJobSpawned={loadJobs} />
-                  ),
-                },
-                {
-                  id: 'new', label: 'New booking', show: ['bookings.create', 'scheduling.reserve', 'customers.read', 'vehicles.read'].every((a) => scope.actions.includes(a)),
-                  node: () => <StaffBookingWizard mode="master" base={base} timezone={Intl.DateTimeFormat().resolvedOptions().timeZone} onBooked={refresh} />,
-                },
-                {
-                  id: 'requests', label: 'Online requests', show: scope.actions.includes('bookings.read'),
-                  node: () => <CustomerBookingRequestList endpoint={`${base}/customer-booking-requests`} staff />,
-                },
-                {
-                  id: 'times', label: 'Opening times', show: scope.actions.includes('scheduling.manage') && scope.actions.includes('catalogue.read'),
-                  node: () => <SchedulingEditor base={base} />,
-                },
-                {
-                  id: 'packages', label: 'Packages', show: ['catalogue.manage', 'scheduling.manage'].every((a) => scope.actions.includes(a)),
-                  node: () => <BookingOfferManager base={base} />,
-                },
-                {
-                  id: 'calendar', label: 'Phone calendar', show: scope.actions.includes('bookings.read'),
-                  node: () => (
-                    <section className="panel detail-card">
-                      <h2>See bookings on your phone calendar</h2>
-                      <p>Add this link to Apple Calendar or Google Calendar. New bookings show up on their own.</p>
-                      <a href={`${base}/calendar.ics`} target="_blank" rel="noreferrer" className="button secondary">Open the calendar link</a>
-                    </section>
-                  ),
-                },
-              ]}
-            />
-          )}
-
-          {/* CUSTOMERS */}
-          {activeTab === 'customers' && scope && (
-            <SubPages
-              key={'customers-' + base}
-              label="Customer pages"
-              pages={[
-                {
-                  id: 'list', label: 'Customer list', show: scope.actions.includes('customers.read'),
-                  node: () => (
-                    <CustomerManager base={base} canCreate={scope.actions.includes('customers.create')} canDelete={scope.actions.includes('customer_accounts.manage')} onChanged={() => setCustomerRevision((v) => v + 1)} />
-                  ),
-                },
-                {
-                  id: 'numbers', label: 'Numbers', show: scope.actions.includes('customers.read'),
-                  node: () => <SectionDashboard section="customers" base={base} />,
-                },
-              ]}
-            />
-          )}
-
-          {/* WORK AND STAFF */}
-          {activeTab === 'operations' && scope && (
-            <SubPages
-              key={'work-' + base}
-              label="Work and staff pages"
-              pages={[
-                {
-                  id: 'jobs', label: 'Jobs', show: scope.actions.includes('jobs.read'),
-                  node: () => (
-                    <section className="panel detail-card">
-                      <h2>Jobs</h2>
-                      <p>Work the team is doing or has finished.</p>
-                      <div className="management-list">
-                        {jobs.map((job) => (
-                          <article key={job.id}>
-                            <div>
-                              <strong>{job.serviceName}</strong>
-                              <small>{job.description}</small>
-                              {job.addons?.length > 0 && <small>Extras: {job.addons.map((a) => a.name).join(', ')}</small>}
-                              <small>{job.status === 'completed' ? 'Finished' : 'Open for the team'}{job.contributors?.length ? ` · ${job.contributors.length} working on it` : ''}</small>
-                            </div>
-                            {scope.actions.includes('jobs.contribute') && job.status === 'available' && (
-                              <button className="secondary" disabled={busy || job.contributors?.some((p) => p.principalId === principal)} onClick={() => contribute(job.id)}>
-                                {job.contributors?.some((p) => p.principalId === principal) ? 'You are on it' : 'Join this job'}
-                              </button>
-                            )}
-                            {scope.actions.includes('jobs.complete') && (
-                              <button className="primary" disabled={busy || job.status === 'completed'} onClick={() => complete(job.id)}>
-                                {job.status === 'completed' ? 'Finished' : 'Mark finished'}
-                              </button>
-                            )}
-                          </article>
-                        ))}
-                        {!jobs.length && <p>No jobs yet.</p>}
+          {hasTabPermission && scope && <>
+            {activeTab === 'calendar' && <BookingCalendar key={base} base={base} timezone={timezone} calendarLink={`${base}/calendar.ics`} />}
+            {activeTab === 'new-booking' && <StaffBookingWizard mode="master" base={base} timezone={timezone} onBooked={refresh} />}
+            {activeTab === 'requests' && <CustomerBookingRequestList endpoint={`${base}/customer-booking-requests`} staff />}
+            {activeTab === 'customers' && <CustomerManager key={base} base={base} canCreate={scope.actions.includes('customers.create')} canDelete={scope.actions.includes('customer_accounts.manage')} onChanged={() => setCustomerRevision((v) => v + 1)} />}
+            {activeTab === 'jobs' && (
+              <section className="panel detail-card">
+                <h2>Jobs</h2>
+                <p>Work the team is doing or has finished.</p>
+                <div className="management-list">
+                  {jobs.map((job) => (
+                    <article key={job.id}>
+                      <div>
+                        <strong>{job.serviceName}</strong>
+                        <small>{job.description}</small>
+                        {job.addons?.length > 0 && <small>Extras: {job.addons.map((a) => a.name).join(', ')}</small>}
+                        <small>{job.status === 'completed' ? 'Finished' : 'Open for the team'}{job.contributors?.length ? ` · ${job.contributors.length} working on it` : ''}</small>
                       </div>
-                    </section>
-                  ),
-                },
-                {
-                  id: 'attendance', label: 'Staff hours', show: scope.actions.includes('attendance.record') || scope.actions.includes('attendance.read'),
-                  node: () => <AttendancePanel base={base} canRecord={scope.actions.includes('attendance.record')} />,
-                },
-                {
-                  id: 'where', label: 'Where staff are', show: scope.actions.includes('attendance.read'),
-                  node: () => <GpsPanel base={base} canManage={scope.actions.includes('attendance.manage')} />,
-                },
-                {
-                  id: 'photos', label: 'Staff photos', show: scope.actions.includes('attendance.read'),
-                  node: () => <EmployeeUploadsReview base={base} canSeeLog={scope.actions.includes('attendance.manage')} />,
-                },
-                {
-                  id: 'procedures', label: 'Work procedures', show: scope.actions.includes('sop.read'),
-                  node: () => <SOPCompliancePanel base={base} canAcknowledge={scope.actions.includes('sop.acknowledge')} />,
-                },
-                {
-                  id: 'numbers', label: 'Numbers', show: scope.actions.includes('jobs.read'),
-                  node: () => <SectionDashboard section="work" base={base} />,
-                },
-              ]}
-            />
-          )}
-
-          {/* INVOICES AND PAYMENTS */}
-          {activeTab === 'finance' && scope && (
-            <SubPages
-              key={'finance-' + base}
-              label="Invoice pages"
-              pages={[
-                {
-                  id: 'invoices', label: 'Invoices', show: scope.actions.includes('invoices.read'),
-                  node: () => (
-                    <InvoiceManager base={base} canCreate={scope.actions.includes('invoices.create')} canManage={scope.actions.includes('invoices.manage')} canRecordPayment={scope.actions.includes('payments.record')} canIssue={scope.actions.includes('invoices.issue')} />
-                  ),
-                },
-                {
-                  id: 'quotes', label: 'Quotes', show: scope.actions.includes('quotes.read'),
-                  node: () => (
-                    <QuoteManager organizationId={scope.organizationId} locationId={scope.locationId} canCreate={scope.actions.includes('quotes.create')} canManage={scope.actions.includes('quotes.manage')} canIssue={scope.actions.includes('quotes.issue')} />
-                  ),
-                },
-                {
-                  id: 'numbers', label: 'Numbers', show: scope.actions.includes('invoices.read') || scope.actions.includes('payments.read'),
-                  node: () => <SectionDashboard section="finance" base={base} />,
-                },
-                {
-                  id: 'business', label: 'Business details', show: canConfigureInvoices,
-                  node: () => (
-                    <>
-                      {organizations.filter((org) => org.id === scope.organizationId).map((org) => (
-                        <InvoiceIssuerEditor key={'issuer-' + org.id} organizationId={org.id} revision={accessRevision} />
-                      ))}
-                    </>
-                  ),
-                },
-                {
-                  id: 'template', label: 'Printed invoice', show: canConfigureInvoices,
-                  node: () => (
-                    <>
-                      {organizations.filter((org) => org.id === scope.organizationId).map((org) => (
-                        <InvoiceTemplateEditor key={'template-' + org.id} organizationId={org.id} revision={accessRevision} />
-                      ))}
-                    </>
-                  ),
-                },
-                {
-                  id: 'cards', label: 'Card payments', show: canConfigureInvoices && scope.actions.includes('payments.read'),
-                  node: () => <SquareMerchantPanel organizationId={scope.organizationId} locationId={scope.locationId} canManage />,
-                },
-              ]}
-            />
-          )}
-
-          {/* TAB 6: B2B DEALERSHIP FLEET */}
-          {activeTab === 'dealership' && scope && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              {scope.actions.includes('dealership.read') && (
-                <DealershipManager
-                  key={'dealership-' + base}
-                  organizationId={scope.organizationId}
-                  locationId={scope.locationId}
-                  canManage={scope.actions.includes('dealership.manage')}
-                />
-              )}
-            </div>
-          )}
-
-          {/* TAB 7: MARKETING & POPUPS */}
-          {activeTab === 'marketing' && scope && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              {scope.actions.includes('marketing.read') && (
-                <MarketingPopupManager
-                  key={'marketing-' + base}
-                  organizationId={scope.organizationId}
-                  locationId={scope.locationId}
-                  canManage={scope.actions.includes('marketing.manage')}
-                />
-              )}
-            </div>
-          )}
-
-          {/* PEOPLE & ACCESS */}
-          {activeTab === 'people' &&
-            organizations
-              .filter((org) => org.actions.includes('access.manage') && (!scope || org.id === scope.organizationId))
-              .map((org) => (
-                <PeopleAccess key={'people-' + org.id} organizationId={org.id} revision={accessRevision} onSaved={refresh} />
-              ))}
-
-          {/* MY ACCOUNT */}
+                      {scope.actions.includes('jobs.contribute') && job.status === 'available' && (
+                        <button className="secondary" disabled={busy || job.contributors?.some((p) => p.principalId === principal)} onClick={() => contribute(job.id)}>
+                          {job.contributors?.some((p) => p.principalId === principal) ? 'You are on it' : 'Join this job'}
+                        </button>
+                      )}
+                      {scope.actions.includes('jobs.complete') && (
+                        <button className="primary" disabled={busy || job.status === 'completed'} onClick={() => complete(job.id)}>
+                          {job.status === 'completed' ? 'Finished' : 'Mark finished'}
+                        </button>
+                      )}
+                    </article>
+                  ))}
+                  {!jobs.length && <p>No jobs yet.</p>}
+                </div>
+              </section>
+            )}
+            {activeTab === 'staff-hours' && <StaffHours key={base} base={base} timezone={timezone} />}
+            {activeTab === 'availability' && <AvailabilityReview key={scope.organizationId} organizationId={scope.organizationId} locationId={scope.locationId} />}
+            {activeTab === 'photos' && <EmployeeUploadsReview base={base} canSeeLog={scope.actions.includes('attendance.manage')} />}
+            {activeTab === 'sop' && <SOPCompliancePanel base={base} canAcknowledge={scope.actions.includes('sop.acknowledge')} />}
+            {activeTab === 'invoices' && <InvoiceManager base={base} canCreate={scope.actions.includes('invoices.create')} canManage={scope.actions.includes('invoices.manage')} canRecordPayment={scope.actions.includes('payments.record')} canIssue={scope.actions.includes('invoices.issue')} />}
+            {activeTab === 'quotes' && <QuoteManager organizationId={scope.organizationId} locationId={scope.locationId} canCreate={scope.actions.includes('quotes.create')} canManage={scope.actions.includes('quotes.manage')} canIssue={scope.actions.includes('quotes.issue')} />}
+            {activeTab === 'payments' && <SquareMerchantPanel organizationId={scope.organizationId} locationId={scope.locationId} canManage />}
+            {activeTab === 'dealerships' && <Dealerships key={base} organizationId={scope.organizationId} locationId={scope.locationId} canManage={scope.actions.includes('dealership.manage')} canConfigure={orgActions.includes('invoices.configure')} />}
+            {activeTab === 'marketing' && <MarketingPopupManager key={'marketing-' + base} organizationId={scope.organizationId} locationId={scope.locationId} canManage={scope.actions.includes('marketing.manage')} />}
+            {activeTab === 'hours' && <OpeningHours key={base} base={base} franchiseName={scope.locationName} canManage={scope.actions.includes('scheduling.manage')} />}
+            {activeTab === 'taxes' && <TaxSettings key={base} base={base} franchiseName={scope.locationName} canManage={orgActions.includes('invoices.configure')} />}
+            {activeTab === 'services' && currentOrg && (
+              <div className={styles.stack}>
+                {/* The central catalogue comes first: every change there applies to all franchises on its own. */}
+                {currentOrg.actions.includes('catalogue.read') && (
+                  <ServicesManager key={'central-' + currentOrg.id} mode="central" listUrl={`/api/v1/organizations/${currentOrg.id}/central-services`} organizationId={currentOrg.id} canManage={currentOrg.actions.includes('catalogue.manage')} title="Central catalogue" intro="Services and prices for every franchise. A change here applies to all franchises automatically, and a new service is switched on everywhere." />
+                )}
+                {scope.actions.includes('catalogue.read') && (
+                  <ServicesManager key={'extras-' + base} mode="franchise" extrasOnly listUrl={`${base}/services`} organizationId={currentOrg.id} canManage={scope.actions.includes('catalogue.manage')} title={`Extra services only at ${scope.locationName}`} intro="Services this franchise offers on top of the central catalogue." />
+                )}
+              </div>
+            )}
+          </>}
+          {hasTabPermission && activeTab === 'franchises' && currentOrg && <FranchiseManager organization={currentOrg} selectedId={scope?.locationId} onSaved={refresh} />}
+          {hasTabPermission && activeTab === 'team' && currentOrg && <PeopleAccess key={'people-' + currentOrg.id} organizationId={currentOrg.id} revision={accessRevision} onSaved={refresh} />}
+          {hasTabPermission && activeTab === 'invoice-template' && currentOrg && <InvoiceTemplateEditor key={'template-' + currentOrg.id} organizationId={currentOrg.id} revision={accessRevision} />}
           {activeTab === 'account' && <MyAccount />}
-
-          {/* LOCATIONS & SETUP */}
-          {activeTab === 'setup' &&
-            organizations
-              .filter((org) => scope ? org.id === scope.organizationId : true)
-              .map((org) => (
-                <LocationsSetup key={'setup-' + org.id} organization={org} scope={scope} base={base} onSaved={refresh} />
-              ))}
         </main>
       </div>
     </div>

@@ -216,8 +216,9 @@ func TestPublicContentPersistence(t *testing.T) {
 	if err != nil || linked.CentralServiceID == nil || *linked.CentralServiceID != central.ID {
 		t.Fatal("central import failed", err)
 	}
-	if _, err = s.ImportCentralService(ctx, scope, central.ID, central.Version); !errors.Is(err, ErrServiceConflict) {
-		t.Fatal("duplicate central mapping accepted", err)
+	// Switching on a central service twice returns the same franchise service (it is never copied twice).
+	if again, err := s.ImportCentralService(ctx, scope, central.ID, central.Version); err != nil || again.ID != linked.ID {
+		t.Fatal("second switch-on did not return the same service", again, err)
 	}
 	if _, err = s.ImportCentralService(ctx, foreign, central.ID, central.Version); !errors.Is(err, ErrForbidden) {
 		t.Fatal("foreign central mapping accepted", err)

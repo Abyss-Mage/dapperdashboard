@@ -1,6 +1,7 @@
 package workspace
 
 import (
+	"strconv"
 	"dapper.local/platform/internal/postgres"
 	"errors"
 	"net/http"
@@ -291,12 +292,17 @@ func registerBookingRoutes(mux *http.ServeMux, store *postgres.Store) {
 		}
 
 		status := r.URL.Query().Get("status")
-		items, err := store.ListBookings(r.Context(), scope, from, to, status, 50)
+		// The calendar asks for a whole month (up to 1000 bookings); the list keeps the short default.
+		limit := 50
+		if n, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && n > 0 && n <= 1000 {
+			limit = n
+		}
+		items, err := store.ListBookings(r.Context(), scope, from, to, status, limit)
 		if err != nil {
 			bookingFailure(w, err)
 			return
 		}
-		reply(w, 200, map[string]any{"items": items, "limit": 50})
+		reply(w, 200, map[string]any{"items": items, "limit": limit})
 	})
 
 	mux.HandleFunc("GET "+base+"/{booking}", func(w http.ResponseWriter, r *http.Request) {

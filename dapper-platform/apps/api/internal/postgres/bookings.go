@@ -232,7 +232,7 @@ func (s *Store) ListBookings(ctx context.Context, scope Scope, from, to time.Tim
 	if err := scope.validate(); err != nil {
 		return nil, err
 	}
-	if limit <= 0 || limit > 100 {
+	if limit <= 0 || limit > 1000 {
 		limit = 50
 	}
 	tx, err := s.pool.Begin(ctx)

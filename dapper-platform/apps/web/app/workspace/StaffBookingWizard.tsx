@@ -49,6 +49,12 @@ export default function StaffBookingWizard(props: StaffBookingWizardProps) {
         } else {
           let customerId = b.customer.id;
           if (!customerId) {
+            // Each email and phone belongs to one customer: book a returning customer under their existing record.
+            const list = (await json<{ items: WizardCustomer[] }>(await fetch(`${base}/customers`, { cache: 'no-store' }))).items;
+            const email = b.customer.email.trim().toLowerCase(), phone = digits(b.customer.phone);
+            customerId = list.find((c) => (email && (c.email ?? '').toLowerCase() === email) || (phone.length >= 7 && digits(c.phone ?? '') === phone))?.id;
+          }
+          if (!customerId) {
             const made = await json<{ id: string }>(await fetch(`${base}/customers`, post({ name: b.customer.name, email: b.customer.email, phone: b.customer.phone })));
             customerId = made.id;
           }

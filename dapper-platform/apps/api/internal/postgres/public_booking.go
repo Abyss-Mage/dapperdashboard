@@ -233,9 +233,8 @@ func (s *Store) PublicBook(ctx context.Context, slug string, in PublicBookingInp
 		return out, err
 	}
 	// The customer: reuse the one with this email at this location (their saved details are not changed by a stranger), else add one.
-	var customerID string
-	err = s.pool.QueryRow(ctx, `SELECT id::text FROM customers WHERE organization_id=$1 AND location_id=$2 AND lower(email)=lower($3) ORDER BY created_at LIMIT 1`, scope.OrganizationID, scope.LocationID, in.Email).Scan(&customerID)
-	if errors.Is(err, pgx.ErrNoRows) {
+	customerID, err := existingCustomer(ctx, s.pool, scope.OrganizationID, scope.LocationID, in.Email, in.Phone)
+	if err == nil && customerID == "" {
 		c, e := s.CreateCustomer(ctx, scope, in.Name, in.Email, in.Phone)
 		if e != nil {
 			return out, e
@@ -414,7 +413,7 @@ func (s *Store) ReturningCustomers(ctx context.Context, slug, phone, token strin
 	if len(tail) > 10 {
 		tail = tail[len(tail)-10:]
 	}
-	rows, err := s.pool.Query(ctx, `SELECT id::text,name,email,phone FROM customers WHERE organization_id=$1 AND location_id=$2 AND right(regexp_replace(phone,'[^0-9]','','g'),10)=$3 ORDER BY created_at LIMIT 5`, scope.OrganizationID, scope.LocationID, tail)
+	rows, err := s.pool.Query(ctx, `SELECT id::text,name,email,phone FROM customers WHERE organization_id=$1 AND location_id=$2 AND removed_at IS NULL AND right(regexp_replace(phone,'[^0-9]','','g'),10)=$3 ORDER BY created_at LIMIT 5`, scope.OrganizationID, scope.LocationID, tail)
 	if err != nil {
 		return nil, err
 	}

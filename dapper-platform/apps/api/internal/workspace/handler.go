@@ -58,6 +58,10 @@ func failure(w http.ResponseWriter, err error) {
 		reply(w, 403, map[string]string{"error": "This action is not granted for the selected location"})
 		return
 	}
+	if errors.Is(err, postgres.ErrCustomerDuplicate) {
+		reply(w, 409, map[string]string{"error": "Another customer already uses this email or phone number. Find that customer instead of adding a new one."})
+		return
+	}
 	var pgError *pgconn.PgError
 	if errors.As(err, &pgError) && pgError.Code == "23503" {
 		reply(w, 422, map[string]any{"errors": map[string]string{"customerId": "Choose a customer in the selected location"}})
@@ -139,6 +143,8 @@ func NewHandlerWithFullServices(store *postgres.Store, origin string, invitation
 	registerCustomerAccountManagementRoutes(mux, store)
 	registerQuoteRoutes(mux, store, sqClient)
 	registerSquareIntentRoutes(mux, store)
+	registerSquareOAuthRoutes(mux, store, origin)
+	registerInvoiceNinjaRoutes(mux, store)
 	registerEmployeeSquareRoutes(mux, store)
 	registerEmployeeUploadRoutes(mux, store)
 	registerUploadReviewRoutes(mux, store)
@@ -280,7 +286,7 @@ func NewHandlerWithFullServices(store *postgres.Store, origin string, invitation
 			reply(w, 200, map[string]any{"status": "ok", "mode": "scoped-postgres-foundation", "productionReady": false, "identityProviderConfigured": login != nil})
 			return
 		}
-		if r.URL.Path == "/api/v1/integrations/square/webhooks" {
+		if r.URL.Path == "/api/v1/integrations/square/webhooks" || r.URL.Path == "/api/v1/integrations/square/oauth/callback" && r.Method == http.MethodGet {
 			mux.ServeHTTP(w, r)
 			return
 		}

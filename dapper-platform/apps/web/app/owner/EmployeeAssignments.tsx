@@ -25,7 +25,7 @@ export default function EmployeeAssignments({ organizationId }: { organizationId
     try { await read(await fetch(`${base}/employee-worksites/${principal}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ locationId: site, dealershipId: dealer, timezone: zone, version: existing?.version ?? 0 }) })); await load(); setNotice('Franchise assignment saved. No operational permissions were added.'); }
     catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   }
-  return <section className="panel detail-card"><h2>Employee franchise & availability</h2><p>Employees work at the franchise you assign. A partner dealership is optional and is only a focus: it never replaces the franchise. Assigning a franchise does not grant customer, finance or attendance permissions.</p>
+  return <section className="panel detail-card"><h2>Employee franchise &amp; dealership</h2><p>Employees work at the franchise you assign. A partner dealership is optional and is only a focus: it never replaces the franchise. Assigning a franchise does not grant customer, finance or attendance permissions.</p>
     {error && <p role="alert" className="field-error">{error}</p>}{notice && <p role="status">{notice}</p>}
     {!data && !error && <p role="status">Loading employee assignments…</p>}
     {data && <><form className="management-form" onSubmit={save}>
@@ -36,7 +36,6 @@ export default function EmployeeAssignments({ organizationId }: { organizationId
       <button className="primary" disabled={busy || !principal || !site}>{busy ? 'Saving…' : existing ? 'Update assignment' : 'Assign employee'}</button>
     </form>{!data.locations.length && <p>Create a franchise first (Administration → Franchises).</p>}
     <h3>Current assignments</h3>{data.assignments.length ? <ul>{data.assignments.map(a => <li key={a.principalId}>{members.find(m => m.principalId === a.principalId)?.email || 'Organization member'} — {a.locationName}{a.dealershipName ? ` · dealership focus: ${a.dealershipName}` : ''} · {a.timezone}</li>)}</ul> : <p>No employees assigned to a franchise.</p>}
-    <h3>Submitted availability</h3><p>Availability is a request, not a confirmed shift. Times use the franchise timezone recorded with the submission.</p>
-    {data.submissions.length ? data.submissions.map((s, i) => <article key={`${s.principalId}-${s.weekStart}-${i}`} style={{ paddingBlock: 16, borderTop: '1px solid var(--border-color, #f0dcde)' }}><strong>{members.find(m => m.principalId === s.principalId)?.email || 'Organization member'} · {s.locationName}</strong><p>Week of {s.weekStart} · {s.timezone} · revision {s.version}</p>{s.intervals.length ? <ul>{s.intervals.map((r, n) => <li key={n}>{days[r.day]} {r.start}–{r.end}</li>)}</ul> : <p>Unavailable for this week.</p>}{s.notes && <p>{s.notes}</p>}</article>) : <p>No next-week availability submitted yet.</p>}</>}
+    <p>Staff availability is approved or rejected on its own page: Staff availability.</p></>}
   </section>;
 }

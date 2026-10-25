@@ -244,19 +244,19 @@ export default function BookingManager({
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
           requestKey,
-          description: `Internal work order from booking #${booking.id.slice(0, 8)}`,
+          description: `Job from booking #${booking.id.slice(0, 8)}`,
         }),
       });
       if (!r.ok) {
         const body = await r.json();
-        setError(body.error ?? 'Could not create work order from booking');
+        setError(body.error ?? 'Could not start the job for this booking');
         return;
       }
       const created = await r.json();
-      setNotice(`Work order #${created.id.slice(0, 8)} is linked to booking #${booking.id.slice(0, 8)}.`);
+      setNotice(`Job #${created.id.slice(0, 8)} is linked to booking #${booking.id.slice(0, 8)}.`);
       if (onJobSpawned) await onJobSpawned();
     } catch {
-      setError('Could not spawn work order.');
+      setError('Could not start the job.');
     } finally {
       setBusy(false);
     }
@@ -567,7 +567,7 @@ export default function BookingManager({
               )}
               {canCreateWorkOrders && b.status !== 'cancelled' && b.status !== 'completed' && (
                 <button className="secondary" disabled={busy} onClick={() => createWorkOrder(b)}>
-                  Create work order
+                  Start the job
                 </button>
               )}
             </div>

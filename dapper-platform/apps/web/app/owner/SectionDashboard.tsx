@@ -166,16 +166,16 @@ export default function SectionDashboard({ section, base }: { section: DashSecti
                 </div>
                 <div className={styles.chartGrid}>
                   {jobs ? (
-                    <Card title="Work orders created and completed" sub={rangeText} span={2}>
+                    <Card title="Bookings started and completed" sub={rangeText} span={2}>
                       <ul className={styles.legend} aria-label="Legend"><li><i className={styles.seriesKey1} aria-hidden="true" />Created</li><li><i className={styles.seriesKey2} aria-hidden="true" />Completed</li></ul>
-                      <LineChart labels={jobs.createdByDay.map((d) => d.date)} series={[{ name: 'Created', values: jobs.createdByDay.map((d) => d.count), cls: 'seriesStroke1', dot: 'seriesFill1' }, { name: 'Completed', values: jobs.completedByDay.map((d) => d.count), cls: 'seriesStroke2', dot: 'seriesFill2' }]} ariaLabel={`Work orders created and completed, ${rangeText}`} />
-                      <DataTable caption="Work orders per day" head={['Date', 'Created', 'Completed']} rows={jobs.createdByDay.map((d, i) => [d.date, d.count, jobs.completedByDay[i]?.count ?? 0])} />
+                      <LineChart labels={jobs.createdByDay.map((d) => d.date)} series={[{ name: 'Created', values: jobs.createdByDay.map((d) => d.count), cls: 'seriesStroke1', dot: 'seriesFill1' }, { name: 'Completed', values: jobs.completedByDay.map((d) => d.count), cls: 'seriesStroke2', dot: 'seriesFill2' }]} ariaLabel={`Bookings started and completed, ${rangeText}`} />
+                      <DataTable caption="Bookings per day" head={['Date', 'Created', 'Completed']} rows={jobs.createdByDay.map((d, i) => [d.date, d.count, jobs.completedByDay[i]?.count ?? 0])} />
                     </Card>
-                  ) : <Locked title="Work orders" grant="jobs.read" />}
+                  ) : <Locked title="Bookings completed" grant="jobs.read" />}
                   {w && (
                     <>
-                      <Card title="Top services" sub={`Work orders created ${rangeText}`}>
-                        <BarList rows={w.byService.map((k) => ({ label: k.key, value: k.count }))} emptyText="No work orders created in this period." />
+                      <Card title="Top services" sub={`Bookings started ${rangeText}`}>
+                        <BarList rows={w.byService.map((k) => ({ label: k.key, value: k.count }))} emptyText="No bookings started in this period." />
                       </Card>
                     </>
                   )}

@@ -1,6 +1,7 @@
 package workspace
 
 import (
+	"strings"
 	"errors"
 	"net/http"
 
@@ -55,6 +56,10 @@ func registerSquareIntentRoutes(mux *http.ServeMux, store *postgres.Store) {
 			ExpectedVersion     int    `json:"expectedVersion"`
 		}
 		if !decode(w, r, &input) {
+			return
+		}
+		if strings.HasPrefix(input.CredentialReference, "oauth:") && input.CredentialReference != "oauth:"+loc {
+			reply(w, 422, map[string]string{"error": "A franchise can only use its own connected Square account"})
 			return
 		}
 		resolve := store.SquareCredentialResolver()

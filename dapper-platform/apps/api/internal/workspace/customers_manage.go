@@ -9,7 +9,7 @@ import (
 	"unicode/utf8"
 )
 
-// Customer directory with edit and delete. Read: customers.read. Edit: customers.create. Delete: customer_accounts.manage and no history.
+// Customer directory with edit, delete and a customer's records. Read: customers.read. Edit: customers.create. Delete: customer_accounts.manage.
 func registerCustomerManageRoutes(mux *http.ServeMux, store *postgres.Store) {
 	base := "/api/v1/organizations/{organization}/locations/{location}"
 	resolve := func(w http.ResponseWriter, r *http.Request, action string) (postgres.Scope, bool) {
@@ -31,6 +31,8 @@ func registerCustomerManageRoutes(mux *http.ServeMux, store *postgres.Store) {
 			reply(w, 404, map[string]string{"error": "That customer was not found at this franchise."})
 		case errors.Is(err, postgres.ErrCustomerInUse):
 			reply(w, 409, map[string]string{"error": "This customer has bookings, work orders, invoices or other records, so it cannot be deleted. Edit the details instead."})
+		case errors.Is(err, postgres.ErrCustomerDuplicate):
+			reply(w, 409, map[string]any{"error": "Another customer already uses this email or phone number. Open that customer instead.", "errors": map[string]string{"email": "Already used by another customer", "phone": "Already used by another customer"}})
 		case errors.Is(err, postgres.ErrCustomerInput):
 			reply(w, 422, map[string]any{"errors": map[string]string{"customer": "Check the name, email and phone"}})
 		default:
@@ -97,10 +99,28 @@ func registerCustomerManageRoutes(mux *http.ServeMux, store *postgres.Store) {
 			reply(w, 400, map[string]string{"error": "Valid customer selector required"})
 			return
 		}
-		if err := store.DeleteCustomer(r.Context(), scope, id); err != nil {
+		result, err := store.DeleteCustomer(r.Context(), scope, id)
+		if err != nil {
 			fail(w, err)
 			return
 		}
-		reply(w, 200, map[string]bool{"deleted": true})
+		reply(w, 200, result)
+	})
+	mux.HandleFunc("GET "+base+"/customers/{customer}/records", func(w http.ResponseWriter, r *http.Request) {
+		scope, ok := resolve(w, r, "customers.read")
+		if !ok {
+			return
+		}
+		id := r.PathValue("customer")
+		if !uuid(id) {
+			reply(w, 400, map[string]string{"error": "Valid customer selector required"})
+			return
+		}
+		records, err := store.CustomerRecordsFor(r.Context(), scope, id)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		reply(w, 200, records)
 	})
 }

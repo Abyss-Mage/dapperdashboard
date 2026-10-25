@@ -19,7 +19,7 @@ const send = (method: string, body?: unknown): RequestInit => ({ method, headers
 
 /* One catalogue screen for both levels. mode "central" = the organization catalogue; mode "franchise" = the selected franchise's own
    services, with a one-click way to switch on central services. Behaviour matches the older editors: revisions, archive, delete. */
-export default function ServicesManager({ mode, listUrl, organizationId, canManage, title, intro }: { mode: 'central' | 'franchise'; listUrl: string; organizationId: string; canManage: boolean; title: string; intro: string }) {
+export default function ServicesManager({ mode, listUrl, organizationId, canManage, title, intro, extrasOnly = false }: { mode: 'central' | 'franchise'; listUrl: string; organizationId: string; canManage: boolean; title: string; intro: string; extrasOnly?: boolean }) {
   const [items, setItems] = useState<Service[] | null>(null);
   const [central, setCentral] = useState<Service[]>([]);
   const [filter, setFilter] = useState<Filter>('active');
@@ -60,8 +60,9 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
     const q = query.trim().toLowerCase();
     const match = (s: Service) => !q || s.name.toLowerCase().includes(q);
     const inFilter = (s: Service) => (filter === 'archived' ? s.archived : !s.archived && (filter === 'active' || s.kind === filter));
-    return all.filter((s) => inFilter(s) && match(s));
-  }, [all, filter, query]);
+    // extrasOnly: a franchise's own services; central services reach every franchise on their own.
+    return all.filter((s) => inFilter(s) && match(s) && (!extrasOnly || !s.centralServiceId));
+  }, [all, filter, query, extrasOnly]);
   const mains = visible.filter((s) => s.kind === 'main');
   const addonsOf = (id: string) => visible.filter((s) => s.kind === 'addon' && s.parentId === id);
   const orphans = visible.filter((s) => s.kind === 'addon' && !mains.some((m) => m.id === s.parentId));
@@ -214,7 +215,7 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
       )}
 
       <ConfirmDialog isOpen={target !== null} title={target?.action === 'delete' ? 'Delete service' : 'Archive service'} entityName={target?.item.name ?? ''} entityType="Service" actionType={target?.action ?? 'delete'} isBusy={busy}
-        explanation={target?.action === 'delete' ? 'An unused service is removed permanently. One with bookings, invoices or work orders leaves the active catalogue but its history is kept.' : 'Archiving takes the service out of booking and scheduling while keeping completed jobs, past bookings and the audit trail.'}
+        explanation={target?.action === 'delete' ? 'An unused service is removed permanently. One with bookings, invoices or jobs leaves the active catalogue but its history is kept.' : 'Archiving takes the service out of booking and scheduling while keeping completed jobs, past bookings and the audit trail.'}
         impactNotice={target?.item.kind === 'main' ? 'Add-ons attached to this service are affected too.' : undefined}
         confirmLabel={target?.action === 'delete' ? 'Delete service' : 'Archive service'}
         onConfirm={async () => { if (!target) return; const t = target; setTarget(null); await (t.action === 'delete' ? del(t.item) : archive(t.item)); }}

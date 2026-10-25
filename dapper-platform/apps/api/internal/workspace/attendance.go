@@ -166,6 +166,31 @@ func registerAttendanceRoutes(mux *http.ServeMux, store *postgres.Store) {
 		reply(w, 200, map[string]any{"item": item})
 	})
 
+	// Worked time per staff member and day, for the day / week / month totals on the Staff hours page.
+	mux.HandleFunc("GET "+base+"/totals", func(w http.ResponseWriter, r *http.Request) {
+		org, loc := r.PathValue("organization"), r.PathValue("location")
+		if !uuid(org) || !uuid(loc) {
+			reply(w, 400, map[string]string{"error": "Valid organization and location selectors required"})
+			return
+		}
+		scope, err := store.ResolveScope(r.Context(), requestSession(r).principalID, org, loc, "attendance.read")
+		if err != nil {
+			failure(w, err)
+			return
+		}
+		q := r.URL.Query()
+		items, err := store.AttendanceTotals(r.Context(), scope, q.Get("from"), q.Get("to"), q.Get("tz"))
+		if errors.Is(err, postgres.ErrAttendanceTotalsInput) {
+			reply(w, 422, map[string]string{"error": "Choose a date range of at most 400 days"})
+			return
+		}
+		if err != nil {
+			attendanceFailure(w, err)
+			return
+		}
+		reply(w, 200, map[string]any{"staff": items})
+	})
+
 	mux.HandleFunc("GET "+base+"/history", func(w http.ResponseWriter, r *http.Request) {
 		org, loc := r.PathValue("organization"), r.PathValue("location")
 		if !uuid(org) || !uuid(loc) {

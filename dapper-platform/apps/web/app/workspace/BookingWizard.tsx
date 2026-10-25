@@ -45,14 +45,19 @@ function parseName(name: string) {
   const v = m[1].toLowerCase();
   return { vehicle: v === 'suv' ? 'SUV' : v.replace(/\b\w/g, (c) => c.toUpperCase()), pack: m[2].trim() };
 }
-const GROUPS = ['Detailing', 'Ceramic coating', 'Paint protection film', 'Paint correction'] as const;
+// Same order as the website: 2 Wheeler, the four-wheelers by size, then aircraft and boats.
+const VEHICLE_ORDER = ['2 Wheeler', 'Hatchback', 'Sedan', 'SUV', 'Pickup', 'Van', 'Aircraft Small', 'Aircraft Medium', 'Aircraft Large', 'Boat Small', 'Boat Medium', 'Boat Large'];
+const CARS = ['Hatchback', 'Sedan', 'SUV', 'Pickup', 'Van'];
+const byVehicleOrder = (a: string, b: string) => (VEHICLE_ORDER.indexOf(a) + 1 || 99) - (VEHICLE_ORDER.indexOf(b) + 1 || 99);
+const GROUPS = ['Detailing', 'Ceramic coating', 'Paint protection film', 'Window tinting'] as const;
 const GROUP_HELP: Record<string, string> = {
-  Detailing: 'Washes, interior and full-body detailing', 'Ceramic coating': 'Long-lasting paint protection', 'Paint protection film': 'Clear film that guards the paint', 'Paint correction': 'Remove swirls and scratches',
+  Detailing: 'Washes, interior and full-body detailing', 'Ceramic coating': 'Shield, Fortress, 3 Stage Paint Correction and Armour Up', 'Paint protection film': 'Clear film that guards the paint', 'Window tinting': 'Single window, 4-window and full 5-window tint',
 };
+// The ceramic packages (Shield, Fortress, 3 Stage Paint Correction, Armour Up) all belong to Ceramic coating.
 function groupOf(pack: string) {
   if (/ppf/i.test(pack)) return 'Paint protection film';
-  if (/ceramic/i.test(pack)) return 'Ceramic coating';
-  if (/paint correction/i.test(pack)) return 'Paint correction';
+  if (/tint/i.test(pack)) return 'Window tinting';
+  if (/ceramic|shield|fortress|armou?r up|paint correction/i.test(pack)) return 'Ceramic coating';
   return 'Detailing';
 }
 function span(total: number) {
@@ -136,8 +141,12 @@ export default function BookingWizard(p: WizardProps) {
   const parsed = useMemo(() => new Map(baseRules.map((r) => [r.id, parseName(r.serviceName)])), [baseRules]);
   const groups = useMemo(() => GROUPS.filter((g) => baseRules.some((r) => groupOf(parsed.get(r.id)!.pack) === g)), [baseRules, parsed]);
   const inGroup = useMemo(() => baseRules.filter((r) => groupOf(parsed.get(r.id)!.pack) === group), [baseRules, parsed, group]);
-  const vehicles = useMemo(() => [...new Set(inGroup.map((r) => parsed.get(r.id)!.vehicle).filter(Boolean))], [inGroup, parsed]);
-  const packages = useMemo(() => inGroup.filter((r) => { const v = parsed.get(r.id)!.vehicle; return !v || !vehicle || v === vehicle; }), [inGroup, parsed, vehicle]);
+  // Packages without a vehicle in their name (the ceramic packages, window tint) are for cars, so they open up the car types.
+  const vehicles = useMemo(() => {
+    const named = inGroup.map((r) => parsed.get(r.id)!.vehicle);
+    return [...new Set([...named.filter(Boolean), ...(named.some((v) => !v) ? CARS : [])])].sort(byVehicleOrder);
+  }, [inGroup, parsed]);
+  const packages = useMemo(() => inGroup.filter((r) => { const v = parsed.get(r.id)!.vehicle; return !vehicle || (v ? v === vehicle : CARS.includes(vehicle)); }), [inGroup, parsed, vehicle]);
   const rule = baseRules.find((r) => r.id === ruleId);
   const extras = rule?.availableAddons ?? [];
   const price = (id: string) => services.get(id)?.priceCents ?? null;
@@ -357,8 +366,8 @@ export default function BookingWizard(p: WizardProps) {
           <h2 ref={topRef} tabIndex={-1} className={styles.title}>Almost done: the customer&rsquo;s details</h2>
           <div className={styles.fields}>
             <label className={`${styles.field} ${styles.wide}`}>Full name<input value={me.name} onChange={(e) => setMe({ ...me, name: e.target.value })} autoComplete="name" /></label>
-            <label className={styles.field}>Mobile number<input type="tel" value={me.phone} onChange={(e) => setMe({ ...me, phone: e.target.value })} autoComplete="tel" placeholder="+1 416 555 0123" /></label>
-            <label className={styles.field}>Email<input type="email" value={me.email} onChange={(e) => setMe({ ...me, email: e.target.value })} autoComplete="email" /></label>
+            <label className={`${styles.field} ${styles.half}`}>Mobile number<input type="tel" value={me.phone} onChange={(e) => setMe({ ...me, phone: e.target.value })} autoComplete="tel" placeholder="+1 416 555 0123" /></label>
+            <label className={`${styles.field} ${styles.half}`}>Email<input type="email" value={me.email} onChange={(e) => setMe({ ...me, email: e.target.value })} autoComplete="email" /></label>
             {p.findCustomers && <div className={styles.wide}><button type="button" className={styles.back} disabled={me.phone.replace(/\D/g, '').length < 4} onClick={() => void lookup()}>Find an existing customer by phone</button>
               {found && (found.length ? <div className={styles.choices} style={{ marginTop: 8 }}>{found.map((c) => <button key={c.id} type="button" className={styles.choice} onClick={() => { setMe({ id: c.id, name: c.name, email: c.email, phone: c.phone }); setFound(null); }}><span><strong>{c.name}</strong><small>{c.email || 'No email'} · {c.phone}</small></span></button>)}</div> : <p className={styles.help}>No customer with that number.</p>)}</div>}
             <label className={`${styles.field} ${styles.wide}`}>Notes (optional)<textarea rows={3} maxLength={1000} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything we should know?" /></label>
@@ -373,9 +382,8 @@ export default function BookingWizard(p: WizardProps) {
           {rule && <div className={styles.sum} aria-label="Price summary">
             <div><span>{parsed.get(rule.id)!.pack}</span><span>{price(rule.serviceId) === null ? 'Price not set' : money(price(rule.serviceId) as number)}</span></div>
             {picked.map((id) => <div key={id}><span>{extras.find((a) => a.serviceId === id)?.name}</span><span>{price(id) === null ? '' : money(price(id) as number)}</span></div>)}
-            <div><span>Tax</span><span>{taxes ? money(tax) : 'Added on the invoice'}</span></div>
+            <div><span>{taxLabel(taxes)}</span><span>{taxes ? money(tax) : 'Added on the invoice'}</span></div>
             <div className={styles.grand}><span>Total</span><span>{money(total)}</span></div>
-            {total > 0 && <><div><span>Deposit due now ({pct}%)</span><span>{money(deposit)}</span></div><div><span>Balance on the day</span><span>{money(total - deposit)}</span></div></>}
             {unpriced && <p className={styles.help}>Some items have no price yet, so this total is not final.</p>}
           </div>}
         </>}
@@ -403,6 +411,12 @@ export default function BookingWizard(p: WizardProps) {
       </div>
     </div>
   );
+}
+
+// "Tax (13%)": the active rates added together, as a percentage.
+function taxLabel(taxes: WizardTaxes) {
+  const bp = (taxes?.rates ?? []).filter((r) => r.active).reduce((s, r) => s + r.rateBasisPoints, 0);
+  return bp ? `Tax (${Number((bp / 100).toFixed(3))}%)` : 'Tax';
 }
 
 function subtotalNote(name: string, rule: WizardRule | undefined, subtotal: number, total: number) {

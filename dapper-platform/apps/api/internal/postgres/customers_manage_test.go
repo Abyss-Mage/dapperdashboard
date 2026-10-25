@@ -52,27 +52,40 @@ func verifyCustomerManagement(t *testing.T, ctx context.Context, s *Store, a, b 
 	if _, err = s.UpdateCustomer(ctx, b, free.ID, "Foreign edit", "", ""); err == nil {
 		t.Fatal("another franchise edited this customer")
 	}
-	if err = s.DeleteCustomer(ctx, a, used.ID); !errors.Is(err, ErrCustomerInUse) {
-		t.Fatal("a customer with a work order was deleted", err)
+	// One customer per email and per phone at a franchise.
+	if _, err = s.CreateCustomer(ctx, a, "Synthetic Same Email", "HISTORY@example.invalid", ""); !errors.Is(err, ErrCustomerDuplicate) {
+		t.Fatal("a second customer with the same email was added", err)
 	}
-	if err = s.DeleteCustomer(ctx, b, free.ID); err == nil {
+	if _, err = s.CreateCustomer(ctx, a, "Synthetic Same Phone", "", "+1 (416) 555-0199"); !errors.Is(err, ErrCustomerDuplicate) {
+		t.Fatal("a second customer with the same phone was added", err)
+	}
+	if _, err = s.UpdateCustomer(ctx, a, used.ID, "Synthetic With History", "renamed@example.invalid", ""); !errors.Is(err, ErrCustomerDuplicate) {
+		t.Fatal("an edit took another customer's email", err)
+	}
+	// Opening a customer lists their records.
+	records, err := s.CustomerRecordsFor(ctx, a, used.ID)
+	if err != nil || len(records.Jobs) != 1 || records.Jobs[0].Title != "Synthetic history job" {
+		t.Fatalf("customer records wrong: %+v %v", records, err)
+	}
+	if _, err = s.DeleteCustomer(ctx, b, free.ID); err == nil {
 		t.Fatal("another franchise deleted this customer")
 	}
-	if err = s.DeleteCustomer(ctx, a, free.ID); err != nil {
-		t.Fatal("deleting a customer without history failed", err)
+	if res, err := s.DeleteCustomer(ctx, a, free.ID); err != nil || !res.Deleted {
+		t.Fatal("deleting a customer without history failed", res, err)
 	}
-	if err = s.DeleteCustomer(ctx, a, free.ID); !errors.Is(err, ErrCustomerNotFound) {
+	if _, err = s.DeleteCustomer(ctx, a, free.ID); !errors.Is(err, ErrCustomerNotFound) {
 		t.Fatal("double delete not reported", err)
 	}
 	var vehicles int
 	if err = s.pool.QueryRow(ctx, `SELECT count(*) FROM vehicles WHERE customer_id=$1`, free.ID).Scan(&vehicles); err != nil || vehicles != 0 {
 		t.Fatal("deleted customer's vehicles remain", err)
 	}
-	// Once its history is gone the second customer can be removed too (also leaves the shared fixture unchanged).
-	if _, err = s.pool.Exec(ctx, `DELETE FROM jobs WHERE customer_id=$1`, used.ID); err != nil {
-		t.Fatal(err)
+	// A customer with a job is deleted together with the job (nothing issued or paid to keep).
+	if res, err := s.DeleteCustomer(ctx, a, used.ID); err != nil || !res.Deleted {
+		t.Fatal("customer with a job could not be deleted", res, err)
 	}
-	if err = s.DeleteCustomer(ctx, a, used.ID); err != nil {
-		t.Fatal("customer without history could not be deleted", err)
+	var jobs int
+	if err = s.pool.QueryRow(ctx, `SELECT count(*) FROM jobs WHERE customer_id=$1`, used.ID).Scan(&jobs); err != nil || jobs != 0 {
+		t.Fatal("deleted customer's jobs remain", err)
 	}
 }

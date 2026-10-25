@@ -11,6 +11,8 @@ export type PrintTemplate = {
   title: string; accentColor: string; showLogo: boolean; headerNote: string; billToLabel: string;
   itemLabel: string; quantityLabel: string; unitPriceLabel: string; amountLabel: string;
   showTaxRegistration: boolean; showCustomerContact: boolean; paymentInstructions: string; footerNote: string; paperSize: 'letter' | 'a4';
+  /** Owner-written layout (HTML with {{placeholders}}) and its CSS. Empty = the built-in layout. */
+  customHtml: string; customCss: string;
 };
 export type PrintInvoice = {
   invoiceNumber: string; status: string; currency: string; issuedAt?: string | null; createdAt?: string;
@@ -24,6 +26,7 @@ export type PrintInvoice = {
 export const DEFAULT_PRINT_TEMPLATE: PrintTemplate = {
   title: 'Invoice', accentColor: '#111111', showLogo: true, headerNote: '', billToLabel: 'Bill to', itemLabel: 'Item', quantityLabel: 'Qty',
   unitPriceLabel: 'Unit price', amountLabel: 'Amount', showTaxRegistration: true, showCustomerContact: true, paymentInstructions: '', footerNote: '', paperSize: 'letter',
+  customHtml: '', customCss: '',
 };
 
 const money = (cents: number, currency = 'CAD') => `${(cents / 100).toLocaleString('en-CA', { style: 'currency', currency })}`;
@@ -57,8 +60,78 @@ const css = (t: PrintTemplate) => `
 .ddInv .ddFoot{font-size:12.5px}
 `;
 
+/* The placeholders a custom layout can use. Every value is escaped, so invoice text can never become markup. */
+export const TEMPLATE_PLACEHOLDERS: [string, string][] = [
+  ['title', 'Document title'], ['invoice_number', 'Invoice number'], ['date', 'Issued (or created) date'], ['status', 'Status'],
+  ['logo_url', 'Address of the logo image'], ['business_name', 'Your legal business name'], ['business_address', 'Your address'], ['tax_registration', 'Tax registration number'],
+  ['customer_name', 'Customer name'], ['customer_email', 'Customer email'], ['customer_phone', 'Customer phone'],
+  ['items', 'The item rows (<tr> with description, quantity, unit price and amount)'],
+  ['subtotal', 'Subtotal'], ['tax', 'Tax'], ['total', 'Total'], ['paid', 'Paid'], ['balance_due', 'Balance due'], ['currency', 'Currency'],
+  ['header_note', 'Note above the items'], ['payment_instructions', 'Payment instructions'], ['footer_note', 'Footer'],
+];
+export const STARTER_HTML = [
+  '<div class="invoice">',
+  '  <header>',
+  '    <img src="{{logo_url}}" alt="" class="logo">',
+  '    <div><h1>{{title}}</h1><p>{{invoice_number}} · {{date}}</p></div>',
+  '  </header>',
+  '  <section class="parties">',
+  '    <div><strong>{{business_name}}</strong><p>{{business_address}}</p><p>{{tax_registration}}</p></div>',
+  '    <div><strong>Bill to</strong><p>{{customer_name}}</p><p>{{customer_email}}</p><p>{{customer_phone}}</p></div>',
+  '  </section>',
+  '  <table>',
+  '    <thead><tr><th>Item</th><th>Qty</th><th>Unit price</th><th>Amount</th></tr></thead>',
+  '    <tbody>{{items}}</tbody>',
+  '  </table>',
+  '  <div class="totals">',
+  '    <p>Subtotal <span>{{subtotal}}</span></p><p>Tax <span>{{tax}}</span></p>',
+  '    <p>Total <span>{{total}}</span></p><p class="due">Balance due <span>{{balance_due}}</span></p>',
+  '  </div>',
+  '  <footer>{{footer_note}}</footer>',
+  '</div>',
+].join('\n');
+export const STARTER_CSS = [
+  'body{font:14px/1.45 system-ui,sans-serif;color:#111;margin:0}',
+  '.invoice{max-width:760px;margin:0 auto}',
+  'header{display:flex;gap:16px;align-items:center;border-bottom:3px solid #fb1a2b;padding-bottom:12px}',
+  '.logo{width:64px;height:64px;object-fit:contain}',
+  'h1{margin:0;color:#fb1a2b}',
+  '.parties{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin:20px 0}',
+  '.parties p{margin:2px 0;white-space:pre-line}',
+  'table{width:100%;border-collapse:collapse}',
+  'th,td{text-align:left;padding:8px 0;border-bottom:1px solid #ddd}',
+  'th:not(:first-child),td:not(:first-child){text-align:right}',
+  '.totals{margin:14px 0 0 auto;width:320px}',
+  '.totals p{display:flex;justify-content:space-between;margin:4px 0}',
+  '.due{font-weight:700;border-top:2px solid #fb1a2b;padding-top:6px}',
+  'footer{margin-top:24px;color:#444;font-size:12px}',
+].join('\n');
+
+const esc = (v: string) => v.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string);
+
+/* The whole page of a custom layout with the invoice filled in. It is shown and printed in a sandboxed frame, where scripts never run. */
+export function customInvoicePage(invoice: PrintInvoice, t: PrintTemplate): string {
+  const customer = invoice.customerSnapshot ?? (invoice.customerName ? { name: invoice.customerName, email: '', phone: '' } : null);
+  const m = (c: number) => esc(money(c, invoice.currency));
+  const values: Record<string, string> = {
+    title: esc(t.title), invoice_number: esc(invoice.invoiceNumber), date: esc(day(invoice.issuedAt ?? invoice.createdAt)), status: esc(invoice.status.replaceAll('_', ' ')),
+    logo_url: `${typeof window === 'undefined' ? '' : window.location.origin}/site/assets/logo.webp`,
+    business_name: esc(invoice.issuerSnapshot?.legalName ?? ''), business_address: esc(invoice.issuerSnapshot?.address ?? ''), tax_registration: esc(invoice.issuerSnapshot?.taxRegistration ?? ''),
+    customer_name: esc(customer?.name ?? ''), customer_email: esc(customer?.email ?? ''), customer_phone: esc(customer?.phone ?? ''),
+    items: (invoice.items ?? []).map((it) => `<tr><td>${esc(it.description)}</td><td>${it.quantity}</td><td>${m(it.unitPriceCents ?? Math.round(it.totalPriceCents / Math.max(1, it.quantity)))}</td><td>${m(it.totalPriceCents)}</td></tr>`).join(''),
+    subtotal: m(invoice.subtotalCents), tax: m(invoice.taxCents), total: m(invoice.totalCents), paid: m(invoice.paidCents), balance_due: m(invoice.dueCents), currency: esc(invoice.currency),
+    header_note: esc(t.headerNote), payment_instructions: esc(t.paymentInstructions), footer_note: esc(t.footerNote),
+  };
+  const body = t.customHtml.replace(/\{\{\s*([a-z_]+)\s*\}\}/g, (_all, key: string) => (key in values ? values[key] : ''));
+  return `<!doctype html><html><head><meta charset="utf-8"><style>@page{size:${t.paperSize === 'a4' ? 'A4' : 'letter'};margin:16mm}\n${t.customCss.replace(/<\/style/gi, '')}</style></head><body>${body}</body></html>`;
+}
+
+// No allow-scripts, so nothing in a layout can run; same-origin only so this page can call print() on the frame.
+const FRAME_SANDBOX = 'allow-same-origin allow-modals';
+
 export function InvoiceDocument({ invoice, template }: { invoice: PrintInvoice; template: PrintTemplate }) {
   const t = template;
+  if (t.customHtml?.trim()) return <iframe title="Invoice preview" sandbox={FRAME_SANDBOX} srcDoc={customInvoicePage(invoice, t)} style={{ width: '100%', minHeight: 900, border: 0, background: '#fff' }} />;
   const customer = invoice.customerSnapshot ?? (invoice.customerName ? { name: invoice.customerName, email: '', phone: '' } : null);
   return (
     <div className="ddInv">
@@ -122,6 +195,21 @@ export function InvoiceDocument({ invoice, template }: { invoice: PrintInvoice; 
 
 /* Prints through a temporary layer so the app chrome never appears on paper: everything else in <body> is hidden while printing. */
 export function printInvoiceDocument(invoice: PrintInvoice, template: PrintTemplate) {
+  if (template.customHtml?.trim()) {
+    const frame = document.createElement('iframe');
+    frame.setAttribute('sandbox', FRAME_SANDBOX);
+    frame.setAttribute('aria-hidden', 'true');
+    frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
+    frame.srcdoc = customInvoicePage(invoice, template);
+    frame.onload = () => {
+      const w = frame.contentWindow;
+      if (!w) { frame.remove(); return; }
+      w.addEventListener('afterprint', () => frame.remove());
+      setTimeout(() => w.print(), 150);
+    };
+    document.body.appendChild(frame);
+    return;
+  }
   const host = document.createElement('div');
   host.className = 'dd-invoice-print-root';
   const style = document.createElement('style');

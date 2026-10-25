@@ -202,7 +202,7 @@ func (s *Store) OwnerInsights(ctx context.Context, scope Scope, section, from, t
 		if err = rows.Err(); err != nil {
 			return OwnerInsights{}, err
 		}
-		if err = tx.QueryRow(ctx, `SELECT count(*) FROM customers WHERE organization_id=$1 AND location_id=$2`, org, loc).Scan(&c.Total); err != nil {
+		if err = tx.QueryRow(ctx, `SELECT count(*) FROM customers WHERE organization_id=$1 AND location_id=$2 AND removed_at IS NULL`, org, loc).Scan(&c.Total); err != nil {
 			return OwnerInsights{}, err
 		}
 		if ok, err = allowed("vehicles.read"); err != nil {

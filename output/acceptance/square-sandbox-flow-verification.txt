@@ -1,0 +1,4 @@
+=== RUN   TestSquareSandboxEndToEnd
+--- PASS: TestSquareSandboxEndToEnd (4.01s)
+PASS
+ok  	dapper.local/platform/internal/postgres	5.744s

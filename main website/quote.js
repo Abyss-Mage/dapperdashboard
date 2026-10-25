@@ -4,7 +4,7 @@
 (function () {
   const root = document.getElementById('quote');
   if (!root) return;
-  const api = '/api/v1/public/booking/main/options';
+  const api = '/api/v1/public/booking/dapper/options';
   const VEHICLE = /^(hatchback|sedan|suv|pickup|van|2 wheeler|aircraft (?:small|medium|large)|boat (?:small|medium|large))\s*-\s*(.+)$/i;
   const money = (c) => new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(c / 100);
   const span = (m) => { if (m < 60) return m + ' min'; if (m < 1440) { const h = Math.floor(m / 60), r = m % 60; return h + (h === 1 ? ' hr' : ' hrs') + (r ? ' ' + r + ' min' : ''); } const d = Math.floor(m / 1440), h = Math.floor((m % 1440) / 60); return d + (d === 1 ? ' day' : ' days') + (h ? ' ' + h + (h === 1 ? ' hr' : ' hrs') : ''); };
