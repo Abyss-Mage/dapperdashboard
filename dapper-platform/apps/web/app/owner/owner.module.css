@@ -23,8 +23,6 @@
   background-attachment: fixed;
 }
 :global(:root[data-theme=dark]) .shell {
-  /* plain dark background: no coloured glows behind the panels */
-  background: var(--bg);
   --glass: color-mix(in srgb, var(--surface) 58%, transparent);
   --glass-strong: color-mix(in srgb, var(--surface) 74%, transparent);
   --glass-edge: rgba(255, 255, 255, .13);
@@ -647,8 +645,6 @@
     var(--bg) !important;
   background-attachment: fixed !important;
 }
-/* Dark mode: a plain background, no coloured glows. */
-:global(:root[data-theme=dark]) .shell { background-image: none !important; background-color: var(--bg) !important; }
 .main, .tabPanel { background: transparent !important; }
 .tabPanel :global(.panel), .tabPanel :global(.detail-card) { background: var(--glass) !important; }
 .tabPanel :global(.panel) :global(.panel), .tabPanel :global(.panel) :global(.detail-card), .tabPanel :global(.detail-card) :global(.panel), .tabPanel :global(.detail-card) :global(.detail-card) { background: transparent !important; }
@@ -828,3 +824,16 @@
 .personButton { all: unset; cursor: pointer; display: flex; flex-direction: column; gap: 2px; min-width: 0; border-radius: 8px; }
 .personButton:focus-visible { outline: 2px solid var(--focus, var(--link)); outline-offset: 3px; }
 .personButton:hover .personName { text-decoration: underline; }
+
+/* Dark mode glass. The site's global dark rules paint every <header> a solid colour, so the top bar and the newer
+   surfaces (calendar, customer drawer) are set to the same glass as the rest of the dashboard. */
+:global(:root[data-theme=dark]) .topBar {
+  background: linear-gradient(180deg, color-mix(in srgb, #fff 9%, transparent), transparent), color-mix(in srgb, var(--surface) 34%, transparent) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(190%);
+  backdrop-filter: blur(30px) saturate(190%);
+  border-bottom: 1px solid color-mix(in srgb, var(--glass-edge) 55%, transparent) !important;
+}
+.calendarGlass > section:first-child { background: var(--glass) !important; border: 1px solid var(--glass-line); box-shadow: var(--glass-shadow); -webkit-backdrop-filter: blur(22px) saturate(170%); backdrop-filter: blur(22px) saturate(170%); }
+.calendarGlass :is([class*="calendarScroll"]) { background: color-mix(in srgb, var(--surface) 40%, transparent) !important; border-color: var(--glass-line) !important; }
+.calendarGlass :is([class*="weekday"], [class*="calendarEvent"]) { background: var(--glass-strong) !important; }
+.drawer { background: var(--glass-strong); -webkit-backdrop-filter: blur(30px) saturate(180%); backdrop-filter: blur(30px) saturate(180%); }

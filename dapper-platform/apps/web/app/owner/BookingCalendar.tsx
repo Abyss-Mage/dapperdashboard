@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, RefreshCw, X } from 'lucide-react';
 import { calendarRange, dateOffset, readableDay, worksiteDate } from '../workspace/employee_helpers';
 import styles from '../workspace/employee.module.css';
+import owner from './owner.module.css';
 
 /* Master's bookings calendar: the same month / week / day calendar as the staff workspace, for the selected franchise. */
 
@@ -38,6 +39,7 @@ export default function BookingCalendar({ base, timezone, calendarLink }: { base
   const link = typeof window === 'undefined' ? calendarLink : new URL(calendarLink, window.location.origin).toString();
 
   return (
+    <div className={owner.calendarGlass}>
     <section className={styles.calendar} aria-label="Bookings calendar">
       <div className={styles.calendarToolbar}>
         <div className={styles.calendarPeriod}>
@@ -78,5 +80,6 @@ export default function BookingCalendar({ base, timezone, calendarLink }: { base
         </section>
       )}
     </section>
+    </div>
   );
 }
