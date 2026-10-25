@@ -1,5 +1,6 @@
 'use client';
 import {useCallback,useEffect,useState} from 'react';
+import Select from '../GlassSelect';
 
 type Customer = {id: string; name: string};
 type Service = {id: string; name: string; kind: string; archived: boolean; parentId: string | null};
@@ -126,7 +127,7 @@ export default function WorkOrderForm({base, onSaved, customerRevision = 0}: {ba
           <div className="management-form">
             <label className="form-field">
               Customer
-              <select
+              <Select
                 required
                 disabled={busy}
                 value={customerId}
@@ -140,7 +141,7 @@ export default function WorkOrderForm({base, onSaved, customerRevision = 0}: {ba
                     {customer.name}
                   </option>
                 ))}
-              </select>
+              </Select>
               {fields.customerId && (
                 <small className="field-error" id="work-customer-error">
                   {fields.customerId}
@@ -149,7 +150,7 @@ export default function WorkOrderForm({base, onSaved, customerRevision = 0}: {ba
             </label>
             <label className="form-field">
               Main service
-              <select
+              <Select
                 required
                 disabled={busy}
                 value={serviceId}
@@ -168,7 +169,7 @@ export default function WorkOrderForm({base, onSaved, customerRevision = 0}: {ba
                       {service.name}
                     </option>
                   ))}
-              </select>
+              </Select>
               {fields.serviceId && (
                 <small className="field-error" id="work-service-error">
                   {fields.serviceId}
@@ -179,7 +180,7 @@ export default function WorkOrderForm({base, onSaved, customerRevision = 0}: {ba
           {reservations.length > 0 && (
             <label className="form-field">
               Link capacity reservation (optional)
-              <select
+              <Select
                 disabled={busy}
                 value={reservationId}
                 onChange={(e) => setReservationId(e.target.value)}
@@ -194,7 +195,7 @@ export default function WorkOrderForm({base, onSaved, customerRevision = 0}: {ba
                       {new Date(r.start).toLocaleString('en-CA')} ({r.durationMinutes} min) · {r.id.slice(0, 8)}
                     </option>
                   ))}
-              </select>
+              </Select>
               {fields.reservationId && (
                 <small className="field-error" id="work-reservation-error">
                   {fields.reservationId}

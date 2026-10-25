@@ -4,6 +4,7 @@ import InvoiceDraftEditor from './InvoiceDraftEditor';
 import InvoiceDraftHistory from './InvoiceDraftHistory';
 import SquareCardPayment from './SquareCardPayment';
 import { printInvoiceDocument, usePrintTemplate } from './InvoicePrint';
+import Select from '../GlassSelect';
 
 type InvoiceItem = {
   id: string;
@@ -442,7 +443,7 @@ export default function InvoiceManager({
           <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem'}}>
             <div>
               <label htmlFor="draft-customer-select">Customer *</label>
-              <select
+              <Select
                 id="draft-customer-select"
                 aria-label="Customer"
                 value={selectedCustomerId}
@@ -455,7 +456,7 @@ export default function InvoiceManager({
                     {c.name} ({c.email || 'No email'})
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div>
               <label htmlFor="draft-custom-number">Draft reference (optional, generated if blank)</label>
@@ -594,7 +595,7 @@ export default function InvoiceManager({
         <label htmlFor="invoice-status-filter" style={{position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0}}>
           Filter by status
         </label>
-        <select
+        <Select
           id="invoice-status-filter"
           aria-label="Filter invoices by status"
           value={statusFilter}
@@ -607,7 +608,7 @@ export default function InvoiceManager({
           <option value="partially_paid">Partially Paid</option>
           <option value="paid">Paid in Full</option>
           <option value="void">Void</option>
-        </select>
+        </Select>
       </div>
 
       {/* Invoices List */}

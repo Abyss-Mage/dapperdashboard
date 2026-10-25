@@ -1,5 +1,6 @@
 'use client';
 import {useCallback, useEffect, useRef, useState} from 'react';
+import Select from '../GlassSelect';
 
 type AccountManagement = {
   customers: {id: string; name: string; email: string}[];
@@ -41,8 +42,8 @@ export default function CustomerAccountManager({base, revision = 0}: {base: stri
     {notice && <p role="status">{notice}</p>}
     {data && <>
       <form className="management-form" onSubmit={event => {event.preventDefault(); if (selectedCustomer && selectedMember?.active && reviewed) change(customer, principal, true);}}>
-        <label className="form-field">Customer record<select required value={customer} disabled={busy} onChange={event => {setCustomer(event.target.value); setReviewed(false);}}><option value="">Choose customer</option>{data.customers.map(item => <option value={item.id} key={item.id}>{item.name}{item.email ? ` · ${item.email}` : ''}</option>)}</select></label>
-        <label className="form-field">Enrolled account<select required value={principal} disabled={busy} onChange={event => {setPrincipal(event.target.value); setReviewed(false);}}><option value="">Choose account</option>{data.members.map(item => <option value={item.principalId} key={item.principalId} disabled={!item.active}>{item.email}{item.active ? '' : ' (inactive)'}</option>)}</select></label>
+        <label className="form-field">Customer record<Select required value={customer} disabled={busy} onChange={event => {setCustomer(event.target.value); setReviewed(false);}}><option value="">Choose customer</option>{data.customers.map(item => <option value={item.id} key={item.id}>{item.name}{item.email ? ` · ${item.email}` : ''}</option>)}</Select></label>
+        <label className="form-field">Enrolled account<Select required value={principal} disabled={busy} onChange={event => {setPrincipal(event.target.value); setReviewed(false);}}><option value="">Choose account</option>{data.members.map(item => <option value={item.principalId} key={item.principalId} disabled={!item.active}>{item.email}{item.active ? '' : ' (inactive)'}</option>)}</Select></label>
         <p>Selected customer: <strong>{selectedCustomer?.name ?? 'None'}</strong>. Selected account: <strong>{selectedMember?.email ?? 'None'}</strong>.</p>
         <label><input type="checkbox" required checked={reviewed} disabled={busy || !selectedCustomer || !selectedMember?.active} onChange={event => setReviewed(event.target.checked)} /> I verified this account is authorized to access the selected customer record.</label>
         <button className="primary" disabled={busy || !selectedCustomer || !selectedMember?.active || !reviewed}>{busy ? 'Saving…' : 'Grant reviewed customer access'}</button>

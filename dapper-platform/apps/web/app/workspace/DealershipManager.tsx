@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Select from '../GlassSelect';
 
 type DealershipTag = {
   id: string;
@@ -411,11 +412,11 @@ export default function DealershipManager({
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.75rem', marginTop: '0.5rem' }}>
             <label className="form-field">
               Billing Customer
-              <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} required>
+              <Select value={customerId} onChange={(e) => setCustomerId(e.target.value)} required>
                 {customers.map((c) => (
                   <option key={c.id} value={c.id}>{c.name} ({c.email})</option>
                 ))}
-              </select>
+              </Select>
             </label>
             <label className="form-field">
               Account Name
@@ -443,11 +444,11 @@ export default function DealershipManager({
             </label>
             <label className="form-field">
               Account Type
-              <select value={accountType} onChange={(e) => setAccountType(e.target.value as any)}>
+              <Select value={accountType} onChange={(e) => setAccountType(e.target.value as any)}>
                 <option value="dealership">Dealership</option>
                 <option value="fleet">Commercial Fleet</option>
                 <option value="commercial">Commercial General</option>
-              </select>
+              </Select>
             </label>
             <label className="form-field">
               Primary Contact Name
@@ -525,7 +526,7 @@ export default function DealershipManager({
         <div style={{ marginTop: '1rem' }}>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginBottom: '1rem' }}>
             <label style={{ fontWeight: 600, fontSize: '0.9rem' }}>Select Account:</label>
-            <select
+            <Select
               value={selectedAccountId || ''}
               onChange={(e) => setSelectedAccountId(e.target.value)}
               style={{ padding: '0.4rem', minWidth: '240px' }}
@@ -535,7 +536,7 @@ export default function DealershipManager({
                   {a.accountName} ({a.accountCode}) — {a.accountType.toUpperCase()}
                 </option>
               ))}
-            </select>
+            </Select>
 
             <div style={{ display: 'flex', gap: '0.25rem', marginLeft: 'auto' }}>
               <button
@@ -691,7 +692,7 @@ export default function DealershipManager({
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                   <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Filter by Status:</label>
-                  <select
+                  <Select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
                     style={{ padding: '0.3rem', fontSize: '0.85rem' }}
@@ -703,7 +704,7 @@ export default function DealershipManager({
                     <option value="quality_checked">Quality Checked</option>
                     <option value="completed">Completed</option>
                     <option value="released">Released to Dealer</option>
-                  </select>
+                  </Select>
                 </div>
                 {canManage && (
                   <button
@@ -851,7 +852,7 @@ export default function DealershipManager({
                           </td>
                           {canManage && (
                             <td style={{ padding: '0.4rem' }}>
-                              <select
+                              <Select
                                 value={item.status}
                                 onChange={(e) => handleUpdateStatus(item.id, e.target.value)}
                                 style={{ fontSize: '0.75rem', padding: '0.2rem' }}
@@ -862,7 +863,7 @@ export default function DealershipManager({
                                 <option value="quality_checked">QC Inspection</option>
                                 <option value="completed">Completed</option>
                                 <option value="released">Release to Dealer</option>
-                              </select>
+                              </Select>
                             </td>
                           )}
                         </tr>

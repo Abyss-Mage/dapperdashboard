@@ -1,5 +1,6 @@
 'use client';
 import {useCallback, useEffect, useState} from 'react';
+import Select from '../GlassSelect';
 
 type SOPDocument = {
   id: string;
@@ -158,7 +159,7 @@ export default function SOPCompliancePanel({
           <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem', marginBottom: '1rem'}}>
             <div>
               <label>Training Stage / Track *</label>
-              <select
+              <Select
                 value={trainingTrack}
                 onChange={(e: any) => setTrainingTrack(e.target.value)}
                 style={{width: '100%', padding: '0.5rem'}}
@@ -167,7 +168,7 @@ export default function SOPCompliancePanel({
                 <option value="assisted">Phase 2: Assisted Practical Observation</option>
                 <option value="independent">Phase 3: Independent Supervised Execution</option>
                 <option value="certified">Phase 4: Fully Certified Sign-Off</option>
-              </select>
+              </Select>
             </div>
             <div>
               <label>Supervisor / Employee Notes</label>

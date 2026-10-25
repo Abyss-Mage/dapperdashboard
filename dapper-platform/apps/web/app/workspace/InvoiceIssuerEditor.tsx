@@ -1,5 +1,6 @@
 'use client';
 import {useCallback,useEffect,useState} from 'react';
+import Select from '../GlassSelect';
 type Issuer={id:string;legalName:string;address:string;taxRegistration:string;currency:string;numberPrefix:string;version:number;nextNumber:number};
 type Configuration={issuers:Issuer[];locations:{id:string;name:string}[];bindings:{locationId:string;issuerId:string}[]};
 const emptyForm={legalName:'',address:'',taxRegistration:'',currency:'',numberPrefix:'',startNumber:''};
@@ -23,17 +24,17 @@ export default function InvoiceIssuerEditor({organizationId,revision}:{organizat
  const issuer=data.issuers.find(i=>i.id===id);
  return <section className="panel detail-card"><h2>Invoice issuers</h2><p>Use the actual legal issuer and numbering approved for your business. Each location must be linked explicitly.</p>
   {error&&<p className="field-error" role="alert">{error}</p>}{notice&&<p role="status">{notice}</p>}
-  <label className="form-field">Edit issuer<select disabled={busy} value={id} onChange={e=>select(e.target.value)}><option value="">Create issuer</option>{data.issuers.map(i=><option key={i.id} value={i.id}>{i.legalName} · revision {i.version}</option>)}</select></label>
+  <label className="form-field">Edit issuer<Select disabled={busy} value={id} onChange={e=>select(e.target.value)}><option value="">Create issuer</option>{data.issuers.map(i=><option key={i.id} value={i.id}>{i.legalName} · revision {i.version}</option>)}</Select></label>
   <form onSubmit={save}><div className="management-form">
    {([{key:'legalName',label:'Legal name',min:2,max:200},{key:'taxRegistration',label:'Tax registration (if applicable)',min:0,max:100},{key:'numberPrefix',label:'Number prefix (uppercase letters, digits, hyphens)',min:1,max:24}] as const).map(f=><label className="form-field" key={f.key}>{f.label}<input required={f.min>0} minLength={f.min} maxLength={f.max} pattern={f.key==='numberPrefix'?'[A-Z0-9-]{1,24}':undefined} value={form[f.key]} disabled={busy} onChange={e=>setForm({...form,[f.key]:e.target.value})}/></label>)}
-   <label className="form-field">Currency<select required disabled={busy} value={form.currency} onChange={e=>setForm({...form,currency:e.target.value})}><option value="">Choose currency</option><option value="CAD">CAD</option></select></label>
+   <label className="form-field">Currency<Select required disabled={busy} value={form.currency} onChange={e=>setForm({...form,currency:e.target.value})}><option value="">Choose currency</option><option value="CAD">CAD</option></Select></label>
   </div><label className="form-field">Legal address<textarea required minLength={5} maxLength={1000} value={form.address} disabled={busy} onChange={e=>setForm({...form,address:e.target.value})}/></label>
    {!id&&<label className="form-field">First sequence number<input required type="number" min="1" step="1" value={form.startNumber} disabled={busy} onChange={e=>setForm({...form,startNumber:e.target.value})}/></label>}
    {issuer&&<p>Next number: {Number.isSafeInteger(issuer.nextNumber)?issuer.numberPrefix+issuer.nextNumber:'Outside supported display range'}. Editing issuer details cannot reset the sequence.</p>}
    <button className="primary" disabled={busy}>{busy?'Saving…':id?'Save revision':'Create issuer'}</button>
   </form><h3>Location issuer</h3><form className="management-form" onSubmit={bind}>
-   <label className="form-field">Location<select required disabled={busy} value={location} onChange={e=>setLocation(e.target.value)}><option value="">Choose location</option>{data.locations.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}</select></label>
-   <label className="form-field">Issuer<select required disabled={busy} value={boundIssuer} onChange={e=>setBoundIssuer(e.target.value)}><option value="">Choose legal issuer</option>{data.issuers.map(i=><option key={i.id} value={i.id}>{i.legalName}</option>)}</select></label>
+   <label className="form-field">Location<Select required disabled={busy} value={location} onChange={e=>setLocation(e.target.value)}><option value="">Choose location</option>{data.locations.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}</Select></label>
+   <label className="form-field">Issuer<Select required disabled={busy} value={boundIssuer} onChange={e=>setBoundIssuer(e.target.value)}><option value="">Choose legal issuer</option>{data.issuers.map(i=><option key={i.id} value={i.id}>{i.legalName}</option>)}</Select></label>
    <button className="primary" disabled={busy||!location||!boundIssuer}>Link issuer</button>
   </form></section>;
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Select from '../GlassSelect';
 
 type QuoteItem = {
   id: string;
@@ -313,7 +314,7 @@ export default function QuoteManager({
         <h3>Quotation Management</h3>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           <label htmlFor="quote-filter" style={{ fontSize: '0.9rem' }}>Status:</label>
-          <select
+          <Select
             id="quote-filter"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -326,7 +327,7 @@ export default function QuoteManager({
             <option value="fulfilled">Fulfilled</option>
             <option value="declined">Declined</option>
             <option value="expired">Expired</option>
-          </select>
+          </Select>
           {canCreate && !isFormOpen && (
             <button type="button" className="primary" onClick={() => setIsFormOpen(true)}>
               + New Quotation
@@ -521,13 +522,13 @@ export default function QuoteManager({
 
           <div style={{ marginBottom: '0.75rem' }}>
             <label htmlFor="f-channel">Booking Channel</label>
-            <select id="f-channel" value={fulfillChannel} onChange={(e) => setFulfillChannel(e.target.value)}>
+            <Select id="f-channel" value={fulfillChannel} onChange={(e) => setFulfillChannel(e.target.value)}>
               <option value="online">Online</option>
               <option value="internal">Internal / Staff</option>
               <option value="phone">Phone</option>
               <option value="walk_in">Walk-in</option>
               <option value="dealership">Dealership</option>
-            </select>
+            </Select>
           </div>
 
           {fulfillingQuote.depositCents > 0 && (

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import styles from './owner.module.css';
 import ConfirmDialog from '../workspace/ConfirmDialog';
+import Select from '../GlassSelect';
 
 type Rate = { id: string; name: string; rateBasisPoints: number; active: boolean; version: number };
 type Settings = { pricesIncludeTax: boolean; rounding: string | null; version: number };
@@ -150,18 +151,18 @@ export default function TaxSettings({ base, franchiseName, canManage }: { base: 
         <h3>How prices and rounding work</h3>
         <div className={styles.inlineForm}>
           <label className="form-field">Prices are entered
-            <select value={settings.pricesIncludeTax ? 'in' : 'ex'} disabled={busy || !canManage || !rates} onChange={(e) => void saveSettings({ pricesIncludeTax: e.target.value === 'in', rounding: settings.rounding ?? '' })}>
+            <Select value={settings.pricesIncludeTax ? 'in' : 'ex'} disabled={busy || !canManage || !rates} onChange={(e) => void saveSettings({ pricesIncludeTax: e.target.value === 'in', rounding: settings.rounding ?? '' })}>
               <option value="ex">Without tax (tax added separately)</option>
               <option value="in">With tax included</option>
-            </select>
+            </Select>
           </label>
           <label className="form-field">Rounding
-            <select value={settings.rounding ?? ''} disabled={busy || !canManage || !rates} onChange={(e) => void saveSettings({ pricesIncludeTax: settings.pricesIncludeTax, rounding: e.target.value })}>
+            <Select value={settings.rounding ?? ''} disabled={busy || !canManage || !rates} onChange={(e) => void saveSettings({ pricesIncludeTax: settings.pricesIncludeTax, rounding: e.target.value })}>
               <option value="">Not decided yet</option>
               <option value="half_up">Nearest cent, half rounds up</option>
               <option value="half_even">Nearest cent, half rounds to even</option>
               <option value="down">Always round down</option>
-            </select>
+            </Select>
           </label>
         </div>
         <p className={styles.footnote}>Rounding stays “not decided” until you choose it; nothing is assumed.</p>

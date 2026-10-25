@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import styles from './owner.module.css';
 import ConfirmDialog from '../workspace/ConfirmDialog';
+import Select from '../GlassSelect';
 
 type Service = { id: string; name: string; kind: string; parentId: string | null; version: number; archived: boolean; centralServiceId?: string | null; priceCents?: number | null };
 const money = (c: number) => `$${(c / 100).toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -148,10 +149,10 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
           <div className={styles.inlineForm}>
             <label className="form-field">Name<input required minLength={2} maxLength={120} value={name} onChange={(e) => setName(e.target.value)} disabled={busy} /></label>
             <label className="form-field">Type
-              <select value={kind} onChange={(e) => { setKind(e.target.value); setParentId(''); }} disabled={busy}>
+              <Select value={kind} onChange={(e) => { setKind(e.target.value); setParentId(''); }} disabled={busy}>
                 <option value="main">Main service</option>
                 <option value="addon">Add-on</option>
-              </select>
+              </Select>
             </label>
             {mode === 'central' && (
               <label className="form-field">Price before tax (CAD)
@@ -160,10 +161,10 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
             )}
             {kind === 'addon' && (
               <label className="form-field">Belongs to
-                <select required value={parentId} onChange={(e) => setParentId(e.target.value)} disabled={busy}>
+                <Select required value={parentId} onChange={(e) => setParentId(e.target.value)} disabled={busy}>
                   <option value="">Choose a main service</option>
                   {all.filter((s) => !s.archived && s.kind === 'main' && (editing === 'new' || s.id !== editing.id)).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
+                </Select>
               </label>
             )}
           </div>

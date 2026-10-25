@@ -1,5 +1,6 @@
 'use client';
 import {useCallback, useEffect, useRef, useState} from 'react';
+import Select from '../GlassSelect';
 
 type Invitation = {id: string; email: string; status: string; deliveryState: string; expiresAt: string; roleName?: string; locationName?: string};
 type Choice = {id: string; name: string};
@@ -59,8 +60,8 @@ export default function MemberInvitations({organizationId}: {organizationId: str
     {!available ? <p>Invitations are currently unavailable because outbound email delivery (SMTP host, port, credentials, and approved sender address) has not been configured in the system environment.</p> : <>
       <form onSubmit={create} className="management-form">
         <label htmlFor="invitation-email" className="form-field">Recipient email<input id="invitation-email" required type="email" maxLength={254} value={email} onChange={event => setEmail(event.target.value)} disabled={busy} /></label>
-        <label className="form-field">Role<select value={roleId} onChange={event => setRoleId(event.target.value)} disabled={busy}><option value="">Choose later</option>{roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}</select></label>
-        <label className="form-field">Franchise<select value={locationId} onChange={event => setLocationId(event.target.value)} disabled={busy || !roleId} required={!!roleId}><option value="">Choose franchise</option>{franchises.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}</select></label>
+        <label className="form-field">Role<Select value={roleId} onChange={event => setRoleId(event.target.value)} disabled={busy}><option value="">Choose later</option>{roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}</Select></label>
+        <label className="form-field">Franchise<Select value={locationId} onChange={event => setLocationId(event.target.value)} disabled={busy || !roleId} required={!!roleId}><option value="">Choose franchise</option>{franchises.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}</Select></label>
         <label htmlFor="invitation-minutes" className="form-field">Link expires in minutes (15–1440)<input id="invitation-minutes" required type="number" min={15} max={1440} step={1} value={minutes} onChange={event => setMinutes(event.target.value)} disabled={busy} /></label>
         <button className="primary" disabled={busy || (!!roleId && !locationId)}>{busy ? 'Saving…' : 'Send invitation'}</button>
       </form>

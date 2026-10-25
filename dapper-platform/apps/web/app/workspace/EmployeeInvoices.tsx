@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FileText, Plus, Trash2 } from 'lucide-react';
 import styles from './employee.module.css';
 import { printInvoiceDocument, usePrintTemplate, type PrintInvoice } from './InvoicePrint';
+import Select from '../GlassSelect';
 
 type Booking = { id: string; customerName: string; serviceName: string; bookingTime: string; status: string; addons: { name: string }[] };
 type Invoice = { id: string; invoiceNumber: string; status: string; totalCents: number; dueCents: number; subtotalCents: number; taxCents: number; customerName: string; bookingId?: string; createdAt: string };
@@ -156,10 +157,10 @@ export default function EmployeeInvoices({ bookings, canCreate, canIssue, timezo
         <form className={styles.invForm} onSubmit={(e) => { e.preventDefault(); void save(false); }}>
           <h2>New invoice</h2>
           <label>Booking
-            <select value={bookingId} onChange={(e) => void choose(e.target.value)} disabled={busy}>
+            <Select value={bookingId} onChange={(e) => void choose(e.target.value)} disabled={busy}>
               <option value="">Choose the booking to bill</option>
               {sortedBookings.map((b) => <option key={b.id} value={b.id}>{bookingLabel(b)}</option>)}
-            </select>
+            </Select>
           </label>
           {prefill && prefill.existing.length > 0 && <p className={alreadyRaised ? styles.error : styles.help} role={alreadyRaised ? 'alert' : undefined}>{alreadyRaised ? 'This booking already has an invoice, so a second one cannot be raised: ' : 'Earlier invoices for this booking: '}{prefill.existing.map((x) => `${x.invoiceNumber.startsWith('DRAFT-') ? 'Draft' : x.invoiceNumber} (${x.status.replace('_', ' ')})`).join(', ')}.{alreadyRaised ? ' Open it from the list below (void it first only if it was raised by mistake).' : ''}</p>}
           {prefill && !alreadyRaised && (

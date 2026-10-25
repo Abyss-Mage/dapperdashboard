@@ -6,6 +6,7 @@ import CustomerAvailabilityBrowser from './CustomerAvailabilityBrowser';
 import CustomerBookingRequestList from './CustomerBookingRequestList';
 import CustomerQuoteList from './CustomerQuoteList';
 import InvoicePaymentForm from './InvoicePaymentForm';
+import Select from '../GlassSelect';
 
 type Account = {customerId: string; name: string; locationName: string};
 type Records = {
@@ -138,7 +139,7 @@ export default function CustomerAccount() {
     </form> : <>
       <button type="button" className="secondary" onClick={signOut} disabled={busy}>Sign out</button>
       {accounts.length === 0 ? <section className="panel detail-card"><h2>No customer records available</h2><p>Contact Dapper to connect your customer records to this account.</p></section> : <>
-        <label className="form-field">Customer account<select disabled={busy} value={selected} onChange={(e) => {setRecords(null); setNotice(''); setSelected(e.target.value);}}>{accounts.map((a) => <option key={a.customerId} value={a.customerId}>{a.name} · {a.locationName}</option>)}</select></label>
+        <label className="form-field">Customer account<Select disabled={busy} value={selected} onChange={(e) => {setRecords(null); setNotice(''); setSelected(e.target.value);}}>{accounts.map((a) => <option key={a.customerId} value={a.customerId}>{a.name} · {a.locationName}</option>)}</Select></label>
         {!records && !error && <p role="status">Loading your records…</p>}
         {records && <>
           <h2>{records.account.name} · {records.account.locationName}</h2>

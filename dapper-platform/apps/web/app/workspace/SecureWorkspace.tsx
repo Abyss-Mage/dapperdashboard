@@ -22,6 +22,7 @@ import SchedulingEditor from './SchedulingEditor';
 import QuoteManager from './QuoteManager';
 import DealershipManager from './DealershipManager';
 import MarketingPopupManager from './MarketingPopupManager';
+import Select from '../GlassSelect';
 
 type Access = {organizationId: string; organizationName: string; locationId: string; locationName: string; actions: string[]};
 type Org = {id: string; name: string; actions: string[]};
@@ -396,7 +397,7 @@ export default function SecureWorkspace({ownerView=false}:{ownerView?:boolean}) 
             {locations.length ? (
               <label className="form-field">
                 Location
-                <select
+                <Select
                   value={selected}
                   onChange={(e) => {
                     const next = e.target.value;
@@ -417,7 +418,7 @@ export default function SecureWorkspace({ownerView=false}:{ownerView?:boolean}) 
                       {l.organizationName} · {l.locationName}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
             ) : (
               <p>No location actions have been granted to your account. Organization management, if granted, is shown below.</p>

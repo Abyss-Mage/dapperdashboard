@@ -1,6 +1,7 @@
 'use client';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import BookingRescheduler from './BookingRescheduler';
+import Select from '../GlassSelect';
 
 type Customer = {id: string; name: string; email: string; phone: string};
 type Vehicle = {id: string; customerId: string; description: string; identifier: string};
@@ -351,28 +352,28 @@ export default function BookingManager({
           <div className="management-form">
             <label className="form-field">
               Customer
-              <select required disabled={busy} value={customerId} onChange={(e) => {setCustomerId(e.target.value); setVehicleId('');}}>
+              <Select required disabled={busy} value={customerId} onChange={(e) => {setCustomerId(e.target.value); setVehicleId('');}}>
                 <option value="">Select customer</option>
                 {customers.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name} ({c.phone || c.email})
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <label className="form-field">
               Customer vehicle or equipment (optional)
-              <select disabled={busy || !customerId} value={vehicleId} onChange={(e) => setVehicleId(e.target.value)}>
+              <Select disabled={busy || !customerId} value={vehicleId} onChange={(e) => setVehicleId(e.target.value)}>
                 <option value="">No equipment selected</option>
                 {vehicles.filter((v) => v.customerId === customerId).map((v) => (
                   <option key={v.id} value={v.id}>{v.description}{v.identifier ? ` · ${v.identifier}` : ''}</option>
                 ))}
-              </select>
+              </Select>
               <small>Only equipment owned by the selected customer and visible with your permissions is listed.</small>
             </label>
             <label className="form-field">
               Main service
-              <select
+              <Select
                 required
                 disabled={busy}
                 value={serviceId}
@@ -389,19 +390,19 @@ export default function BookingManager({
                       {s.name}
                     </option>
                   ))}
-              </select>
+              </Select>
             </label>
           </div>
 
           <div className="management-form">
             <label className="form-field">
               Intake channel
-              <select disabled={busy} value={channel} onChange={(e) => setChannel(e.target.value as any)}>
+              <Select disabled={busy} value={channel} onChange={(e) => setChannel(e.target.value as any)}>
                 <option value="internal">Internal / Shop</option>
                 <option value="phone">Phone call</option>
                 <option value="walk_in">Walk-in</option>
                 <option value="dealership">Dealership / Fleet</option>
-              </select>
+              </Select>
             </label>
             <label className="form-field">
               Appointment date & time
@@ -416,7 +417,7 @@ export default function BookingManager({
             {reservations.length > 0 && (
               <label className="form-field">
                 Capacity slot (optional)
-                <select disabled={busy} value={reservationId} onChange={(e) => setReservationId(e.target.value)}>
+                <Select disabled={busy} value={reservationId} onChange={(e) => setReservationId(e.target.value)}>
                   <option value="">None</option>
                   {reservations
                     .filter((r) => !r.cancelledAt)
@@ -425,7 +426,7 @@ export default function BookingManager({
                         {new Date(r.start).toLocaleString('en-CA')} ({r.durationMinutes} min)
                       </option>
                     ))}
-                </select>
+                </Select>
               </label>
             )}
           </div>

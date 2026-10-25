@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import styles from './owner.module.css';
 import ConfirmDialog from '../workspace/ConfirmDialog';
 import type { Role } from './RoleManager';
+import Select from '../GlassSelect';
 
 type Member = { principalId: string; email: string; active: boolean };
 type Named = { id: string; name: string };
@@ -111,28 +112,28 @@ export default function RoleAssignments({ organizationId, revision, onSaved }: {
         {roles.length === 0 && assignments !== null && <p className={styles.personSub}>Create a role first (Roles tab).</p>}
         <div className={styles.inlineForm}>
           <label className="form-field">Person
-            <select value={person} onChange={(e) => setPerson(e.target.value)} disabled={busy} required>
+            <Select value={person} onChange={(e) => setPerson(e.target.value)} disabled={busy} required>
               {members.map((m) => <option key={m.principalId} value={m.principalId}>{m.email || 'Account awaiting enrollment'}</option>)}
-            </select>
+            </Select>
           </label>
           <label className="form-field">Role
-            <select value={roleId} onChange={(e) => setRoleId(e.target.value)} disabled={busy} required>
+            <Select value={roleId} onChange={(e) => setRoleId(e.target.value)} disabled={busy} required>
               {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-            </select>
+            </Select>
           </label>
           <label className="form-field">Applies to
-            <select value={scope} onChange={(e) => setScope(e.target.value as Scope)} disabled={busy}>
+            <Select value={scope} onChange={(e) => setScope(e.target.value as Scope)} disabled={busy}>
               <option value="organization">Whole organization</option>
               <option value="franchise">One franchise</option>
               <option value="location">One location</option>
-            </select>
+            </Select>
           </label>
           {scope !== 'organization' && (
             <label className="form-field">{scope === 'franchise' ? 'Franchise' : 'Location'}
-              <select value={target} onChange={(e) => setTarget(e.target.value)} disabled={busy} required>
+              <Select value={target} onChange={(e) => setTarget(e.target.value)} disabled={busy} required>
                 {targets.length === 0 && <option value="">None available</option>}
                 {targets.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-              </select>
+              </Select>
             </label>
           )}
           <button className="primary" disabled={busy || !person || !roleId || (scope !== 'organization' && !target)}>{busy ? 'Saving…' : 'Assign role'}</button>

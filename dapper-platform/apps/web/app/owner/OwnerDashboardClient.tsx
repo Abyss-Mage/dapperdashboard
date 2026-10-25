@@ -30,6 +30,7 @@ import TaxSettings from './TaxSettings';
 import FranchiseManager from './FranchiseManager';
 
 import styles from './owner.module.css';
+import Select from '../GlassSelect';
 
 type Access = {
   organizationId: string;
@@ -457,7 +458,7 @@ export default function OwnerDashboardClient() {
               <label htmlFor="owner-location-select" className={styles.scopeLabel}>
                 Franchise
               </label>
-              <select
+              <Select
                 id="owner-location-select"
                 className={styles.scopeSelect}
                 value={selectedLocationId}
@@ -477,7 +478,7 @@ export default function OwnerDashboardClient() {
                       ))}
                   </optgroup>
                 ))}
-              </select>
+              </Select>
             </>
           ) : (
             <>

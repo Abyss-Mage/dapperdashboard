@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import ConfirmDialog from './ConfirmDialog';
+import Select from '../GlassSelect';
 
 type CentralService = {
   id: string;
@@ -148,7 +149,7 @@ export default function CentralServiceEditor({ organization, canManage }: { orga
           </label>
           <label className="form-field">
             Type
-            <select
+            <Select
               value={kind}
               onChange={(e) => {
                 setKind(e.target.value);
@@ -157,12 +158,12 @@ export default function CentralServiceEditor({ organization, canManage }: { orga
             >
               <option value="main">Main service</option>
               <option value="addon">Add-on</option>
-            </select>
+            </Select>
           </label>
           {kind === 'addon' && (
             <label className="form-field">
               Parent central service
-              <select required value={parentId} onChange={(e) => setParentId(e.target.value)}>
+              <Select required value={parentId} onChange={(e) => setParentId(e.target.value)}>
                 <option value="">Choose parent main service</option>
                 {items
                   .filter((s) => !s.archived && s.kind === 'main' && s.id !== editing?.id)
@@ -171,7 +172,7 @@ export default function CentralServiceEditor({ organization, canManage }: { orga
                       {s.name}
                     </option>
                   ))}
-              </select>
+              </Select>
             </label>
           )}
           <button className="primary" disabled={busy}>

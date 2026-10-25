@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import styles from './owner.module.css';
 import RangeBar, { resolveRange, type Custom, type RangePresetId } from './DateRange';
 import StaffMap, { type MapPoint } from './StaffMap';
+import Select from '../GlassSelect';
 
 /* Staff hours for the owner: where clocked-in staff are right now, and how long each person worked per day, week or month
    in the chosen dates. Clocking in and out happens in the staff app, not here. */
@@ -81,7 +82,7 @@ export default function StaffHours({ base, timezone }: { base: string; timezone:
               {(['day', 'week', 'month'] as By[]).map((b) => <button key={b} type="button" className={styles.segment} aria-pressed={by === b} onClick={() => setBy(b)}>{b === 'day' ? 'By day' : b === 'week' ? 'By week' : 'By month'}</button>)}
             </div>
             <label className={styles.filterSelect}><span>Staff</span>
-              <select value={who} onChange={(e) => setWho(e.target.value)}><option value="">Everyone</option>{(staff ?? []).map((s) => <option key={s.principalId} value={s.principalId}>{s.name}</option>)}</select>
+              <Select value={who} onChange={(e) => setWho(e.target.value)}><option value="">Everyone</option>{(staff ?? []).map((s) => <option key={s.principalId} value={s.principalId}>{s.name}</option>)}</Select>
             </label>
           </div>
         </div>

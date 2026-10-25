@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { DEFAULT_PRINT_TEMPLATE, InvoiceDocument, printInvoiceDocument, STARTER_CSS, STARTER_HTML, TEMPLATE_PLACEHOLDERS, type PrintInvoice, type PrintTemplate } from './InvoicePrint';
+import Select from '../GlassSelect';
 
 /* Owner / Super Admin editor for the printed invoice layout. Wording and look only; amounts and parties always come from the invoice. */
 
@@ -70,10 +71,10 @@ export default function InvoiceTemplateEditor({ organizationId, revision }: { or
             <input type="color" value={form.accentColor} disabled={busy || !loaded} onChange={(e) => set('accentColor', e.target.value)} />
           </label>
           <label className="form-field">Paper size
-            <select value={form.paperSize} disabled={busy || !loaded} onChange={(e) => set('paperSize', e.target.value as 'letter' | 'a4')}>
+            <Select value={form.paperSize} disabled={busy || !loaded} onChange={(e) => set('paperSize', e.target.value as 'letter' | 'a4')}>
               <option value="letter">Letter (8.5 × 11 in)</option>
               <option value="a4">A4</option>
-            </select>
+            </Select>
           </label>
           {text('billToLabel', 'Customer heading', 30)}
           {text('itemLabel', 'Item column', 30)}

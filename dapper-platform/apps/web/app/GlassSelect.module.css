@@ -1,0 +1,51 @@
+/* Glass dropdown. The menu is drawn in a portal on <body>, outside every page's own variables, so its tokens live here. */
+.wrap { position: relative; display: block; width: 100%; min-width: 0; }
+
+.trigger {
+  appearance: none; position: relative; display: flex; align-items: center; width: 100%; min-height: 44px;
+  padding: 0 38px 0 14px; border-radius: 12px; text-align: left; cursor: pointer;
+  border: 1px solid var(--glass-line, var(--border, rgba(128, 128, 128, .35)));
+  background: var(--glass-strong, color-mix(in srgb, var(--surface, #fff) 72%, transparent));
+  color: var(--text, inherit); font: inherit; font-size: 14px; font-weight: 600;
+  transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.trigger:hover:not(:disabled) { border-color: color-mix(in srgb, var(--brand, #fb1a2b) 55%, var(--glass-line, rgba(128, 128, 128, .35))); }
+.trigger:focus-visible { outline: 2px solid var(--focus, var(--link, #fb1a2b)); outline-offset: 2px; }
+.triggerOpen { border-color: var(--brand, #fb1a2b); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand, #fb1a2b) 22%, transparent); }
+.trigger:disabled { opacity: .55; cursor: not-allowed; }
+.labelBox { display: block; flex: 1; min-width: 0; overflow: hidden; }
+.label { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.placeholder { color: var(--text-muted, #8a8f96); font-weight: 500; }
+.chev { position: absolute; right: 12px; top: 50%; margin-top: -8px; width: 16px; height: 16px; display: grid; place-items: center; color: var(--text-muted, currentColor); pointer-events: none; transform-origin: 50% 50%; }
+/* Keeps native "required" validation working without showing a second control. */
+.proxy { position: absolute; left: 0; bottom: 0; width: 100%; height: 1px; opacity: 0; pointer-events: none; border: 0; padding: 0; }
+
+.scrim { position: fixed; inset: 0; z-index: 1999; background: rgba(0, 0, 0, .42); }
+.pop {
+  --gs-bg: rgba(255, 255, 255, .76); --gs-edge: rgba(255, 255, 255, .75); --gs-line: rgba(26, 11, 13, .12); --gs-hover: rgba(26, 11, 13, .075); --gs-accent: var(--brand, #d10f1f); --gs-muted: #6b5558; --gs-text: #1a0b0d;
+  position: fixed; z-index: 2000; display: flex; flex-direction: column; padding: 6px; border-radius: 18px; color: var(--gs-text);
+  background: linear-gradient(180deg, var(--gs-edge), transparent 42%), var(--gs-bg);
+  border: 1px solid var(--gs-line);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .08), 0 26px 52px -18px rgba(26, 11, 13, .42);
+  -webkit-backdrop-filter: blur(26px) saturate(180%); backdrop-filter: blur(26px) saturate(180%);
+  will-change: transform, opacity; font-family: inherit;
+}
+:global(:root[data-theme=dark]) .pop { --gs-bg: rgba(26, 26, 33, .66); --gs-edge: rgba(255, 255, 255, .13); --gs-line: rgba(255, 255, 255, .15); --gs-hover: rgba(255, 255, 255, .09); --gs-accent: #ff6a76; --gs-muted: #a1a1ab; --gs-text: #f5f5f7; box-shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 28px 56px -18px rgba(0, 0, 0, .8); }
+@media (prefers-color-scheme: dark) { :global(:root:not([data-theme=light])) .pop { --gs-bg: rgba(26, 26, 33, .66); --gs-edge: rgba(255, 255, 255, .13); --gs-line: rgba(255, 255, 255, .15); --gs-hover: rgba(255, 255, 255, .09); --gs-accent: #ff6a76; --gs-muted: #a1a1ab; --gs-text: #f5f5f7; } }
+.measuring { visibility: hidden; top: 0; left: 0; }
+.sheet { left: 0; right: 0; bottom: 0; top: auto; width: 100%; border-radius: 22px 22px 0 0; padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+.grab { align-self: center; width: 40px; height: 4px; border-radius: 4px; margin: 4px 0 8px; background: var(--gs-line); flex: none; }
+
+.list { position: relative; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--gs-line) transparent; }
+.hl { position: absolute; left: 0; right: 0; top: 0; height: 40px; border-radius: 12px; background: var(--gs-hover); pointer-events: none; opacity: 0; visibility: hidden; }
+.group { padding: 10px 12px 4px; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--gs-muted); }
+.opt { position: relative; display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 8px 12px; border-radius: 12px; font-size: 14px; font-weight: 600; line-height: 1.3; cursor: pointer; user-select: none; transform-origin: left center; color: var(--gs-text); }
+.sheet .opt { min-height: 48px; font-size: 15px; }
+.optLabel { min-width: 0; overflow-wrap: anywhere; }
+.optSelected { color: var(--gs-accent); }
+.optEmpty { color: var(--gs-muted); font-weight: 500; }
+.opt[aria-disabled=true] { opacity: .4; cursor: not-allowed; }
+.check { margin-left: auto; flex: none; color: var(--gs-accent); }
+
+@media (prefers-reduced-motion: reduce) { .trigger { transition: none; } }

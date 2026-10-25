@@ -5,6 +5,7 @@ import styles from './owner.module.css';
 import { OwnerIcon, type OwnerIconName } from './OwnerIcons';
 import RangeBar, { resolveRange, type Custom, type RangePresetId } from './DateRange';
 import { BarList, ColumnChart, DataTable, LineChart, Sparkline, compact, dollars, dollarsCompact, shortDate, wholeNumber } from './charts';
+import Select from '../GlassSelect';
 
 type Overview = { generatedAt: string; windowEnd: string; metrics: Record<string, number | null> };
 type Key = { key: string; count: number; cents: number; dueCents: number };
@@ -136,11 +137,11 @@ export default function OwnerOverview({ base, location, organizationName, onNavi
         <RangeBar presets={PRESETS} preset={preset} custom={custom} onPreset={setPreset} onCustom={setCustom} />
         <label className={styles.filterSelect}>
           <span>Booked</span>
-          <select value={channel} onChange={(e) => setChannel(e.target.value)}>
+          <Select value={channel} onChange={(e) => setChannel(e.target.value)}>
             {CHANNELS.map((c) => (
               <option key={c.id} value={c.id}>{c.label}</option>
             ))}
-          </select>
+          </Select>
         </label>
         <button type="button" className="secondary" disabled={loading} onClick={() => setRefreshKey((k) => k + 1)}>
           <OwnerIcon name="refresh" size={16} /> {loading ? 'Refreshing…' : 'Refresh'}

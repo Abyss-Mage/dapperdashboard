@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import MemberInvitations from './MemberInvitations';
+import Select from '../GlassSelect';
 
 type Member = {
   principalId: string;
@@ -219,7 +220,7 @@ export default function AccessManager({
         <form className="management-form" onSubmit={handleAssign}>
           <label className="form-field">
             Member
-            <select
+            <Select
               value={principal}
               onChange={(e) => setPrincipal(e.target.value)}
               disabled={busy}
@@ -230,12 +231,12 @@ export default function AccessManager({
                   {m.active ? '' : ' (inactive)'}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
 
           <label className="form-field">
             Role
-            <select
+            <Select
               value={roleId}
               onChange={(e) => setRoleId(e.target.value)}
               disabled={busy}
@@ -245,12 +246,12 @@ export default function AccessManager({
                   {r.name} ({r.capabilities.length} capabilities)
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
 
           <label className="form-field">
             Scope type
-            <select
+            <Select
               value={scopeType}
               onChange={(e) => {
                 const next = e.target.value as 'location' | 'franchise';
@@ -265,12 +266,12 @@ export default function AccessManager({
             >
               <option value="location">Location</option>
               <option value="franchise">Franchise</option>
-            </select>
+            </Select>
           </label>
 
           <label className="form-field">
             Target {scopeType === 'franchise' ? 'franchise' : 'location'}
-            <select
+            <Select
               required
               value={scopeId}
               onChange={(e) => setScopeId(e.target.value)}
@@ -290,7 +291,7 @@ export default function AccessManager({
                       {l.name}
                     </option>
                   ))}
-            </select>
+            </Select>
           </label>
 
           <button

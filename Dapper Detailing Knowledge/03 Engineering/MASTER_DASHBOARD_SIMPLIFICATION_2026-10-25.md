@@ -37,3 +37,8 @@ Owner direction (2026-10-25): stop the 3D home page for now (owner will supply c
 - Runtime tests: full Go/PostgreSQL suite passed (customer delete, duplicates, records, invitations, central auto-link).
 - Live checks in the running app: pages load; duplicate email/phone refused; customer delete works; wizard categories and vehicle order; dark mode plain.
 - Not live-verified: Square OAuth connection, Invoice Ninja sending, staff map with real GPS (no staff on shift).
+
+## Dropdowns (2026-10-25, later)
+- Every native `<select>` in the web app (about 85 in 32 files) is now `app/GlassSelect.tsx`, a drop-in with the same `<option>` / `<optgroup>` children and `onChange(e.target.value)`. GSAP (core + `useGSAP`, `quickTo`, `utils.mapRange/clamp`): menu scales out from the button (bottom sheet under 640 px), options stagger in, one highlight pill glides between options, options near the pointer swell like the macOS dock, the chosen label slides in, the chevron turns. Keyboard: arrows, Home/End, Enter/Space, Esc, Tab, type-ahead; required fields still validate; motion off for prefers-reduced-motion.
+- Checked live on desktop width (open, arrow, Enter, Esc). Not yet checked: phone bottom sheet, grouped menus, very long lists, real touch.
+- `scripts/test-workspace-components.mjs` tests F05, F08, F11 fail on the committed code too (they check older wording); not caused by this change.

@@ -1,5 +1,6 @@
 'use client';
 import {useEffect, useRef, useState} from 'react';
+import Select from '../GlassSelect';
 
 type Booking = {id: string; customerName: string; serviceName: string; serviceId?: string | null; addons: {serviceId: string}[]; bookingTime: string; reservationVersion?: number | null};
 type Rule = {id: string; resourceId: string; serviceId: string; addonIds: string[]; version: number; durationMinutes: number; beforeMinutes: number; afterMinutes: number};
@@ -61,8 +62,8 @@ export default function BookingRescheduler({base, booking, onClose, onSaved}: {b
     <form onSubmit={save} style={{display:'grid',gap:'.85rem'}}>
       <h3 id="reschedule-booking-title">Move this booking</h3>
       <p><strong>{booking.customerName}</strong> · {booking.serviceName}</p><p>Now booked for {new Date(booking.bookingTime).toLocaleString('en-CA', {weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: zone})}. If the move cannot be made, the current time stays reserved.</p>
-      {usable.length > 1 && <label>Where<select autoFocus disabled={loading || busy} required value={resource} onChange={event => {setResource(event.target.value); setRule('');}}><option value="">Choose where</option>{usable.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
-      {rules.filter(item => item.resourceId===resource).length > 1 && <label>Service timing<select disabled={loading || busy || !resource} required value={rule} onChange={event => setRule(event.target.value)}><option value="">Choose</option>{rules.filter(item => item.resourceId===resource).map(item => <option key={item.id} value={item.id}>{item.durationMinutes} min</option>)}</select></label>}
+      {usable.length > 1 && <label>Where<Select autoFocus disabled={loading || busy} required value={resource} onChange={event => {setResource(event.target.value); setRule('');}}><option value="">Choose where</option>{usable.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</Select></label>}
+      {rules.filter(item => item.resourceId===resource).length > 1 && <label>Service timing<Select disabled={loading || busy || !resource} required value={rule} onChange={event => setRule(event.target.value)}><option value="">Choose</option>{rules.filter(item => item.resourceId===resource).map(item => <option key={item.id} value={item.id}>{item.durationMinutes} min</option>)}</Select></label>}
       <label>New date and time<input type="datetime-local" autoFocus={usable.length <= 1} required disabled={busy} value={start} onChange={event => setStart(event.target.value)}/></label>
       <label>Reason or notes (optional)<textarea disabled={busy} maxLength={2000} value={notes} onChange={event => setNotes(event.target.value)}/></label>
       {loading && <p>Loading current scheduling choices…</p>}{!loading && !rules.length && !error && <p>No matching active service timing rules are configured.</p>}

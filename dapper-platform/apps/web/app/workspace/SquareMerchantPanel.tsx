@@ -2,6 +2,7 @@
 import { Landmark } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import glass from '../glass.module.css';
+import Select from '../GlassSelect';
 
 /* Card payments for one franchise. Each franchise connects its OWN Square account (Square OAuth): the owner approves Dapper on
    Square's page, then picks which of that account's Square locations this franchise charges to. Square confirms the location
@@ -80,13 +81,13 @@ export default function SquareMerchantPanel({ organizationId, locationId, canMan
       <span className={glass.meta}>Square account {b.merchantId} · location {b.squareLocationId} · saved {new Date(b.reviewedAt).toLocaleDateString()}</span></li></ul>}
     {canManage ? <div style={{ display: 'grid', gap: 14 }}>
       <div className={glass.fields}>
-        <label className={glass.field}>Square account type<select disabled={busy} value={env} onChange={(e) => setEnv(e.target.value as Env)} style={{ minHeight: 46, borderRadius: 14, padding: '0 12px', font: 'inherit' }}><option value="sandbox">{ENV_LABEL.sandbox}</option><option value="production">{ENV_LABEL.production}</option></select></label>
+        <label className={glass.field}>Square account type<Select disabled={busy} value={env} onChange={(e) => setEnv(e.target.value as Env)} style={{ minHeight: 46, borderRadius: 14, padding: '0 12px', font: 'inherit' }}><option value="sandbox">{ENV_LABEL.sandbox}</option><option value="production">{ENV_LABEL.production}</option></Select></label>
       </div>
       {!available[env] && <p className={`${glass.notice} ${glass.warn}`}>Connecting a {env === 'production' ? 'live' : 'test'} Square account is not set up on the server yet. Run scripts/set-square-app-secret.ps1{env === 'production' ? ' -Environment production' : ''} once and restart the application.</p>}
       {connection ? <>
         <p className={glass.notice}>Connected to Square account {connection.merchantId} on {new Date(connection.connectedAt).toLocaleDateString()}. The connection renews itself.</p>
         {!places ? <p role="status" className={glass.lede}>Loading this account&rsquo;s Square locations…</p> : <>
-          <label className={glass.field}>Square location for this franchise<select disabled={busy} value={pick} onChange={(e) => setPick(e.target.value)} style={{ minHeight: 46, borderRadius: 14, padding: '0 12px', font: 'inherit' }}><option value="">Choose a location</option>{places.locations.map((l) => <option key={l.id} value={l.id} disabled={!l.cards || l.status !== 'ACTIVE' || l.currency !== 'CAD'}>{l.name} · {l.currency}{!l.cards ? ' · cannot take cards' : l.status !== 'ACTIVE' ? ' · inactive' : ''}</option>)}</select></label>
+          <label className={glass.field}>Square location for this franchise<Select disabled={busy} value={pick} onChange={(e) => setPick(e.target.value)} style={{ minHeight: 46, borderRadius: 14, padding: '0 12px', font: 'inherit' }}><option value="">Choose a location</option>{places.locations.map((l) => <option key={l.id} value={l.id} disabled={!l.cards || l.status !== 'ACTIVE' || l.currency !== 'CAD'}>{l.name} · {l.currency}{!l.cards ? ' · cannot take cards' : l.status !== 'ACTIVE' ? ' · inactive' : ''}</option>)}</Select></label>
           {env === 'production' && <p className={`${glass.notice} ${glass.warn}`}>Live mode charges real cards.</p>}
         </>}
         <div className={glass.actions} style={{ gap: 8, display: 'flex', flexWrap: 'wrap' }}>

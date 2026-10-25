@@ -837,3 +837,7 @@
 .calendarGlass :is([class*="calendarScroll"]) { background: color-mix(in srgb, var(--surface) 40%, transparent) !important; border-color: var(--glass-line) !important; }
 .calendarGlass :is([class*="weekday"], [class*="calendarEvent"]) { background: var(--glass-strong) !important; }
 .drawer { background: var(--glass-strong); -webkit-backdrop-filter: blur(30px) saturate(180%); backdrop-filter: blur(30px) saturate(180%); }
+
+/* Inline filter dropdowns size to their content instead of filling the row. */
+.filterSelect [data-glass-select] { width: auto; min-width: 150px; }
+.filterSelect :is(button[role=combobox]) { min-height: 38px; border-radius: 10px; }

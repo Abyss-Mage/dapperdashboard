@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import ConfirmDialog from './ConfirmDialog';
+import Select from '../GlassSelect';
 
 type Service = {
   id: string;
@@ -221,7 +222,7 @@ export default function ServiceEditor({
             <form className="management-form" onSubmit={importCentral}>
               <label className="form-field">
                 Use a central service at this location
-                <select
+                <Select
                   required
                   value={centralId}
                   onChange={(e) => setCentralId(e.target.value)}
@@ -232,7 +233,7 @@ export default function ServiceEditor({
                       {item.name} · {item.kind}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
               <button className="primary" disabled={busy}>
                 Enable central service
@@ -255,7 +256,7 @@ export default function ServiceEditor({
           </label>
           <label className="form-field">
             Type
-            <select
+            <Select
               value={kind}
               onChange={(e) => {
                 setKind(e.target.value);
@@ -264,12 +265,12 @@ export default function ServiceEditor({
             >
               <option value="main">Main service</option>
               <option value="addon">Add-on</option>
-            </select>
+            </Select>
           </label>
           {kind === 'addon' && (
             <label className="form-field">
               Main service
-              <select
+              <Select
                 required
                 value={parentId}
                 onChange={(e) => setParentId(e.target.value)}
@@ -285,7 +286,7 @@ export default function ServiceEditor({
                       {s.name}
                     </option>
                   ))}
-              </select>
+              </Select>
             </label>
           )}
           <button className="primary" disabled={busy}>
