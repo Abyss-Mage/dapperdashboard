@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import styles from './owner.module.css';
+import NumberField from '../NumberField';
 
 /* Partner dealerships of a franchise: the Owner / Super Admin adds a dealership and its contact, and can switch one off.
    Dealership invoices can be sent to Invoice Ninja (connection settings below; sending is on the Invoices page). */
@@ -100,7 +101,7 @@ export default function Dealerships({ organizationId, locationId, canManage, can
             <label className="form-field">Contact person<input required minLength={2} maxLength={120} value={form.contactName} onChange={(e) => set('contactName', e.target.value)} disabled={busy} /></label>
             <label className="form-field">Contact email<input required type="email" maxLength={254} value={form.contactEmail} onChange={(e) => set('contactEmail', e.target.value)} disabled={busy} /></label>
             <label className="form-field">Contact phone<input type="tel" maxLength={30} value={form.contactPhone} onChange={(e) => set('contactPhone', e.target.value)} disabled={busy} /></label>
-            <label className="form-field">Pay within (days)<input type="number" min={0} max={365} value={form.billingTermsDays} onChange={(e) => set('billingTermsDays', Number(e.target.value))} disabled={busy} /></label>
+            <label className="form-field">Pay within (days)<NumberField min={0} max={365} value={form.billingTermsDays} onChange={(e) => set('billingTermsDays', Number(e.target.value))} disabled={busy} /></label>
           </div>
           <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}><input type="checkbox" checked={form.taxExempt} onChange={(e) => set('taxExempt', e.target.checked)} disabled={busy} /><span>Tax exempt</span></label>
           <label className="form-field">Notes (optional)<textarea maxLength={2000} value={form.notes} onChange={(e) => set('notes', e.target.value)} disabled={busy} /></label>

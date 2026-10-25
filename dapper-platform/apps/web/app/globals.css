@@ -183,7 +183,8 @@ dialog :is(input,select,textarea):focus-visible{outline:2px solid var(--primary)
   [class*="_tile__"], [class*="_person__"], .management-list > article { transition: transform .3s cubic-bezier(.2, .8, .2, 1), box-shadow .3s ease, border-color .2s ease, background-color .2s ease; }
   input, textarea { transition: border-color .2s ease, box-shadow .25s ease, background-color .2s ease; }
   input:focus-visible, textarea:focus-visible { box-shadow: 0 0 0 4px color-mix(in srgb, #fb1a2b 20%, transparent); }
-  [role="dialog"], dialog[open] { animation: ddDialogIn .38s cubic-bezier(.2, .8, .2, 1); }
+  /* Native <dialog> only: custom dialogs, menus and sheets run their own GSAP entrance. */
+  dialog[open] { animation: ddDialogIn .38s cubic-bezier(.2, .8, .2, 1); }
   dialog[open]::backdrop { animation: ddFadeIn .3s ease; }
   [role="alert"] { animation: ddShake .6s cubic-bezier(.3, .7, .3, 1); }
   [role="status"]:not([aria-busy]) { animation: ddSlideDown .4s cubic-bezier(.2, .8, .2, 1); }
@@ -236,3 +237,9 @@ html { scrollbar-color: rgba(128, 128, 140, .5) transparent; }
 /* Selection and autofill match the brand. */
 ::selection { background: color-mix(in srgb, #fb1a2b 32%, transparent); }
 input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus, textarea:-webkit-autofill { -webkit-text-fill-color: currentColor; caret-color: currentColor; transition: background-color 600000s 0s, color 600000s 0s; }
+
+/* ---------- Control fixes found on the phone-size check ---------- */
+/* Older rules give every input a 44px minimum height and a dark box; checkboxes, radios and files must ignore both. */
+html input[type="checkbox"], html input[type="radio"] { min-height: 0; min-width: 0; padding: 0; }
+html input[type="checkbox"]:checked, html input[type="radio"]:checked { background: linear-gradient(135deg, #fb1a2b, #c1121f) !important; border-color: #c1121f !important; }
+html input[type="file"] { background: transparent !important; border: 0 !important; padding: 0 !important; min-height: 0 !important; box-shadow: none !important; }

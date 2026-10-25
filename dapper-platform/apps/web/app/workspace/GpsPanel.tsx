@@ -2,6 +2,7 @@
 import { MapPin } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import glass from '../glass.module.css';
+import NumberField from '../NumberField';
 
 type Settings = { enabled: boolean; sampleIntervalSeconds: number; retentionDays: number; version: number };
 type Entry = { attendanceId: string; employee: string; shiftStatus: string; state: string; stale: boolean; lastSampleAt?: string; latitude?: number; longitude?: number; accuracyMeters?: number };
@@ -43,8 +44,8 @@ export default function GpsPanel({ base, canManage }: { base: string; canManage:
     {form && (canManage ? <form onSubmit={save} style={{ display: 'grid', gap: 14 }}>
       <label className={glass.switch}><span>Allow on-shift location at this location</span><input type="checkbox" role="switch" checked={form.enabled} disabled={busy} onChange={e => setForm({ ...form, enabled: e.target.checked })} /></label>
       <div className={glass.fields}>
-        <label className={glass.field}>Sample every (seconds)<input type="number" min={60} max={3600} step={30} required disabled={busy} value={form.sampleIntervalSeconds} onChange={e => setForm({ ...form, sampleIntervalSeconds: Number(e.target.value) })} /></label>
-        <label className={glass.field}>Keep for (days)<input type="number" min={1} max={365} required disabled={busy} value={form.retentionDays} onChange={e => setForm({ ...form, retentionDays: Number(e.target.value) })} /></label>
+        <label className={glass.field}>Sample every (seconds)<NumberField min={60} max={3600} step={30} required disabled={busy} value={form.sampleIntervalSeconds} onChange={e => setForm({ ...form, sampleIntervalSeconds: Number(e.target.value) })} /></label>
+        <label className={glass.field}>Keep for (days)<NumberField min={1} max={365} required disabled={busy} value={form.retentionDays} onChange={e => setForm({ ...form, retentionDays: Number(e.target.value) })} /></label>
       </div>
       <p className={glass.lede}>Currently about every {minutes} minute{minutes === 1 ? '' : 's'}, deleted after {form.retentionDays} days. Starting values are 5 minutes and 30 days.</p>
       <div className={glass.actions}><button className={glass.button} disabled={busy}>{busy ? 'Saving…' : 'Save location settings'}</button></div>

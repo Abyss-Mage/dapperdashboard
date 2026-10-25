@@ -56,4 +56,4 @@
 .sw:hover { transform: scale(1.14); }
 .sw[aria-pressed=true] { box-shadow: 0 0 0 2px var(--gs-bg), 0 0 0 4px var(--gs-accent); }
 .hexRow { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-radius: 12px; border: 1px solid var(--gs-line); background: var(--gs-hover); }
-.hexInput { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--gs-text); font: inherit; font-size: 14px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 6px 0; }
+.hexInput { flex: 1; min-width: 0; min-height: 0; border: 0 !important; outline: 0; background: transparent !important; box-shadow: none !important; color: var(--gs-text); font: inherit; font-size: 14px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 6px 0; }

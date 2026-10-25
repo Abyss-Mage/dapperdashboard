@@ -6,6 +6,7 @@ import SquareCardPayment from './SquareCardPayment';
 import { printInvoiceDocument, usePrintTemplate } from './InvoicePrint';
 import Select from '../GlassSelect';
 import { askConfirm } from '../confirm';
+import NumberField from '../NumberField';
 
 type InvoiceItem = {
   id: string;
@@ -474,10 +475,9 @@ export default function InvoiceManager({
             <div>
               <label htmlFor="draft-tax-amount">Reviewed tax amount (CAD)</label>
               <div style={{display: 'flex', gap: '0.5rem'}}>
-                <input
+                <NumberField
                   id="draft-tax-amount"
                   aria-label="Reviewed tax amount (CAD)"
-                  type="number"
                   step="0.01"
                   min="0"
                   required
@@ -513,10 +513,9 @@ export default function InvoiceManager({
                 />
                 <div style={{display: 'flex', alignItems: 'center', gap: '0.25rem'}}>
                   <label htmlFor={`draft-line-qty-${idx}`} style={{fontSize: '0.85rem'}}>Qty:</label>
-                  <input
+                  <NumberField
                     id={`draft-line-qty-${idx}`}
                     aria-label={`Item ${idx + 1} quantity`}
-                    type="number"
                     min="1"
                     value={line.quantity}
                     onChange={(e) => handleLineChange(idx, 'quantity', parseInt(e.target.value) || 1)}
@@ -526,10 +525,9 @@ export default function InvoiceManager({
                 </div>
                 <div style={{display: 'flex', alignItems: 'center', gap: '0.25rem'}}>
                   <label htmlFor={`draft-line-price-${idx}`} style={{fontSize: '0.85rem'}}>$</label>
-                  <input
+                  <NumberField
                     id={`draft-line-price-${idx}`}
                     aria-label={`Item ${idx + 1} unit price in CAD`}
-                    type="number"
                     step="0.01"
                     min="0"
                     placeholder="0.00"
@@ -741,10 +739,9 @@ export default function InvoiceManager({
                 <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.75rem', marginBottom: '0.5rem'}}>
                   <div>
                     <label htmlFor="cash-payment-amount" style={{fontSize: '0.85rem'}}>Amount ($CAD)</label>
-                    <input
+                    <NumberField
                       id="cash-payment-amount"
                       aria-label="Cash payment amount in CAD"
-                      type="number"
                       step="0.01"
                       min="0.01"
                       max={(activeInvoice.dueCents / 100).toFixed(2)}

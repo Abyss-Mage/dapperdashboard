@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { askConfirm } from '../confirm';
+import NumberField from '../NumberField';
 
 type PopupFormField = {
   name: string;
@@ -352,8 +353,7 @@ export default function MarketingPopupManager({
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '0.75rem' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem' }}>Display Delay (seconds)</label>
-                  <input
-                    type="number"
+                  <NumberField
                     min={0}
                     max={120}
                     value={formDelay}
@@ -363,8 +363,7 @@ export default function MarketingPopupManager({
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem' }}>Cooldown (days between views)</label>
-                  <input
-                    type="number"
+                  <NumberField
                     min={0}
                     max={365}
                     value={formCooldown}

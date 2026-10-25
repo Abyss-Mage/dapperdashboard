@@ -6,6 +6,7 @@ import styles from './owner.module.css';
 import ConfirmDialog from '../workspace/ConfirmDialog';
 import Select from '../GlassSelect';
 import Collapse from '../motion/Collapse';
+import NumberField from '../NumberField';
 
 type Service = { id: string; name: string; kind: string; parentId: string | null; version: number; archived: boolean; centralServiceId?: string | null; priceCents?: number | null };
 const money = (c: number) => `$${(c / 100).toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -180,7 +181,7 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
             </label>
             {mode === 'central' && (
               <label className="form-field">Price before tax (CAD)
-                <input type="number" inputMode="decimal" min="0" step="0.01" placeholder="Not set" value={price} onChange={(e) => setPrice(e.target.value)} disabled={busy} />
+                <NumberField inputMode="decimal" min="0" step="0.01" placeholder="Not set" value={price} onChange={(e) => setPrice(e.target.value)} disabled={busy} />
               </label>
             )}
             {kind === 'addon' && (

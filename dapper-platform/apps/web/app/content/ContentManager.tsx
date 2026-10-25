@@ -1,6 +1,7 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
 import Select from '../GlassSelect';
+import NumberField from '../NumberField';
 
 type Scope={organizationId:string;locationId:string;organizationName:string;locationName:string;actions:string[]};
 type Site={slug:string;name:string;published:boolean;version:number};
@@ -74,7 +75,7 @@ function LocationContent({scope}:{scope:Scope}){
     <label className="form-field">Title<input required minLength={2} maxLength={120} value={photo.title} onChange={e=>setPhoto({...photo,title:e.target.value})}/></label>
     <label className="form-field">Image description (alt text)<textarea required minLength={2} maxLength={300} value={photo.alt} onChange={e=>setPhoto({...photo,alt:e.target.value})}/></label>
     <label className="form-field">Category<Select value={photo.category} onChange={e=>setPhoto({...photo,category:e.target.value})}>{['detailing','ceramic','ppf','other'].map(c=><option key={c}>{c}</option>)}</Select></label>
-    <label className="form-field">Display order<input type="number" required min={0} max={10000} value={photo.sortOrder} onChange={e=>setPhoto({...photo,sortOrder:Number(e.target.value)})}/></label>
+    <label className="form-field">Display order<NumberField required min={0} max={10000} value={photo.sortOrder} onChange={e=>setPhoto({...photo,sortOrder:Number(e.target.value)})}/></label>
     <label><input type="checkbox" checked={photo.published} onChange={e=>setPhoto({...photo,published:e.target.checked})}/> Publish image</label>
     <label><input type="checkbox" required={photo.published} checked={rights} onChange={e=>setRights(e.target.checked)}/> I have reviewed permission to publish this image and any identifiable people or vehicle details.</label>
     <button className="primary" disabled={busy||noSite}>{busy?'Saving…':'Save image'}</button><button type="button" className="secondary" disabled={busy} onClick={()=>{setPhoto({...initialPhoto});setRights(false);setFile(null);if(fileRef.current)fileRef.current.value=''}}>Cancel / clear</button>

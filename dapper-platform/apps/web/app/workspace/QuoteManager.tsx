@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Select from '../GlassSelect';
 import { DateTimePicker } from '../Pickers';
 import { askConfirm } from '../confirm';
+import NumberField from '../NumberField';
 
 type QuoteItem = {
   id: string;
@@ -407,9 +408,8 @@ export default function QuoteManager({
                   setLines(updated);
                 }}
               />
-              <input
+              <NumberField
                 style={{ flex: 1, minWidth: '60px' }}
-                type="number"
                 min="1"
                 placeholder="Qty"
                 value={line.quantity}
@@ -419,9 +419,8 @@ export default function QuoteManager({
                   setLines(updated);
                 }}
               />
-              <input
+              <NumberField
                 style={{ flex: 1.5, minWidth: '90px' }}
-                type="number"
                 step="0.01"
                 min="0"
                 placeholder="Unit Price ($)"
@@ -457,9 +456,8 @@ export default function QuoteManager({
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
             <div>
               <label htmlFor="q-tax">Tax ($)</label>
-              <input
+              <NumberField
                 id="q-tax"
-                type="number"
                 step="0.01"
                 min="0"
                 value={formTaxDollars}
@@ -468,9 +466,8 @@ export default function QuoteManager({
             </div>
             <div>
               <label htmlFor="q-deposit">Deposit Required ($)</label>
-              <input
+              <NumberField
                 id="q-deposit"
-                type="number"
                 step="0.01"
                 min="0"
                 value={formDepositDollars}

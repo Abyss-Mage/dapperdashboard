@@ -58,4 +58,9 @@ Owner direction (2026-10-25): stop the 3D home page for now (owner will supply c
 - `app/motion/Tooltips.tsx`: glass tooltips replace the browser's title tooltips (shown after a short pause, instantly on keyboard focus; no touch).
 - Global CSS: custom checkboxes and radios, a real toggle for switch rows, no number spinners, glass file button, thin scrollbars, turning chevron on expanders, quiet textarea grip, brand text selection, autofill colours.
 - Services: the central catalogue and each service's add-ons can be folded (remembered per device); very tall lists fade instead of resizing.
-- Not done: the public marketing pages under `main website` (separate static site, its own forms), number steppers (+ / −), and a phone-size review of the new pickers.
+- Not done: the public marketing pages under `main website` (separate static site, its own forms).
+
+## Number steppers and the phone check (2026-10-25, later)
+- `app/NumberField.tsx` replaces every `<input type="number">` (20 places in 12 files): a real number input with − / + buttons, hold to repeat (faster the longer you hold), min / max / step respected, arrow keys and typing still work, a small spring on each change.
+- Checked on a 390 x 844 touch viewport and a 1100 px desktop viewport, light and dark, using a temporary page that showed every control (deleted afterwards): dropdown, date, time, date-and-time, colour, steppers, switch, checkbox, radio, file button, text area, expander, confirm dialog, tooltip. Phones get bottom sheets flush to the bottom edge; confirm buttons stack. Found and fixed: a global dialog animation fighting the sheets (they stuck at 96 % size), checkboxes stretched to 44 px tall by an old input rule, the older dark-mode input rule painting over checked boxes, toggle tracks and the stepper / hex boxes.
+- Not checked: real-device touch (only emulated), and screen readers.

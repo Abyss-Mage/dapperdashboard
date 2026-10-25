@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import styles from './owner.module.css';
 import { OwnerIcon } from './OwnerIcons';
 import { DatePicker, TimePicker } from '../Pickers';
+import NumberField from '../NumberField';
 
 type Window = { start: string; end: string };
 type Hour = { day: number; start: string; end: string };
@@ -235,7 +236,7 @@ export default function HoursResources({ base, canManage, onChanged }: { base: s
           <div className={styles.inlineForm}>
             <label className="form-field">Name<input required minLength={2} maxLength={120} value={name} onChange={(e) => setName(e.target.value)} disabled={busy} placeholder="e.g. Main bay" /></label>
             <label className="form-field">Timezone<input required list="owner-zones" value={zone} onChange={(e) => setZone(e.target.value)} disabled={busy} placeholder="Where the franchise is, e.g. America/Toronto" /></label>
-            <label className="form-field">Bookings at once<input required type="number" min={1} max={1000} value={capacity} onChange={(e) => setCapacity(e.target.value)} disabled={busy} /></label>
+            <label className="form-field">Bookings at once<NumberField required min={1} max={1000} value={capacity} onChange={(e) => setCapacity(e.target.value)} disabled={busy} /></label>
             <button className="primary" disabled={busy || name.trim().length < 2 || !zone.trim()}>{busy ? 'Adding…' : 'Add resource'}</button>
           </div>
           <datalist id="owner-zones">{ZONES.map((z) => <option key={z} value={z} />)}</datalist>

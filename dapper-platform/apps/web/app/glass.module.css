@@ -107,3 +107,7 @@
 /* Embedded in an existing glass panel: no second blur layer, just a divider. */
 .flatStage{padding:0;background:none;border-radius:0}
 .flatCard{background:none;-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:none;border:0;border-radius:0;padding:6px 0 0;animation:none}
+
+/* Toggle: beat the older dark-mode input rule so the track keeps its colours. */
+.switch input { background: color-mix(in srgb, var(--text, #1a0b0d) 18%, transparent) !important; border-color: color-mix(in srgb, var(--text, #1a0b0d) 22%, transparent) !important; min-height: 0; }
+.switch input:checked { background: var(--primary, #d10f1f) !important; border-color: var(--primary, #d10f1f) !important; }

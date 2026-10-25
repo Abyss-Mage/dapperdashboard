@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Select from '../GlassSelect';
 import { ColorPicker } from '../Pickers';
+import NumberField from '../NumberField';
 
 type DealershipTag = {
   id: string;
@@ -484,8 +485,7 @@ export default function DealershipManager({
             </label>
             <label className="form-field">
               Payment Terms (Days)
-              <input
-                type="number"
+              <NumberField
                 min={0}
                 max={180}
                 value={billingTermsDays}
