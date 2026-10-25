@@ -258,3 +258,7 @@ button:active,.pill:active{transform:scale(.97)}
 
 /* black curtain that hides the cut from the road to the garage */
 .story3d .home-curtain{position:absolute;inset:0;z-index:1;background:#000;opacity:0;pointer-events:none}
+
+/* frame-sequence mode: a photographic sequence cannot be dragged around, so the hint is hidden */
+.story3d.has-frames .drag-hint{display:none}
+.story3d .home-stage canvas{image-rendering:auto}

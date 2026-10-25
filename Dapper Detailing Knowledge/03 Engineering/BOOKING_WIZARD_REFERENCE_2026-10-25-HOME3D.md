@@ -37,3 +37,24 @@ Source: the owner's 16 photos of the Dapper garage. Procedural only (no photo te
 - Not modelled: motorcycle, GMC truck, hanging props. Car model is still the Mercedes (licence unconfirmed; `3D/` stays untracked).
 - Evidence: runtime screenshots (puppeteer, desktop 1440x900) of arrival, garage, coating and ready steps. Phone view and real-device GPU not re-checked after this change.
 - Deferred: Pacific Coast Highway scene (jet + yacht), owner's car videos.
+
+## Realism pass (2026-10-25, later)
+
+Owner feedback: the road scene looked broken, the car was not dirty enough (tyres included) and the props, tools and water looked like a game.
+- Road: the smeared ground-projected HDR is gone. A procedural asphalt road (aggregate grain, cracks, worn lane paint, tyre-wear paths), gravel shoulders, a galvanised crash barrier and distance fog sit in front of the CC0 coastal HDR sky.
+- Dirt: paint gets mud low down, a dust film, thin rain streaks and splatter flecks; tyres and rims get their own dust/caked-mud/brake-dust shader (per wheel, washed by the same rinse front); the glass carries a road film that rinses off too.
+- Props: chemical jugs and trigger sprays are lathe-turned bottles with printed (abstract, non-brand) labels, translucent shells and liquid; towel stacks, wash buckets with grit guards, shop vac colour toned down; floor reflects more.
+- Tools and water: pressure-washer gun with steel wand and hose; foam lance with a hanging foam bottle; water as streaked fans plus soft mist/droplet sprites; foam as bubble-cluster sprites; ceramic applicator is a suede-wrapped foam block; water beads are flat lenses with highlights and runs; the cyan "game" glow lines are gone.
+- Outside the garage door: sky gradient and a blurred tree line instead of a white panel.
+- Evidence: runtime screenshots (desktop 1440x900 and 390x844 emulated phone) of all ten steps. Not tested on a real device or GPU other than this machine's.
+
+## Second realism pass (2026-10-25, owner screenshots)
+- Windows: the glass no longer lifts out (it read as broken sheets). The tint steps now read "Glass prepped" then "Film applied"; the glass stays in the car and darkens to the chosen shade.
+- Wheels: only the tyre and rim spin; every tyre triangle is assigned to its nearest wheel, which removes the stray shards under the tyres and the torn edges at the arches.
+- Cubes: props, crates, fixtures and the gun are rounded/beveled or cylindrical; LED tubes are round; door windows reflect the sky.
+- Foam: the foam coverage now follows the lance (uniform `uFoamZ`) from the rear to the nose, then the lance keeps working.
+- Ceramic: applicator is a suede foam block in a nitrile-gloved hand with a sleeve; the glow lines are gone. Water beads are round mirror-bright domes with highlights; the pour is smooth streams with splash sprites.
+- Outside the garage door: the same coastal HDR sky as the road, a street, kerbs, hazy buildings and textured trees.
+- Known gap: small jagged teeth remain at the front-left bonnet/fender edge. They come from the Mercedes model's own panel geometry (not from our materials); fixing them needs a cleaner car model.
+- Follow-up: the large dark polygon patches on the body were a black inner mesh of the Mercedes model showing through the paint where the two overlap; the paint is now pushed out 7 mm along its normals so it always wins. A horizon haze band hides the seam between the flat ground and the HDR mountains from every drag angle.
+- Seam teeth: the zig-zag edges on the bonnet, roof and door handle were the Mercedes file's quantised normals, not missing geometry. Paint, tyre and rim normals are rebuilt with `toCreasedNormals` at load (supersedes the earlier "model geometry" note); the paint is also offset 3 mm and given a depth offset so inner trim never shows through, and the camera near plane is 0.3 m for depth precision. Tyres are darker rubber with lighter dust.
