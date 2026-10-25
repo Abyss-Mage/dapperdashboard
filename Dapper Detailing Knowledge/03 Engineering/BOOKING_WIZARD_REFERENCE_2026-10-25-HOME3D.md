@@ -29,3 +29,11 @@ Client direction: the landing page must look and move like the Blackline referen
 - The rinse, coat and film steps rest part-way through so the visitor sees both halves and the tool on the car; the following step completes it.
 - Checked (headless Chrome with GPU, real wheel scrolling, desktop 1440 and phone 390): all 10 steps render in sync with the words, no sideways scroll, no script errors. Not yet seen on a real phone. The two 404s on the home page are `/api/v1/public/sites/dapper` and the booking options: no public site with slug `dapper` is published yet.
 - Known rough edges: foam spray is small instanced spheres (reads as droplets up close); hood reflections are the hexagon light grid.
+
+## Garage rebuilt to match the real shop (2026-10-25)
+
+Source: the owner's 16 photos of the Dapper garage. Procedural only (no photo textures, no copied assets): dark block walls, ribbed grey floor tile with three red bays, hexagon LED ceiling clusters and a wall hex panel, warm vertical tubes, white fluorescents, shelving with jugs/sprays, workbench with bins, shop vacs, generator, loft, chairs, cream sectional roller door, Dapper logo sign.
+- The car now drives in forward through the open roller door on arrival; the door closes behind it and re-opens on the "Ready" step.
+- Not modelled: motorcycle, GMC truck, hanging props. Car model is still the Mercedes (licence unconfirmed; `3D/` stays untracked).
+- Evidence: runtime screenshots (puppeteer, desktop 1440x900) of arrival, garage, coating and ready steps. Phone view and real-device GPU not re-checked after this change.
+- Deferred: Pacific Coast Highway scene (jet + yacht), owner's car videos.
