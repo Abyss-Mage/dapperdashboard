@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import gsap from 'gsap';
 import Link from 'next/link';
 import ThemeToggle from '../ThemeToggle';
 import { OwnerIcon, type OwnerIconName } from './OwnerIcons';
@@ -108,6 +109,7 @@ const NAV_GROUPS: { label: string; ids: TabId[] }[] = [
   { label: 'Settings', ids: ['services', 'hours', 'taxes', 'franchises', 'team', 'invoice-template'] },
 ];
 const isTab = (v: string): v is TabId => TABS.some((t) => t.id === v);
+const ORDER: TabId[] = [...NAV_GROUPS.flatMap((g) => g.ids), 'account'];
 
 export default function OwnerDashboardClient() {
   const [principal, setPrincipal] = useState('');
@@ -128,6 +130,12 @@ export default function OwnerDashboardClient() {
     return () => window.removeEventListener('hashchange', read);
   }, []);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const navRef = useRef<HTMLElement>(null);
+  const barRef = useRef<HTMLSpanElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const prevTab = useRef<TabId | null>(null);
+  const barPlaced = useRef(false);
   // The franchise's own time zone (from its booking calendar), so times read the same as in the shop.
   const [franchiseZone, setFranchiseZone] = useState('');
 
@@ -233,6 +241,33 @@ export default function OwnerDashboardClient() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [mobileOpen]);
+
+  // The glowing bar beside the sidebar glides to the open page; the page slides in from the direction you are moving.
+  useLayoutEffect(() => {
+    const nav = navRef.current, bar = barRef.current;
+    if (!nav || !bar) return;
+    const place = (instant: boolean) => {
+      const current = nav.querySelector<HTMLElement>('[aria-current="page"]');
+      if (!current) { gsap.set(bar, { autoAlpha: 0 }); return; }
+      let top = 0, el: HTMLElement | null = current;
+      while (el && el !== nav) { top += el.offsetTop; el = el.offsetParent as HTMLElement | null; }
+      const vars = { y: top + 8, height: current.offsetHeight - 16, autoAlpha: 1 };
+      if (instant || !barPlaced.current || matchMedia('(prefers-reduced-motion: reduce)').matches) { gsap.set(bar, vars); barPlaced.current = true; }
+      else gsap.to(bar, { ...vars, duration: 0.55, ease: 'power3.out', overwrite: 'auto' });
+    };
+    place(false);
+    const ro = new ResizeObserver(() => place(true));
+    ro.observe(nav);
+    return () => ro.disconnect();
+  });
+  useEffect(() => {
+    const from = prevTab.current;
+    prevTab.current = activeTab;
+    if (from === null || from === activeTab || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const dir = ORDER.indexOf(activeTab) >= ORDER.indexOf(from) ? 1 : -1;
+    if (panelRef.current) gsap.fromTo(panelRef.current, { x: dir * 36 }, { x: 0, duration: 0.6, ease: 'power3.out', clearProps: 'transform' });
+    if (titleRef.current) gsap.fromTo(titleRef.current, { yPercent: 45, autoAlpha: 0 }, { yPercent: 0, autoAlpha: 1, duration: 0.5, ease: 'power3.out', clearProps: 'transform,opacity,visibility' });
+  }, [activeTab]);
 
   async function signIn(e: React.FormEvent) {
     e.preventDefault();
@@ -488,7 +523,8 @@ export default function OwnerDashboardClient() {
           )}
         </div>
 
-        <nav className={styles.nav} aria-label="Master sections">
+        <nav ref={navRef} className={styles.nav} aria-label="Master sections">
+          <span ref={barRef} className={styles.navBar} aria-hidden="true" />
           {NAV_GROUPS.filter((group) => group.ids.some((id) => TABS.find((t) => t.id === id)!.show(ctx))).map((group) => (
             <div key={group.label} className={styles.navGroup}>
               <p className={styles.navGroupLabel}>{group.label}</p>
@@ -541,7 +577,7 @@ export default function OwnerDashboardClient() {
               <OwnerIcon name={mobileOpen ? 'close' : 'menu'} />
             </button>
             <div>
-              <h1 className={styles.topBarTitle}>{currentTabDef.label}</h1>
+              <h1 ref={titleRef} className={styles.topBarTitle}>{currentTabDef.label}</h1>
               <span className={styles.topBarSub}>{currentTabDef.description}</span>
             </div>
           </div>
@@ -562,7 +598,7 @@ export default function OwnerDashboardClient() {
           </div>
         )}
 
-        <main id={`panel-${activeTab}`} aria-label={currentTabDef.label} tabIndex={-1} className={styles.tabPanel}>
+        <main ref={panelRef} id={`panel-${activeTab}`} aria-label={currentTabDef.label} tabIndex={-1} className={styles.tabPanel}>
           {!hasTabPermission && scope && (
             <div className={styles.accessDeniedCard}>
               <h3>Access needed for {currentTabDef.label}</h3>

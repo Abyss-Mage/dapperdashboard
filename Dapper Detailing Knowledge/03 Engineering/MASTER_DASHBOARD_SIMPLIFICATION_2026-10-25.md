@@ -42,3 +42,12 @@ Owner direction (2026-10-25): stop the 3D home page for now (owner will supply c
 - Every native `<select>` in the web app (about 85 in 32 files) is now `app/GlassSelect.tsx`, a drop-in with the same `<option>` / `<optgroup>` children and `onChange(e.target.value)`. GSAP (core + `useGSAP`, `quickTo`, `utils.mapRange/clamp`): menu scales out from the button (bottom sheet under 640 px), options stagger in, one highlight pill glides between options, options near the pointer swell like the macOS dock, the chosen label slides in, the chevron turns. Keyboard: arrows, Home/End, Enter/Space, Esc, Tab, type-ahead; required fields still validate; motion off for prefers-reduced-motion.
 - Checked live on desktop width (open, arrow, Enter, Esc). Not yet checked: phone bottom sheet, grouped menus, very long lists, real touch.
 - `scripts/test-workspace-components.mjs` tests F05, F08, F11 fail on the committed code too (they check older wording); not caused by this change.
+
+## Motion system (2026-10-25, later)
+- `app/motion/MotionSystem.tsx` (mounted once in the root layout): GSAP entrance for cards, tiles, rows, tables, choices and panels added to any page (outermost element only, short stagger, transform + opacity only, props cleared afterwards); items below the fold wait and rise as they near the screen (IntersectionObserver, at most 250 waiting, print-safe). Content that was already on screen at load is not touched; nothing runs for prefers-reduced-motion.
+- `app/motion/AnimatedNumber.tsx`: KPI tiles (overview and section numbers) and the booking wizard totals count up and re-count when the value changes.
+- Master: a glowing bar glides beside the active sidebar page; each page slides in from the direction you move and the heading text replaces itself; customer drawer slides in.
+- Booking wizard: each step slides in from the side you are heading towards; progress segments glow.
+- Charts: lines draw, areas fade in, columns grow, bar lists fill, last-point dot pops (CSS keyframes, with pathLength so no measuring).
+- Global CSS (`globals.css`): button lift / press / sheen, card lift, input focus glow, dialog and alert and status entrances, light/dark colour crossfade (class `dd-theme-fade` set by the theme toggle).
+- Checked in the running app: sidebar bar, page slide, card fades mid-flight, wizard step slide, no element left invisible, no horizontal overflow. Frame rate in the capture tool is low, so timing feel was not judged by eye; phone sizes and the staff workspace motion beyond the entrance fade are not yet reviewed.

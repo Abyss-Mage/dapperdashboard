@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import styles from './bookingWizard.module.css';
+import gsap from 'gsap';
+import AnimatedNumber from '../motion/AnimatedNumber';
 
 /* One guided booking flow, one question at a time. Used by the Workspace (walk-ins) and Master (new booking).
    It only shows what exists in the catalogue: real prices, real durations and real free times. */
@@ -124,6 +126,8 @@ export default function BookingWizard(p: WizardProps) {
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
   const topRef = useRef<HTMLHeadingElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
+  const prevStep = useRef(0);
   const steps = [...(p.phoneCheck ? ['Welcome'] : []), 'Service', 'Where', 'Vehicle', 'Package', 'Extras', 'Day & time', 'Details', ...(p.deposit ? ['Deposit'] : [])];
   const name = steps[step];
 
@@ -136,6 +140,15 @@ export default function BookingWizard(p: WizardProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => { topRef.current?.focus(); }, [step, done]);
+  // Each step slides in from the side you are heading towards (and back the other way when you go back).
+  useEffect(() => {
+    const dir = step >= prevStep.current ? 1 : -1, moved = step !== prevStep.current;
+    prevStep.current = step;
+    const panel = panelRef.current;
+    if (!moved || !panel || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const tween = gsap.fromTo(Array.from(panel.children), { autoAlpha: 0, x: dir * 34 }, { autoAlpha: 1, x: 0, duration: 0.5, ease: 'power3.out', stagger: 0.05, clearProps: 'opacity,visibility,transform' });
+    return () => { tween.kill(); };
+  }, [step]);
 
   const baseRules = useMemo(() => (rules ?? []).filter((r) => r.addonIds.length === 0), [rules]);
   const parsed = useMemo(() => new Map(baseRules.map((r) => [r.id, parseName(r.serviceName)])), [baseRules]);
@@ -264,7 +277,7 @@ export default function BookingWizard(p: WizardProps) {
         <div className={styles.bar} aria-hidden="true">{steps.map((_, i) => <i key={i} className={i <= step ? styles.on : ''} />)}</div>
       </div>
       <div className={styles.layout}>
-      <section className={styles.panel}>
+      <section ref={panelRef} className={styles.panel}>
         {name === 'Welcome' && <>
           <h2 ref={topRef} tabIndex={-1} className={styles.title}>Have you booked with us before?</h2>
           <p className={styles.help}>Enter your mobile number and we will text you a code. If we know you, your details fill in for you. New here? Skip this.</p>
@@ -406,7 +419,7 @@ export default function BookingWizard(p: WizardProps) {
           {picked.length > 0 && <div><dt>Extras</dt><dd>{picked.map((id) => extras.find((e) => e.serviceId === id)?.name).filter(Boolean).join(', ')}</dd></div>}
           {start && <div><dt>When</dt><dd>{new Date(zoned(start, tz).date + 'T12:00:00').toLocaleDateString('en-CA', { weekday: 'short', month: 'short', day: 'numeric' })} at {slotLabel(start, tz)}</dd></div>}
         </dl>
-        {rule && <div className={styles.sideTotal}><span>{taxes ? 'Total with tax' : 'Subtotal'}</span><strong>{money(taxes ? total : subtotal)}</strong></div>}
+        {rule && <div className={styles.sideTotal}><span>{taxes ? 'Total with tax' : 'Subtotal'}</span><strong><AnimatedNumber text={money(taxes ? total : subtotal)} duration={0.7} /></strong></div>}
       </aside>
       </div>
     </div>
@@ -421,5 +434,5 @@ function taxLabel(taxes: WizardTaxes) {
 
 function subtotalNote(name: string, rule: WizardRule | undefined, subtotal: number, total: number) {
   if (!rule || ['Welcome', 'Service', 'Where', 'Vehicle'].includes(name)) return <span />;
-  return <span className={styles.total}>{name === 'Details' || name === 'Deposit' ? 'Total with tax' : 'Total so far'}<strong>{money(name === 'Details' || name === 'Deposit' ? total : subtotal)}</strong></span>;
+  return <span className={styles.total}>{name === 'Details' || name === 'Deposit' ? 'Total with tax' : 'Total so far'}<strong><AnimatedNumber text={money(name === 'Details' || name === 'Deposit' ? total : subtotal)} duration={0.7} /></strong></span>;
 }

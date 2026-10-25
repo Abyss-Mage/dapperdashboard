@@ -117,7 +117,8 @@ export function ColumnChart({ points: rawPoints, fmt = (n) => wholeNumber.format
               {bh > 0 && (
                 <path
                   d={`M${x},${M.top + ih} V${y + r} Q${x},${y} ${x + r},${y} H${x + bar - r} Q${x + bar},${y} ${x + bar},${y + r} V${M.top + ih} Z`}
-                  className={styles.seriesFill1}
+                  className={`${styles.seriesFill1} ${styles.growBar}`}
+                  style={{ ['--i' as string]: Math.min(i, 40) }}
                   opacity={hover === null || hover === i ? 1 : 0.55}
                 />
               )}
@@ -161,12 +162,12 @@ export function LineChart({ labels: rawLabels, series: rawSeries, fmt = (n) => w
       <svg width={w} height={height} role="img" aria-label={ariaLabel} onPointerLeave={() => setHover(null)}>
         <Axes w={w} h={height} max={max} fmt={fmt} labels={labels} ticks={4} lf={grouped.label} />
         {wash && series[0] && n > 1 && (
-          <path d={`${path(series[0].values)} L${x(n - 1)},${M.top + ih} L${x(0)},${M.top + ih} Z`} className={styles.seriesFill1} opacity={0.1} />
+          <path d={`${path(series[0].values)} L${x(n - 1)},${M.top + ih} L${x(0)},${M.top + ih} Z`} className={`${styles.seriesFill1} ${styles.areaIn}`} opacity={0.1} />
         )}
         {series.map((s) => (
           <g key={s.name}>
-            <path d={path(s.values)} fill="none" className={styles[s.cls]} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-            {n > 0 && <circle cx={x(n - 1)} cy={y(s.values[n - 1] ?? 0)} r={4} className={styles[s.dot]} stroke="var(--surface)" strokeWidth={2} />}
+            <path key={`${s.name}-${n}`} d={path(s.values)} pathLength={1} fill="none" className={`${styles[s.cls]} ${styles.drawLine}`} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+            {n > 0 && <circle key={`dot-${n}`} cx={x(n - 1)} cy={y(s.values[n - 1] ?? 0)} r={4} className={`${styles[s.dot]} ${styles.popDot}`} stroke="var(--surface)" strokeWidth={2} />}
           </g>
         ))}
         {hover !== null && <line x1={x(hover)} x2={x(hover)} y1={M.top} y2={M.top + ih} className={styles.crosshair} />}
@@ -197,11 +198,11 @@ export function BarList({ rows, emptyText, highlight }: { rows: Row[]; emptyText
   if (!rows.length) return <p className={styles.chartEmpty}>{emptyText}</p>;
   return (
     <ul className={styles.barList}>
-      {rows.map((r) => (
+      {rows.map((r, idx) => (
         <li key={r.label} title={r.sub ? `${r.label}: ${r.display ?? r.value} · ${r.sub}` : `${r.label}: ${r.display ?? r.value}`}>
           <span className={styles.barLabel}>{r.label}</span>
           <span className={styles.barTrack}>
-            <span className={`${styles.barFill} ${highlight && highlight !== r.label ? styles.barDim : ''}`} style={{ width: `${Math.max(r.value > 0 ? 2 : 0, (r.value / max) * 100)}%` }} />
+            <span className={`${styles.barFill} ${styles.growRow} ${highlight && highlight !== r.label ? styles.barDim : ''}`} style={{ width: `${Math.max(r.value > 0 ? 2 : 0, (r.value / max) * 100)}%`, ['--i' as string]: Math.min(idx, 20) }} />
           </span>
           <span className={styles.barValue}>{r.display ?? wholeNumber.format(r.value)}</span>
         </li>
@@ -219,7 +220,7 @@ export function Sparkline({ values }: { values: number[] }) {
   const lastY = h - 4 - ((h - 8) * values[values.length - 1]) / max;
   return (
     <svg width={w} height={h} aria-hidden="true" className={styles.spark}>
-      <path d={pts} fill="none" className={styles.seriesStroke1} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      <path d={pts} pathLength={1} fill="none" className={`${styles.seriesStroke1} ${styles.drawLine}`} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
       <circle cx={w - 3} cy={lastY} r={3} className={styles.seriesFill1} stroke="var(--surface)" strokeWidth={2} />
     </svg>
   );

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import styles from './owner.module.css';
+import AnimatedNumber from '../motion/AnimatedNumber';
 import RangeBar, { resolveRange, type Custom, type RangePresetId } from './DateRange';
 import { BarList, ColumnChart, DataTable, LineChart, Sparkline, compact, dollars, dollarsCompact, shortDate, wholeNumber } from './charts';
 
@@ -53,7 +54,7 @@ function Tile({ label, value, foot, spark, grant }: { label: string; value: stri
   return (
     <div className={styles.tile} style={{ cursor: 'default' }}>
       <span className={styles.tileLabel}>{label}</span>
-      <span className={`${styles.tileValue} ${value === null ? styles.valueMuted : ''}`}>{value ?? 'Access needed'}</span>
+      <span className={`${styles.tileValue} ${value === null ? styles.valueMuted : ''}`}>{value === null ? 'Access needed' : <AnimatedNumber text={value} />}</span>
       <span className={styles.tileFoot}>
         <span>{value === null && grant ? `Needs ${grant}` : foot}</span>
         {value !== null && spark && <Sparkline values={spark} />}

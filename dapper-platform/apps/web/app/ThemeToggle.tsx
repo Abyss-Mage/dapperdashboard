@@ -19,5 +19,5 @@ export default function ThemeToggle({className='secondary',compact=false}:{class
   document.documentElement.dataset.theme=theme;
   try {localStorage.setItem('dapper-theme',theme)} catch {}
  },[theme,ready]);
- return <button type="button" className={className} disabled={!ready} onClick={()=>setTheme(current=>current==='dark'?'light':'dark')} aria-label={theme==='dark'?'Switch to light theme':'Switch to dark theme'} title={theme==='dark'?'Switch to light theme':'Switch to dark theme'}>{compact?(theme==='dark'?<Sun size={19} aria-hidden="true"/>:<Moon size={19} aria-hidden="true"/>):(theme==='dark'?'Light mode':'Dark mode')}</button>;
+ return <button type="button" className={className} disabled={!ready} onClick={()=>{const root=document.documentElement;root.classList.add('dd-theme-fade');window.setTimeout(()=>root.classList.remove('dd-theme-fade'),600);setTheme(current=>current==='dark'?'light':'dark')}} aria-label={theme==='dark'?'Switch to light theme':'Switch to dark theme'} title={theme==='dark'?'Switch to light theme':'Switch to dark theme'}>{compact?(theme==='dark'?<Sun size={19} aria-hidden="true"/>:<Moon size={19} aria-hidden="true"/>):(theme==='dark'?'Light mode':'Dark mode')}</button>;
 }

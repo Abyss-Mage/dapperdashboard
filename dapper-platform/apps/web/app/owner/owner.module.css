@@ -841,3 +841,26 @@
 /* Inline filter dropdowns size to their content instead of filling the row. */
 .filterSelect [data-glass-select] { width: auto; min-width: 150px; }
 .filterSelect :is(button[role=combobox]) { min-height: 38px; border-radius: 10px; }
+
+/* ---------- Motion ---------- */
+@keyframes drawerIn { from { transform: translateX(56px); opacity: 0; } }
+@keyframes scrimIn { from { opacity: 0; } }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes growY { from { transform: scaleY(0); } }
+@keyframes growX { from { transform: scaleX(0); } }
+@keyframes pop { from { transform: scale(0); opacity: 0; } }
+@keyframes areaIn { from { opacity: 0; } }
+.nav { position: relative; }
+.navBar { position: absolute; left: -10px; top: 0; width: 4px; height: 0; border-radius: 4px; pointer-events: none; opacity: 0; background: linear-gradient(180deg, var(--brand), var(--gold, var(--brand))); box-shadow: 0 0 14px color-mix(in srgb, var(--brand) 70%, transparent); }
+.navItem svg { transition: color 180ms var(--ease), transform .35s cubic-bezier(.2, .8, .2, 1); }
+@media (hover: hover) { .navItem:hover svg { transform: translateX(2px) scale(1.12); } }
+@media (prefers-reduced-motion: no-preference) {
+  .drawer { animation: drawerIn .5s cubic-bezier(.2, .8, .2, 1); }
+  .drawerScrim { animation: scrimIn .35s ease; }
+  .drawLine { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 1.3s cubic-bezier(.3, .7, .2, 1) .15s forwards; }
+  .areaIn { animation: areaIn 1s ease .35s backwards; }
+  .growBar { transform-box: fill-box; transform-origin: 50% 100%; animation: growY .8s cubic-bezier(.2, .8, .2, 1) backwards; animation-delay: calc(var(--i, 0) * 16ms); }
+  .growRow { transform-origin: 0 50%; animation: growX 1s cubic-bezier(.2, .8, .2, 1) backwards; animation-delay: calc(var(--i, 0) * 70ms + 120ms); }
+  .popDot { transform-box: fill-box; transform-origin: center; animation: pop .55s cubic-bezier(.3, 1.6, .5, 1) 1.15s backwards; }
+}
+@media (prefers-reduced-motion: reduce) { .drawLine { stroke-dasharray: none; stroke-dashoffset: 0; } }

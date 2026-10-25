@@ -163,7 +163,7 @@ export default function CustomerManager({ base, canCreate, canDelete, onChanged 
 
       {open && <>
         <button type="button" className={styles.drawerScrim} aria-label="Close customer details" onClick={() => setOpen(null)} />
-        <aside className={styles.drawer} role="dialog" aria-modal="true" aria-label={`${open.name}, customer details`}>
+        <aside data-motion="drawer" className={styles.drawer} role="dialog" aria-modal="true" aria-label={`${open.name}, customer details`}>
           <div className={styles.rowBetween}>
             <div>
               <h2 className={styles.setupTitle} style={{ fontSize: 22, margin: 0 }}>{open.name}</h2>

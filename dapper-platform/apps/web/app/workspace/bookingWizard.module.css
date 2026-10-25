@@ -92,3 +92,7 @@
   .total strong{font-size:17px}
 }
 @media(prefers-reduced-motion:reduce){.bar i,.choice,.back,.next{transition:none}}
+
+/* progress segments fill with a glow */
+.bar i{transition:background-color .5s ease,box-shadow .5s ease,transform .5s cubic-bezier(.2,.8,.2,1)}
+.bar i.on{box-shadow:0 0 12px color-mix(in srgb,var(--primary) 55%,transparent);transform:scaleY(1.25)}

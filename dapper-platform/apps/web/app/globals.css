@@ -162,3 +162,33 @@ dialog label{display:grid;gap:6px;font-weight:650;font-size:.9rem}
 dialog :is(input:not([type=checkbox]):not([type=radio]),select,textarea){width:100%;background:var(--surface-alt);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:.7rem .85rem;font:inherit;font-size:16px;min-height:46px}
 dialog :is(input,select,textarea)::placeholder{color:var(--text-muted)}
 dialog :is(input,select,textarea):focus-visible{outline:2px solid var(--primary);outline-offset:1px}
+
+/* ---------- Motion polish (compositor-friendly: transform, opacity, shadow) ---------- */
+@keyframes ddDialogIn { from { opacity: 0; transform: translateY(18px) scale(.965); } }
+@keyframes ddFadeIn { from { opacity: 0; } }
+@keyframes ddShake { 0% { transform: translateX(-10px); opacity: 0; } 30% { transform: translateX(7px); opacity: 1; } 55% { transform: translateX(-4px); } 80% { transform: translateX(2px); } 100% { transform: none; } }
+@keyframes ddSlideDown { from { opacity: 0; transform: translateY(-8px); } }
+@keyframes ddSheen { to { transform: translateX(120%); } }
+@media (prefers-reduced-motion: no-preference) {
+  .primary, .secondary { transition: transform .18s cubic-bezier(.2, .8, .2, 1), box-shadow .28s ease, background-color .2s ease, border-color .2s ease, filter .2s ease; }
+  .primary { position: relative; overflow: hidden; isolation: isolate; }
+  .primary::after { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(110deg, transparent 32%, rgba(255, 255, 255, .3) 50%, transparent 68%); transform: translateX(-120%); }
+  @media (hover: hover) {
+    .primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 12px 24px -12px rgba(209, 15, 31, .7); }
+    .primary:hover:not(:disabled)::after { animation: ddSheen .75s ease; }
+    .secondary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 18px -12px rgba(0, 0, 0, .45); }
+    [class*="_tile__"]:hover, [class*="_person__"]:hover, .management-list > article:hover { transform: translateY(-2px); box-shadow: 0 16px 30px -18px rgba(0, 0, 0, .55); }
+  }
+  .primary:active:not(:disabled), .secondary:active:not(:disabled), button:active:not(:disabled) { transform: translateY(0) scale(.97); }
+  [class*="_tile__"], [class*="_person__"], .management-list > article { transition: transform .3s cubic-bezier(.2, .8, .2, 1), box-shadow .3s ease, border-color .2s ease, background-color .2s ease; }
+  input, textarea { transition: border-color .2s ease, box-shadow .25s ease, background-color .2s ease; }
+  input:focus-visible, textarea:focus-visible { box-shadow: 0 0 0 4px color-mix(in srgb, #fb1a2b 20%, transparent); }
+  [role="dialog"], dialog[open] { animation: ddDialogIn .38s cubic-bezier(.2, .8, .2, 1); }
+  dialog[open]::backdrop { animation: ddFadeIn .3s ease; }
+  [role="alert"] { animation: ddShake .6s cubic-bezier(.3, .7, .3, 1); }
+  [role="status"]:not([aria-busy]) { animation: ddSlideDown .4s cubic-bezier(.2, .8, .2, 1); }
+  /* Colour crossfade for the light / dark switch (class is added for a moment by the theme toggle). */
+  html.dd-theme-fade *, html.dd-theme-fade *::before, html.dd-theme-fade *::after { transition: background-color .5s ease, border-color .5s ease, color .5s ease, fill .5s ease, stroke .5s ease, box-shadow .5s ease !important; }
+}
+/* Anything still waiting to be revealed must show on paper and when scripts cannot run. */
+@media print { [data-mh] { opacity: 1 !important; visibility: visible !important; transform: none !important; } }
