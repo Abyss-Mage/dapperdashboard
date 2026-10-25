@@ -478,7 +478,7 @@ export default function OwnerDashboardClient() {
         onClick={() => setMobileOpen(false)}
       />
       <aside id="owner-sidebar" className={`${styles.sidebar} ${mobileOpen ? styles.mobileOpen : ''}`} aria-label="Master navigation">
-        <Link className={styles.brand} href="/owner" aria-label="Dapper Detailing Pros, Master dashboard">
+        <Link className={styles.brand} href="/dashboard" aria-label="Dapper Detailing Pros, Master dashboard">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img className={styles.brandLogo} src="/site/assets/logo.webp" alt="" width={44} height={44} />
           <span>

@@ -26,7 +26,7 @@ assert st == 200 and "hero-title" in body and "Porsche" in body
 print(f"PASS: / -> HTTP {st}, body length={len(body)} bytes (contains hero-title, Porsche, no manifest error)")
 results.append("root_200_public_studio")
 
-for page in ["/workspace", "/owner"]:
+for page in ["/workspace", "/dashboard"]:
     print(f"=== 3. Page {page} ===")
     st, ct, body = get(page)
     assert st == 200

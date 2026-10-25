@@ -23,7 +23,7 @@ func TestTLSGatewayRoutingAndCookie(t *testing.T) {
 	defer web.Close()
 	apiURL, _ := url.Parse(api.URL)
 	webURL, _ := url.Parse(web.URL)
-	gateway := httptest.NewTLSServer(gatewayHandler(apiURL, webURL))
+	gateway := httptest.NewTLSServer(gatewayHandler(apiURL, webURL, map[string]bool{"127.0.0.1:8443": true, "localhost:8443": true}))
 	defer gateway.Close()
 	client := gateway.Client()
 	client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }

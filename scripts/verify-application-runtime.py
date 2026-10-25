@@ -31,7 +31,7 @@ cases.append('employee_workspace_shell_authentication_enforced_by_api')
 body,_=request('/account')
 assert 'Your customer account' in body and 'Synthetic records only' not in body
 cases.append('customer_account_product_route')
-body,_=request('/owner')
+body,_=request("/dashboard")
 assert 'Owner & Business Dashboard' in body or 'Sign in' in body
 cases.append('owner_dashboard_product_route')
 for path in ['/api/v1/auth/me','/api/v1/portal/accounts','/api/v1/demo/session','/api/v1/workspace','/api/v1/employee/workspace','/api/v1/employee/calendar?from=2026-10-01&to=2026-11-01','/api/v1/employee/walk-in/options','/api/v1/organizations/00000000-0000-0000-0000-000000000001/locations/00000000-0000-0000-0000-000000000002/content/source-images']:

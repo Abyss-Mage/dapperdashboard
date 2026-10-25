@@ -24,14 +24,14 @@ targets = [
     },
     {
         "name": "owner-desktop",
-        "url": "https://127.0.0.1:8443/owner",
+        "url": "https://127.0.0.1:8443/dashboard",
         "width": 1440,
         "height": 900,
         "out": out_dir / "owner-desktop.png"
     },
     {
         "name": "owner-mobile",
-        "url": "https://127.0.0.1:8443/owner",
+        "url": "https://127.0.0.1:8443/dashboard",
         "width": 390,
         "height": 844,
         "out": out_dir / "owner-mobile.png"

@@ -342,7 +342,7 @@ export default function SecureWorkspace({ownerView=false}:{ownerView?:boolean}) 
         </div>
         <div className="workspace-actions">
           <ThemeToggle />
-          {!ownerView && <Link href="/owner">Owner dashboard</Link>}
+          {!ownerView && <Link href="/dashboard">Dashboard</Link>}
           {principal && (
             <button className="secondary" disabled={busy} onClick={logout}>
               Sign out

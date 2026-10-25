@@ -18,3 +18,6 @@
 
 # Customer data exports must never be committed (real customer emails/phones)
 /output/migration/bookingpress_migration_cutover.sql
+
+# Installer output (database password, SMTP password, keys, certificate): never commit
+/.dapper/

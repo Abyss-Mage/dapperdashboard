@@ -90,7 +90,7 @@ func registerSquareOAuthRoutes(mux *http.ServeMux, store *postgres.Store, origin
 	mux.HandleFunc("GET /api/v1/integrations/square/oauth/callback", func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
 		back := func(result string) {
-			http.Redirect(w, r, origin+"/owner?square="+url.QueryEscape(result)+"#payments", http.StatusSeeOther)
+			http.Redirect(w, r, origin+"/dashboard?square="+url.QueryEscape(result)+"#payments", http.StatusSeeOther)
 		}
 		if q.Get("error") != "" || q.Get("code") == "" || q.Get("state") == "" {
 			back("declined")
