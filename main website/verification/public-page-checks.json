@@ -1,0 +1,134 @@
+{
+  "date": "2026-10-24",
+  "pages": {
+    "2-wheeler-detailing": {
+      "uniqueIds": true,
+      "ariaTargets": true,
+      "anchors": true,
+      "internalRoutes": true,
+      "localAssets": true,
+      "noindex": true,
+      "noDemoBranding": true
+    },
+    "about-us": {
+      "uniqueIds": true,
+      "ariaTargets": true,
+      "anchors": true,
+      "internalRoutes": true,
+      "localAssets": true,
+      "noindex": true,
+      "noDemoBranding": true
+    },
+    "aircraft-detailing": {
+      "uniqueIds": true,
+      "ariaTargets": true,
+      "anchors": true,
+      "internalRoutes": true,
+      "localAssets": true,
+      "noindex": true,
+      "noDemoBranding": true
+    },
+    "boat-detailing": {
+      "uniqueIds": true,
+      "ariaTargets": true,
+      "anchors": true,
+      "internalRoutes": true,
+      "localAssets": true,
+      "noindex": true,
+      "noDemoBranding": true
+    },
+    "ceramic-coating": {
+      "uniqueIds": true,
+      "ariaTargets": true,
+      "anchors": true,
+      "internalRoutes": true,
+      "localAssets": true,
+      "noindex": true,
+      "noDemoBranding": true
+    },
+    "contact-us": {
+      "uniqueIds": true,
+      "ariaTargets": true,
+      "anchors": true,
+      "internalRoutes": true,
+      "localAssets": true,
+      "noindex": true,
+      "noDemoBranding": true
+    },
+    "hatchback-detailing": {
+      "uniqueIds": true,
+      "ariaTargets": true,
+      "anchors": true,
+      "internalRoutes": true,
+      "localAssets": true,
+      "noindex": true,
+      "noDemoBranding": true
+    },
+    "pickup-detailing": {
+      "uniqueIds": true,
+      "ariaTargets": true,
+      "anchors": true,
+      "internalRoutes": true,
+      "localAssets": true,
+      "noindex": true,
+      "noDemoBranding": true
+    },
+    "portfolio": {
+      "uniqueIds": true,
+      "ariaTargets": true,
+      "anchors": true,
+      "internalRoutes": true,
+      "localAssets": true,
+      "noindex": true,
+      "noDemoBranding": true
+    },
+    "ppf": {
+      "uniqueIds": true,
+      "ariaTargets": true,
+      "anchors": true,
+      "internalRoutes": true,
+      "localAssets": true,
+      "noindex": true,
+      "noDemoBranding": true
+    },
+    "sedan-detailing": {
+      "uniqueIds": true,
+      "ariaTargets": true,
+      "anchors": true,
+      "internalRoutes": true,
+      "localAssets": true,
+      "noindex": true,
+      "noDemoBranding": true
+    },
+    "services": {
+      "uniqueIds": true,
+      "ariaTargets": true,
+      "anchors": true,
+      "internalRoutes": true,
+      "localAssets": true,
+      "noindex": true,
+      "noDemoBranding": true
+    },
+    "suv-detailing": {
+      "uniqueIds": true,
+      "ariaTargets": true,
+      "anchors": true,
+      "internalRoutes": true,
+      "localAssets": true,
+      "noindex": true,
+      "noDemoBranding": true
+    },
+    "van-detailing": {
+      "uniqueIds": true,
+      "ariaTargets": true,
+      "anchors": true,
+      "internalRoutes": true,
+      "localAssets": true,
+      "noindex": true,
+      "noDemoBranding": true
+    }
+  },
+  "pageCount": 14,
+  "portfolioImportImages": 18,
+  "boundaries": "Source checks only; no production/customer/provider acceptance."
+}

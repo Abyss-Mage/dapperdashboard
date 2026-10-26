@@ -1,0 +1,62 @@
+$input-height: 28px;
+$disabled-input-height: 22px;
+
+:root,
+[data-theme="light"] {
+	--padding-xs: 5px;
+	--padding-sm: 7px;
+	--padding-md: 15px;
+	--padding-lg: 20px;
+	--padding-xl: 30px;
+	--padding-2xl: 40px;
+
+	--margin-xs: 5px;
+	--margin-sm: 10px;
+	--margin-md: 15px;
+	--margin-lg: 20px;
+	--margin-xl: 30px;
+	--margin-2xl: 40px;
+
+	--page-max-width: 900px;
+
+	--modal-shadow: var(--shadow-md);
+	--card-shadow: var(--shadow-sm);
+	--btn-shadow: var(--shadow-xs);
+
+	// navbar
+	--navbar-height: 48px;
+
+	// Other Colors
+
+	--shadow-inset: inset 0px -1px 0px var(--gray-300);
+
+	--highlight-shadow: 1px 1px 10px var(--blue-50), 0px 0px 4px var(--blue-600);
+
+	// code block
+	--code-block-bg: var(--gray-900);
+	--code-block-text: var(--gray-400);
+
+	--btn-height: 28px;
+
+	// input
+	--input-height: #{$input-height};
+
+	// Checkbox
+	--checkbox-right-margin: var(--margin-xs);
+	--checkbox-size: 14px;
+
+	--checkbox-focus-shadow: 0 0 0 2px var(--gray-300);
+	--checkbox-gradient: linear-gradient(180deg, var(--primary) -124.51%, var(--primary) 100%);
+	--checkbox-disabled-gradient: linear-gradient(
+		180deg,
+		var(--disabled-control-bg) -124.51%,
+		var(--disabled-control-bg) 100%
+	);
+
+	--right-arrow-svg: url("data: image/svg+xml;utf8, <svg width='6' height='8' viewBox='0 0 6 8' fill='none' xmlns='http://www.w3.org/2000/svg'><path d='M1.25 7.5L4.75 4L1.25 0.5' stroke='%231F272E' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+	--left-arrow-svg: url("data: image/svg+xml;utf8, <svg width='6' height='8' viewBox='0 0 6 8' fill='none' xmlns='http://www.w3.org/2000/svg'><path d='M7.5 9.5L4 6l3.5-3.5' stroke='%231F272E' stroke-linecap='round' stroke-linejoin='round'></path></svg>");
+
+	@include media-breakpoint-down(md) {
+		--checkbox-size: 18px;
+	}
+}

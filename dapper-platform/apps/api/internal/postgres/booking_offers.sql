@@ -1,0 +1,36 @@
+CREATE TABLE booking_offers (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ organization_id uuid NOT NULL, location_id uuid NOT NULL,
+ resource_id uuid NOT NULL, rule_id uuid NOT NULL, rule_version integer NOT NULL,
+ version integer NOT NULL DEFAULT 1 CHECK(version>0),
+ title text NOT NULL CHECK(length(btrim(title)) BETWEEN 2 AND 120),
+ equipment_category text NOT NULL CHECK(length(btrim(equipment_category)) BETWEEN 1 AND 60),
+ category_key text GENERATED ALWAYS AS (lower(btrim(equipment_category))) STORED,
+ mode text NOT NULL CHECK(mode IN ('quote_required','fixed')),
+ currency text NOT NULL CHECK(currency='CAD'),
+ subtotal_cents bigint NOT NULL CHECK(subtotal_cents BETWEEN 0 AND 9000000000000),
+ tax_cents bigint NOT NULL CHECK(tax_cents BETWEEN 0 AND 9000000000000),
+ deposit_cents bigint NOT NULL CHECK(deposit_cents BETWEEN 0 AND 18000000000000),
+ terms text NOT NULL CHECK(length(btrim(terms)) BETWEEN 1 AND 10000),
+ cancellation_terms text NOT NULL CHECK(length(btrim(cancellation_terms)) BETWEEN 1 AND 10000),
+ lead_minutes integer NOT NULL CHECK(lead_minutes BETWEEN 0 AND 525600),
+ advance_days integer NOT NULL CHECK(advance_days BETWEEN 1 AND 366),
+ slot_minutes integer NOT NULL CHECK(slot_minutes BETWEEN 1 AND 1440),
+ published boolean NOT NULL,
+ reviewed_by uuid REFERENCES principals(id), reviewed_at timestamptz,
+ created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
+ CHECK(deposit_cents<=subtotal_cents+tax_cents),
+ CHECK(mode<>'quote_required' OR (subtotal_cents=0 AND tax_cents=0 AND deposit_cents=0)),
+ CHECK(NOT published OR (reviewed_by IS NOT NULL AND reviewed_at IS NOT NULL)),
+ UNIQUE(organization_id,location_id,id),
+ UNIQUE(organization_id,location_id,rule_id,category_key),
+ FOREIGN KEY(organization_id,location_id,resource_id,rule_id) REFERENCES service_scheduling_rules(organization_id,location_id,resource_id,id),
+ FOREIGN KEY(rule_id,rule_version) REFERENCES service_scheduling_revisions(rule_id,version)
+);
+CREATE TABLE booking_offer_revisions (
+ organization_id uuid NOT NULL, location_id uuid NOT NULL, offer_id uuid NOT NULL,
+ version integer NOT NULL CHECK(version>0), snapshot jsonb NOT NULL CHECK(jsonb_typeof(snapshot)='object'),
+ actor_id uuid NOT NULL REFERENCES principals(id), created_at timestamptz NOT NULL DEFAULT now(),
+ PRIMARY KEY(offer_id,version),
+ FOREIGN KEY(organization_id,location_id,offer_id) REFERENCES booking_offers(organization_id,location_id,id)
+);

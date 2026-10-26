@@ -1,0 +1,72 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "autoname": "field:workflow_state_name",
+ "creation": "2012-12-28 10:49:56",
+ "description": "Workflow state represents the current state of a document.",
+ "doctype": "DocType",
+ "document_type": "Setup",
+ "documentation": "https://docs.frappe.io/erpnext/user/manual/en/workflow-state",
+ "engine": "InnoDB",
+ "field_order": [
+  "workflow_state_name",
+  "icon",
+  "style"
+ ],
+ "fields": [
+  {
+   "fieldname": "workflow_state_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "State",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "description": "Icon will appear on the button",
+   "fieldname": "icon",
+   "fieldtype": "Icon",
+   "hidden": 1,
+   "label": "Icon"
+  },
+  {
+   "description": "Style represents the button color: Success - Green, Danger - Red, Inverse - Black, Primary - Dark Blue, Info - Light Blue, Warning - Orange",
+   "fieldname": "style",
+   "fieldtype": "Select",
+   "label": "Style",
+   "options": "\nPrimary\nInfo\nSuccess\nWarning\nDanger\nInverse"
+  }
+ ],
+ "icon": "fa fa-flag",
+ "idx": 1,
+ "links": [],
+ "modified": "2026-07-03 16:04:05.395556",
+ "modified_by": "Administrator",
+ "module": "Workflow",
+ "name": "Workflow State",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "role": "Desk User",
+   "select": 1
+  }
+ ],
+ "quick_entry": 1,
+ "show_name_in_global_search": 1,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1,
+ "translated_doctype": 1
+}

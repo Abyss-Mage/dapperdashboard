@@ -1,0 +1,96 @@
+const FULL_HEIGHT_PAGE_CLASS = "full-height-page";
+
+let folded_sidebar = false;
+let restore_sidebar = false;
+
+function collapse_sidebar() {
+	const sidebar = frappe.app?.sidebar;
+	if (!sidebar || folded_sidebar) return;
+	folded_sidebar = true;
+	restore_sidebar = !!sidebar.sidebar_expanded;
+	if (restore_sidebar) sidebar.close();
+}
+
+function restore_sidebar_state() {
+	if (!folded_sidebar) return;
+	folded_sidebar = false;
+	if (!restore_sidebar) return;
+	restore_sidebar = false;
+	frappe.app?.sidebar?.open();
+}
+
+frappe.pages["print-format-builder-beta"].on_page_load = function (wrapper) {
+	frappe.ui.make_app_page({
+		parent: wrapper,
+		title: __("Print Format Builder"),
+		single_column: true,
+	});
+
+	$(wrapper).on("hide", () => {
+		document.body.classList.remove(FULL_HEIGHT_PAGE_CLASS);
+		restore_sidebar_state();
+	});
+
+	if (frappe.boot.developer_mode) {
+		frappe.hot_update = frappe.hot_update || [];
+		frappe.hot_update.push(() => load_print_format_builder(wrapper));
+	}
+};
+
+frappe.pages["print-format-builder-beta"].on_page_show = function (wrapper) {
+	document.body.classList.add(FULL_HEIGHT_PAGE_CLASS);
+	collapse_sidebar();
+	load_print_format_builder(wrapper);
+};
+
+function load_print_format_builder(wrapper, force = false) {
+	let route = frappe.get_route();
+	let $parent = $(wrapper).find(".layout-main-section");
+
+	if (route.length < 2) {
+		wrapper.builder?.destroy?.();
+		$parent.empty();
+		frappe.set_route("List", "Print Format");
+		return;
+	}
+
+	wrapper.page.set_breadcrumbs([
+		{ label: __("Print Format"), href: "/desk/print-format" },
+		{ label: route[1] },
+	]);
+	wrapper.page.set_title(route[1]);
+
+	const current = wrapper.builder;
+	if (!force && current?.has_unsaved_changes?.()) {
+		if (current.print_format === route[1]) return;
+		current.leave(() => load_print_format_builder(wrapper, true));
+		return;
+	}
+	current?.destroy?.();
+	$parent.empty();
+
+	frappe.model.with_doc("Print Format", route[1], () => {
+		if (frappe.get_route()[1] !== route[1]) return;
+		if (frappe.get_doc("Print Format", route[1])?.__onload?.renders_from_file) {
+			frappe.msgprint(
+				__("{0} is rendered from an HTML file and cannot be edited in the builder.", [
+					route[1].bold(),
+				])
+			);
+			frappe.set_route("Form", "Print Format", route[1]);
+			return;
+		}
+		mount_print_format_builder(wrapper, $parent, route[1]);
+	});
+}
+
+function mount_print_format_builder(wrapper, $parent, print_format) {
+	frappe.require("print_format_builder.bundle.js").then(() => {
+		if (frappe.get_route()[1] !== print_format) return;
+		wrapper.builder = new frappe.ui.PrintFormatBuilder({
+			wrapper: $parent,
+			page: wrapper.page,
+			print_format,
+		});
+	});
+}

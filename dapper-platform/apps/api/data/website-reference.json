@@ -1,0 +1,172 @@
+{
+  "approvalStatus": "reference_only_pending_client_approval",
+  "currency": "not_explicitly_confirmed",
+  "retrievedAt": "2026-10-21T23:08:59.549547+05:30",
+  "transactionEnabled": false,
+  "pages": [
+    {
+      "name": "2 wheeler detailing",
+      "source": "https://dapperdetailing.ca/2-wheeler-detailing/",
+      "sourceSha256": "b3066bd53b08b121e09734b3ae58818d5b0dd060ddfa70238a8646e7ce3a476e",
+      "publishedPriceLabels": [
+        "$ 299"
+      ]
+    },
+    {
+      "name": "aircraft detailing",
+      "source": "https://dapperdetailing.ca/aircraft-detailing/",
+      "sourceSha256": "b547927593e95a47461cf7b3e03f55f229d9b58bc1293bd874ee108b3da93a3c",
+      "publishedPriceLabels": [
+        "$ 1000",
+        "$ 1150",
+        "$ 1200",
+        "$ 1500",
+        "$ 2000",
+        "$ 2100",
+        "$ 250",
+        "$ 2500",
+        "$ 450",
+        "$ 625",
+        "$ 750",
+        "$ 800"
+      ]
+    },
+    {
+      "name": "boat detailing",
+      "source": "https://dapperdetailing.ca/boat-detailing/",
+      "sourceSha256": "9b0e584dce715b6d4cfd5716df6e539497b9b2c6b9799f682f831b175a2d5301",
+      "publishedPriceLabels": [
+        "$ 1300",
+        "$ 1500",
+        "$ 270",
+        "$ 395",
+        "$ 400",
+        "$ 500",
+        "$ 550",
+        "$ 600",
+        "$ 650",
+        "$ 665",
+        "$ 700",
+        "$ 830",
+        "$ 850",
+        "$ 960"
+      ]
+    },
+    {
+      "name": "ceramic coating",
+      "source": "https://dapperdetailing.ca/ceramic-coating/",
+      "sourceSha256": "5a7399f84ed77b3e48ffa5ef297a0a2767c976c594b55d94ccfae9f05ab7f086",
+      "publishedPriceLabels": [
+        "$ 1,999",
+        "$ 699",
+        "$ 999"
+      ]
+    },
+    {
+      "name": "hatchback detailing",
+      "source": "https://dapperdetailing.ca/hatchback-detailing/",
+      "sourceSha256": "094199c974074220c999354425a7d13fab23d1f39c5ff766b9894b91e7b3c928",
+      "publishedPriceLabels": [
+        "$ 169",
+        "$ 229",
+        "$ 25",
+        "$ 29",
+        "$ 35",
+        "$ 379",
+        "$ 39",
+        "$ 49",
+        "$ 50",
+        "$ 59",
+        "$ 70",
+        "$ 89"
+      ]
+    },
+    {
+      "name": "pickup detailing",
+      "source": "https://dapperdetailing.ca/pickup-detailing/",
+      "sourceSha256": "e120ac3a4b6da17979d50af91359ee7f2a0c83d73aa503fc33961f0504536d1e",
+      "publishedPriceLabels": [
+        "$ 189",
+        "$ 25",
+        "$ 269",
+        "$ 29",
+        "$ 35",
+        "$ 39",
+        "$ 449",
+        "$ 49",
+        "$ 50",
+        "$ 59",
+        "$ 70",
+        "$ 89"
+      ]
+    },
+    {
+      "name": "ppf",
+      "source": "https://dapperdetailing.ca/ppf/",
+      "sourceSha256": "dcca216eb75ad3ff33b54527727c83b04ec44509055b7c2a9338651693a3880f",
+      "publishedPriceLabels": [
+        "$ 1,499",
+        "$ 2,199",
+        "$ 4,999",
+        "$ 5,999"
+      ]
+    },
+    {
+      "name": "sedan detailing",
+      "source": "https://dapperdetailing.ca/sedan-detailing/",
+      "sourceSha256": "d17ac425c284b91dd98d777417528974aae9dc0ab194b659fcc0c76b5296ea2a",
+      "publishedPriceLabels": [
+        "$ 189",
+        "$ 249",
+        "$ 25",
+        "$ 29",
+        "$ 35",
+        "$ 39",
+        "$ 429",
+        "$ 49",
+        "$ 50",
+        "$ 59",
+        "$ 70",
+        "$ 89"
+      ]
+    },
+    {
+      "name": "suv detailing",
+      "source": "https://dapperdetailing.ca/suv-detailing/",
+      "sourceSha256": "8910b6ae9efa2e6c038e532efa0ffc37bbec65c300ed2ecd20490de49fcc1175",
+      "publishedPriceLabels": [
+        "$ 189",
+        "$ 25",
+        "$ 269",
+        "$ 29",
+        "$ 35",
+        "$ 39",
+        "$ 449",
+        "$ 49",
+        "$ 50",
+        "$ 59",
+        "$ 70",
+        "$ 89"
+      ]
+    },
+    {
+      "name": "van detailing",
+      "source": "https://dapperdetailing.ca/van-detailing/",
+      "sourceSha256": "5410217149185ade6c7c77d5ff41d62d681ce520d17eb0bfc0cecfb3e43138fd",
+      "publishedPriceLabels": [
+        "$ 209",
+        "$ 25",
+        "$ 289",
+        "$ 29",
+        "$ 35",
+        "$ 39",
+        "$ 449",
+        "$ 49",
+        "$ 50",
+        "$ 59",
+        "$ 70",
+        "$ 89"
+      ]
+    }
+  ]
+}

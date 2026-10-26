@@ -1,0 +1,25 @@
+{
+  "routes": [
+    "/",
+    "/services/",
+    "/2-wheeler-detailing/",
+    "/hatchback-detailing/",
+    "/sedan-detailing/",
+    "/suv-detailing/",
+    "/pickup-detailing/",
+    "/van-detailing/",
+    "/ceramic-coating/",
+    "/ppf/",
+    "/aircraft-detailing/",
+    "/boat-detailing/",
+    "/portfolio/",
+    "/about-us/",
+    "/contact-us/",
+    "/studio/",
+    "/account",
+    "/my-bookings/",
+    "/booking",
+    "/book-appointment/"
+  ],
+  "source": "Live public-site structure reviewed 2026-10-23; no legacy pricing or booking defaults imported."
+}

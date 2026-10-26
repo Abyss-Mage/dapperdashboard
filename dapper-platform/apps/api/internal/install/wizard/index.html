@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Dapper setup</title>
+<style>
+:root{color-scheme:dark;--bg:#07080b;--ink:#f4f5f7;--mute:#9aa1ab;--line:rgba(255,255,255,.12);--glass:rgba(255,255,255,.06);--red:#fb1a2b;--ok:#34d399;--bad:#ff6b6b;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:radial-gradient(1200px 600px at 80% -10%,rgba(251,26,43,.16),transparent 60%),var(--bg);color:var(--ink);display:grid;place-items:center;padding:24px 16px}
+main{width:min(720px,100%)}
+header{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.logo{width:34px;height:34px;border-radius:10px;background:var(--red);display:grid;place-items:center;font-weight:800}
+h1{font-size:20px;margin:0}
+.sub{color:var(--mute);font-size:13px}
+ol.steps{display:flex;gap:6px;list-style:none;padding:0;margin:0 0 14px;flex-wrap:wrap}
+ol.steps li{font-size:12px;padding:5px 10px;border-radius:99px;border:1px solid var(--line);color:var(--mute)}
+ol.steps li.on{color:var(--ink);border-color:var(--red);background:rgba(251,26,43,.12)}
+ol.steps li.done{color:var(--ok);border-color:rgba(52,211,153,.4)}
+section{background:var(--glass);border:1px solid var(--line);border-radius:18px;padding:22px;backdrop-filter:blur(18px)}
+h2{margin:0 0 4px;font-size:18px}
+p.lead{margin:0 0 16px;color:var(--mute);font-size:14px;line-height:1.5}
+label{display:block;font-size:13px;color:var(--mute);margin:12px 0 5px}
+input,select{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:rgba(0,0,0,.35);color:var(--ink);font:inherit}
+input:focus,select:focus{outline:2px solid var(--red);outline-offset:1px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.row3{display:grid;grid-template-columns:2fr 1fr;gap:12px}
+@media(max-width:560px){.row,.row3{grid-template-columns:1fr}}
+.actions{display:flex;gap:10px;margin-top:20px;justify-content:space-between;flex-wrap:wrap}
+button{font:inherit;padding:11px 18px;border-radius:99px;border:1px solid var(--line);background:var(--glass);color:var(--ink);cursor:pointer}
+button.primary{background:var(--red);border-color:var(--red);font-weight:600}
+button:disabled{opacity:.5;cursor:not-allowed}
+.note{margin-top:12px;font-size:13px;line-height:1.5;padding:10px 12px;border-radius:10px;border:1px solid var(--line)}
+.note.ok{border-color:rgba(52,211,153,.5);color:var(--ok)}.note.bad{border-color:rgba(255,107,107,.5);color:var(--bad)}.note.info{color:var(--mute)}
+ul.checks{list-style:none;padding:0;margin:14px 0 0}
+ul.checks li{display:flex;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:14px}
+.dot{width:10px;height:10px;border-radius:50%;margin-top:6px;flex:none;background:var(--mute)}.dot.ok{background:var(--ok)}.dot.bad{background:var(--bad)}
+.radio{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line);border-radius:12px;margin:8px 0;cursor:pointer}
+.radio input{width:auto;margin-top:3px}
+.radio b{display:block;font-size:14px}.radio span{font-size:13px;color:var(--mute)}
+code{background:rgba(255,255,255,.1);padding:2px 6px;border-radius:6px;font-size:13px}
+dl{display:grid;grid-template-columns:150px 1fr;gap:6px 12px;margin:0;font-size:14px}dt{color:var(--mute)}dd{margin:0;word-break:break-all}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<main>
+<header><div class="logo">D</div><div><h1>Dapper setup</h1><div class="sub">One-time installation. Nothing is sent anywhere except to the database and email servers you enter.</div></div></header>
+<ol class="steps" id="steps"></ol>
+<section id="view"></section>
+</main>
+<script>
+const STEPS=['Welcome','Database','Site','Email','Owner','Install'];
+const S={step:0,code:sessionStorage.getItem('dapperCode')||'',db:{host:'localhost',port:5432,name:'dapper',user:'',password:'',sslMode:'disable'},report:null,createDb:false,
+ site:{name:'',url:'https://localhost:8443',timezone:Intl.DateTimeFormat().resolvedOptions().timeZone||'America/Toronto',listen:'127.0.0.1:8443',tls:{mode:'self-signed',certFile:'',keyFile:''}},
+ mail:{host:'',port:587,username:'',password:'',fromAddress:'',fromName:''},owner:{email:'',password:'',confirm:''},done:false};
+const $=(s,r=document)=>r.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function api(path,body){
+  const res=await fetch('/api/'+path,{method:'POST',headers:{'Content-Type':'application/json','X-Setup-Code':S.code},body:JSON.stringify(body||{})});
+  let data;try{data=await res.json()}catch{data={ok:false,error:'Unexpected reply from the setup server.'}}
+  if(!res.ok&&!data.error)data.error='Request failed ('+res.status+')';
+  return data;
+}
+function nav(){ $('#steps').innerHTML=STEPS.map((n,i)=>`<li class="${i===S.step?'on':i<S.step?'done':''}">${i+1}. ${n}</li>`).join('') }
+function note(el,kind,msg){ el.className='note '+kind; el.textContent=msg; el.classList.remove('hidden') }
+function field(id,label,val,type='text',extra=''){ return `<div><label for="${id}">${label}</label><input id="${id}" type="${type}" value="${esc(val)}" ${extra}></div>` }
+function bind(id,obj,key,num){ const el=$('#'+id); el.addEventListener('input',()=>{obj[key]=num?Number(el.value):el.value}) }
+
+const views=[
+ // 0 welcome
+ ()=>{ $('#view').innerHTML=`<h2>Welcome</h2><p class="lead">This sets up your own Dapper installation: the database, your site address, outgoing email and the first owner account. The setup code is printed in the terminal window where you started setup.</p>
+  ${field('code','Setup code',S.code,'text','autocomplete="off" placeholder="XXXX-XXXX-XXXX"')}
+  <div id="msg" class="note hidden"></div><ul class="checks" id="checks"></ul>
+  <div class="actions"><span></span><button class="primary" id="next">Check and continue</button></div>`;
+  bind('code',S,'code'); $('#next').onclick=async()=>{ S.code=$('#code').value.trim().toUpperCase(); const r=await api('check'); if(!r.ok){note($('#msg'),'bad',r.error);return}
+   sessionStorage.setItem('dapperCode',S.code); $('#checks').innerHTML=r.items.map(i=>`<li><span class="dot ${i.ok?'ok':'bad'}"></span><div><b>${esc(i.name)}</b><div class="sub">${esc(i.detail)}</div></div></li>`).join('');
+   if(r.items.some(i=>!i.ok&&i.name.startsWith('Write'))){note($('#msg'),'bad','Setup cannot write to its folder.');return} go(1) } },
+ // 1 database
+ ()=>{ const d=S.db; $('#view').innerHTML=`<h2>Database</h2><p class="lead">Dapper uses an existing PostgreSQL server. Enter its details and test the connection. Setup creates the tables itself and only installs into an empty database.</p>
+  <div class="row3">${field('h','Host',d.host)}${field('p','Port',d.port,'number')}</div>
+  <div class="row">${field('n','Database name',d.name)}${field('u','User',d.user,'text','autocomplete="off"')}</div>
+  <div class="row">${field('w','Password',d.password,'password','autocomplete="new-password"')}<div><label for="s">Connection security</label><select id="s"><option value="disable">None (same machine / private network)</option><option value="require">Encrypted (require)</option><option value="verify-full">Encrypted and verified</option></select></div></div>
+  <div id="msg" class="note hidden"></div>
+  <div class="actions"><button id="back">Back</button><span><button id="test">Test connection</button> <button class="primary" id="next" disabled>Continue</button></span></div>`;
+  $('#s').value=d.sslMode; bind('h',d,'host');bind('p',d,'port',1);bind('n',d,'name');bind('u',d,'user');bind('w',d,'password'); $('#s').onchange=e=>d.sslMode=e.target.value;
+  $('#back').onclick=()=>go(0);
+  const gate=()=>{ $('#next').disabled=!(S.report&&S.report.reachable&&S.report.empty&&(S.report.databaseExists||S.report.canCreate)) };
+  $('#test').onclick=async()=>{ note($('#msg'),'info','Testing…'); const r=await api('db/test',d); if(!r.ok){note($('#msg'),'bad',r.error);return} S.report=r.report; S.createDb=r.report.reachable&&!r.report.databaseExists&&r.report.canCreate;
+   note($('#msg'),r.report.reachable&&r.report.empty&&(r.report.databaseExists||r.report.canCreate)?'ok':'bad',r.report.message+(r.report.version?'  ('+r.report.version.split(' on ')[0]+')':'')); gate() };
+  $('#next').onclick=()=>go(2); if(S.report)gate(); },
+ // 2 site
+ ()=>{ const t=S.site, zones=(Intl.supportedValuesOf?Intl.supportedValuesOf('timeZone'):[t.timezone]);
+  if(!zones.includes(t.timezone))zones.unshift(t.timezone);
+  $('#view').innerHTML=`<h2>Your site</h2><p class="lead">The business name appears in emails and on the owner account. The site address is where people will open Dapper.</p>
+  ${field('bn','Business name',t.name,'text','placeholder="Your business name"')}
+  <div class="row">${field('su','Site address',t.url,'text','placeholder="https://dapper.example.com"')}<div><label for="tz">Default timezone</label><select id="tz">${zones.map(z=>`<option ${z===t.timezone?'selected':''}>${esc(z)}</option>`).join('')}</select></div></div>
+  ${field('ls','Listen address (where Dapper accepts connections)',t.listen)}
+  <label>HTTPS</label>
+  <label class="radio"><input type="radio" name="tls" value="self-signed"><div><b>Create a self-signed certificate</b><span>Quick start for testing or a private network. Browsers warn until you trust it.</span></div></label>
+  <label class="radio"><input type="radio" name="tls" value="files"><div><b>Use my own certificate</b><span>Paths to a certificate and key you already have (for example from Let's Encrypt).</span></div></label>
+  <label class="radio"><input type="radio" name="tls" value="proxy"><div><b>I run a reverse proxy</b><span>Dapper listens on plain HTTP; your proxy serves the public HTTPS address above.</span></div></label>
+  <div id="files" class="hidden"><div class="row">${field('cf','Certificate file path',t.tls.certFile)}${field('kf','Private key file path',t.tls.keyFile)}</div></div>
+  <div id="msg" class="note hidden"></div><div class="actions"><button id="back">Back</button><button class="primary" id="next">Continue</button></div>`;
+  bind('bn',t,'name');bind('su',t,'url');bind('ls',t,'listen');bind('cf',t.tls,'certFile');bind('kf',t.tls,'keyFile'); $('#tz').onchange=e=>t.timezone=e.target.value;
+  const sync=()=>{ $('#files').classList.toggle('hidden',t.tls.mode!=='files') };
+  document.querySelectorAll('input[name=tls]').forEach(r=>{ r.checked=r.value===t.tls.mode; r.onchange=()=>{t.tls.mode=r.value;sync()} }); sync();
+  $('#back').onclick=()=>go(1);
+  $('#next').onclick=()=>{ if(t.name.trim().length<2)return note($('#msg'),'bad','Enter your business name.'); try{const u=new URL(t.url); if(!/^https?:$/.test(u.protocol)||(u.pathname!=='/'&&u.pathname!==''))throw 0}catch{return note($('#msg'),'bad','Site address must look like https://example.com')}
+   if(!/:\d+$/.test(t.listen))return note($('#msg'),'bad','Listen address must end with a port, for example 127.0.0.1:8443'); if(t.tls.mode==='files'&&(!t.tls.certFile||!t.tls.keyFile))return note($('#msg'),'bad','Enter both file paths.');
+   if(!S.mail.fromName)S.mail.fromName=t.name; go(3) } },
+ // 3 email
+ ()=>{ const m=S.mail; $('#view').innerHTML=`<h2>Outgoing email</h2><p class="lead">Used for staff invitations and password messages. You can skip this now; invitations then stay queued until email is configured.</p>
+  <div class="row3">${field('mh','SMTP server',m.host,'text','placeholder="smtp.example.com"')}${field('mp','Port',m.port,'number')}</div>
+  <div class="row">${field('mu','Username',m.username,'text','autocomplete="off"')}${field('mw','Password',m.password,'password','autocomplete="new-password"')}</div>
+  <div class="row">${field('mf','From address',m.fromAddress,'email')}${field('mn','From name',m.fromName)}</div>
+  ${field('mt','Send a test message to',S.owner.email,'email')}
+  <div id="msg" class="note hidden"></div>
+  <div class="actions"><button id="back">Back</button><span><button id="test">Send test</button> <button id="skip">Skip for now</button> <button class="primary" id="next">Continue</button></span></div>`;
+  bind('mh',m,'host');bind('mp',m,'port',1);bind('mu',m,'username');bind('mw',m,'password');bind('mf',m,'fromAddress');bind('mn',m,'fromName');
+  $('#back').onclick=()=>go(2); $('#skip').onclick=()=>{S.mail={host:'',port:587,username:'',password:'',fromAddress:'',fromName:''};go(4)};
+  $('#test').onclick=async()=>{ note($('#msg'),'info','Sending…'); const r=await api('mail/test',{...m,to:$('#mt').value}); note($('#msg'),r.ok?'ok':'bad',r.ok?'Sent. Check that inbox.':r.error) };
+  $('#next').onclick=()=>{ if(m.host&&!m.fromAddress.includes('@'))return note($('#msg'),'bad','Enter the From address, or choose Skip.'); go(4) } },
+ // 4 owner
+ ()=>{ const o=S.owner; $('#view').innerHTML=`<h2>Owner account</h2><p class="lead">The first person who can sign in to the Dapper dashboard. There is no default account; this is the only one setup creates.</p>
+  ${field('oe','Email address',o.email,'email','autocomplete="off"')}${field('op','Password',o.password,'password','autocomplete="new-password"')}${field('oc','Repeat the password',o.confirm,'password','autocomplete="new-password"')}
+  <div class="sub" style="margin-top:8px">At least 15 characters. A few unrelated words works well.</div><div id="msg" class="note hidden"></div>
+  <div class="actions"><button id="back">Back</button><button class="primary" id="next">Continue</button></div>`;
+  bind('oe',o,'email');bind('op',o,'password');bind('oc',o,'confirm'); $('#back').onclick=()=>go(3);
+  $('#next').onclick=()=>{ if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(o.email))return note($('#msg'),'bad','Enter a valid email address.'); if(o.password.length<15)return note($('#msg'),'bad','The password needs at least 15 characters.'); if(o.password!==o.confirm)return note($('#msg'),'bad','The two passwords do not match.'); go(5) } },
+ // 5 install
+ ()=>{ const t=S.site,d=S.db;
+  $('#view').innerHTML=`<h2>Ready to install</h2><p class="lead">Check the summary, then install. This creates the tables, the owner account and your private configuration file. It cannot be run twice.</p>
+  <dl><dt>Business</dt><dd>${esc(t.name)}</dd><dt>Site address</dt><dd>${esc(t.url)}</dd><dt>Timezone</dt><dd>${esc(t.timezone)}</dd><dt>HTTPS</dt><dd>${esc({'self-signed':'Self-signed certificate','files':'Your certificate','proxy':'Reverse proxy'}[t.tls.mode])}</dd>
+  <dt>Database</dt><dd>${esc(d.user)}@${esc(d.host)}:${d.port}/${esc(d.name)}${S.createDb?' (will be created)':''}</dd><dt>Email</dt><dd>${S.mail.host?esc(S.mail.host+':'+S.mail.port):'Skipped'}</dd><dt>Owner</dt><dd>${esc(S.owner.email)}</dd></dl>
+  <div id="msg" class="note hidden"></div><ul class="checks" id="out"></ul>
+  <div class="actions"><button id="back">Back</button><button class="primary" id="go">Install Dapper</button></div>`;
+  $('#back').onclick=()=>go(4);
+  $('#go').onclick=async()=>{ $('#go').disabled=true;$('#back').disabled=true; note($('#msg'),'info','Installing… this takes a few seconds.');
+   const r=await api('install',{site:S.site,db:S.db,createDb:S.createDb,mail:S.mail,owner:{email:S.owner.email,password:S.owner.password}});
+   $('#out').innerHTML=(r.steps||[]).map(i=>`<li><span class="dot ${i.ok?'ok':'bad'}"></span><div><b>${esc(i.step)}</b><div class="sub">${esc(i.detail||'')}</div></div></li>`).join('');
+   if(!r.ok){note($('#msg'),'bad',r.error||'Installation failed.');$('#go').disabled=false;$('#back').disabled=false;return}
+   S.owner.password=S.owner.confirm=S.db.password=S.mail.password=''; sessionStorage.removeItem('dapperCode');
+   $('#view').innerHTML=`<h2>Dapper is installed</h2><p class="lead">Your configuration is saved in the <code>.env</code> file in the repository folder (it is private and never committed to git). Close this page and the setup window, then start Dapper from the repository folder:</p>
+    <p><code>${esc(r.startCommand)}</code></p><p class="lead">Then sign in as <b>${esc(S.owner.email)}</b> at:</p><p><a style="color:#fff" href="${esc(r.loginUrl)}">${esc(r.loginUrl)}</a></p>
+    <ul class="checks">${r.steps.map(i=>`<li><span class="dot ok"></span><div><b>${esc(i.step)}</b></div></li>`).join('')}</ul>`; S.done=true; nav() } },
+];
+function go(n){ S.step=n; nav(); views[n](); window.scrollTo(0,0) }
+go(0);
+</script>
+</body>
+</html>

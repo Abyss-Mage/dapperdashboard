@@ -1,0 +1,52 @@
+{
+  "date": "2026-10-24",
+  "desktop": [
+    {
+      "path": "/services",
+      "brokenImages": 0,
+      "documentWidth": 1425,
+      "title": "Services | Dapper Detailing Pros",
+      "width": 1440
+    },
+    {
+      "path": "/about-us",
+      "brokenImages": 0,
+      "documentWidth": 1425,
+      "title": "About Us | Dapper Detailing Pros",
+      "width": 1440
+    },
+    {
+      "path": "/portfolio",
+      "brokenImages": 0,
+      "documentWidth": 1425,
+      "title": "Portfolio | Dapper Detailing Pros",
+      "width": 1440
+    }
+  ],
+  "mobile": [
+    {
+      "path": "/services",
+      "brokenImages": 0,
+      "documentWidth": 375,
+      "title": "Services | Dapper Detailing Pros",
+      "width": 390
+    },
+    {
+      "path": "/sedan-detailing",
+      "brokenImages": 0,
+      "documentWidth": 375,
+      "title": "Sedan detailing | Dapper Detailing Pros",
+      "width": 390
+    },
+    {
+      "path": "/contact-us",
+      "brokenImages": 0,
+      "documentWidth": 375,
+      "title": "Contact Us | Dapper Detailing Pros",
+      "width": 390
+    }
+  ],
+  "menu": "Escape closes and returns focus to Menu",
+  "publicAPI": "Isolated build has no API proxy; unavailable/retry state verified, filters stay disabled",
+  "boundary": "No authenticated mutation or production-device/provider acceptance claimed"
+}

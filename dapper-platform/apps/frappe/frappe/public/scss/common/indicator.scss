@@ -1,0 +1,97 @@
+// ⚠️ DEPRECATED: `.indicator-pill` (and `.indicator-pill-right`) are deprecated
+// in favor of the Espresso badge component `.es-badge` (color via data-theme).
+// Kept for backward compatibility (third-party apps still emit indicator-pill).
+// NOT deprecated: the bare `.indicator` dot and `.indicator-pill-round` caret
+// have no es-badge equivalent and remain supported.
+.indicator,
+.indicator-pill,
+.indicator-pill-right,
+.indicator-pill-round {
+	display: inline-flex;
+	align-items: center;
+}
+
+.indicator::before {
+	content: "";
+	height: 8px;
+	width: 8px;
+	border-radius: var(--radius);
+	margin: 0px 8px 0px 0px;
+}
+
+.indicator-pill,
+.indicator-pill-right {
+	@include get_textstyle("sm", "regular");
+	padding: 4.5px 8px;
+	border-radius: var(--radius-full);
+	height: 20px;
+}
+
+.indicator-pill-round {
+	@include get_textstyle("sm", "regular");
+	justify-content: center;
+	border-radius: 50%;
+	width: 24px;
+	height: 24px;
+}
+
+.indicator-pill:not(.no-indicator-dot)::before,
+.indicator-pill-right::after {
+	content: "";
+	display: inline-table;
+	height: 6px;
+	width: 6px;
+	border-radius: 50%;
+	margin-right: 6px;
+	flex-shrink: 0;
+}
+
+.indicator-pill.no-margin::before,
+.indicator-pill-right.no-margin::after {
+	margin-right: 0px;
+}
+
+.indicator-pill-right::after {
+	margin: 0 0 0 4px;
+}
+
+// Legacy indicator colours (kept for backward compat — third-party apps still
+// emit orange/yellow/etc.) PLUS the Espresso theme names (amber/violet) that
+// Framework's migrated get_indicator defs now use.
+$indicator-colors: green, cyan, blue, orange, yellow, gray, grey, red, pink, darkgrey, purple,
+	light-blue, amber, violet;
+
+@each $color in $indicator-colors {
+	.indicator.#{"" + $color} {
+		&::before,
+		&::after {
+			background: var(--indicator-dot-#{$color});
+		}
+	}
+
+	.indicator-pill.#{"" + $color},
+	.indicator-pill-right.#{"" + $color},
+	.indicator-pill-round.#{"" + $color} {
+		background: var(--bg-#{$color});
+		color: var(--text-on-#{$color});
+
+		&::before,
+		&::after {
+			background: var(--text-on-#{$color});
+		}
+	}
+
+	.indicator {
+		--indicator-dot-#{"" + $color}: var(--text-on-#{$color});
+	}
+}
+
+.indicator.blink {
+	animation: blink 1s linear infinite;
+}
+
+@keyframes blink {
+	50% {
+		opacity: 0.5;
+	}
+}
