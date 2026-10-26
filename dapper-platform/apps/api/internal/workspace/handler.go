@@ -114,6 +114,8 @@ func NewHandlerWithFullServices(store *postgres.Store, origin string, invitation
 	registerJobRoutes(mux, store)
 	registerServiceRoutes(mux, store)
 	registerPublicContentRoutes(mux, store)
+	registerMapTileRoutes(mux, origin)
+	registerSquareAppCredentialRoutes(mux, store, origin)
 	registerCentralServiceLinkRoutes(mux, store)
 	registerStructureRoutes(mux, store)
 	registerSchedulingRoutes(mux, store)
@@ -144,7 +146,6 @@ func NewHandlerWithFullServices(store *postgres.Store, origin string, invitation
 	registerQuoteRoutes(mux, store, sqClient)
 	registerSquareIntentRoutes(mux, store)
 	registerSquareOAuthRoutes(mux, store, origin)
-	registerInvoiceNinjaRoutes(mux, store)
 	registerEmployeeSquareRoutes(mux, store)
 	registerEmployeeUploadRoutes(mux, store)
 	registerUploadReviewRoutes(mux, store)
@@ -277,6 +278,8 @@ func NewHandlerWithFullServices(store *postgres.Store, origin string, invitation
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
+		// Data changes as people work: never let a browser reuse an earlier answer (routes that serve files set their own caching).
+		w.Header().Set("Cache-Control", "no-store")
 		host, _, err := net.SplitHostPort(r.Host)
 		if err != nil || host != "127.0.0.1" {
 			reply(w, 403, map[string]string{"error": "Loopback host required"})

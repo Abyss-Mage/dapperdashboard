@@ -25,6 +25,31 @@ func registerSchedulingHoursRoutes(mux *http.ServeMux, store *postgres.Store) {
 		}
 		schedulingFailure(w, err)
 	}
+	// Slots: how many bookings the franchise can take at the same time. Creates the franchise's booking resource on first use.
+	mux.HandleFunc("PUT /api/v1/organizations/{organization}/locations/{location}/scheduling/slots", func(w http.ResponseWriter, r *http.Request) {
+		org, loc := r.PathValue("organization"), r.PathValue("location")
+		if !uuid(org) || !uuid(loc) {
+			reply(w, 400, map[string]string{"error": "Valid scope selectors required"})
+			return
+		}
+		var input struct {
+			Slots    int    `json:"slots"`
+			Timezone string `json:"timezone"`
+		}
+		if !decode(w, r, &input) {
+			return
+		}
+		scope := postgres.Scope{ActorID: requestSession(r).principalID, OrganizationID: org, LocationID: loc}
+		if err := store.SaveBookingSlots(r.Context(), scope, input.Slots, input.Timezone); err != nil {
+			if errors.Is(err, postgres.ErrReservationInput) {
+				reply(w, 422, map[string]any{"errors": map[string]string{"slots": "Enter a whole number of slots from 1 to 1000 and a valid time zone"}})
+				return
+			}
+			schedulingFailure(w, err)
+			return
+		}
+		reply(w, 200, map[string]any{"saved": true, "slots": input.Slots})
+	})
 	mux.HandleFunc("PUT "+base+"/hours", func(w http.ResponseWriter, r *http.Request) {
 		scope, resource, ok := scoped(w, r)
 		if !ok {

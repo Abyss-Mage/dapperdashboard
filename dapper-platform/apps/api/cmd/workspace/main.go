@@ -18,7 +18,7 @@ import (
 
 func main() {
 	if os.Getenv("DAPPER_WORKSPACE") != "1" {
-		log.Fatal("Set DAPPER_WORKSPACE=1 to start the Dapper application API")
+		log.Fatal("Do not run this service by hand. Start Dapper with scripts/start.ps1 or scripts/start.sh: until a completed .env exists, setup opens first")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -124,6 +124,10 @@ func main() {
 		"sandbox":    {Environment: "sandbox", ApplicationID: os.Getenv("DAPPER_SQUARE_SANDBOX_APPLICATION_ID"), Secret: os.Getenv("DAPPER_SQUARE_SANDBOX_APPLICATION_SECRET")},
 		"production": {Environment: "production", ApplicationID: os.Getenv("DAPPER_SQUARE_PRODUCTION_APPLICATION_ID"), Secret: os.Getenv("DAPPER_SQUARE_PRODUCTION_APPLICATION_SECRET")},
 	})
+	// Keys the owner saved in the dashboard replace the server's for that environment.
+	if err = store.LoadSquareAppCredentials(ctx); err != nil {
+		log.Print("Saved Square application keys could not be loaded")
+	}
 	go func() {
 		// Square asks for OAuth access tokens to be renewed every 7 days or less; check every 6 hours.
 		for {

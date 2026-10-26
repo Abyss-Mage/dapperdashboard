@@ -130,7 +130,7 @@ func (s *Server) check(w http.ResponseWriter, r *http.Request) {
 		items = append(items, checkItem{tool.bin + " is installed", err == nil, map[bool]string{true: p + " (" + tool.why + ")", false: "not found on PATH (" + tool.why + ")"}[err == nil]})
 	}
 	_, err := os.Stat(s.Home + "/dapper-platform/apps/web/.next/BUILD_ID")
-	items = append(items, checkItem{"Web application is built", err == nil, map[bool]string{true: "found", false: "not built yet: run npm ci && npm run build in dapper-platform/apps/web before starting"}[err == nil]})
+	items = append(items, checkItem{"Web application is built", err == nil, map[bool]string{true: "found", false: "not built yet: it is built automatically the first time you start Dapper (a few minutes)"}[err == nil]})
 	reply(w, 200, map[string]any{"ok": true, "items": items})
 }
 func detailOf(err error, ok string) string {
@@ -322,6 +322,6 @@ func (s *Server) install(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	s.finished = true
 	s.mu.Unlock()
-	reply(w, 200, map[string]any{"ok": true, "steps": steps, "loginUrl": origin.String() + "/dashboard", "startCommand": "dapper start"})
+	reply(w, 200, map[string]any{"ok": true, "steps": steps, "loginUrl": origin.String() + "/dashboard", "startCommand": "scripts/start.ps1 (Windows)  or  sh scripts/start.sh (macOS, Linux)"})
 	go func() { time.Sleep(1500 * time.Millisecond); close(s.Done) }()
 }

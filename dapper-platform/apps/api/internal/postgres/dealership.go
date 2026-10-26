@@ -41,6 +41,17 @@ type DealershipAccount struct {
 	CreatedAt        time.Time       `json:"createdAt"`
 	UpdatedAt        time.Time       `json:"updatedAt"`
 	Tags             []DealershipTag `json:"tags,omitempty"`
+	// PerCarRateCents is the agreed price per car in CAD cents before tax (nil = not set).
+	PerCarRateCents *int64              `json:"perCarRateCents"`
+	Contacts        []DealershipContact `json:"contacts"`
+}
+
+// DealershipContact is one contact person at a dealership; the first is the primary contact.
+type DealershipContact struct {
+	ID    string `json:"id,omitempty"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
+	Phone string `json:"phone"`
 }
 
 type DealershipTag struct {
@@ -87,27 +98,31 @@ type DealershipReport struct {
 }
 
 type CreateDealershipInput struct {
-	CustomerID       string `json:"customerId"`
-	AccountName      string `json:"accountName"`
-	AccountCode      string `json:"accountCode"`
-	AccountType      string `json:"accountType"` // 'dealership', 'fleet', 'commercial'
-	ContactName      string `json:"contactName"`
-	ContactEmail     string `json:"contactEmail"`
-	ContactPhone     string `json:"contactPhone,omitempty"`
-	BillingTermsDays int    `json:"billingTermsDays"`
-	TaxExempt        bool   `json:"taxExempt"`
-	Notes            string `json:"notes,omitempty"`
+	CustomerID       string              `json:"customerId"`
+	AccountName      string              `json:"accountName"`
+	AccountCode      string              `json:"accountCode"`
+	AccountType      string              `json:"accountType"` // 'dealership', 'fleet', 'commercial'
+	ContactName      string              `json:"contactName"`
+	ContactEmail     string              `json:"contactEmail"`
+	ContactPhone     string              `json:"contactPhone,omitempty"`
+	BillingTermsDays int                 `json:"billingTermsDays"`
+	TaxExempt        bool                `json:"taxExempt"`
+	Notes            string              `json:"notes,omitempty"`
+	PerCarRateCents  *int64              `json:"perCarRateCents"`
+	Contacts         []DealershipContact `json:"contacts"`
 }
 
 type UpdateDealershipInput struct {
-	AccountName      string `json:"accountName"`
-	ContactName      string `json:"contactName"`
-	ContactEmail     string `json:"contactEmail"`
-	ContactPhone     string `json:"contactPhone,omitempty"`
-	BillingTermsDays int    `json:"billingTermsDays"`
-	TaxExempt        bool   `json:"taxExempt"`
-	Active           bool   `json:"active"`
-	Notes            string `json:"notes,omitempty"`
+	AccountName      string              `json:"accountName"`
+	ContactName      string              `json:"contactName"`
+	ContactEmail     string              `json:"contactEmail"`
+	ContactPhone     string              `json:"contactPhone,omitempty"`
+	BillingTermsDays int                 `json:"billingTermsDays"`
+	TaxExempt        bool                `json:"taxExempt"`
+	Active           bool                `json:"active"`
+	Notes            string              `json:"notes,omitempty"`
+	PerCarRateCents  *int64              `json:"perCarRateCents"`
+	Contacts         []DealershipContact `json:"contacts"`
 }
 
 type CreateFleetIntakeInput struct {
@@ -122,7 +137,7 @@ type CreateFleetIntakeInput struct {
 	IntakeNotes        string  `json:"intakeNotes,omitempty"`
 }
 
-const dealershipSelectColumns = `d.id::text, d.organization_id::text, d.location_id::text, d.customer_id::text, d.account_name, d.account_code, d.account_type, d.contact_name, d.contact_email, d.contact_phone, d.billing_terms_days, d.tax_exempt, d.active, d.notes, d.created_at, d.updated_at`
+const dealershipSelectColumns = `d.id::text, d.organization_id::text, d.location_id::text, d.customer_id::text, d.account_name, d.account_code, d.account_type, d.contact_name, d.contact_email, d.contact_phone, d.billing_terms_days, d.tax_exempt, d.active, d.notes, d.created_at, d.updated_at, d.per_car_rate_cents`
 
 func scanDealership(row pgx.Row) (DealershipAccount, error) {
 	var a DealershipAccount
@@ -131,8 +146,9 @@ func scanDealership(row pgx.Row) (DealershipAccount, error) {
 		&a.AccountName, &a.AccountCode, &a.AccountType,
 		&a.ContactName, &a.ContactEmail, &a.ContactPhone,
 		&a.BillingTermsDays, &a.TaxExempt, &a.Active, &a.Notes,
-		&a.CreatedAt, &a.UpdatedAt,
+		&a.CreatedAt, &a.UpdatedAt, &a.PerCarRateCents,
 	)
+	a.Contacts = []DealershipContact{}
 	if errors.Is(err, pgx.ErrNoRows) {
 		return DealershipAccount{}, ErrDealershipNotFound
 	}
@@ -151,15 +167,18 @@ func (s *Store) CreateDealershipAccount(ctx context.Context, scope Scope, input 
 	input.ContactPhone = strings.TrimSpace(input.ContactPhone)
 	input.Notes = strings.TrimSpace(input.Notes)
 
-	if len(input.AccountName) < 2 || len(input.AccountName) > 160 ||
+	contacts, cerr := cleanDealershipContacts(input.Contacts, input.ContactName, input.ContactEmail, input.ContactPhone)
+	if cerr != nil || len(input.AccountName) < 2 || len(input.AccountName) > 160 ||
 		len(input.AccountCode) < 2 || len(input.AccountCode) > 32 ||
 		(input.AccountType != "dealership" && input.AccountType != "fleet" && input.AccountType != "commercial") ||
-		len(input.ContactName) < 2 || len(input.ContactName) > 120 ||
-		!emailRegex.MatchString(input.ContactEmail) ||
 		input.BillingTermsDays < 0 || input.BillingTermsDays > 180 ||
+		input.PerCarRateCents != nil && (*input.PerCarRateCents < 0 || *input.PerCarRateCents > 100000000000) ||
 		utf8.RuneCountInString(input.Notes) > 2000 {
 		return DealershipAccount{}, ErrDealershipInput
 	}
+	// Payment terms and tax exemption are not set per dealership; new accounts take the standard defaults.
+	input.ContactName, input.ContactEmail, input.ContactPhone = contacts[0].Name, contacts[0].Email, contacts[0].Phone
+	input.BillingTermsDays, input.TaxExempt = 30, false
 
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
 	if err != nil {
@@ -184,15 +203,15 @@ func (s *Store) CreateDealershipAccount(ctx context.Context, scope Scope, input 
 		INSERT INTO dealership_accounts(
 			organization_id, location_id, customer_id, account_name,
 			account_code, account_type, contact_name, contact_email,
-			contact_phone, billing_terms_days, tax_exempt, notes
+			contact_phone, billing_terms_days, tax_exempt, notes, per_car_rate_cents
 		) VALUES (
 			$1, $2, $3, $4,
 			$5, $6, $7, $8,
-			$9, $10, $11, $12
+			$9, $10, $11, $12, $13
 		) RETURNING id::text
 	`, scope.OrganizationID, scope.LocationID, input.CustomerID, input.AccountName,
 		input.AccountCode, input.AccountType, input.ContactName, input.ContactEmail,
-		input.ContactPhone, input.BillingTermsDays, input.TaxExempt, input.Notes).Scan(&accountID)
+		input.ContactPhone, input.BillingTermsDays, input.TaxExempt, input.Notes, input.PerCarRateCents).Scan(&accountID)
 	if err != nil {
 		if strings.Contains(err.Error(), "unique") || strings.Contains(err.Error(), "account_code") {
 			return DealershipAccount{}, ErrDealershipCodeConflict
@@ -200,6 +219,9 @@ func (s *Store) CreateDealershipAccount(ctx context.Context, scope Scope, input 
 		return DealershipAccount{}, err
 	}
 
+	if err = replaceDealershipContacts(ctx, tx, scope, accountID, contacts); err != nil {
+		return DealershipAccount{}, err
+	}
 	if err = jobAudit(ctx, tx, scope, "dealership.created", accountID); err != nil {
 		return DealershipAccount{}, err
 	}
@@ -208,6 +230,11 @@ func (s *Store) CreateDealershipAccount(ctx context.Context, scope Scope, input 
 	if err != nil {
 		return DealershipAccount{}, err
 	}
+	one := []DealershipAccount{acc}
+	if err = attachDealershipContacts(ctx, tx, scope, one); err != nil {
+		return DealershipAccount{}, err
+	}
+	acc = one[0]
 
 	return acc, tx.Commit(ctx)
 }
@@ -232,6 +259,13 @@ func (s *Store) GetDealershipAccount(ctx context.Context, scope Scope, id string
 		return DealershipAccount{}, err
 	}
 
+	{
+		one := []DealershipAccount{acc}
+		if err = attachDealershipContacts(ctx, tx, scope, one); err != nil {
+			return DealershipAccount{}, err
+		}
+		acc = one[0]
+	}
 	// Load tags
 	rows, err := tx.Query(ctx, `SELECT id::text, dealership_id::text, tag_name, tag_color, created_at FROM dealership_tags WHERE dealership_id=$1 ORDER BY tag_name`, id)
 	if err != nil {
@@ -276,6 +310,10 @@ func (s *Store) ListDealershipAccounts(ctx context.Context, scope Scope) ([]Deal
 		}
 		accounts = append(accounts, acc)
 	}
+	rows.Close()
+	if err = attachDealershipContacts(ctx, tx, scope, accounts); err != nil {
+		return nil, err
+	}
 
 	return accounts, tx.Commit(ctx)
 }
@@ -290,13 +328,13 @@ func (s *Store) UpdateDealershipAccount(ctx context.Context, scope Scope, id str
 	input.ContactPhone = strings.TrimSpace(input.ContactPhone)
 	input.Notes = strings.TrimSpace(input.Notes)
 
-	if len(input.AccountName) < 2 || len(input.AccountName) > 160 ||
-		len(input.ContactName) < 2 || len(input.ContactName) > 120 ||
-		!emailRegex.MatchString(input.ContactEmail) ||
-		input.BillingTermsDays < 0 || input.BillingTermsDays > 180 ||
+	contacts, cerr := cleanDealershipContacts(input.Contacts, input.ContactName, input.ContactEmail, input.ContactPhone)
+	if cerr != nil || len(input.AccountName) < 2 || len(input.AccountName) > 160 ||
+		input.PerCarRateCents != nil && (*input.PerCarRateCents < 0 || *input.PerCarRateCents > 100000000000) ||
 		utf8.RuneCountInString(input.Notes) > 2000 {
 		return DealershipAccount{}, ErrDealershipInput
 	}
+	input.ContactName, input.ContactEmail, input.ContactPhone = contacts[0].Name, contacts[0].Email, contacts[0].Phone
 
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
 	if err != nil {
@@ -314,15 +352,14 @@ func (s *Store) UpdateDealershipAccount(ctx context.Context, scope Scope, id str
 			contact_name = $5,
 			contact_email = $6,
 			contact_phone = $7,
-			billing_terms_days = $8,
-			tax_exempt = $9,
-			active = $10,
-			notes = $11,
+			active = $8,
+			notes = $9,
+			per_car_rate_cents = $10,
 			updated_at = now()
 		WHERE organization_id=$1 AND location_id=$2 AND id=$3
 	`, scope.OrganizationID, scope.LocationID, id, input.AccountName,
 		input.ContactName, input.ContactEmail, input.ContactPhone,
-		input.BillingTermsDays, input.TaxExempt, input.Active, input.Notes)
+		input.Active, input.Notes, input.PerCarRateCents)
 	if err != nil {
 		return DealershipAccount{}, err
 	}
@@ -330,6 +367,9 @@ func (s *Store) UpdateDealershipAccount(ctx context.Context, scope Scope, id str
 		return DealershipAccount{}, ErrDealershipNotFound
 	}
 
+	if err = replaceDealershipContacts(ctx, tx, scope, id, contacts); err != nil {
+		return DealershipAccount{}, err
+	}
 	if err = jobAudit(ctx, tx, scope, "dealership.updated", id); err != nil {
 		return DealershipAccount{}, err
 	}
@@ -338,6 +378,11 @@ func (s *Store) UpdateDealershipAccount(ctx context.Context, scope Scope, id str
 	if err != nil {
 		return DealershipAccount{}, err
 	}
+	one := []DealershipAccount{acc}
+	if err = attachDealershipContacts(ctx, tx, scope, one); err != nil {
+		return DealershipAccount{}, err
+	}
+	acc = one[0]
 
 	return acc, tx.Commit(ctx)
 }
@@ -745,4 +790,71 @@ func (s *Store) GetDealershipReport(ctx context.Context, scope Scope, dealership
 	}
 
 	return rep, tx.Commit(ctx)
+}
+
+// cleanDealershipContacts validates the contact people. When none are given the primary contact fields are used, so older callers
+// keep working. The first contact is returned as the primary one.
+func cleanDealershipContacts(list []DealershipContact, name, email, phone string) ([]DealershipContact, error) {
+	if len(list) == 0 && strings.TrimSpace(name) != "" {
+		list = []DealershipContact{{Name: name, Email: email, Phone: phone}}
+	}
+	if len(list) == 0 || len(list) > 10 {
+		return nil, ErrDealershipInput
+	}
+	out := make([]DealershipContact, 0, len(list))
+	for _, c := range list {
+		c.Name, c.Email, c.Phone = strings.TrimSpace(c.Name), strings.TrimSpace(c.Email), strings.TrimSpace(c.Phone)
+		if n := utf8.RuneCountInString(c.Name); n < 2 || n > 120 || len(c.Phone) > 40 || c.Email != "" && !emailRegex.MatchString(c.Email) {
+			return nil, ErrDealershipInput
+		}
+		out = append(out, c)
+	}
+	// The account's primary contact needs an email (invoices and notices go there).
+	if !emailRegex.MatchString(out[0].Email) {
+		return nil, ErrDealershipInput
+	}
+	return out, nil
+}
+
+func replaceDealershipContacts(ctx context.Context, tx pgx.Tx, scope Scope, id string, list []DealershipContact) error {
+	if _, err := tx.Exec(ctx, `DELETE FROM dealership_contacts WHERE organization_id=$1 AND location_id=$2 AND dealership_id=$3`, scope.OrganizationID, scope.LocationID, id); err != nil {
+		return err
+	}
+	for i, c := range list {
+		if _, err := tx.Exec(ctx, `INSERT INTO dealership_contacts(organization_id,location_id,dealership_id,position,name,email,phone) VALUES($1,$2,$3,$4,$5,$6,$7)`, scope.OrganizationID, scope.LocationID, id, i, c.Name, c.Email, c.Phone); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// attachDealershipContacts fills Contacts for accounts of one location with a single query.
+func attachDealershipContacts(ctx context.Context, tx pgx.Tx, scope Scope, accounts []DealershipAccount) error {
+	if len(accounts) == 0 {
+		return nil
+	}
+	rows, err := tx.Query(ctx, `SELECT id::text,dealership_id::text,name,email,phone FROM dealership_contacts WHERE organization_id=$1 AND location_id=$2 ORDER BY dealership_id,position,id`, scope.OrganizationID, scope.LocationID)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	by := map[string][]DealershipContact{}
+	for rows.Next() {
+		var d string
+		var c DealershipContact
+		if err = rows.Scan(&c.ID, &d, &c.Name, &c.Email, &c.Phone); err != nil {
+			return err
+		}
+		by[d] = append(by[d], c)
+	}
+	if err = rows.Err(); err != nil {
+		return err
+	}
+	for i := range accounts {
+		accounts[i].Contacts = by[accounts[i].ID]
+		if accounts[i].Contacts == nil {
+			accounts[i].Contacts = []DealershipContact{}
+		}
+	}
+	return nil
 }

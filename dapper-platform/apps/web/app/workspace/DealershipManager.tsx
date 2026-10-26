@@ -24,8 +24,6 @@ type DealershipAccount = {
   contactName: string;
   contactEmail: string;
   contactPhone: string;
-  billingTermsDays: number;
-  taxExempt: boolean;
   active: boolean;
   notes?: string;
   createdAt: string;
@@ -111,8 +109,6 @@ export default function DealershipManager({
   const [contactName, setContactName] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [contactPhone, setContactPhone] = useState('');
-  const [billingTermsDays, setBillingTermsDays] = useState(30);
-  const [taxExempt, setTaxExempt] = useState(false);
   const [notes, setNotes] = useState('');
 
   // Fleet Intake creation form
@@ -229,8 +225,6 @@ export default function DealershipManager({
           contactName,
           contactEmail,
           contactPhone,
-          billingTermsDays: Number(billingTermsDays),
-          taxExempt,
           notes,
         }),
       });
@@ -483,26 +477,6 @@ export default function DealershipManager({
                 onChange={(e) => setContactPhone(e.target.value)}
               />
             </label>
-            <label className="form-field">
-              Payment Terms (Days)
-              <NumberField
-                min={0}
-                max={180}
-                value={billingTermsDays}
-                onChange={(e) => setBillingTermsDays(Number(e.target.value))}
-                required
-              />
-            </label>
-          </div>
-          <div style={{ margin: '0.75rem 0' }}>
-            <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={taxExempt}
-                onChange={(e) => setTaxExempt(e.target.checked)}
-              />
-              <span>Tax Exempt (Commercial Wholesale Agreement)</span>
-            </label>
           </div>
           <label className="form-field">
             Account Notes
@@ -591,8 +565,6 @@ export default function DealershipManager({
                 <div><strong>Contact:</strong> {selectedAccount.contactName}</div>
                 <div><strong>Email:</strong> {selectedAccount.contactEmail}</div>
                 <div><strong>Phone:</strong> {selectedAccount.contactPhone || 'N/A'}</div>
-                <div><strong>Terms:</strong> Net {selectedAccount.billingTermsDays} Days</div>
-                <div><strong>Tax Status:</strong> {selectedAccount.taxExempt ? 'Wholesale Exempt' : 'Taxable (HST)'}</div>
               </div>
 
               {selectedAccount.notes && (

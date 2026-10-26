@@ -83,7 +83,7 @@ export default function SquareMerchantPanel({ organizationId, locationId, canMan
       <div className={glass.fields}>
         <label className={glass.field}>Square account type<Select disabled={busy} value={env} onChange={(e) => setEnv(e.target.value as Env)} style={{ minHeight: 46, borderRadius: 14, padding: '0 12px', font: 'inherit' }}><option value="sandbox">{ENV_LABEL.sandbox}</option><option value="production">{ENV_LABEL.production}</option></Select></label>
       </div>
-      {!available[env] && <p className={`${glass.notice} ${glass.warn}`}>Connecting a {env === 'production' ? 'live' : 'test'} Square account is not set up on the server yet. Run scripts/set-square-app-secret.ps1{env === 'production' ? ' -Environment production' : ''} once and restart the application.</p>}
+      {!available[env] && <p className={`${glass.notice} ${glass.warn}`}>The {env === 'production' ? 'live' : 'testing'} Square keys have not been added yet. Add the Application ID and secret under “Online payment keys” above.</p>}
       {connection ? <>
         <p className={glass.notice}>Connected to Square account {connection.merchantId} on {new Date(connection.connectedAt).toLocaleDateString()}. The connection renews itself.</p>
         {!places ? <p role="status" className={glass.lede}>Loading this account&rsquo;s Square locations…</p> : <>

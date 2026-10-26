@@ -104,6 +104,15 @@ export default function CustomerManager({ base, canCreate, canDelete, onChanged 
     return (items ?? []).filter((c) => !q || c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q) || c.phone.toLowerCase().includes(q));
   }, [items, query]);
 
+  // CSV of what is on screen (respects the search). Cells that start like a formula are prefixed so spreadsheets do not run them.
+  function exportCsv() {
+    const lead = ['=', '+', '-', '@', String.fromCharCode(9), String.fromCharCode(13)];
+    const cell = (v: string | number) => { let t = String(v ?? ''); if (lead.includes(t.charAt(0))) t = "'" + t; return '"' + t.replaceAll('"', '""') + '"'; };
+    const rows = [['Name', 'Email', 'Phone', 'Customer since', 'Vehicles', 'Bookings', 'Invoices'], ...visible.map((c) => [c.name, c.email, c.phone, c.createdAt.slice(0, 10), c.vehicles, c.bookings, c.invoices])];
+    const blob = new Blob([String.fromCharCode(0xfeff) + rows.map((r) => r.map(cell).join(',')).join(String.fromCharCode(13, 10))], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `customers-${new Date().toISOString().slice(0, 10)}.csv`; a.click(); URL.revokeObjectURL(a.href);
+  }
+
   const section = (title: string, list: Line[], render: (l: Line) => string) => (
     <section style={{ marginTop: 18 }}>
       <h3 style={{ fontSize: 15, margin: '0 0 6px' }}>{title} <span className={styles.personSub}>({list.length})</span></h3>
@@ -118,7 +127,10 @@ export default function CustomerManager({ base, canCreate, canDelete, onChanged 
           <h2 className={styles.setupTitle} style={{ fontSize: 20, margin: 0 }}>Customers</h2>
           <p className={styles.personSub}>Click a name to see their vehicles, bookings, jobs and invoices. Each email and phone number belongs to one customer.</p>
         </div>
-        {canCreate && !editing && <button type="button" className="primary" onClick={() => edit('new')}>New customer</button>}
+        <div className={styles.svcActions}>
+          <button type="button" className="secondary" disabled={!visible.length} onClick={exportCsv}>Export</button>
+          {canCreate && !editing && <button type="button" className="primary" onClick={() => edit('new')}>New customer</button>}
+        </div>
       </div>
       {error && <p role="alert" className="field-error">{error}</p>}
       {notice && <p role="status" className={styles.status}>{notice}</p>}
@@ -149,7 +161,7 @@ export default function CustomerManager({ base, canCreate, canDelete, onChanged 
       <ul className={styles.people}>
         {visible.map((c) => (
           <li key={c.id} className={styles.person} style={{ gridTemplateColumns: 'minmax(0,1fr) auto', alignItems: 'center' }}>
-            <button type="button" className={styles.personButton} onClick={() => setOpen(c)} aria-label={`Open ${c.name}`}>
+            <button type="button" className={styles.personButton} onClick={() => setOpen(c)} aria-label={`Open ${c.name}`} style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 14, rowGap: 2 }}>
               <strong className={styles.personName}>{c.name}</strong>
               <span className={styles.personSub}>{c.email || 'No email'}{c.phone ? ` · ${c.phone}` : ''}</span>
             </button>

@@ -78,6 +78,7 @@ func verifyOneInvoicePerBooking(t *testing.T, ctx context.Context, s *Store, a S
 		for _, q := range []string{
 			`DELETE FROM invoice_items WHERE invoice_id IN (SELECT id FROM invoices WHERE booking_id=$1)`,
 			`DELETE FROM invoices WHERE booking_id=$1`,
+			`DELETE FROM employee_booking_worksites WHERE booking_id=$1`,
 			`DELETE FROM bookings WHERE id=$1`,
 		} {
 			if _, err := s.pool.Exec(ctx, q, booking.ID); err != nil {

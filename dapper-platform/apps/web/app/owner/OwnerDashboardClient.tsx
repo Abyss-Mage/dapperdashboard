@@ -12,16 +12,17 @@ import PeopleAccess from './PeopleAccess';
 import EmployeeUploadsReview from '../workspace/EmployeeUploadsReview';
 import CustomerManager from './CustomerManager';
 import StaffBookingWizard from '../workspace/StaffBookingWizard';
-import CustomerBookingRequestList from '../account/CustomerBookingRequestList';
 import InvoiceManager from '../workspace/InvoiceManager';
 import SOPCompliancePanel from '../workspace/SOPCompliancePanel';
 import InvoiceTemplateEditor from '../workspace/InvoiceTemplateEditor';
 import MyAccount from './MyAccount';
 import SquareMerchantPanel from '../workspace/SquareMerchantPanel';
+import SquareKeys from './SquareKeys';
 import { MfaSetup } from '../workspace/AccountSecurity';
 import QuoteManager from '../workspace/QuoteManager';
 import MarketingPopupManager from '../workspace/MarketingPopupManager';
 import BookingCalendar from './BookingCalendar';
+import AppointmentsList from './AppointmentsList';
 import StaffHours from './StaffHours';
 import AvailabilityReview from './AvailabilityReview';
 import Dealerships from './Dealerships';
@@ -47,20 +48,9 @@ type Org = {
   actions: string[];
 };
 
-type Job = {
-  id: string;
-  serviceName: string;
-  description: string;
-  status: string;
-  completedBy: string | null;
-  reservationId?: string | null;
-  addons: { serviceId: string; name: string }[];
-  contributors: { principalId: string; startedAt: string }[];
-};
-
 // Every section is its own page with its own address (/owner#customers), so one screen does one job.
 type TabId =
-  | 'overview' | 'calendar' | 'new-booking' | 'requests' | 'customers' | 'jobs' | 'staff-hours' | 'availability' | 'photos'
+  | 'overview' | 'calendar' | 'new-booking' | 'requests' | 'customers' | 'staff-hours' | 'availability' | 'dealership-tags' | 'customer-cars'
   | 'invoices' | 'quotes' | 'dealerships' | 'marketing'
   | 'team' | 'franchises' | 'services' | 'hours' | 'taxes' | 'sop' | 'invoice-template' | 'payments'
   | 'account';
@@ -79,14 +69,14 @@ const org = (c: Ctx, ...actions: string[]) => actions.some((a) => c.orgActions.i
 
 const TABS: TabDefinition[] = [
   { id: 'overview', label: 'Overview', icon: 'overview', description: 'How the business is doing', show: () => true },
-  { id: 'calendar', label: 'Bookings', icon: 'calendar', description: 'Who is booked and when', show: (c) => has(c, 'bookings.read') },
+  { id: 'calendar', label: 'Calendar', icon: 'calendar', description: 'Who is booked and when', show: (c) => has(c, 'bookings.read') },
   { id: 'new-booking', label: 'New booking', icon: 'calendar', description: 'Book a walk-in or a phone call', show: (c) => ['bookings.create', 'scheduling.reserve', 'customers.read', 'vehicles.read'].every((a) => c.scope?.actions.includes(a)) },
-  { id: 'requests', label: 'Online requests', icon: 'calendar', description: 'Requests sent from the website', show: (c) => has(c, 'bookings.read') },
+  { id: 'requests', label: 'Appointments', icon: 'calendar', description: 'Every appointment, online or booked by your team', show: (c) => has(c, 'bookings.read') },
   { id: 'customers', label: 'Customers', icon: 'customers', description: 'Your customers', show: (c) => has(c, 'customers.read') },
-  { id: 'jobs', label: 'Jobs', icon: 'work', description: 'Work the team is doing or has finished', show: (c) => has(c, 'jobs.read') },
   { id: 'staff-hours', label: 'Staff hours', icon: 'work', description: 'Where your team is and how long they worked', show: (c) => has(c, 'attendance.read') },
   { id: 'availability', label: 'Staff availability', icon: 'work', description: 'Approve or reject the times staff can work', show: (c) => has(c, 'attendance.manage') || org(c, 'access.manage') },
-  { id: 'photos', label: 'Staff photos', icon: 'work', description: 'Before and after photos from the team', show: (c) => has(c, 'attendance.read') },
+  { id: 'dealership-tags', label: 'Dealership tags', icon: 'dealership', description: 'Key-tag photos your team posted at dealerships', show: (c) => has(c, 'attendance.read') },
+  { id: 'customer-cars', label: 'Customer cars', icon: 'work', description: 'Before and after photos of customers\' cars', show: (c) => has(c, 'attendance.read') },
   { id: 'invoices', label: 'Invoices', icon: 'finance', description: 'Invoices and payments', show: (c) => has(c, 'invoices.read') },
   { id: 'quotes', label: 'Quotes', icon: 'finance', description: 'Price quotes for customers', show: (c) => has(c, 'quotes.read') },
   { id: 'dealerships', label: 'Dealerships', icon: 'dealership', description: 'Car dealerships you work with', show: (c) => has(c, 'dealership.read') },
@@ -103,8 +93,8 @@ const TABS: TabDefinition[] = [
 ];
 
 const NAV_GROUPS: { label: string; ids: TabId[] }[] = [
-  { label: 'Every day', ids: ['overview', 'calendar', 'new-booking', 'requests', 'customers', 'jobs'] },
-  { label: 'Team', ids: ['staff-hours', 'availability', 'photos', 'sop'] },
+  { label: 'Every day', ids: ['overview', 'calendar', 'new-booking', 'requests', 'customers'] },
+  { label: 'Team', ids: ['staff-hours', 'availability', 'dealership-tags', 'customer-cars', 'sop'] },
   { label: 'Money', ids: ['invoices', 'quotes', 'payments', 'dealerships', 'marketing'] },
   { label: 'Settings', ids: ['services', 'hours', 'taxes', 'franchises', 'team', 'invoice-template'] },
 ];
@@ -139,7 +129,6 @@ export default function OwnerDashboardClient() {
   // The franchise's own time zone (from its booking calendar), so times read the same as in the shop.
   const [franchiseZone, setFranchiseZone] = useState('');
 
-  const [jobs, setJobs] = useState<Job[]>([]);
   const [customerRevision, setCustomerRevision] = useState(0);
   const [accessRevision, setAccessRevision] = useState(0);
   const [mfaBlocked, setMfaBlocked] = useState(false);
@@ -209,29 +198,6 @@ export default function OwnerDashboardClient() {
     fetch(`${base}/scheduling/resources`, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).then((b) => { if (live && b?.items?.[0]?.timezone) setFranchiseZone(b.items[0].timezone); }).catch(() => undefined);
     return () => { live = false; };
   }, [base, scope]);
-
-  const loadJobs = useCallback(async () => {
-    if (!base) {
-      setJobs([]);
-      return;
-    }
-    try {
-      const r = await fetch(base + '/jobs');
-      if (!r.ok) return;
-      const body = await r.json();
-      setJobs(body.jobs ?? []);
-    } catch {
-      // Non-fatal background fetch
-    }
-  }, [base]);
-
-  useEffect(() => {
-    if (scope?.actions.includes('jobs.read')) {
-      loadJobs();
-    } else {
-      setJobs([]);
-    }
-  }, [scope, loadJobs]);
 
   useEffect(() => {
     if (!mobileOpen) return;
@@ -307,53 +273,8 @@ export default function OwnerDashboardClient() {
       setPrincipal('');
       setLocations([]);
       setOrganizations([]);
-      setJobs([]);
     } catch {
       setError('Could not sign out. Retry before leaving this device.');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function contribute(id: string) {
-    if (!base) return;
-    setBusy(true);
-    setError('');
-    try {
-      const r = await fetch(base + '/jobs/' + id + '/contribute', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: '{}',
-      });
-      if (!r.ok) {
-        const body = await r.json();
-        setError(body.error ?? 'Could not join this work');
-      }
-      await loadJobs();
-    } catch {
-      setError('Could not confirm contribution. Refresh before retrying.');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function complete(id: string) {
-    if (!base) return;
-    setBusy(true);
-    setError('');
-    try {
-      const r = await fetch(base + '/jobs/' + id + '/complete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: '{}',
-      });
-      if (!r.ok) {
-        const body = await r.json();
-        setError(body.error ?? 'Could not complete this job');
-      }
-      await loadJobs();
-    } catch {
-      setError('Could not reach workspace. Refresh to check completion.');
     } finally {
       setBusy(false);
     }
@@ -610,49 +531,26 @@ export default function OwnerDashboardClient() {
           )}
 
           {activeTab === 'overview' && scope && (
-            <OwnerOverview base={base} location={scope.locationName} organizationName={scope.organizationName} onNavigate={(tab) => goTo(isTab(tab) ? tab : tab === 'operations' ? 'jobs' : tab === 'finance' ? 'invoices' : tab === 'bookings' ? 'calendar' : 'overview')} />
+            <OwnerOverview base={base} location={scope.locationName} organizationName={scope.organizationName} onNavigate={(tab) => goTo(isTab(tab) ? tab : tab === 'operations' ? 'calendar' : tab === 'finance' ? 'invoices' : tab === 'bookings' ? 'calendar' : 'overview')} />
           )}
           {hasTabPermission && scope && <>
             {activeTab === 'calendar' && <BookingCalendar key={base} base={base} timezone={timezone} calendarLink={`${base}/calendar.ics`} />}
             {activeTab === 'new-booking' && <StaffBookingWizard mode="master" base={base} timezone={timezone} onBooked={refresh} />}
-            {activeTab === 'requests' && <CustomerBookingRequestList endpoint={`${base}/customer-booking-requests`} staff />}
+            {activeTab === 'requests' && <AppointmentsList key={base} base={base} timezone={timezone} />}
             {activeTab === 'customers' && <CustomerManager key={base} base={base} canCreate={scope.actions.includes('customers.create')} canDelete={scope.actions.includes('customer_accounts.manage')} onChanged={() => setCustomerRevision((v) => v + 1)} />}
-            {activeTab === 'jobs' && (
-              <section className="panel detail-card">
-                <h2>Jobs</h2>
-                <p>Work the team is doing or has finished.</p>
-                <div className="management-list">
-                  {jobs.map((job) => (
-                    <article key={job.id}>
-                      <div>
-                        <strong>{job.serviceName}</strong>
-                        <small>{job.description}</small>
-                        {job.addons?.length > 0 && <small>Extras: {job.addons.map((a) => a.name).join(', ')}</small>}
-                        <small>{job.status === 'completed' ? 'Finished' : 'Open for the team'}{job.contributors?.length ? ` · ${job.contributors.length} working on it` : ''}</small>
-                      </div>
-                      {scope.actions.includes('jobs.contribute') && job.status === 'available' && (
-                        <button className="secondary" disabled={busy || job.contributors?.some((p) => p.principalId === principal)} onClick={() => contribute(job.id)}>
-                          {job.contributors?.some((p) => p.principalId === principal) ? 'You are on it' : 'Join this job'}
-                        </button>
-                      )}
-                      {scope.actions.includes('jobs.complete') && (
-                        <button className="primary" disabled={busy || job.status === 'completed'} onClick={() => complete(job.id)}>
-                          {job.status === 'completed' ? 'Finished' : 'Mark finished'}
-                        </button>
-                      )}
-                    </article>
-                  ))}
-                  {!jobs.length && <p>No jobs yet.</p>}
-                </div>
-              </section>
-            )}
             {activeTab === 'staff-hours' && <StaffHours key={base} base={base} timezone={timezone} />}
             {activeTab === 'availability' && <AvailabilityReview key={scope.organizationId} organizationId={scope.organizationId} locationId={scope.locationId} />}
-            {activeTab === 'photos' && <EmployeeUploadsReview base={base} canSeeLog={scope.actions.includes('attendance.manage')} />}
+            {activeTab === 'dealership-tags' && <EmployeeUploadsReview key={'tags-' + base} base={base} fixedKind="dealership_tag" title="Dealership tags" canSeeLog={scope.actions.includes('attendance.manage')} />}
+            {activeTab === 'customer-cars' && <EmployeeUploadsReview key={'cars-' + base} base={base} fixedKind="customer_car" title="Customer cars" canSeeLog={scope.actions.includes('attendance.manage')} />}
             {activeTab === 'sop' && <SOPCompliancePanel base={base} canAcknowledge={scope.actions.includes('sop.acknowledge')} />}
             {activeTab === 'invoices' && <InvoiceManager base={base} canCreate={scope.actions.includes('invoices.create')} canManage={scope.actions.includes('invoices.manage')} canRecordPayment={scope.actions.includes('payments.record')} canIssue={scope.actions.includes('invoices.issue')} />}
             {activeTab === 'quotes' && <QuoteManager organizationId={scope.organizationId} locationId={scope.locationId} canCreate={scope.actions.includes('quotes.create')} canManage={scope.actions.includes('quotes.manage')} canIssue={scope.actions.includes('quotes.issue')} />}
-            {activeTab === 'payments' && <SquareMerchantPanel organizationId={scope.organizationId} locationId={scope.locationId} canManage />}
+            {activeTab === 'payments' && (
+              <div className={styles.stack}>
+                <SquareKeys organizationId={scope.organizationId} />
+                <SquareMerchantPanel organizationId={scope.organizationId} locationId={scope.locationId} canManage />
+              </div>
+            )}
             {activeTab === 'dealerships' && <Dealerships key={base} organizationId={scope.organizationId} locationId={scope.locationId} canManage={scope.actions.includes('dealership.manage')} canConfigure={orgActions.includes('invoices.configure')} />}
             {activeTab === 'marketing' && <MarketingPopupManager key={'marketing-' + base} organizationId={scope.organizationId} locationId={scope.locationId} canManage={scope.actions.includes('marketing.manage')} />}
             {activeTab === 'hours' && <OpeningHours key={base} base={base} franchiseName={scope.locationName} canManage={scope.actions.includes('scheduling.manage')} />}

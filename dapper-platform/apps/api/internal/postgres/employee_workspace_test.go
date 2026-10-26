@@ -185,6 +185,10 @@ func TestEmployeeWorkspacePersistence(t *testing.T) {
 		return v
 	}
 	visible, hidden, unlinked := makeBooking("Synthetic A booking"), makeBooking("Synthetic B booking"), makeBooking("Synthetic unlinked booking")
+	// New bookings are linked to the site automatically; this one is taken back out so the checks below cover a booking staff cannot see.
+	if _, err = pool.Exec(ctx, `DELETE FROM employee_booking_worksites WHERE booking_id=$1`, unlinked.ID); err != nil {
+		t.Fatal(err)
+	}
 	if err = s.LinkEmployeeBooking(ctx, owner, org, loc, a, visible.ID); err != nil {
 		t.Fatal(err)
 	}

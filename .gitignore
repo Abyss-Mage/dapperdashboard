@@ -21,3 +21,9 @@
 
 # Installer output (database password, SMTP password, keys, certificate): never commit
 /.dapper/
+
+# Local configuration written by setup (secrets); the example is committed
+/.env
+/.env.*
+!/.env.example
+**/.cache/

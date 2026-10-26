@@ -27,7 +27,8 @@ func (s *Store) ImportCentralService(ctx context.Context, scope Scope, centralID
 	var name, kind string
 	var centralParent, parent *string
 	var price *int64
-	err = tx.QueryRow(ctx, `SELECT name,kind,parent_id::text,price_cents FROM central_catalog_services WHERE organization_id=$1 AND id=$2 AND version=$3 AND NOT archived FOR SHARE`, scope.OrganizationID, centralID, version).Scan(&name, &kind, &centralParent, &price)
+	var duration *int
+	err = tx.QueryRow(ctx, `SELECT name,kind,parent_id::text,price_cents,duration_minutes FROM central_catalog_services WHERE organization_id=$1 AND id=$2 AND version=$3 AND NOT archived FOR SHARE`, scope.OrganizationID, centralID, version).Scan(&name, &kind, &centralParent, &price, &duration)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return CatalogService{}, ErrServiceConflict
 	}
@@ -45,7 +46,7 @@ func (s *Store) ImportCentralService(ctx context.Context, scope Scope, centralID
 		}
 		parent = &id
 	}
-	service, err := scanService(tx.QueryRow(ctx, `INSERT INTO catalog_services(organization_id,location_id,name,kind,parent_id,central_service_id,price_cents) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT DO NOTHING RETURNING `+serviceColumns, scope.OrganizationID, scope.LocationID, name, kind, parent, centralID, price))
+	service, err := scanService(tx.QueryRow(ctx, `INSERT INTO catalog_services(organization_id,location_id,name,kind,parent_id,central_service_id,price_cents,duration_minutes) VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT DO NOTHING RETURNING `+serviceColumns, scope.OrganizationID, scope.LocationID, name, kind, parent, centralID, price, duration))
 	if errors.Is(err, pgx.ErrNoRows) {
 		// Central services are switched on at every franchise automatically, so it may already be here: return that one.
 		existing, e := scanService(tx.QueryRow(ctx, `SELECT `+serviceColumns+` FROM catalog_services WHERE organization_id=$1 AND location_id=$2 AND central_service_id=$3 AND NOT archived`, scope.OrganizationID, scope.LocationID, centralID))

@@ -71,11 +71,16 @@ func registerServiceRoutes(mux *http.ServeMux, store *postgres.Store) {
 				Kind     string  `json:"kind"`
 				ParentID *string `json:"parentId"`
 				Version  int     `json:"version"`
+				// Time to complete, in minutes (null or absent = not set).
+				DurationMinutes *int `json:"durationMinutes"`
 			}
 			if !decode(w, r, &input) {
 				return
 			}
 			fields := map[string]string{}
+			if input.DurationMinutes != nil && (*input.DurationMinutes < 1 || *input.DurationMinutes > 10080) {
+				fields["durationMinutes"] = "Enter the time to complete in minutes (1 to 10080)"
+			}
 			if n := utf8.RuneCountInString(strings.TrimSpace(input.Name)); n < 2 || n > 120 {
 				fields["name"] = "Enter a service name between 2 and 120 characters"
 			}
@@ -92,7 +97,7 @@ func registerServiceRoutes(mux *http.ServeMux, store *postgres.Store) {
 				reply(w, 422, map[string]any{"errors": fields})
 				return
 			}
-			service, err := store.SaveService(r.Context(), scope, postgres.CatalogService{ID: id, Name: input.Name, Kind: input.Kind, ParentID: input.ParentID, Version: input.Version})
+			service, err := store.SaveService(r.Context(), scope, postgres.CatalogService{ID: id, Name: input.Name, Kind: input.Kind, ParentID: input.ParentID, Version: input.Version, DurationMinutes: input.DurationMinutes})
 			if err != nil {
 				serviceFailure(w, err)
 				return

@@ -5,6 +5,9 @@ import Select from '../GlassSelect';
 import { DateTimePicker } from '../Pickers';
 import { askConfirm } from '../confirm';
 import NumberField from '../NumberField';
+import form from './quote.module.css';
+
+type Req = { id: string; customerId: string; vehicleId: string; customerName: string; status: string; requestedStart: string; customerNote: string; vehicle?: { description?: string; identifier?: string }; offer?: { title?: string } };
 
 type QuoteItem = {
   id: string;
@@ -101,6 +104,7 @@ export default function QuoteManager({
     { description: 'Service Detail', quantity: 1, unitPriceDollars: '150.00' },
   ]);
   const [submitting, setSubmitting] = useState(false);
+  const [requests, setRequests] = useState<Req[] | null>(null);
 
   // Fulfill modal states
   const [fulfillingQuote, setFulfillingQuote] = useState<Quote | null>(null);
@@ -135,6 +139,26 @@ export default function QuoteManager({
   useEffect(() => {
     if (error && !loading) errorRef.current?.focus();
   }, [error, loading]);
+
+  // The booking requests a quotation can be written for. Choosing one fills in the customer and vehicle.
+  useEffect(() => {
+    if (!isFormOpen) return;
+    let live = true;
+    fetch(`/api/v1/organizations/${organizationId}/locations/${locationId}/customer-booking-requests`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : { items: [] }))
+      .then((b) => { if (live) setRequests((b.items ?? []) as Req[]); })
+      .catch(() => { if (live) setRequests([]); });
+    return () => { live = false; };
+  }, [isFormOpen, organizationId, locationId]);
+  const pickRequest = (id: string) => {
+    setFormRequestId(id);
+    const r = (requests ?? []).find((x) => x.id === id);
+    setFormCustomerId(r?.customerId ?? ''); setFormVehicleId(r?.vehicleId ?? '');
+  };
+  const pickedRequest = (requests ?? []).find((x) => x.id === formRequestId);
+  const lineCents = (l: LineDraft) => Math.round((Number(l.unitPriceDollars) || 0) * 100) * (Number(l.quantity) || 0);
+  const subtotalCents = lines.reduce((n, l) => n + lineCents(l), 0);
+  const taxCents = Math.round((Number(formTaxDollars) || 0) * 100), depositCents = Math.round((Number(formDepositDollars) || 0) * 100);
 
   function resetForm() {
     setIsFormOpen(false);
@@ -348,163 +372,66 @@ export default function QuoteManager({
 
       {/* Create / Edit Form Modal */}
       {isFormOpen && (
-        <form onSubmit={handleSaveQuote} style={{ border: '1px solid var(--border, #f0dcde)', padding: '1rem', borderRadius: '4px', margin: '1rem 0' }}>
-          <h4>{editingQuoteId ? `Edit Draft (${editingVersion})` : 'New Quotation Draft'}</h4>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem', marginBottom: '1rem' }}>
-            <div>
-              <label htmlFor="q-req-id">Booking Request ID *</label>
-              <input
-                id="q-req-id"
-                required
-                disabled={!!editingQuoteId}
-                value={formRequestId}
-                onChange={(e) => setFormRequestId(e.target.value)}
-                placeholder="UUID of customer request"
-              />
-            </div>
-            <div>
-              <label htmlFor="q-cust-id">Customer ID *</label>
-              <input
-                id="q-cust-id"
-                required
-                disabled={!!editingQuoteId}
-                value={formCustomerId}
-                onChange={(e) => setFormCustomerId(e.target.value)}
-                placeholder="Customer UUID"
-              />
-            </div>
-            <div>
-              <label htmlFor="q-veh-id">Vehicle / Equipment ID *</label>
-              <input
-                id="q-veh-id"
-                required
-                disabled={!!editingQuoteId}
-                value={formVehicleId}
-                onChange={(e) => setFormVehicleId(e.target.value)}
-                placeholder="Vehicle UUID"
-              />
-            </div>
-            <div>
-              <label htmlFor="q-expires">Expiry (Optional)</label>
-              <DateTimePicker
-                id="q-expires"
-                value={formExpiresAt}
-                onChange={(e) => setFormExpiresAt(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <h5>Line Items</h5>
-          {lines.map((line, idx) => (
-            <div key={idx} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
-              <input
-                style={{ flex: 3 }}
-                required
-                placeholder="Service or part description"
-                value={line.description}
-                onChange={(e) => {
-                  const updated = [...lines];
-                  updated[idx].description = e.target.value;
-                  setLines(updated);
-                }}
-              />
-              <NumberField
-                style={{ flex: 1, minWidth: '60px' }}
-                min="1"
-                placeholder="Qty"
-                value={line.quantity}
-                onChange={(e) => {
-                  const updated = [...lines];
-                  updated[idx].quantity = parseInt(e.target.value, 10) || 1;
-                  setLines(updated);
-                }}
-              />
-              <NumberField
-                style={{ flex: 1.5, minWidth: '90px' }}
-                step="0.01"
-                min="0"
-                placeholder="Unit Price ($)"
-                value={line.unitPriceDollars}
-                onChange={(e) => {
-                  const updated = [...lines];
-                  updated[idx].unitPriceDollars = e.target.value;
-                  setLines(updated);
-                }}
-              />
-              {lines.length > 1 && (
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={() => setLines(lines.filter((_, i) => i !== idx))}
-                  style={{ padding: '0.3rem 0.5rem' }}
-                >
-                  ✕
-                </button>
+        <form onSubmit={handleSaveQuote} className={form.form}>
+          <h4>{editingQuoteId ? `Edit draft (revision ${editingVersion})` : 'New quotation'}</h4>
+          <div className={form.grid}>
+            <label className={form.field} htmlFor="q-req-id">Booking request
+              {editingQuoteId ? (
+                <input id="q-req-id" value={formRequestId} disabled readOnly />
+              ) : (
+                <Select id="q-req-id" required value={formRequestId} onChange={(e) => pickRequest(e.target.value)}>
+                  <option value="">{requests === null ? 'Loading requests…' : requests.length ? 'Choose the request this quote is for' : 'No booking requests yet'}</option>
+                  {(requests ?? []).map((r) => <option key={r.id} value={r.id}>{r.customerName} · {r.offer?.title ?? 'Request'} · {new Date(r.requestedStart).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' })}</option>)}
+                </Select>
               )}
+              <span className={form.hint}>A quotation answers a customer's online booking request.</span>
+            </label>
+            <label className={form.field} htmlFor="q-expires">Valid until (optional)
+              <DateTimePicker id="q-expires" value={formExpiresAt} onChange={(e) => setFormExpiresAt(e.target.value)} />
+            </label>
+          </div>
+          {pickedRequest && !editingQuoteId && (
+            <div className={form.picked}>
+              <strong>{pickedRequest.customerName}</strong>
+              <span>{[pickedRequest.vehicle?.description, pickedRequest.vehicle?.identifier].filter(Boolean).join(' · ') || 'Vehicle on the request'}</span>
+              {pickedRequest.customerNote && <span>“{pickedRequest.customerNote}”</span>}
             </div>
-          ))}
+          )}
 
-          <button
-            type="button"
-            className="secondary"
-            style={{ marginBottom: '1rem', fontSize: '0.85rem' }}
-            onClick={() => setLines([...lines, { description: '', quantity: 1, unitPriceDollars: '0.00' }])}
-          >
-            + Add Line Item
-          </button>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-            <div>
-              <label htmlFor="q-tax">Tax ($)</label>
-              <NumberField
-                id="q-tax"
-                step="0.01"
-                min="0"
-                value={formTaxDollars}
-                onChange={(e) => setFormTaxDollars(e.target.value)}
-              />
-            </div>
-            <div>
-              <label htmlFor="q-deposit">Deposit Required ($)</label>
-              <NumberField
-                id="q-deposit"
-                step="0.01"
-                min="0"
-                value={formDepositDollars}
-                onChange={(e) => setFormDepositDollars(e.target.value)}
-              />
-            </div>
+          <div className={form.lines}>
+            <strong>Line items</strong>
+            <div className={form.lineHead} aria-hidden="true"><span>Description</span><span>Qty</span><span>Unit price ($)</span><span style={{ textAlign: 'right' }}>Total</span><span /></div>
+            {lines.map((line, idx) => (
+              <div key={idx} className={form.line}>
+                <input required placeholder="Service or part" aria-label={`Line ${idx + 1} description`} value={line.description} onChange={(e) => { const updated = [...lines]; updated[idx] = { ...updated[idx], description: e.target.value }; setLines(updated); }} />
+                <NumberField min="1" aria-label={`Line ${idx + 1} quantity`} value={line.quantity} onChange={(e) => { const updated = [...lines]; updated[idx] = { ...updated[idx], quantity: parseInt(e.target.value, 10) || 1 }; setLines(updated); }} />
+                <NumberField step="0.01" min="0" inputMode="decimal" placeholder="0.00" aria-label={`Line ${idx + 1} unit price`} value={line.unitPriceDollars} onChange={(e) => { const updated = [...lines]; updated[idx] = { ...updated[idx], unitPriceDollars: e.target.value }; setLines(updated); }} />
+                <span className={form.lineTotal}>{formatMoney(lineCents(line))}</span>
+                {lines.length > 1 ? <button type="button" className={`secondary ${form.remove}`} aria-label={`Remove line ${idx + 1}`} onClick={() => setLines(lines.filter((_, i) => i !== idx))}>✕</button> : <span />}
+              </div>
+            ))}
+            <div><button type="button" className="secondary" onClick={() => setLines([...lines, { description: '', quantity: 1, unitPriceDollars: '' }])}>+ Add a line</button></div>
           </div>
 
-          <div style={{ marginBottom: '1rem' }}>
-            <label htmlFor="q-customer-note">Customer Note (Public)</label>
-            <textarea
-              id="q-customer-note"
-              rows={2}
-              value={formCustomerNote}
-              onChange={(e) => setFormCustomerNote(e.target.value)}
-              placeholder="Notes presented to customer on quote"
-            />
+          <div className={form.grid}>
+            <label className={form.field} htmlFor="q-tax">Tax ($)<NumberField id="q-tax" step="0.01" min="0" inputMode="decimal" value={formTaxDollars} onChange={(e) => setFormTaxDollars(e.target.value)} /></label>
+            <label className={form.field} htmlFor="q-deposit">Deposit required ($)<NumberField id="q-deposit" step="0.01" min="0" inputMode="decimal" value={formDepositDollars} onChange={(e) => setFormDepositDollars(e.target.value)} /></label>
+          </div>
+          <div className={form.totals} aria-live="polite">
+            <div><span>Subtotal</span><span>{formatMoney(subtotalCents)}</span></div>
+            <div><span>Tax</span><span>{formatMoney(taxCents)}</span></div>
+            <div className={form.grand}><span>Total</span><span>{formatMoney(subtotalCents + taxCents)}</span></div>
+            <div><span>Deposit due</span><span>{formatMoney(depositCents)}</span></div>
           </div>
 
-          <div style={{ marginBottom: '1rem' }}>
-            <label htmlFor="q-internal-notes">Internal Notes (Staff Only)</label>
-            <textarea
-              id="q-internal-notes"
-              rows={2}
-              value={formInternalNotes}
-              onChange={(e) => setFormInternalNotes(e.target.value)}
-              placeholder="Internal staff notes"
-            />
+          <div className={form.grid}>
+            <label className={form.field} htmlFor="q-customer-note">Note for the customer<textarea id="q-customer-note" rows={3} value={formCustomerNote} onChange={(e) => setFormCustomerNote(e.target.value)} placeholder="Shown to the customer on the quote" /></label>
+            <label className={form.field} htmlFor="q-internal-notes">Internal note (staff only)<textarea id="q-internal-notes" rows={3} value={formInternalNotes} onChange={(e) => setFormInternalNotes(e.target.value)} placeholder="Only your team sees this" /></label>
           </div>
 
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button type="submit" className="primary" disabled={submitting}>
-              {submitting ? 'Saving…' : editingQuoteId ? 'Update Draft' : 'Create Draft'}
-            </button>
-            <button type="button" className="secondary" onClick={resetForm}>
-              Cancel
-            </button>
+          <div className={form.actions}>
+            <button type="submit" className="primary" disabled={submitting || (!editingQuoteId && !formRequestId)}>{submitting ? 'Saving…' : editingQuoteId ? 'Update draft' : 'Create draft'}</button>
+            <button type="button" className="secondary" onClick={resetForm}>Cancel</button>
           </div>
         </form>
       )}

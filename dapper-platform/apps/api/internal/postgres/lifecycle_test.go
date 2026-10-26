@@ -69,11 +69,11 @@ func TestLifecycleControls(t *testing.T) {
 	}
 
 	t.Run("Franchise Lifecycle", func(t *testing.T) {
-		fran, err := s.CreateFranchise(ctx, actor, org, FranchiseInput{Code: "WEST", Name: "West Coast", Address: Address{City: "Vancouver"}})
+		fran, err := s.CreateFranchise(ctx, actor, org, FranchiseInput{Code: "WEST", Name: "West Coast", Address: testAddress})
 		if err != nil {
 			t.Fatalf("CreateFranchise failed: %v", err)
 		}
-		updated, err := s.UpdateFranchise(ctx, actor, org, fran.ID, FranchiseInput{Code: "PAC", Name: "Pacific Region", Address: Address{City: "Vancouver", Region: "BC"}})
+		updated, err := s.UpdateFranchise(ctx, actor, org, fran.ID, FranchiseInput{Code: "PAC", Name: "Pacific Region", Address: Address{Street: "2 Synthetic Way", City: "Vancouver", Region: "BC", PostalCode: "V6B 1A1", Country: "Canada"}})
 		if err != nil {
 			t.Fatalf("UpdateFranchise failed: %v", err)
 		}
@@ -107,7 +107,7 @@ func TestLifecycleControls(t *testing.T) {
 	})
 
 	t.Run("Location Service Lifecycle", func(t *testing.T) {
-		fran, err := s.CreateFranchise(ctx, actor, org, FranchiseInput{Code: "ABN", Name: "Alberta North"})
+		fran, err := s.CreateFranchise(ctx, actor, org, FranchiseInput{Code: "ABN", Name: "Alberta North", Address: testAddress})
 		if err != nil {
 			t.Fatal(err)
 		}

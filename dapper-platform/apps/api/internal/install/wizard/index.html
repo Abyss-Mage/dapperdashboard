@@ -142,7 +142,7 @@ const views=[
    $('#out').innerHTML=(r.steps||[]).map(i=>`<li><span class="dot ${i.ok?'ok':'bad'}"></span><div><b>${esc(i.step)}</b><div class="sub">${esc(i.detail||'')}</div></div></li>`).join('');
    if(!r.ok){note($('#msg'),'bad',r.error||'Installation failed.');$('#go').disabled=false;$('#back').disabled=false;return}
    S.owner.password=S.owner.confirm=S.db.password=S.mail.password=''; sessionStorage.removeItem('dapperCode');
-   $('#view').innerHTML=`<h2>Dapper is installed</h2><p class="lead">Your configuration is saved privately in the <code>.dapper</code> folder (it is never committed to git). Close this page and the setup window, then start Dapper from the repository folder:</p>
+   $('#view').innerHTML=`<h2>Dapper is installed</h2><p class="lead">Your configuration is saved in the <code>.env</code> file in the repository folder (it is private and never committed to git). Close this page and the setup window, then start Dapper from the repository folder:</p>
     <p><code>${esc(r.startCommand)}</code></p><p class="lead">Then sign in as <b>${esc(S.owner.email)}</b> at:</p><p><a style="color:#fff" href="${esc(r.loginUrl)}">${esc(r.loginUrl)}</a></p>
     <ul class="checks">${r.steps.map(i=>`<li><span class="dot ok"></span><div><b>${esc(i.step)}</b></div></li>`).join('')}</ul>`; S.done=true; nav() } },
 ];

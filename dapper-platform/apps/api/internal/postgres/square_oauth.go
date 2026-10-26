@@ -22,10 +22,16 @@ var ErrSquareNotConnected = errors.New("this franchise has not connected a Squar
 const squareOAuthPrefix = "oauth:"
 
 // SetSquareOAuthApps installs the Square application (ID and secret) per environment used to connect franchise accounts.
-func (s *Store) SetSquareOAuthApps(apps map[string]square.OAuthApp) { s.squareOAuth = apps }
+func (s *Store) SetSquareOAuthApps(apps map[string]square.OAuthApp) {
+	s.squareMu.Lock()
+	defer s.squareMu.Unlock()
+	s.squareOAuth = apps
+}
 
 func (s *Store) squareApp(environment string) (square.OAuthApp, bool) {
+	s.squareMu.RLock()
 	app, ok := s.squareOAuth[environment]
+	s.squareMu.RUnlock()
 	return app, ok && app.ApplicationID != "" && app.Secret != "" && len(s.mfaKey) == 32
 }
 
@@ -275,7 +281,10 @@ func (s *Store) DisconnectSquare(ctx context.Context, actor, org, loc, env strin
 // connections ("oauth:<location id>"). The location in the reference must belong to an organization the binding is for,
 // which the binding itself guarantees (references are only written by SaveSquareMerchantBinding for that location).
 func (s *Store) SquareCredentialResolver() SquareCredentialResolver {
-	if s.squareResolver == nil && len(s.squareOAuth) == 0 {
+	s.squareMu.RLock()
+	none := len(s.squareOAuth) == 0
+	s.squareMu.RUnlock()
+	if s.squareResolver == nil && none {
 		return nil
 	}
 	return func(ctx context.Context, environment, reference string) (VerifiedSquareClient, error) {

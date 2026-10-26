@@ -11,7 +11,7 @@ import (
 
 func TestInstalledLockAndSaveOnce(t *testing.T) {
 	home := t.TempDir()
-	cfg := Config{Site: Site{Name: "Test", URL: "https://example.test", Timezone: "America/Toronto", Listen: "127.0.0.1:8443", TLS: TLS{Mode: TLSProxy}}, Database: Database{URL: "postgres://u:p@h/d"}, Session: Session{Lifetime: "8h"}}
+	cfg := Config{Site: Site{Name: "Test", URL: "https://example.test", Timezone: "America/Toronto", Listen: "127.0.0.1:8443", TLS: TLS{Mode: TLSProxy}}, Database: Database{URL: "postgres://u:p@h/d"}, Keys: Keys{MFA: "a", Invitation: "b"}, Session: Session{Lifetime: "8h"}}
 	if Installed(home) {
 		t.Fatal("fresh folder must not look installed")
 	}
@@ -110,10 +110,8 @@ func TestWizardNeedsSetupCodeAndLocksOut(t *testing.T) {
 
 func TestWizardRefusesWhenInstalled(t *testing.T) {
 	home := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(home, ".dapper"), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(home, ".dapper", "installed.lock"), []byte("x"), 0o600); err != nil {
+	cfg := Config{Site: Site{Name: "Test", URL: "https://example.test", Timezone: "America/Toronto", Listen: "127.0.0.1:8443", TLS: TLS{Mode: TLSProxy}}, Database: Database{URL: "postgres://u:p@h/d"}, Keys: Keys{MFA: "a", Invitation: "b"}, Session: Session{Lifetime: "8h"}}
+	if err := Save(home, cfg); err != nil {
 		t.Fatal(err)
 	}
 	srv, _ := NewServer(home, "127.0.0.1:8099")
@@ -123,6 +121,38 @@ func TestWizardRefusesWhenInstalled(t *testing.T) {
 	srv.Handler().ServeHTTP(w, r)
 	if w.Code != 410 {
 		t.Errorf("installed checkout must answer 410, got %d", w.Code)
+	}
+}
+
+// Setup opens first until a completed .env exists; a hand-made or half-written .env does not count.
+func TestEnvFileIsTheInstallMarker(t *testing.T) {
+	home := t.TempDir()
+	if Installed(home) {
+		t.Fatal("no .env must mean not installed")
+	}
+	for _, partial := range []string{"DAPPER_DATABASE_URL=postgres://x\n", "DAPPER_INSTALLED=1\n", "# only a comment\n"} {
+		if err := os.WriteFile(filepath.Join(home, ".env"), []byte(partial), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if Installed(home) {
+			t.Fatalf("partial .env counted as installed: %q", partial)
+		}
+	}
+	_ = os.Remove(filepath.Join(home, ".env"))
+	cfg := Config{Site: Site{Name: `Quote "Garage" \ #1`, URL: "https://example.test", Timezone: "America/Toronto", Listen: "127.0.0.1:8443", TLS: TLS{Mode: TLSFiles, CertFile: `C:\certs\c.pem`, KeyFile: "k.pem"}},
+		Database: Database{URL: "postgres://u:p%40ss%23@h:5432/d?sslmode=disable"}, SMTP: SMTP{Host: "smtp.example.test", Port: 587, Password: `pa ss"word=1`, FromAddress: "a@example.test"}, Keys: Keys{MFA: "bWZh", Invitation: "aW52"}, Session: Session{Lifetime: "8h"}}
+	if err := Save(home, cfg); err != nil {
+		t.Fatal(err)
+	}
+	if !Installed(home) {
+		t.Fatal("saved setup not recognised")
+	}
+	got, err := Load(home)
+	if err != nil || got.Site.Name != cfg.Site.Name || got.Database.URL != cfg.Database.URL || got.SMTP.Password != cfg.SMTP.Password || got.Site.TLS.CertFile != cfg.Site.TLS.CertFile || got.Keys.Invitation != "aW52" {
+		t.Fatalf("round trip lost data: %+v %v", got, err)
+	}
+	if err = Save(home, cfg); err == nil {
+		t.Fatal("setup overwrote a completed .env")
 	}
 }
 

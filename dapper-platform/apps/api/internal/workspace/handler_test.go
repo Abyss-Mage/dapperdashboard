@@ -163,7 +163,7 @@ func TestScopedHTTPBoundaryWithPostgres(t *testing.T) {
 	if send("GET", orgBase+"structure", "", "", origin).Code != 401 {
 		t.Fatal("anonymous structure access")
 	}
-	fresponse := send("POST", orgBase+"franchises", `{"code":"httpf","name":"Synthetic HTTP franchise","address":{"city":"Peterborough"}}`, token, origin)
+	fresponse := send("POST", orgBase+"franchises", `{"code":"httpf","name":"Synthetic HTTP franchise","address":{"street":"1 Synthetic Way","city":"Peterborough","region":"ON","postalCode":"K9J 1A1","country":"Canada"}}`, token, origin)
 	if fresponse.Code != 201 {
 		t.Fatal("franchise route failed", fresponse.Code, fresponse.Body.String())
 	}
@@ -174,10 +174,10 @@ func TestScopedHTTPBoundaryWithPostgres(t *testing.T) {
 	if send("POST", orgBase+"locations", `{"name":"Synthetic HTTP location","franchiseId":"`+franchise.ID+`"}`, token, origin).Code == 201 {
 		t.Fatal("a separate location can still be created")
 	}
-	if send("POST", orgBase+"franchises", `{"code":"OTHR","name":"Synthetic HTTP franchise"}`, token, origin).Code != 409 {
+	if send("POST", orgBase+"franchises", `{"code":"OTHR","name":"Synthetic HTTP franchise","address":{"street":"1 Synthetic Way","city":"Peterborough","region":"ON","postalCode":"K9J 1A1","country":"Canada"}}`, token, origin).Code != 409 {
 		t.Fatal("duplicate franchise name not actionable")
 	}
-	if send("POST", orgBase+"franchises", `{"code":"HTTPF","name":"Synthetic duplicate code"}`, token, origin).Code != 409 {
+	if send("POST", orgBase+"franchises", `{"code":"HTTPF","name":"Synthetic duplicate code","address":{"street":"1 Synthetic Way","city":"Peterborough","region":"ON","postalCode":"K9J 1A1","country":"Canada"}}`, token, origin).Code != 409 {
 		t.Fatal("duplicate franchise code not actionable")
 	}
 	if send("POST", orgBase+"franchises", `{"name":"No code"}`, token, origin).Code != 422 {
@@ -186,7 +186,7 @@ func TestScopedHTTPBoundaryWithPostgres(t *testing.T) {
 	if send("POST", orgBase+"franchises", `{"code":"INJ","name":"Injected actor","actorId":"forged"}`, token, origin).Code != 400 {
 		t.Fatal("structure actor injection accepted")
 	}
-	if send("PUT", orgBase+"franchises/"+franchise.ID, `{"code":"HTTPF","name":"Synthetic HTTP franchise","address":{"street":"1 Test Rd"}}`, token, origin).Code != 200 {
+	if send("PUT", orgBase+"franchises/"+franchise.ID, `{"code":"HTTPF","name":"Synthetic HTTP franchise","address":{"street":"1 Test Rd","city":"Peterborough","region":"ON","postalCode":"K9J 1A1","country":"Canada"}}`, token, origin).Code != 200 {
 		t.Fatal("franchise edit failed")
 	}
 	if send("GET", "/api/v1/organizations/"+otherOrg+"/structure", "", token, origin).Code != 403 {

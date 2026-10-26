@@ -211,7 +211,7 @@ func (s *Store) CreateEmployeeWalkIn(ctx context.Context, actor string, input Em
 	if err != nil {
 		return Booking{}, bookingWriteError(err)
 	}
-	if _, err = tx.Exec(ctx, `INSERT INTO employee_booking_worksites(booking_id,organization_id,location_id,dealership_id,linked_by) VALUES($1,$2,$3,NULLIF($4,'')::uuid,$5)`, b.ID, a.OrganizationID, a.LocationID, a.DealershipID, actor); err != nil {
+	if _, err = tx.Exec(ctx, `INSERT INTO employee_booking_worksites(booking_id,organization_id,location_id,dealership_id,linked_by) VALUES($1,$2,$3,NULLIF($4,'')::uuid,$5) ON CONFLICT(booking_id) DO UPDATE SET dealership_id=excluded.dealership_id,linked_by=excluded.linked_by`, b.ID, a.OrganizationID, a.LocationID, a.DealershipID, actor); err != nil {
 		return Booking{}, err
 	}
 	if err = employeeEvent(ctx, tx, actor, a.OrganizationID, b.ID, "employee.walk_in_created", map[string]string{"dealershipId": a.DealershipID}); err != nil {

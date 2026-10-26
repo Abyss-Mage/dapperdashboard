@@ -50,7 +50,7 @@ func (s *Store) CreateSyntheticFixture(ctx context.Context, password string) (Sy
 			return SyntheticFixture{}, err
 		}
 	}
-	franchise, err := s.CreateFranchise(ctx, result.PrincipalID, result.OrganizationID, FranchiseInput{Code: "SYNTH", Name: "Synthetic Training Franchise"})
+	franchise, err := s.CreateFranchise(ctx, result.PrincipalID, result.OrganizationID, FranchiseInput{Code: "SYNTH", Name: "Synthetic Training Franchise", Address: Address{Street: "1 Synthetic Way", City: "Synthetic City", Region: "ON", PostalCode: "A1A 1A1", Country: "Canada"}})
 	if err != nil {
 		return SyntheticFixture{}, err
 	}

@@ -9,6 +9,7 @@ import (
 type AccessMember struct {
 	PrincipalID string `json:"principalId"`
 	Email       string `json:"email"`
+	Name        string `json:"name"`
 	Active      bool   `json:"active"`
 }
 type ManagedLocationGrant struct {
@@ -189,13 +190,13 @@ func (s *Store) ManagedAccess(ctx context.Context, actor, org string) (AccessMan
 	if err = accessReadGrant(ctx, tx, actor, org); err != nil {
 		return AccessManagement{}, err
 	}
-	rows, err := tx.Query(ctx, `SELECT p.id::text,coalesce(c.email,''),p.active FROM organization_memberships m JOIN principals p ON p.id=m.principal_id LEFT JOIN password_credentials c ON c.principal_id=p.id WHERE m.organization_id=$1 AND p.external_subject NOT LIKE 'system:%' ORDER BY c.email,p.id LIMIT 100`, org)
+	rows, err := tx.Query(ctx, `SELECT p.id::text,coalesce(c.email,''),coalesce(mp.full_name,''),p.active FROM organization_memberships m JOIN principals p ON p.id=m.principal_id LEFT JOIN password_credentials c ON c.principal_id=p.id LEFT JOIN member_profiles mp ON mp.principal_id=p.id WHERE m.organization_id=$1 AND p.external_subject NOT LIKE 'system:%' ORDER BY c.email,p.id LIMIT 100`, org)
 	if err != nil {
 		return AccessManagement{}, err
 	}
 	for rows.Next() {
 		var m AccessMember
-		if err = rows.Scan(&m.PrincipalID, &m.Email, &m.Active); err != nil {
+		if err = rows.Scan(&m.PrincipalID, &m.Email, &m.Name, &m.Active); err != nil {
 			rows.Close()
 			return AccessManagement{}, err
 		}

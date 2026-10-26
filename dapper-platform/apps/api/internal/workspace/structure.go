@@ -15,8 +15,11 @@ var franchiseCode = regexp.MustCompile(`^[A-Z0-9-]{2,12}$`)
 
 func structureFailure(w http.ResponseWriter, err error) {
 	switch {
+	case errors.Is(err, postgres.ErrFranchiseAddress):
+		reply(w, 422, map[string]any{"errors": map[string]string{"address": "Enter the full address: street, city, province or state, postal code and country"}})
+		return
 	case errors.Is(err, postgres.ErrStructureInput):
-		reply(w, 422, map[string]any{"errors": map[string]string{"franchise": "Check the franchise code, name and address"}})
+		reply(w, 422, map[string]any{"errors": map[string]string{"franchise": "Check the franchise code, name, address and contact people"}})
 		return
 	case errors.Is(err, postgres.ErrFranchiseCode):
 		reply(w, 409, map[string]any{"errors": map[string]string{"code": "This franchise code is already used. Choose a different one"}})
@@ -46,6 +49,7 @@ func franchiseInput(w http.ResponseWriter, r *http.Request) (postgres.FranchiseI
 			PostalCode string `json:"postalCode"`
 			Country    string `json:"country"`
 		} `json:"address"`
+		Contacts []postgres.FranchiseContact `json:"contacts"`
 	}
 	if !decode(w, r, &input) {
 		return postgres.FranchiseInput{}, false
@@ -67,7 +71,7 @@ func franchiseInput(w http.ResponseWriter, r *http.Request) (postgres.FranchiseI
 		reply(w, 422, map[string]any{"errors": fields})
 		return postgres.FranchiseInput{}, false
 	}
-	return postgres.FranchiseInput{Code: code, Name: input.Name, Address: postgres.Address{Street: a.Street, City: a.City, Region: a.Region, PostalCode: a.PostalCode, Country: a.Country}}, true
+	return postgres.FranchiseInput{Code: code, Name: input.Name, Address: postgres.Address{Street: a.Street, City: a.City, Region: a.Region, PostalCode: a.PostalCode, Country: a.Country}, Contacts: input.Contacts}, true
 }
 
 func registerStructureRoutes(mux *http.ServeMux, store *postgres.Store) {

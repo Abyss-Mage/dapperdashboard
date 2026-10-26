@@ -1,10 +1,11 @@
 // dapper: the installer and launcher for a fresh checkout.
 //
-//	dapper setup   open the browser wizard (database, site, email, first owner); writes .dapper/config.json
-//	dapper start   run the application from that configuration (API, web app and HTTPS gateway)
-//	dapper status  say whether this checkout has been set up
+//	dapper start    run Dapper. If there is no completed .env yet, the setup wizard opens FIRST; when it finishes Dapper starts.
+//	dapper setup    only the browser wizard (database, site, email, first owner); writes .env
+//	dapper migrate  apply database migrations after an update (git pull)
+//	dapper status   say whether this checkout has been set up
 //
-// Run it from anywhere inside the repository: go run ./cmd/dapper setup (from dapper-platform/apps/api), or use scripts/setup.
+// Run it from anywhere inside the repository: scripts/start.ps1 (Windows) or scripts/start.sh (macOS/Linux) do the same.
 package main
 
 import (
@@ -25,6 +26,7 @@ import (
 	"time"
 
 	"dapper.local/platform/internal/install"
+	"dapper.local/platform/internal/postgres"
 )
 
 func main() {
@@ -35,7 +37,8 @@ func main() {
 	cmd, args := os.Args[1], os.Args[2:]
 	fs := flag.NewFlagSet(cmd, flag.ExitOnError)
 	home := fs.String("home", "", "repository root (default: found by walking up from the current folder)")
-	addr := fs.String("listen", "127.0.0.1:8099", "setup wizard address (setup only)")
+	addr := fs.String("listen", "127.0.0.1:8099", "setup wizard address")
+	noOpen := fs.Bool("no-browser", false, "do not open the setup page in a browser automatically")
 	_ = fs.Parse(args)
 	root, err := repoRoot(*home)
 	if err != nil {
@@ -43,14 +46,18 @@ func main() {
 	}
 	switch cmd {
 	case "setup":
-		runSetup(root, *addr)
+		if !runSetup(root, *addr, !*noOpen) {
+			os.Exit(1)
+		}
 	case "start":
-		runStart(root)
+		runStart(root, *addr, !*noOpen)
+	case "migrate":
+		runMigrate(root)
 	case "status":
 		if install.Installed(root) {
 			fmt.Println("Installed. Configuration:", install.ConfigPath(root))
 		} else {
-			fmt.Println("Not installed. Run: dapper setup")
+			fmt.Println("Not installed: there is no completed .env. Run: dapper start (setup opens first)")
 		}
 	default:
 		usage()
@@ -58,7 +65,9 @@ func main() {
 	}
 }
 
-func usage() { fmt.Fprintln(os.Stderr, "usage: dapper setup | start | status   [--home <repository root>]") }
+func usage() {
+	fmt.Fprintln(os.Stderr, "usage: dapper start | setup | migrate | status   [--home <repository root>] [--listen 127.0.0.1:8099] [--no-browser]")
+}
 
 func repoRoot(explicit string) (string, error) {
 	marker := filepath.Join("dapper-platform", "apps", "api", "go.mod")
@@ -81,29 +90,61 @@ func repoRoot(explicit string) (string, error) {
 	}
 }
 
-func runSetup(root, addr string) {
+func openBrowser(url string) {
+	var c *exec.Cmd
+	switch runtime.GOOS {
+	case "windows":
+		c = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+	case "darwin":
+		c = exec.Command("open", url)
+	default:
+		c = exec.Command("xdg-open", url)
+	}
+	_ = c.Start()
+}
+
+// listenFree binds the wizard's address, trying the next few ports when the first is busy.
+func listenFree(addr string) (net.Listener, string, error) {
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return nil, "", err
+	}
+	var p int
+	fmt.Sscanf(port, "%d", &p)
+	for i := 0; i < 10; i++ {
+		a := net.JoinHostPort(host, fmt.Sprint(p+i))
+		if ln, err := net.Listen("tcp", a); err == nil {
+			return ln, a, nil
+		}
+	}
+	return nil, "", errors.New("no free port near " + addr)
+}
+
+// runSetup serves the wizard until it finishes; it returns true when a completed .env has been written.
+func runSetup(root, addr string, open bool) bool {
 	if install.Installed(root) {
 		fmt.Println("This checkout is already set up (" + install.ConfigPath(root) + ").")
-		fmt.Println("To run setup again, stop Dapper and delete the .dapper folder. Your database is not touched by that.")
-		return
+		fmt.Println("To run setup again, stop Dapper and delete the .env file. Your database is not touched by that.")
+		return true
 	}
-	srv, err := install.NewServer(root, addr)
+	ln, bound, err := listenFree(addr)
+	if err != nil {
+		log.Fatal("setup could not listen: " + err.Error())
+	}
+	srv, err := install.NewServer(root, bound)
 	if err != nil {
 		log.Fatal(err)
 	}
-	ln, err := net.Listen("tcp", addr)
-	if err != nil {
-		log.Fatal("setup could not listen on " + addr + ": " + err.Error())
-	}
-	host, port, _ := net.SplitHostPort(addr)
+	host, port, _ := net.SplitHostPort(bound)
 	if host == "" || host == "0.0.0.0" || host == "::" {
 		host = "localhost"
 	}
+	page := fmt.Sprintf("http://%s:%s", host, port)
 	fmt.Println()
-	fmt.Println("  Dapper setup is running.")
-	fmt.Printf("  Open:        http://%s:%s\n", host, port)
+	fmt.Println("  No .env was found, so Dapper setup is opening first.")
+	fmt.Println("  Open:        " + page)
 	fmt.Printf("  Setup code:  %s\n", srv.Token)
-	fmt.Println("  (enter the code on the first page; it stops when setup finishes)")
+	fmt.Println("  (enter the code on the first page; setup stops by itself when it finishes)")
 	fmt.Println()
 	hs := &http.Server{Handler: srv.Handler(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 30 * time.Second, WriteTimeout: 4 * time.Minute, IdleTimeout: 60 * time.Second}
 	go func() {
@@ -111,16 +152,22 @@ func runSetup(root, addr string) {
 			log.Fatal(err)
 		}
 	}()
+	if open {
+		openBrowser(page)
+	}
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(stop)
 	select {
 	case <-srv.Done:
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		_ = hs.Shutdown(ctx)
-		fmt.Println("  Setup finished. Start Dapper with: dapper start")
+		fmt.Println("  Setup finished; .env was written.")
+		return true
 	case <-stop:
 		fmt.Println("  Setup stopped before finishing; nothing was installed unless it said so above.")
+		return false
 	}
 }
 
@@ -136,7 +183,7 @@ func exe(name string) string {
 	return name
 }
 
-// build compiles the two Go services into .dapper/bin the first time (and whenever the sources are newer is left to the operator).
+// build compiles the two Go services into .dapper/bin the first time.
 func build(root string) error {
 	if err := os.MkdirAll(install.BinDir(root), 0o700); err != nil {
 		return err
@@ -157,21 +204,78 @@ func build(root string) error {
 	return nil
 }
 
-func runStart(root string) {
+// ensureWeb installs the web dependencies and builds the web app the first time (this takes a few minutes).
+func ensureWeb(root string) error {
+	web := filepath.Join(root, "dapper-platform", "apps", "web")
+	if _, err := os.Stat(filepath.Join(web, ".next", "BUILD_ID")); err == nil {
+		return nil
+	}
+	npm, err := exec.LookPath("npm")
+	if err != nil {
+		return errors.New("npm was not found on PATH; install Node.js (https://nodejs.org) and run again")
+	}
+	fmt.Println("  Building the web application for the first time (a few minutes) …")
+	for _, args := range [][]string{{"ci"}, {"run", "build"}} {
+		c := exec.Command(npm, args...)
+		c.Dir, c.Stdout, c.Stderr = web, os.Stdout, os.Stderr
+		if err := c.Run(); err != nil {
+			return fmt.Errorf("npm %v failed: %w", args, err)
+		}
+	}
+	return nil
+}
+
+func runMigrate(root string) {
+	cfg, err := install.Load(root)
+	if err != nil {
+		log.Fatal("Not set up yet. Run: dapper start (setup opens first)")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	store, err := postgres.Open(ctx, cfg.Database.URL)
+	if err != nil {
+		log.Fatal("Could not reach the database from .env: " + err.Error())
+	}
+	defer store.Close()
+	if err = store.Migrate(ctx); err != nil {
+		log.Fatal("Migration failed; nothing was half-applied by this command. Restore from your backup if the database is in doubt.")
+	}
+	fmt.Println("Database is up to date.")
+}
+
+func runStart(root, setupAddr string, open bool) {
+	// Setup comes first: until a completed .env exists nothing else runs.
 	if !install.Installed(root) {
-		log.Fatal("Not set up yet. Run: dapper setup")
+		if !runSetup(root, setupAddr, open) {
+			os.Exit(1)
+		}
 	}
 	cfg, err := install.Load(root)
 	if err != nil {
 		log.Fatal(err)
 	}
-	web := filepath.Join(root, "dapper-platform", "apps", "web")
-	if _, err = os.Stat(filepath.Join(web, ".next", "BUILD_ID")); err != nil {
-		log.Fatal("The web application is not built. Run:  cd dapper-platform/apps/web  &&  npm ci  &&  npm run build")
+	if err = ensureWeb(root); err != nil {
+		log.Fatal(err)
 	}
 	if err = build(root); err != nil {
 		log.Fatal(err)
 	}
+	// An update may bring database changes; say so instead of starting a service that would refuse to run.
+	checkCtx, cancelCheck := context.WithTimeout(context.Background(), 20*time.Second)
+	if store, e := postgres.Open(checkCtx, cfg.Database.URL); e != nil {
+		cancelCheck()
+		log.Fatal("Could not reach the database named in .env. Is PostgreSQL running? (" + e.Error() + ")")
+	} else {
+		if e = store.ValidateSchema(checkCtx); e != nil {
+			store.Close()
+			cancelCheck()
+			log.Fatal("The database needs updating for this version. Run: dapper migrate   (back up the database first)")
+		}
+		store.Close()
+	}
+	cancelCheck()
+
+	web := filepath.Join(root, "dapper-platform", "apps", "web")
 	logDir := filepath.Join(install.Dir(root), "logs")
 	_ = os.MkdirAll(logDir, 0o700)
 	env := append(os.Environ(), cfg.Env(root)...)
@@ -221,6 +325,9 @@ func runStart(root string) {
 				if resp.StatusCode == 200 {
 					fmt.Println("  Dapper is running at", cfg.Site.URL, "  (dashboard:", cfg.Site.URL+"/dashboard, staff workspace:", cfg.Site.URL+"/workspace)")
 					fmt.Println("  Logs:", logDir, " Press Ctrl+C to stop.")
+					if open {
+						openBrowser(cfg.Site.URL + "/dashboard")
+					}
 					return
 				}
 			}

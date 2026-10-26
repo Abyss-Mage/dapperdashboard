@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
+var ErrFranchiseAddress = errors.New("enter the franchise's full address: street, city, province or state, postal code and country")
 var ErrStructureInput = errors.New("valid franchise code, name and address required")
 var ErrFranchiseCode = errors.New("that franchise code is already used in this organization")
 var ErrFranchiseInUse = errors.New("cannot delete a franchise that has operational records or active role assignments")
@@ -32,21 +33,31 @@ type Address struct {
 	Country    string `json:"country"`
 }
 
-// FranchiseInput is what an administrator supplies. The address is entirely optional.
+// FranchiseContact is one contact person at a franchise.
+type FranchiseContact struct {
+	ID    string `json:"id,omitempty"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
+	Phone string `json:"phone"`
+}
+
+// FranchiseInput is what an administrator supplies. The full address is required; contact people are optional (up to 10).
 type FranchiseInput struct {
-	Code    string  `json:"code"`
-	Name    string  `json:"name"`
-	Address Address `json:"address"`
+	Code     string             `json:"code"`
+	Name     string             `json:"name"`
+	Address  Address            `json:"address"`
+	Contacts []FranchiseContact `json:"contacts"`
 }
 
 // Franchise is one franchise site. ID is the site identifier used everywhere else in the system (grants, bookings,
 // scheduling, GPS); FranchiseID is the internal 1:1 grouping row that franchise-scoped role assignments point at.
 type Franchise struct {
-	ID          string  `json:"id"`
-	FranchiseID *string `json:"franchiseId"`
-	Code        string  `json:"code"`
-	Name        string  `json:"name"`
-	Address     Address `json:"address"`
+	ID          string             `json:"id"`
+	FranchiseID *string            `json:"franchiseId"`
+	Code        string             `json:"code"`
+	Name        string             `json:"name"`
+	Address     Address            `json:"address"`
+	Contacts    []FranchiseContact `json:"contacts"`
 }
 
 // Location is a read-only compatibility view of a franchise for screens that still list sites.
@@ -82,11 +93,29 @@ func validStructureName(name string) bool {
 	return n >= 2 && n <= 120
 }
 
-// normalizeFranchise trims, upper-cases the code and validates lengths. Every address field is optional.
+// normalizeFranchise trims, upper-cases the code and validates lengths. Every address field is required.
 func normalizeFranchise(in FranchiseInput) (FranchiseInput, error) {
 	in.Code, in.Name = strings.ToUpper(strings.TrimSpace(in.Code)), strings.TrimSpace(in.Name)
 	a := &in.Address
 	a.Street, a.City, a.Region, a.PostalCode, a.Country = strings.TrimSpace(a.Street), strings.TrimSpace(a.City), strings.TrimSpace(a.Region), strings.TrimSpace(a.PostalCode), strings.TrimSpace(a.Country)
+	if a.Street == "" || a.City == "" || a.Region == "" || a.PostalCode == "" || a.Country == "" {
+		return in, ErrFranchiseAddress
+	}
+	cleaned := make([]FranchiseContact, 0, len(in.Contacts))
+	for _, c := range in.Contacts {
+		c.Name, c.Email, c.Phone = strings.TrimSpace(c.Name), strings.TrimSpace(c.Email), strings.TrimSpace(c.Phone)
+		if c.Name == "" && c.Email == "" && c.Phone == "" {
+			continue
+		}
+		if n := utf8.RuneCountInString(c.Name); n < 2 || n > 120 || len(c.Phone) > 40 || c.Email != "" && !emailRegex.MatchString(c.Email) {
+			return in, ErrStructureInput
+		}
+		cleaned = append(cleaned, c)
+	}
+	if len(cleaned) > 10 {
+		return in, ErrStructureInput
+	}
+	in.Contacts = cleaned
 	if !franchiseCodePattern.MatchString(in.Code) || !validStructureName(in.Name) ||
 		utf8.RuneCountInString(a.Street) > 200 || utf8.RuneCountInString(a.City) > 100 || utf8.RuneCountInString(a.Region) > 100 || utf8.RuneCountInString(a.PostalCode) > 20 || utf8.RuneCountInString(a.Country) > 100 {
 		return in, ErrStructureInput
@@ -107,6 +136,7 @@ const franchiseColumns = `l.id::text,l.franchise_id::text,COALESCE(l.code,''),l.
 func scanFranchise(row pgx.Row) (Franchise, error) {
 	var f Franchise
 	err := row.Scan(&f.ID, &f.FranchiseID, &f.Code, &f.Name, &f.Address.Street, &f.Address.City, &f.Address.Region, &f.Address.PostalCode, &f.Address.Country)
+	f.Contacts = []FranchiseContact{}
 	return f, err
 }
 
@@ -133,6 +163,10 @@ func (s *Store) CreateFranchise(ctx context.Context, actor, org string, in Franc
 	if err != nil {
 		return Franchise{}, franchiseWriteError(err)
 	}
+	if err = replaceFranchiseContacts(ctx, tx, org, result.ID, in.Contacts); err != nil {
+		return Franchise{}, err
+	}
+	result.Contacts = in.Contacts
 	if err = structureAudit(ctx, tx, actor, org, "franchise.created", result.ID); err != nil {
 		return Franchise{}, err
 	}
@@ -162,7 +196,55 @@ func (s *Store) Structure(ctx context.Context, actor, org string) ([]Franchise, 
 		}
 		out = append(out, f)
 	}
-	return out, rows.Err()
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	rows.Close()
+	if err = attachFranchiseContacts(ctx, tx, org, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func replaceFranchiseContacts(ctx context.Context, tx pgx.Tx, org, location string, list []FranchiseContact) error {
+	if _, err := tx.Exec(ctx, `DELETE FROM location_contacts WHERE organization_id=$1 AND location_id=$2`, org, location); err != nil {
+		return err
+	}
+	for i, c := range list {
+		if _, err := tx.Exec(ctx, `INSERT INTO location_contacts(organization_id,location_id,position,name,email,phone) VALUES($1,$2,$3,$4,$5,$6)`, org, location, i, c.Name, c.Email, c.Phone); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func attachFranchiseContacts(ctx context.Context, tx pgx.Tx, org string, list []Franchise) error {
+	if len(list) == 0 {
+		return nil
+	}
+	rows, err := tx.Query(ctx, `SELECT location_id::text,id::text,name,email,phone FROM location_contacts WHERE organization_id=$1 ORDER BY location_id,position,id`, org)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	by := map[string][]FranchiseContact{}
+	for rows.Next() {
+		var l string
+		var c FranchiseContact
+		if err = rows.Scan(&l, &c.ID, &c.Name, &c.Email, &c.Phone); err != nil {
+			return err
+		}
+		by[l] = append(by[l], c)
+	}
+	if err = rows.Err(); err != nil {
+		return err
+	}
+	for i := range list {
+		if c := by[list[i].ID]; c != nil {
+			list[i].Contacts = c
+		}
+	}
+	return nil
 }
 
 // UpdateFranchise edits a franchise by its site id. Sites created before franchises existed gain their 1:1 grouping
@@ -202,6 +284,10 @@ func (s *Store) UpdateFranchise(ctx context.Context, actor, org, id string, in F
 	if err != nil {
 		return Franchise{}, franchiseWriteError(err)
 	}
+	if err = replaceFranchiseContacts(ctx, tx, org, result.ID, in.Contacts); err != nil {
+		return Franchise{}, err
+	}
+	result.Contacts = in.Contacts
 	if err = structureAudit(ctx, tx, actor, org, "franchise.updated", result.ID); err != nil {
 		return Franchise{}, err
 	}

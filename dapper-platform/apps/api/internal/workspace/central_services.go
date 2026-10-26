@@ -67,6 +67,8 @@ func registerCentralServiceRoutes(mux *http.ServeMux, store *postgres.Store) {
 				Version  int     `json:"version"`
 				// Price is optional: absent = leave unchanged, null = clear, number = set (whole cents, CAD, before tax).
 				Price json.RawMessage `json:"priceCents"`
+				// Duration is optional like the price: absent = leave unchanged, null = clear, number = minutes to complete.
+				Duration json.RawMessage `json:"durationMinutes"`
 			}
 			if !decode(w, r, &input) {
 				return
@@ -107,14 +109,29 @@ func registerCentralServiceRoutes(mux *http.ServeMux, store *postgres.Store) {
 					price.PriceCents = &cents
 				}
 			}
+			var durationSet bool
+			var duration *int
+			if input.Duration != nil {
+				durationSet = true
+				if string(input.Duration) != "null" {
+					var minutes int
+					if err := json.Unmarshal(input.Duration, &minutes); err != nil || minutes < 1 || minutes > 10080 {
+						reply(w, 422, map[string]any{"errors": map[string]string{"durationMinutes": "Enter the time to complete in minutes (1 to 10080)"}})
+						return
+					}
+					duration = &minutes
+				}
+			}
 			item, err := store.SaveCentralService(r.Context(), actor, org, postgres.CentralServiceInput{
-				ID:         id,
-				Name:       input.Name,
-				Kind:       input.Kind,
-				ParentID:   input.ParentID,
-				Version:    input.Version,
-				PriceSet:   price.PriceSet,
-				PriceCents: price.PriceCents,
+				DurationSet:     durationSet,
+				DurationMinutes: duration,
+				ID:              id,
+				Name:            input.Name,
+				Kind:            input.Kind,
+				ParentID:        input.ParentID,
+				Version:         input.Version,
+				PriceSet:        price.PriceSet,
+				PriceCents:      price.PriceCents,
 			})
 			if err != nil {
 				centralServiceFailure(w, err)

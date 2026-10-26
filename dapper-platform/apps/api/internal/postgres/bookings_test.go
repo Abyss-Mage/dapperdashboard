@@ -50,6 +50,9 @@ func verifyBookings(t *testing.T, ctx context.Context, s *Store, a, b Scope, cus
 	var ownedVehicle, otherVehicle, foreignVehicle, otherCustomer, foreignCustomer string
 	defer func() {
 		// These disposable fixtures share the surrounding scope test schema.
+		if _, err := s.pool.Exec(ctx, `DELETE FROM employee_booking_worksites WHERE booking_id IN (SELECT id FROM bookings WHERE vehicle_id=$1::uuid)`, ownedVehicle); err != nil {
+			t.Fatal(err)
+		}
 		if _, err := s.pool.Exec(ctx, `DELETE FROM bookings WHERE vehicle_id=$1::uuid`, ownedVehicle); err != nil {
 			t.Error(err)
 		}

@@ -99,20 +99,6 @@ export default function InvoiceManager({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  // Dealership invoices already sent to Invoice Ninja (invoice id -> Invoice Ninja number).
-  const [ninjaSent, setNinjaSent] = useState<Record<string, string>>({});
-  useEffect(() => {
-    fetch(`${base}/invoice-ninja/exports`, {cache: 'no-store'}).then((r) => (r.ok ? r.json() : {items: []})).then((b) => setNinjaSent(Object.fromEntries((b.items ?? []).map((e: {invoiceId: string; ninjaNumber: string}) => [e.invoiceId, e.ninjaNumber || 'sent'])))).catch(() => undefined);
-  }, [base]);
-  async function sendToNinja(id: string) {
-    setError(''); setSuccess('');
-    const r = await fetch(`${base}/invoices/${id}/invoice-ninja`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'});
-    const b = await r.json().catch(() => ({}));
-    if (!r.ok) { setError(b.error ?? 'The invoice could not be sent to Invoice Ninja.'); return; }
-    setNinjaSent((cur) => ({...cur, [id]: b.ninjaNumber || 'sent'}));
-    setSuccess(`Sent to Invoice Ninja${b.ninjaNumber ? ` as ${b.ninjaNumber}` : ''}.`);
-  }
-
   // Creation state
   const [showCreate, setShowCreate] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
@@ -843,9 +829,6 @@ export default function InvoiceManager({
                 <button type="button" className="secondary" onClick={() => printInvoiceDocument(activeInvoice, printTemplate)}>
                   Print invoice
                 </button>
-                {canManage && activeInvoice.status !== 'draft' && (ninjaSent[activeInvoice.id]
-                  ? <span style={{alignSelf: 'center'}}>In Invoice Ninja: {ninjaSent[activeInvoice.id]}</span>
-                  : <button type="button" className="secondary" onClick={() => void sendToNinja(activeInvoice.id)} title="For dealership invoices">Send to Invoice Ninja</button>)}
                 <button type="button" className="primary" onClick={() => setActiveInvoice(null)}>
                   Done
                 </button>

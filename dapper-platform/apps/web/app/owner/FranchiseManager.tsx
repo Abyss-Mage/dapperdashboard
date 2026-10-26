@@ -5,11 +5,14 @@ import styles from './owner.module.css';
 import ConfirmDialog from '../workspace/ConfirmDialog';
 
 type Address = { street: string; city: string; region: string; postalCode: string; country: string };
-type Franchise = { id: string; franchiseId: string | null; code: string; name: string; address: Address };
+type Contact = { id?: string; name: string; email: string; phone: string };
+type Franchise = { id: string; franchiseId: string | null; code: string; name: string; address: Address; contacts?: Contact[] };
+const blankContact: Contact = { name: '', email: '', phone: '' };
+const addressComplete = (a: Address) => !!(a.street.trim() && a.city.trim() && a.region.trim() && a.postalCode.trim() && a.country.trim());
 const blank: Address = { street: '', city: '', region: '', postalCode: '', country: '' };
 const line = (a: Address) => [a.street, a.city, a.region, a.postalCode, a.country].filter(Boolean).join(', ');
 
-/* A franchise is one site with a unique code and an optional address. Staff, bookings, scheduling and invoices belong to it. */
+/* A franchise is one site with a unique code, a full address and its contact people. Staff, bookings, scheduling and invoices belong to it. */
 export default function FranchiseManager({ organization, selectedId, onSaved }: { organization: { id: string; name: string; actions: string[] }; selectedId?: string; onSaved: () => Promise<void> }) {
   const base = `/api/v1/organizations/${organization.id}`;
   const canManage = organization.actions.includes('structure.manage');
@@ -18,7 +21,7 @@ export default function FranchiseManager({ organization, selectedId, onSaved }: 
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [address, setAddress] = useState<Address>(blank);
-  const [showAddress, setShowAddress] = useState(false);
+  const [contacts, setContacts] = useState<Contact[]>([{ ...blankContact }]);
   const [query, setQuery] = useState('');
   const [target, setTarget] = useState<Franchise | null>(null);
   const [busy, setBusy] = useState(false);
@@ -48,7 +51,7 @@ export default function FranchiseManager({ organization, selectedId, onSaved }: 
     setCode(next === 'new' ? '' : next.code);
     setName(next === 'new' ? '' : next.name);
     setAddress(next === 'new' ? blank : next.address);
-    setShowAddress(next !== 'new' && !!line(next.address));
+    setContacts(next !== 'new' && next.contacts?.length ? next.contacts.map((c) => ({ ...c })) : [{ ...blankContact }]);
   }
   const setField = (k: keyof Address) => (e: React.ChangeEvent<HTMLInputElement>) => setAddress({ ...address, [k]: e.target.value });
 
@@ -59,7 +62,7 @@ export default function FranchiseManager({ organization, selectedId, onSaved }: 
     setFields({});
     try {
       const isNew = editing === 'new';
-      const r = await fetch(isNew ? `${base}/franchises` : `${base}/franchises/${(editing as Franchise).id}`, { method: isNew ? 'POST' : 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, name, address: showAddress ? address : blank }) });
+      const r = await fetch(isNew ? `${base}/franchises` : `${base}/franchises/${(editing as Franchise).id}`, { method: isNew ? 'POST' : 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, name, address, contacts: contacts.filter((c) => c.name.trim() || c.email.trim() || c.phone.trim()) }) });
       const body = await r.json().catch(() => ({}));
       if (!r.ok) {
         setFields(body.errors ?? {});
@@ -123,22 +126,31 @@ export default function FranchiseManager({ organization, selectedId, onSaved }: 
               {fields.name && <span className="field-error">{fields.name}</span>}
             </label>
           </div>
-          <label className={styles.capItem} style={{ gridTemplateColumns: '20px 1fr' }}>
-            <input type="checkbox" checked={showAddress} onChange={(e) => setShowAddress(e.target.checked)} disabled={busy} />
-            <span>Add an address for this franchise (optional)</span>
-          </label>
-          {showAddress && (
+          <fieldset style={{ border: '1px solid var(--border)', borderRadius: 14, padding: 14, margin: 0 }}>
+            <legend style={{ padding: '0 6px', fontWeight: 700 }}>Address (required)</legend>
             <div className={styles.inlineForm}>
-              <label className="form-field" style={{ flexBasis: 300 }}>Street<input maxLength={200} value={address.street} onChange={setField('street')} disabled={busy} autoComplete="street-address" /></label>
-              <label className="form-field">City<input maxLength={100} value={address.city} onChange={setField('city')} disabled={busy} autoComplete="address-level2" /></label>
-              <label className="form-field">Province / state<input maxLength={100} value={address.region} onChange={setField('region')} disabled={busy} autoComplete="address-level1" /></label>
-              <label className="form-field">Postal / ZIP<input maxLength={20} value={address.postalCode} onChange={setField('postalCode')} disabled={busy} autoComplete="postal-code" /></label>
-              <label className="form-field">Country<input maxLength={100} value={address.country} onChange={setField('country')} disabled={busy} autoComplete="country-name" /></label>
+              <label className="form-field" style={{ flexBasis: 300 }}>Street<input required maxLength={200} value={address.street} onChange={setField('street')} disabled={busy} autoComplete="street-address" /></label>
+              <label className="form-field">City<input required maxLength={100} value={address.city} onChange={setField('city')} disabled={busy} autoComplete="address-level2" /></label>
+              <label className="form-field">Province / state<input required maxLength={100} value={address.region} onChange={setField('region')} disabled={busy} autoComplete="address-level1" /></label>
+              <label className="form-field">Postal / ZIP<input required maxLength={20} value={address.postalCode} onChange={setField('postalCode')} disabled={busy} autoComplete="postal-code" /></label>
+              <label className="form-field">Country<input required maxLength={100} value={address.country} onChange={setField('country')} disabled={busy} autoComplete="country-name" /></label>
               {fields.address && <span className="field-error">{fields.address}</span>}
             </div>
-          )}
+          </fieldset>
+          <fieldset style={{ border: '1px solid var(--border)', borderRadius: 14, padding: 14, margin: 0, display: 'grid', gap: 10 }}>
+            <legend style={{ padding: '0 6px', fontWeight: 700 }}>Contact people</legend>
+            {contacts.map((c, i) => (
+              <div key={i} className={styles.inlineForm} style={{ alignItems: 'flex-end' }}>
+                <label className="form-field">Name<input maxLength={120} value={c.name} onChange={(e) => setContacts(contacts.map((x, xi) => (xi === i ? { ...x, name: e.target.value } : x)))} disabled={busy} /></label>
+                <label className="form-field">Email<input type="email" maxLength={254} value={c.email} onChange={(e) => setContacts(contacts.map((x, xi) => (xi === i ? { ...x, email: e.target.value } : x)))} disabled={busy} /></label>
+                <label className="form-field">Phone<input type="tel" maxLength={40} value={c.phone} onChange={(e) => setContacts(contacts.map((x, xi) => (xi === i ? { ...x, phone: e.target.value } : x)))} disabled={busy} /></label>
+                {contacts.length > 1 && <button type="button" className="secondary" disabled={busy} onClick={() => setContacts(contacts.filter((_, xi) => xi !== i))} aria-label={`Remove contact ${i + 1}`}>Remove</button>}
+              </div>
+            ))}
+            {contacts.length < 10 && <div><button type="button" className="secondary" disabled={busy} onClick={() => setContacts([...contacts, { ...blankContact }])}>Add another contact person</button></div>}
+          </fieldset>
           <div className={styles.rowBetween}>
-            <button className="primary" disabled={busy || !code.trim() || name.trim().length < 2}>{busy ? 'Saving…' : editing === 'new' ? 'Create franchise' : 'Save franchise'}</button>
+            <button className="primary" disabled={busy || !code.trim() || name.trim().length < 2 || !addressComplete(address)}>{busy ? 'Saving…' : editing === 'new' ? 'Create franchise' : 'Save franchise'}</button>
             <button type="button" className="secondary" disabled={busy} onClick={() => setEditing(null)}>Cancel</button>
           </div>
         </form>
@@ -161,7 +173,8 @@ export default function FranchiseManager({ organization, selectedId, onSaved }: 
               </div>
               {selectedId === f.id && <span className={`${styles.badge} ${styles.badge_complete}`}>Selected</span>}
             </div>
-            <p className={styles.personSub}>{line(f.address) || 'No address added'}</p>
+            <p className={styles.personSub}>{line(f.address) || 'No address added: edit this franchise to add one.'}</p>
+            {(f.contacts?.length ?? 0) > 0 && <p className={styles.personSub}>{f.contacts!.map((c) => [c.name, c.email, c.phone].filter(Boolean).join(' · ')).join('  |  ')}</p>}
             {!f.code && <p className={styles.personSub}>This franchise needs a code. Edit it to add one.</p>}
             {canManage && (
               <div className={styles.rowBetween}>

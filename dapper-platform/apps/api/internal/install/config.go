@@ -5,9 +5,7 @@ package install
 import (
 	"crypto/rand"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
-	"fmt"
 	"net/url"
 	"os"
 	"os/exec"
@@ -67,14 +65,16 @@ type Session struct {
 	Lifetime string `json:"lifetime"`
 }
 
-// Dir is the per-installation data directory (git-ignored): config, certificate, uploads and the install lock.
-func Dir(home string) string          { return filepath.Join(home, ".dapper") }
-func ConfigPath(home string) string   { return filepath.Join(Dir(home), "config.json") }
-func lockPath(home string) string     { return filepath.Join(Dir(home), "installed.lock") }
-func Installed(home string) bool      { _, err := os.Stat(lockPath(home)); return err == nil }
-func UploadDir(home string) string    { return filepath.Join(Dir(home), "uploads") }
-func CertDir(home string) string      { return filepath.Join(Dir(home), "tls") }
-func BinDir(home string) string       { return filepath.Join(Dir(home), "bin") }
+// Dir is the per-installation data directory (git-ignored): certificate, uploads, logs and the built services.
+func Dir(home string) string { return filepath.Join(home, ".dapper") }
+
+// ConfigPath is the .env file at the repository root. It is the single source of configuration, and its existence (with the
+// marker line DAPPER_INSTALLED=1) is what says "setup has been done": until it exists, starting Dapper opens setup first.
+func ConfigPath(home string) string { return filepath.Join(home, ".env") }
+func Installed(home string) bool    { _, err := Load(home); return err == nil }
+func UploadDir(home string) string  { return filepath.Join(Dir(home), "uploads") }
+func CertDir(home string) string    { return filepath.Join(Dir(home), "tls") }
+func BinDir(home string) string     { return filepath.Join(Dir(home), "bin") }
 func randomKey() (string, error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
@@ -93,39 +93,116 @@ func NewKeys() (Keys, error) {
 	return Keys{MFA: m, Invitation: i}, err
 }
 
+// quoteEnv writes one value so that parseEnv reads it back exactly (double quotes, with \\ \" and \n escaped).
+func quoteEnv(v string) string {
+	r := strings.NewReplacer("\\", "\\\\", "\"", "\\\"", "\n", "\\n", "\r", "\\r")
+	return "\"" + r.Replace(v) + "\""
+}
+
+func unquoteEnv(v string) string {
+	v = strings.TrimSpace(v)
+	if len(v) >= 2 && v[0] == '"' && v[len(v)-1] == '"' {
+		var b strings.Builder
+		in := v[1 : len(v)-1]
+		for i := 0; i < len(in); i++ {
+			if in[i] == '\\' && i+1 < len(in) {
+				i++
+				switch in[i] {
+				case 'n':
+					b.WriteByte('\n')
+				case 'r':
+					b.WriteByte('\r')
+				default:
+					b.WriteByte(in[i])
+				}
+				continue
+			}
+			b.WriteByte(in[i])
+		}
+		return b.String()
+	}
+	if len(v) >= 2 && v[0] == '\'' && v[len(v)-1] == '\'' {
+		return v[1 : len(v)-1]
+	}
+	return v
+}
+
+func parseEnv(raw []byte) map[string]string {
+	out := map[string]string{}
+	for _, line := range strings.Split(strings.ReplaceAll(string(raw), "\r\n", "\n"), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		line = strings.TrimPrefix(line, "export ")
+		if i := strings.Index(line, "="); i > 0 {
+			out[strings.TrimSpace(line[:i])] = unquoteEnv(line[i+1:])
+		}
+	}
+	return out
+}
+
+// Load reads .env. It succeeds only for a file written by setup (DAPPER_INSTALLED=1 and a database address), so a hand-made or
+// partial .env never counts as an installation.
 func Load(home string) (Config, error) {
 	var c Config
 	raw, err := os.ReadFile(ConfigPath(home))
 	if err != nil {
 		return c, err
 	}
-	if err = json.Unmarshal(raw, &c); err != nil {
-		return c, errors.New("configuration file is not valid JSON")
+	e := parseEnv(raw)
+	if e["DAPPER_INSTALLED"] != "1" || e["DAPPER_DATABASE_URL"] == "" || e["DAPPER_SITE_URL"] == "" {
+		return c, errors.New(".env is not a completed Dapper setup")
 	}
-	if c.Version != ConfigVersion {
-		return c, fmt.Errorf("configuration version %d is not supported", c.Version)
+	port, _ := strconv.Atoi(e["DAPPER_SMTP_PORT"])
+	c = Config{
+		Version: ConfigVersion, Created: e["DAPPER_CREATED"],
+		Site:     Site{Name: e["DAPPER_SITE_NAME"], URL: e["DAPPER_SITE_URL"], Timezone: e["DAPPER_TIMEZONE"], Listen: e["DAPPER_LISTEN"], TLS: TLS{Mode: e["DAPPER_TLS_MODE"], CertFile: e["DAPPER_TLS_CERT"], KeyFile: e["DAPPER_TLS_KEY"]}},
+		Database: Database{URL: e["DAPPER_DATABASE_URL"]},
+		SMTP:     SMTP{Host: e["DAPPER_SMTP_HOST"], Port: port, Username: e["DAPPER_SMTP_USERNAME"], Password: e["DAPPER_SMTP_PASSWORD"], FromAddress: e["DAPPER_SMTP_FROM_ADDRESS"], FromName: e["DAPPER_SMTP_FROM_NAME"]},
+		Keys:     Keys{MFA: e["DAPPER_MFA_KEY"], Invitation: e["DAPPER_INVITATION_ENCRYPTION_KEY"]},
+		Session:  Session{Lifetime: e["DAPPER_SESSION_LIFETIME"]},
+	}
+	if c.Session.Lifetime == "" {
+		c.Session.Lifetime = "8h"
+	}
+	if c.Site.Listen == "" {
+		c.Site.Listen = "127.0.0.1:8443"
+	}
+	if c.Site.TLS.Mode == "" {
+		c.Site.TLS.Mode = TLSSelfSigned
+	}
+	if c.Keys.MFA == "" || c.Keys.Invitation == "" {
+		return c, errors.New(".env is missing the secret keys; run setup again")
 	}
 	return c, nil
 }
 
-// Save writes the configuration with owner-only permissions. It refuses to replace an installation that is already locked.
+// Save writes .env with owner-only permissions. It refuses to replace a completed setup.
 func Save(home string, c Config) error {
 	if Installed(home) {
-		return errors.New("this installation is already set up; remove .dapper to run setup again")
+		return errors.New("this installation is already set up; delete .env to run setup again")
 	}
 	if err := os.MkdirAll(Dir(home), 0o700); err != nil {
 		return err
 	}
 	restrict(Dir(home))
 	c.Version, c.Created = ConfigVersion, time.Now().UTC().Format(time.RFC3339)
-	raw, err := json.MarshalIndent(c, "", "  ")
-	if err != nil {
-		return err
+	rows := [][2]string{
+		{"DAPPER_INSTALLED", "1"}, {"DAPPER_CREATED", c.Created},
+		{"DAPPER_SITE_NAME", c.Site.Name}, {"DAPPER_SITE_URL", c.Site.URL}, {"DAPPER_TIMEZONE", c.Site.Timezone}, {"DAPPER_LISTEN", c.Site.Listen},
+		{"DAPPER_TLS_MODE", c.Site.TLS.Mode}, {"DAPPER_TLS_CERT", c.Site.TLS.CertFile}, {"DAPPER_TLS_KEY", c.Site.TLS.KeyFile},
+		{"DAPPER_DATABASE_URL", c.Database.URL},
+		{"DAPPER_SMTP_HOST", c.SMTP.Host}, {"DAPPER_SMTP_PORT", strconv.Itoa(c.SMTP.Port)}, {"DAPPER_SMTP_USERNAME", c.SMTP.Username}, {"DAPPER_SMTP_PASSWORD", c.SMTP.Password},
+		{"DAPPER_SMTP_FROM_ADDRESS", c.SMTP.FromAddress}, {"DAPPER_SMTP_FROM_NAME", c.SMTP.FromName},
+		{"DAPPER_MFA_KEY", c.Keys.MFA}, {"DAPPER_INVITATION_ENCRYPTION_KEY", c.Keys.Invitation}, {"DAPPER_SESSION_LIFETIME", c.Session.Lifetime},
 	}
-	if err = os.WriteFile(ConfigPath(home), raw, 0o600); err != nil {
-		return err
+	var b strings.Builder
+	b.WriteString("# Dapper configuration, written by setup. It holds the database password, the email password and the secret keys:\n# keep it private, never commit it (it is in .gitignore) and back it up with your database. Delete it to run setup again.\n")
+	for _, r := range rows {
+		b.WriteString(r[0] + "=" + quoteEnv(r[1]) + "\n")
 	}
-	return os.WriteFile(lockPath(home), []byte(c.Created+"\n"), 0o600)
+	return os.WriteFile(ConfigPath(home), []byte(b.String()), 0o600)
 }
 
 // Origin returns the validated public origin (scheme and host only).

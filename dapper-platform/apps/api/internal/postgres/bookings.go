@@ -219,11 +219,18 @@ VALUES ($1, $2, $3, $4, NULL, $5, 'Booking created')`, newID, scope.Organization
 		return Booking{}, err
 	}
 
+	// Every booking is part of this location's work, so staff see it on their own screens whoever created it.
+	if _, err = tx.Exec(ctx, `INSERT INTO employee_booking_worksites(booking_id,organization_id,location_id,dealership_id,linked_by)
+SELECT $1,$2,$3,NULL,p.id FROM principals p WHERE p.id=NULLIF($4,'')::uuid ON CONFLICT(booking_id) DO NOTHING`, newID, scope.OrganizationID, scope.LocationID, scope.ActorID); err != nil {
+		return Booking{}, err
+	}
+
 	row := tx.QueryRow(ctx, `SELECT `+bookingColumns+` FROM bookings b JOIN customers c ON c.organization_id=b.organization_id AND c.location_id=b.location_id AND c.id=b.customer_id WHERE b.id=$1`, newID)
 	created, err := scanBooking(row)
 	if err != nil {
 		return Booking{}, err
 	}
+	s.autoInvoiceDraft(ctx, tx, scope, created)
 
 	return created, nil
 }

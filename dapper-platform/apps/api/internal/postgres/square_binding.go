@@ -16,8 +16,14 @@ func (s *Store) SetSquareCredentialResolver(r SquareCredentialResolver) { s.squa
 
 // SetSquareApplicationIDs installs the PUBLIC Square application IDs (per environment) the browser
 // card SDK needs. They are not secrets; access tokens never use this path.
-func (s *Store) SetSquareApplicationIDs(ids map[string]string) { s.squareApplicationIDs = ids }
+func (s *Store) SetSquareApplicationIDs(ids map[string]string) {
+	s.squareMu.Lock()
+	defer s.squareMu.Unlock()
+	s.squareApplicationIDs = ids
+}
 func (s *Store) SquareApplicationID(environment string) string {
+	s.squareMu.RLock()
+	defer s.squareMu.RUnlock()
 	return s.squareApplicationIDs[environment]
 }
 

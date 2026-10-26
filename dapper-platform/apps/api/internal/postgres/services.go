@@ -21,13 +21,15 @@ type CatalogService struct {
 	Version          int     `json:"version"`
 	CentralServiceID *string `json:"centralServiceId"`
 	PriceCents       *int64  `json:"priceCents"` // CAD cents before tax; comes from the central service when linked
+	// DurationMinutes is how long the service takes to complete (nil = not set); comes from the central service when linked.
+	DurationMinutes *int `json:"durationMinutes"`
 }
 
-const serviceColumns = `id::text,name,kind,parent_id::text,archived,version,central_service_id::text,price_cents`
+const serviceColumns = `id::text,name,kind,parent_id::text,archived,version,central_service_id::text,price_cents,duration_minutes`
 
 func scanService(row pgx.Row) (CatalogService, error) {
 	var service CatalogService
-	err := row.Scan(&service.ID, &service.Name, &service.Kind, &service.ParentID, &service.Archived, &service.Version, &service.CentralServiceID, &service.PriceCents)
+	err := row.Scan(&service.ID, &service.Name, &service.Kind, &service.ParentID, &service.Archived, &service.Version, &service.CentralServiceID, &service.PriceCents, &service.DurationMinutes)
 	return service, err
 }
 func (s *Store) Services(ctx context.Context, scope Scope) ([]CatalogService, error) {
@@ -67,6 +69,9 @@ func (s *Store) Services(ctx context.Context, scope Scope) ([]CatalogService, er
 func (s *Store) SaveService(ctx context.Context, scope Scope, input CatalogService) (CatalogService, error) {
 	input.Name = strings.TrimSpace(input.Name)
 	if n := utf8.RuneCountInString(input.Name); n < 2 || n > 120 {
+		return CatalogService{}, ErrServiceInput
+	}
+	if input.DurationMinutes != nil && (*input.DurationMinutes < 1 || *input.DurationMinutes > 10080) {
 		return CatalogService{}, ErrServiceInput
 	}
 	if input.Kind != "main" && input.Kind != "addon" || input.Kind == "main" && input.ParentID != nil || input.Kind == "addon" && (input.ParentID == nil || *input.ParentID == input.ID) {
@@ -119,14 +124,17 @@ func (s *Store) SaveService(ctx context.Context, scope Scope, input CatalogServi
 	}
 	var service CatalogService
 	if input.ID == "" {
-		service, err = scanService(tx.QueryRow(ctx, `INSERT INTO catalog_services(organization_id,location_id,name,kind,parent_id) VALUES($1,$2,$3,$4,$5) RETURNING `+serviceColumns, scope.OrganizationID, scope.LocationID, input.Name, input.Kind, input.ParentID))
+		service, err = scanService(tx.QueryRow(ctx, `INSERT INTO catalog_services(organization_id,location_id,name,kind,parent_id,duration_minutes) VALUES($1,$2,$3,$4,$5,$6) RETURNING `+serviceColumns, scope.OrganizationID, scope.LocationID, input.Name, input.Kind, input.ParentID, input.DurationMinutes))
 	} else {
-		service, err = scanService(tx.QueryRow(ctx, `UPDATE catalog_services SET name=$4,kind=$5,parent_id=$6,version=version+1 WHERE organization_id=$1 AND location_id=$2 AND id=$3 RETURNING `+serviceColumns, scope.OrganizationID, scope.LocationID, input.ID, input.Name, input.Kind, input.ParentID))
+		service, err = scanService(tx.QueryRow(ctx, `UPDATE catalog_services SET name=$4,kind=$5,parent_id=$6,duration_minutes=$7,version=version+1 WHERE organization_id=$1 AND location_id=$2 AND id=$3 RETURNING `+serviceColumns, scope.OrganizationID, scope.LocationID, input.ID, input.Name, input.Kind, input.ParentID, input.DurationMinutes))
 	}
 	if err != nil {
 		return CatalogService{}, err
 	}
 	if err = serviceRevision(ctx, tx, scope, service); err != nil {
+		return CatalogService{}, err
+	}
+	if err = syncServiceDurationRules(ctx, tx, scope.OrganizationID, scope.LocationID, scope.ActorID); err != nil {
 		return CatalogService{}, err
 	}
 	if err = tx.Commit(ctx); err != nil {

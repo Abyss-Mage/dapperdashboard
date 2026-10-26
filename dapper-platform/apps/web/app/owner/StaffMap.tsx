@@ -36,7 +36,7 @@ export default function StaffMap({ points, height = 420 }: { points: MapPoint[];
       for (let ty = Math.floor(top / TILE); ty <= Math.floor((top + height) / TILE); ty++) {
         if (ty < 0 || ty >= max) continue;
         const wx = ((tx % max) + max) % max;
-        tiles.push({ key: `${z}/${tx}/${ty}`, src: `https://tile.openstreetmap.org/${z}/${wx}/${ty}.png`, x: tx * TILE - left, y: ty * TILE - top });
+        tiles.push({ key: `${z}/${tx}/${ty}`, src: `/api/v1/map-tiles/${z}/${wx}/${ty}`, x: tx * TILE - left, y: ty * TILE - top });
       }
     return { tiles, marks: points.map((q, i) => ({ ...q, x: p[i].x - left, y: p[i].y - top })) };
   }, [points, height]);

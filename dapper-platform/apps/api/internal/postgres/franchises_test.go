@@ -6,6 +6,8 @@ import (
 	"testing"
 )
 
+var testAddress = Address{Street: "1 Synthetic Way", City: "Peterborough", Region: "ON", PostalCode: "K9J 1A1", Country: "Canada"}
+
 func verifyFranchiseStructure(t *testing.T, ctx context.Context, s *Store, a, b Scope) {
 	t.Helper()
 	if _, err := s.Structure(ctx, a.ActorID, a.OrganizationID); err != ErrForbidden {
@@ -22,21 +24,38 @@ func verifyFranchiseStructure(t *testing.T, ctx context.Context, s *Store, a, b 
 	if err != nil || north.Code != "NORTH" || north.ID == "" || north.FranchiseID == nil || north.Address.City != "Peterborough" {
 		t.Fatalf("franchise with address %+v %v", north, err)
 	}
-	south, err := s.CreateFranchise(ctx, a.ActorID, a.OrganizationID, FranchiseInput{Code: "SOUTH", Name: "Synthetic South"})
-	if err != nil || south.Address != (Address{}) {
-		t.Fatalf("franchise without address %+v %v", south, err)
+	south, err := s.CreateFranchise(ctx, a.ActorID, a.OrganizationID, FranchiseInput{Code: "SOUTH", Name: "Synthetic South", Address: testAddress})
+	if err != nil || south.Address != testAddress {
+		t.Fatalf("franchise address not kept %+v %v", south, err)
 	}
-	if _, err = s.CreateFranchise(ctx, a.ActorID, a.OrganizationID, FranchiseInput{Code: "OTHER", Name: " synthetic north "}); err == nil {
+	// The full address is required, and contact people are saved with the franchise.
+	if _, err = s.CreateFranchise(ctx, a.ActorID, a.OrganizationID, FranchiseInput{Code: "NOADDR", Name: "Synthetic No Address", Address: Address{City: "Toronto"}}); !errors.Is(err, ErrFranchiseAddress) {
+		t.Fatalf("incomplete address accepted: %v", err)
+	}
+	withContacts, err := s.CreateFranchise(ctx, a.ActorID, a.OrganizationID, FranchiseInput{Code: "CONTACT", Name: "Synthetic Contacts", Address: testAddress, Contacts: []FranchiseContact{{Name: "Synthetic Manager", Email: "manager@example.invalid", Phone: "+15555550102"}, {Name: "Synthetic Deputy"}}})
+	if err != nil || len(withContacts.Contacts) != 2 {
+		t.Fatalf("contacts not saved %+v %v", withContacts, err)
+	}
+	listed, err := s.Structure(ctx, a.ActorID, a.OrganizationID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range listed {
+		if f.ID == withContacts.ID && (len(f.Contacts) != 2 || f.Contacts[0].Name != "Synthetic Manager") {
+			t.Fatalf("contacts not listed in order %+v", f.Contacts)
+		}
+	}
+	if _, err = s.CreateFranchise(ctx, a.ActorID, a.OrganizationID, FranchiseInput{Code: "OTHER", Name: " synthetic north ", Address: testAddress}); err == nil {
 		t.Fatal("duplicate franchise name accepted")
 	}
-	if _, err = s.CreateFranchise(ctx, a.ActorID, a.OrganizationID, FranchiseInput{Code: "NORTH", Name: "Synthetic Another"}); !errors.Is(err, ErrFranchiseCode) {
+	if _, err = s.CreateFranchise(ctx, a.ActorID, a.OrganizationID, FranchiseInput{Code: "NORTH", Name: "Synthetic Another", Address: testAddress}); !errors.Is(err, ErrFranchiseCode) {
 		t.Fatal("duplicate franchise code accepted", err)
 	}
-	if foreign, err := s.CreateFranchise(ctx, b.ActorID, b.OrganizationID, FranchiseInput{Code: "NORTH", Name: "Synthetic Foreign North"}); err != nil || foreign.ID == north.ID {
+	if foreign, err := s.CreateFranchise(ctx, b.ActorID, b.OrganizationID, FranchiseInput{Code: "NORTH", Name: "Synthetic Foreign North", Address: testAddress}); err != nil || foreign.ID == north.ID {
 		t.Fatal("codes must be unique per organization, not globally", err)
 	}
 	for _, bad := range []string{"", "a", "has space", "WAYTOOLONGCODE1", "bad_code"} {
-		if _, err = s.CreateFranchise(ctx, a.ActorID, a.OrganizationID, FranchiseInput{Code: bad, Name: "Synthetic Bad Code"}); !errors.Is(err, ErrStructureInput) {
+		if _, err = s.CreateFranchise(ctx, a.ActorID, a.OrganizationID, FranchiseInput{Code: bad, Name: "Synthetic Bad Code", Address: testAddress}); !errors.Is(err, ErrStructureInput) {
 			t.Fatalf("invalid code %q accepted: %v", bad, err)
 		}
 	}
@@ -55,15 +74,15 @@ func verifyFranchiseStructure(t *testing.T, ctx context.Context, s *Store, a, b 
 	}
 
 	// Edit: rename, recode and change the address.
-	edited, err := s.UpdateFranchise(ctx, a.ActorID, a.OrganizationID, north.ID, FranchiseInput{Code: "NTH2", Name: "Synthetic North Two", Address: Address{City: "Toronto"}})
-	if err != nil || edited.Code != "NTH2" || edited.Name != "Synthetic North Two" || edited.Address.City != "Toronto" || edited.Address.Street != "" {
+	edited, err := s.UpdateFranchise(ctx, a.ActorID, a.OrganizationID, north.ID, FranchiseInput{Code: "NTH2", Name: "Synthetic North Two", Address: Address{Street: "3 Synthetic Way", City: "Toronto", Region: "ON", PostalCode: "M5V 1A1", Country: "Canada"}})
+	if err != nil || edited.Code != "NTH2" || edited.Name != "Synthetic North Two" || edited.Address.City != "Toronto" || edited.Address.Street != "3 Synthetic Way" {
 		t.Fatalf("franchise edit %+v %v", edited, err)
 	}
 	var shadowName string
 	if err = s.pool.QueryRow(ctx, `SELECT f.name FROM franchises f JOIN locations l ON l.franchise_id=f.id WHERE l.id=$1`, north.ID).Scan(&shadowName); err != nil || shadowName != "Synthetic North Two" {
 		t.Fatal("grouping row did not follow the franchise name", err)
 	}
-	if _, err = s.UpdateFranchise(ctx, a.ActorID, a.OrganizationID, south.ID, FranchiseInput{Code: "NTH2", Name: "Synthetic South"}); !errors.Is(err, ErrFranchiseCode) {
+	if _, err = s.UpdateFranchise(ctx, a.ActorID, a.OrganizationID, south.ID, FranchiseInput{Code: "NTH2", Name: "Synthetic South", Address: testAddress}); !errors.Is(err, ErrFranchiseCode) {
 		t.Fatal("recode to an existing code accepted", err)
 	}
 	// A pre-existing site with no code or grouping row becomes a normal franchise when edited.
@@ -71,11 +90,11 @@ func verifyFranchiseStructure(t *testing.T, ctx context.Context, s *Store, a, b 
 	if err = s.pool.QueryRow(ctx, `INSERT INTO locations(organization_id,name) VALUES($1,'Synthetic Legacy Site') RETURNING id::text`, a.OrganizationID).Scan(&legacy); err != nil {
 		t.Fatal(err)
 	}
-	adopted, err := s.UpdateFranchise(ctx, a.ActorID, a.OrganizationID, legacy, FranchiseInput{Code: "LEGACY", Name: "Synthetic Legacy Site"})
+	adopted, err := s.UpdateFranchise(ctx, a.ActorID, a.OrganizationID, legacy, FranchiseInput{Code: "LEGACY", Name: "Synthetic Legacy Site", Address: testAddress})
 	if err != nil || adopted.FranchiseID == nil || adopted.Code != "LEGACY" {
 		t.Fatalf("legacy site not adopted %+v %v", adopted, err)
 	}
-	if _, err = s.UpdateFranchise(ctx, b.ActorID, b.OrganizationID, north.ID, FranchiseInput{Code: "HIJACK", Name: "Hijack"}); !errors.Is(err, ErrStructureInput) {
+	if _, err = s.UpdateFranchise(ctx, b.ActorID, b.OrganizationID, north.ID, FranchiseInput{Code: "HIJACK", Name: "Hijack", Address: testAddress}); !errors.Is(err, ErrStructureInput) {
 		t.Fatal("foreign organization edited a franchise", err)
 	}
 
@@ -98,7 +117,7 @@ func verifyFranchiseStructure(t *testing.T, ctx context.Context, s *Store, a, b 
 		t.Fatal(err)
 	}
 	before, _ := s.Structure(ctx, a.ActorID, a.OrganizationID)
-	if _, err = s.CreateFranchise(ctx, a.ActorID, a.OrganizationID, FranchiseInput{Code: "ROLL", Name: "Rollback franchise"}); err == nil {
+	if _, err = s.CreateFranchise(ctx, a.ActorID, a.OrganizationID, FranchiseInput{Code: "ROLL", Name: "Rollback franchise", Address: testAddress}); err == nil {
 		t.Fatal("franchise committed without audit")
 	}
 	after, err := s.Structure(ctx, a.ActorID, a.OrganizationID)
@@ -111,7 +130,7 @@ func verifyFranchiseStructure(t *testing.T, ctx context.Context, s *Store, a, b 
 	if _, err = s.pool.Exec(ctx, `DELETE FROM organization_grants WHERE principal_id=$1 AND action='structure.manage'`, a.ActorID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = s.CreateFranchise(ctx, a.ActorID, a.OrganizationID, FranchiseInput{Code: "REVOKED", Name: "Revoked fixture"}); err != ErrForbidden {
+	if _, err = s.CreateFranchise(ctx, a.ActorID, a.OrganizationID, FranchiseInput{Code: "REVOKED", Name: "Revoked fixture", Address: testAddress}); err != ErrForbidden {
 		t.Fatal("revoked structure grant retained access")
 	}
 }
