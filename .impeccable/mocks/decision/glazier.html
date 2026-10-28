@@ -1,0 +1,22 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Tint wall</title>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@500;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0}body{width:1440px;height:900px;overflow:hidden;background:#111;font-family:'Work Sans',sans-serif}
+.wall{position:absolute;inset:0;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;grid-template-rows:1fr 1fr 1fr;gap:14px;padding:14px;background:#111}
+.p{position:relative;padding:28px;color:#151515;background:#e9ece9}
+.p.photo{background:url(classic.webp) center/cover}
+.p.photo::after{content:"";position:absolute;inset:0;background:#0b0c0e;opacity:.45}
+.p h1{position:relative;z-index:1;font-size:92px;line-height:.9;color:#fff;font-weight:700;letter-spacing:-3px}
+.p h2{font-size:40px;font-weight:700;letter-spacing:-1px}
+.p span{display:block;font-size:22px;margin-top:6px}
+.t70{background:#c9cfd2}.t50{background:#8d969b;color:#fff}.t35{background:#5a6267;color:#fff}.t20{background:#2f3438;color:#fff}.t5{background:#121416;color:#fff}
+.red{background:#c4142a;color:#fff}.seed{background:#f1f3f1 radial-gradient(#fff 1px,transparent 1.5px) 0 0/9px 9px}
+</style></head><body><div class="wall">
+<div class="p photo" style="grid-row:span 2"><h1>Glass,<br>paint,<br>protection.</h1></div>
+<div class="p seed"><h2>Detailing</h2><span>Ten vehicle types</span></div>
+<div class="p seed"><h2>Ceramic</h2><span>Coating</span></div>
+<div class="p red"><h2>Book a bay</h2><span>Open times</span></div>
+<div class="p seed"><h2>PPF</h2><span>Film, cut to fit</span></div>
+<div class="p t50" style="grid-column:span 2"><h2>Window tint · 50%</h2><span>Choose your shade below</span></div>
+<div class="p t70"><h2>70</h2></div><div class="p t35"><h2>35</h2></div><div class="p t20"><h2>20</h2></div><div class="p t5"><h2>5</h2></div>
+</div></body></html>

@@ -1,0 +1,53 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "arial",
+        "files": [
+          ".impeccable/mocks/decision/canon.html"
+        ],
+        "createdAt": "2026-10-28T10:34:25.067Z",
+        "reason": "Claude: canon card deliberately shows the generic category-standard look; decision sketch only, not site code"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/assigned.html"
+        ],
+        "createdAt": "2026-10-28T11:24:37.204Z",
+        "reason": "Claude: unchosen decision-round sketches of other directions; deliberately use their own fonts, not site code"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/glazier.html"
+        ],
+        "createdAt": "2026-10-28T11:24:37.247Z",
+        "reason": "Claude: unchosen decision-round sketches of other directions; deliberately use their own fonts, not site code"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/brick.html"
+        ],
+        "createdAt": "2026-10-28T11:24:37.290Z",
+        "reason": "Claude: unchosen decision-round sketches of other directions; deliberately use their own fonts, not site code"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/canon.html"
+        ],
+        "createdAt": "2026-10-28T11:24:37.332Z",
+        "reason": "Claude: unchosen decision-round sketches of other directions; deliberately use their own fonts, not site code"
+      }
+    ]
+  }
+}

@@ -1,6 +1,6 @@
 import type {MetadataRoute} from 'next';
-import {publicPages} from '../../../../main website/pages.generated';
+import {categories} from './(site)/content';
 export default function sitemap():MetadataRoute.Sitemap {
  if(process.env.DAPPER_PUBLIC_INDEXING!=='enabled')return [];
- return ['/',...Object.keys(publicPages).map(slug=>'/'+slug+'/')].map(path=>({url:'https://dapperdetailing.ca'+path}));
+ return ['/','/services','/portfolio','/about-us','/contact-us','/studio',...categories.map(c=>'/'+c.slug)].map(path=>({url:'https://dapperdetailing.ca'+path}));
 }

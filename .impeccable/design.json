@@ -1,0 +1,175 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-28T12:00:00Z",
+  "title": "Design System: Dapper Detailing Pros (public website)",
+  "extensions": {
+    "scope": {
+      "surface": "dapper-platform/apps/web/app/(site)",
+      "source": "dapper-platform/apps/web/app/(site)/site.css",
+      "excluded": ["dapper-platform/apps/web/app/(app) (Operate dashboards, own globals.css)"],
+      "exception": "dapper-platform/apps/web/app/(site)/story.css (home scroll story, preserved own staging)"
+    },
+    "colorMeta": {
+      "paint": { "role": "neutral", "displayName": "Gloss Paint", "cssVar": "--paint", "tonalRamp": ["#050506", "#09090b", "#121215", "#1b1b1f", "#2a2a30", "#3a3a40", "#5c5c63", "#8a8a91"] },
+      "paint-raised": { "role": "neutral", "displayName": "Raised Paint", "cssVar": "--paint-2", "tonalRamp": ["#050506", "#09090b", "#121215", "#1b1b1f", "#2a2a30", "#3a3a40", "#5c5c63", "#8a8a91"] },
+      "paint-high": { "role": "neutral", "displayName": "High Paint", "cssVar": "--paint-3", "tonalRamp": ["#050506", "#09090b", "#121215", "#1b1b1f", "#2a2a30", "#3a3a40", "#5c5c63", "#8a8a91"] },
+      "ink": { "role": "neutral", "displayName": "Inspection White", "cssVar": "--ink", "tonalRamp": ["#2b2a28", "#4a4945", "#6b6964", "#8c8a84", "#b9b7b0", "#d6d4ce", "#f3f2ee", "#fbfaf8"] },
+      "ink-muted": { "role": "neutral", "displayName": "Muted Ink", "cssVar": "--ink-2", "tonalRamp": ["#2b2a28", "#4a4945", "#6b6964", "#8c8a84", "#b9b7b0", "#d6d4ce", "#f3f2ee", "#fbfaf8"] },
+      "ink-before": { "role": "neutral", "displayName": "Before Grey", "cssVar": "--ink-3", "tonalRamp": ["#2b2a28", "#4a4945", "#6b6964", "#8c8a84", "#b9b7b0", "#d6d4ce", "#f3f2ee", "#fbfaf8"] },
+      "rule": { "role": "neutral", "displayName": "Rule", "cssVar": "--rule" },
+      "tape": { "role": "secondary", "displayName": "Masking Tape", "cssVar": "--tape", "tonalRamp": ["#2a2318", "#4a3e2a", "#6e5e40", "#958159", "#bba77b", "#d9c59c", "#e4d2ab", "#f3ead7"] },
+      "tape-ink": { "role": "secondary", "displayName": "Tape Ink", "cssVar": "--tape-ink", "tonalRamp": ["#14100a", "#2a2318", "#4a3f2d", "#6b5d45", "#8f7f63", "#b3a486", "#d6caaf", "#efe8d8"] },
+      "before-wash": { "role": "secondary", "displayName": "Before Wash", "tonalRamp": ["#221c12", "#3a3020", "#544631", "#7a6648", "#9a8566", "#b8a68a", "#d4c7b1", "#ece4d8"] },
+      "dapper-red": { "role": "primary", "displayName": "Dapper Red", "cssVar": "--red", "tonalRamp": ["#3b0509", "#5e0a12", "#8a0f1c", "#b81324", "#e3172b", "#ff2b40", "#f79199", "#fcd3d6"] },
+      "dapper-red-hot": { "role": "primary", "displayName": "Hot Red (hover)", "cssVar": "--red-2", "tonalRamp": ["#3b0509", "#5e0a12", "#8a0f1c", "#b81324", "#e3172b", "#ff2b40", "#f79199", "#fcd3d6"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Split-hero page titles in two tones, before-grey then after-white. Capped at 96px." },
+      "headline": { "displayName": "Headline", "purpose": "Section headings, before-grey with the after span in white." },
+      "title": { "displayName": "Title", "purpose": "Process steps, timeline entries, packages, rack panel names." },
+      "numeral": { "displayName": "Numeral", "purpose": "Process marks in tape colour, tabular." },
+      "body": { "displayName": "Body", "purpose": "Reading copy at 46-68ch." },
+      "lede": { "displayName": "Lede", "purpose": "One sentence beside a section headline, muted ink, max 52ch." },
+      "label": { "displayName": "Tape Label", "purpose": "Condensed caps written on tape." },
+      "action": { "displayName": "Action", "purpose": "Button text." }
+    },
+    "textures": [
+      { "name": "tape-fibre", "value": "url('/site/assets/tape-fibre.svg')", "purpose": "Authored crepe-paper fibre (feTurbulence), multiplied over tape at 50% and over red tape at 25%." }
+    ],
+    "shadows": [
+      { "name": "tape-lift", "value": "0 1px 0 #ffffff40 inset, 0 -1px 0 #00000014 inset, 0 3px 10px #0000005c", "purpose": "Small tape labels." },
+      { "name": "pressed-tape", "value": "0 3px 10px #00000066", "purpose": "Buttons and pressed chips." },
+      { "name": "header-strip", "value": "0 1px 0 #ffffff40 inset, 0 4px 14px #00000073", "purpose": "The header tape." },
+      { "name": "divider-tape", "value": "0 0 0 1px #0000001f, 0 8px 24px #000000a6", "purpose": "The draggable split strip." },
+      { "name": "heavy-tape", "value": "0 10px 30px #0009", "purpose": "Quote tally." },
+      { "name": "closing-strip", "value": "0 1px 0 #ffffff40 inset, 0 8px 24px #000a", "purpose": "The closing tape strip." }
+    ],
+    "motion": [
+      { "name": "ease-out", "value": "cubic-bezier(.23, 1, .32, 1)", "purpose": "All CSS transitions (hover, underline draw, header hide, rack line)." },
+      { "name": "lay", "value": "back.out(1.6), 1.1s, scaleX/scaleY from the roll end", "purpose": "Tape being laid with a slight press-down overshoot ([data-lay])." },
+      { "name": "peel", "value": "clip-path inset(0 100% 0 0) to 0, 1.4s expo.inOut; image scale 1.18 to 1, 1.8s", "purpose": "Photos uncovered as a strip is peeled off ([data-peel])." },
+      { "name": "split-lines", "value": "yPercent 110 to 0, 1.15s, stagger 0.09, masked", "purpose": "Headings rise line by line ([data-split])." },
+      { "name": "rise", "value": "y 28 to 0, opacity 0 to 1, 1s, stagger 0.07, expo.out", "purpose": "Everything else settles in reading order ([data-rise])." },
+      { "name": "scrub", "value": "scaleX/scaleY 0 to 1 with scroll, scrub 0.6", "purpose": "Process and timeline tapes grow with the scroll." },
+      { "name": "page-sweep", "value": "34vh tape strip, scaleX 1 to 0 from the right, 0.9s expo.inOut", "purpose": "Page change; skipped on first load." },
+      { "name": "hero-lay", "value": "divider scaleY 0 to 1 (1s expo.inOut), then --x 88% to 50% (1.6s power4.inOut)", "purpose": "Split hero entrance so the change is seen happening." },
+      { "name": "press", "value": "scale .97, .16s", "purpose": "Button and Book tab :active." },
+      { "name": "reduced-motion", "value": "all animation and transitions disabled; final states shown", "purpose": "prefers-reduced-motion: reduce." }
+    ],
+    "breakpoints": [
+      { "name": "xs", "value": "380px" },
+      { "name": "phone", "value": "760px" },
+      { "name": "nav", "value": "900px" },
+      { "name": "rack", "value": "1100px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Red Button (booking)",
+      "kind": "button",
+      "refersTo": "button-red",
+      "description": "Booking only: Book an appointment, Find an appointment, Book this.",
+      "html": "<a class=\"ds-btn ds-btn-red\" href=\"#\">Book an appointment<svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M7 7h10v10\"/><path d=\"M7 17 17 7\"/></svg></a>",
+      "css": ".ds-btn{position:relative;display:inline-flex;align-items:center;gap:14px;min-height:52px;padding:0 22px;font:700 19px/1 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:.06em;text-transform:uppercase;text-decoration:none;cursor:pointer;border:0;border-radius:0;box-shadow:0 3px 10px #00000066;transition:transform .16s cubic-bezier(.23,1,.32,1),background-color .2s,box-shadow .2s cubic-bezier(.23,1,.32,1)}.ds-btn svg{transition:transform .25s cubic-bezier(.23,1,.32,1)}.ds-btn:hover svg{transform:translate(3px,-3px)}.ds-btn:active{transform:scale(.97)}.ds-btn:focus-visible{outline:2px solid var(--tape,#d9c59c);outline-offset:3px}.ds-btn-red{background:var(--red,#e3172b);color:#fff}.ds-btn-red:hover{background:var(--red-2,#ff2b40)}"
+    },
+    {
+      "name": "Tape Button",
+      "kind": "button",
+      "refersTo": "button-tape",
+      "description": "Secondary physical actions: Visit the studio, Try again, Close.",
+      "html": "<button class=\"ds-btn-tape\" type=\"button\">Try again</button>",
+      "css": ".ds-btn-tape{display:inline-flex;align-items:center;gap:14px;min-height:52px;padding:0 22px;background:var(--tape,#d9c59c);color:var(--tape-ink,#2a2318);font:700 19px/1 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:.06em;text-transform:uppercase;border:0;border-radius:0;cursor:pointer;box-shadow:0 3px 10px #00000066;transition:transform .16s cubic-bezier(.23,1,.32,1),background-color .2s}.ds-btn-tape:hover{background:#e4d2ab}.ds-btn-tape:active{transform:scale(.97)}.ds-btn-tape:focus-visible{outline:2px solid var(--tape,#d9c59c);outline-offset:3px}"
+    },
+    {
+      "name": "Line Button",
+      "kind": "button",
+      "refersTo": "button-line",
+      "description": "Onward links on paint, e.g. The full portfolio.",
+      "html": "<a class=\"ds-btn-line\" href=\"#\">The full portfolio</a>",
+      "css": ".ds-btn-line{display:inline-flex;align-items:center;gap:14px;min-height:52px;padding:0 22px;background:transparent;color:var(--ink,#f3f2ee);font:700 19px/1 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:.06em;text-transform:uppercase;text-decoration:none;border-radius:0;box-shadow:inset 0 0 0 1.5px #ffffff59;transition:box-shadow .2s cubic-bezier(.23,1,.32,1),transform .16s}.ds-btn-line:hover{box-shadow:inset 0 0 0 1.5px var(--ink,#f3f2ee)}.ds-btn-line:active{transform:scale(.97)}.ds-btn-line:focus-visible{outline:2px solid var(--tape,#d9c59c);outline-offset:3px}"
+    },
+    {
+      "name": "Tape Labels (Before / After)",
+      "kind": "chip",
+      "refersTo": "tape-label",
+      "description": "Condensed caps written on tilted tape; the red variant is the After mark.",
+      "html": "<div class=\"ds-tape-row\"><span class=\"ds-tape ds-tilt\">Before · illustration</span><span class=\"ds-tape ds-tape-red ds-tilt-r\">After</span></div>",
+      "css": ".ds-tape-row{display:flex;gap:24px;padding:16px;background:#09090b}.ds-tape{position:relative;display:inline-flex;align-items:center;background:var(--tape,#d9c59c);color:var(--tape-ink,#2a2318);font:700 15px/1 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:.08em;text-transform:uppercase;padding:.55em .9em .5em;box-shadow:0 1px 0 #ffffff40 inset,0 -1px 0 #00000014 inset,0 3px 10px #0000005c}.ds-tape-red{background:var(--red,#e3172b);color:#fff}.ds-tilt{transform:rotate(-1.4deg)}.ds-tilt-r{transform:rotate(1.2deg)}"
+    },
+    {
+      "name": "Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Quote selectors; pressed chips become tape.",
+      "html": "<div class=\"ds-chips\"><button class=\"ds-chip\" type=\"button\" aria-pressed=\"true\">Sedan</button><button class=\"ds-chip\" type=\"button\" aria-pressed=\"false\">SUV</button></div>",
+      "css": ".ds-chips{display:flex;gap:10px;padding:16px;background:#09090b}.ds-chip{min-height:46px;padding:0 18px;background:var(--paint-3,#1b1b1f);color:var(--ink,#f3f2ee);border:0;border-radius:0;box-shadow:inset 0 0 0 1px #ffffff1f;font:700 17px/1 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:background-color .2s,box-shadow .2s,color .2s}.ds-chip:hover{box-shadow:inset 0 0 0 1px #8c8a84}.ds-chip[aria-pressed=true]{background:var(--tape,#d9c59c);color:var(--tape-ink,#2a2318);box-shadow:0 3px 10px #0007}.ds-chip:focus-visible{outline:2px solid var(--tape,#d9c59c);outline-offset:3px}"
+    },
+    {
+      "name": "Header Tape",
+      "kind": "nav",
+      "refersTo": "header-strip",
+      "description": "One tape strip across the top with the wordmark, links and the red Book tab at its end.",
+      "html": "<div class=\"ds-head\"><nav class=\"ds-strip\"><a class=\"ds-brand\" href=\"#\">DAPPER</a><div class=\"ds-links\"><a href=\"#\" aria-current=\"page\">Services</a><a href=\"#\">Portfolio</a><a href=\"#\">About</a></div><a class=\"ds-book\" href=\"#\">Book</a></nav></div>",
+      "css": ".ds-head{padding:14px 24px;background:#09090b}.ds-strip{display:flex;align-items:center;gap:28px;height:48px;padding:0 6px 0 14px;background:var(--tape,#d9c59c);color:var(--tape-ink,#2a2318);transform:rotate(-.35deg);box-shadow:0 1px 0 #ffffff40 inset,0 4px 14px #00000073}.ds-strip a{color:inherit;text-decoration:none}.ds-brand{font:800 24px/1 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:.14em}.ds-links{display:flex;gap:28px;margin-left:auto}.ds-links a{position:relative;font:700 17px/1 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:.1em;text-transform:uppercase;padding:14px 0}.ds-links a::after{content:'';position:absolute;left:0;right:0;bottom:9px;height:2px;background:var(--tape-ink,#2a2318);transform:scaleX(0);transform-origin:right;transition:transform .35s cubic-bezier(.23,1,.32,1)}.ds-links a:hover::after{transform:scaleX(1);transform-origin:left}.ds-links a[aria-current=page]::after{transform:scaleX(1)}.ds-links a:focus-visible{outline:2px solid #2a2318;outline-offset:3px}.ds-book{display:flex;align-items:center;height:58px;margin:-5px 0;padding:0 20px;background:var(--red,#e3172b);color:#fff!important;font:700 18px/1 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:.08em;text-transform:uppercase;transform:rotate(1.6deg);box-shadow:0 4px 14px #00000080;transition:background-color .2s}.ds-book:hover{background:var(--red-2,#ff2b40)}"
+    },
+    {
+      "name": "Split Hero (50/50 divider)",
+      "kind": "custom",
+      "refersTo": "split",
+      "description": "Signature: one image rendered twice, the before half hazed and washed, divided by a draggable vertical tape strip with a round grip.",
+      "html": "<div class=\"ds-split\" style=\"--x:50%\"><div class=\"ds-after\"></div><div class=\"ds-before\"><div class=\"ds-after\"></div></div><div class=\"ds-divider\" role=\"slider\" tabindex=\"0\" aria-label=\"Before and after divider\" aria-valuenow=\"50\"><span>Dapper · 50/50</span><i></i></div></div>",
+      "css": ".ds-split{position:relative;height:280px;overflow:hidden;background:#000}.ds-after{position:absolute;inset:0;background:linear-gradient(115deg,#0b0b0d 0%,#2a2a30 40%,#e9e9ee 48%,#2a2a30 56%,#09090b 100%)}.ds-before{position:absolute;inset:0;clip-path:inset(0 calc(100% - var(--x)) 0 0)}.ds-before .ds-after{filter:grayscale(.75) sepia(.3) brightness(.5) contrast(.72) blur(1.6px)}.ds-before::after{content:'';position:absolute;inset:0;background:#7a6648;mix-blend-mode:multiply;opacity:.55}.ds-divider{position:absolute;top:-4%;bottom:-4%;left:var(--x);width:52px;translate:-50% 0;rotate:.8deg;background:var(--tape,#d9c59c);box-shadow:0 0 0 1px #0000001f,0 8px 24px #000000a6;display:flex;align-items:center;justify-content:center;cursor:ew-resize}.ds-divider span{writing-mode:vertical-rl;rotate:180deg;font:700 15px/1 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:.3em;color:#2a2318;text-transform:uppercase}.ds-divider i{position:absolute;top:74%;left:50%;translate:-50% -50%;width:44px;height:44px;border-radius:50%;background:#2a2318;box-shadow:0 4px 12px #0007}.ds-divider:focus-visible{outline:2px solid #fff;outline-offset:4px}"
+    },
+    {
+      "name": "Quote Tally",
+      "kind": "card",
+      "refersTo": "tally",
+      "description": "The instant-quote work order total: a sticky, slightly rotated sheet of tape.",
+      "html": "<aside class=\"ds-tally\"><dl><div><dt>Exterior detail</dt><dd>See team</dd></div><div class=\"ds-grand\"><dt>Total</dt><dd>—</dd></div></dl><a class=\"ds-tally-btn\" href=\"#\">Book this</a></aside>",
+      "css": ".ds-tally{max-width:320px;background:var(--tape,#d9c59c);color:var(--tape-ink,#2a2318);padding:28px;box-shadow:0 10px 30px #0009;rotate:.6deg;font:400 17px/1.6 Manrope,system-ui,sans-serif}.ds-tally dl{margin:0;display:grid;gap:10px}.ds-tally dl div{display:flex;justify-content:space-between;font-weight:600}.ds-tally dd{margin:0;font-variant-numeric:tabular-nums}.ds-grand{border-top:2px solid #2a2318;padding-top:12px;margin-top:6px;font:700 30px/1 'Barlow Condensed','Arial Narrow',sans-serif!important;text-transform:uppercase}.ds-tally-btn{display:flex;justify-content:space-between;align-items:center;margin-top:20px;min-height:52px;padding:0 22px;background:#e3172b;color:#fff;text-decoration:none;font:700 19px/1 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:.06em;text-transform:uppercase;box-shadow:0 3px 10px #00000066}.ds-tally-btn:hover{background:#ff2b40}.ds-tally-btn:focus-visible{outline:2px solid #2a2318;outline-offset:3px}"
+    },
+    {
+      "name": "Closing Strip",
+      "kind": "nav",
+      "refersTo": "close-strip",
+      "description": "The last panel of every page: the ways forward written on one tape strip, Book raised in red.",
+      "html": "<nav class=\"ds-close\"><a href=\"#\">Book an appointment</a><a href=\"#\">Call the studio</a><a href=\"#\">Talk to the team</a></nav>",
+      "css": ".ds-close{display:flex;flex-wrap:wrap;align-items:stretch;margin:32px 0;padding:0 24px;background:var(--tape,#d9c59c);color:var(--tape-ink,#2a2318);rotate:-1.2deg;box-shadow:0 1px 0 #ffffff40 inset,0 8px 24px #000a}.ds-close a{display:flex;align-items:center;padding:22px 28px;color:inherit;text-decoration:none;font:700 24px/1 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:.06em;text-transform:uppercase;border-right:1px dashed #2a231855;transition:background-color .2s}.ds-close a:not(:first-child):hover{background:#0000000f}.ds-close a:first-child{background:#e3172b;color:#fff;margin:-8px 0;padding-block:30px;rotate:1.6deg;box-shadow:0 6px 18px #0008}.ds-close a:first-child:hover{background:#ff2b40}.ds-close a:focus-visible{outline:2px solid #2a2318;outline-offset:3px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The 50/50 Tape Line",
+    "overview": "The site is a detailer's test panel. A strip of masking tape divides each view into before and after, so the page shows the work instead of claiming it. Everything sits on gloss-black paint; masking tape is the only material laid on top of it, and it carries every label, the navigation, the instant-quote tally and the ways forward at the foot of each page. Dapper red is the paint that matters: booking, and the After mark.\n\nDensity is low and the type is loud. Big condensed caps run in two tones, the before half in grey and the after half in white, and the body copy is quiet Manrope at a comfortable reading measure. Depth is physical, not interface depth: tape lifts slightly off the paint and casts a soft shadow; nothing floats as a card.\n\nThe before side is always an illustration made from the same photograph (hazed, desaturated, washed in tape-brown) and is labelled as such. It is never presented as a real result.",
+    "keyCharacteristics": [
+      "Gloss-black paint ground with three tonal steps; no other surfaces.",
+      "Masking tape (crepe-paper fibre texture, slight rotation, soft lift shadow) as the single applied material.",
+      "Two-tone condensed caps headlines: before-grey, then after-white.",
+      "Dapper red reserved for booking and the After mark.",
+      "Square corners everywhere; the only circle is the drag grip.",
+      "Motion is tape: laid from the roll end, peeled away, swept across between pages, dragged by the visitor."
+    ],
+    "rules": [
+      { "name": "The Paid-In-Red Rule", "body": "Red marks only booking and the After side (plus the native control accent). If an element is red, the visitor is either booking or looking at the finished result.", "section": "colors" },
+      { "name": "The Tape-Carries-Words Rule", "body": "Labels, navigation and calls to move forward are written on tape in tape ink. Floating coloured text labels are not part of this world.", "section": "colors" },
+      { "name": "The 96 Ceiling Rule", "body": "No display text exceeds 96px. Scale comes from condensed width and two-tone contrast, not from size.", "section": "typography" },
+      { "name": "The Before-Then-After Rule", "body": "A two-line headline reads grey first and white second. The after half is the point; it gets the light.", "section": "typography" },
+      { "name": "The Only-Tape-Lifts Rule", "body": "If it casts a shadow, it is tape. Paint, photos and text stay flat.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do write labels, navigation and forward actions on tape in tape ink.",
+      "Do set section headlines in two tones, before-grey then after-white, capped at 96px.",
+      "Do label every before treatment as an illustration (\"Before · illustration\") and keep real portfolio photographs untreated.",
+      "Do credit a photo as a studio photo when it does not show the page's vehicle type; use a tape-labelled panel when a vehicle type has no photo.",
+      "Do separate lists with 1px rules instead of boxing them.",
+      "Do keep reduced-motion and no-JavaScript states complete: final positions, no movement."
+    ],
+    "donts": [
+      "Don't use Dapper red for anything other than booking, the After mark and the native control accent.",
+      "Don't round corners; the drag grip is the only circle.",
+      "Don't add shadows to paint, photos or text; only tape lifts.",
+      "Don't set display text above 96px.",
+      "Don't carry the home story's pills, blurred glass panels, micro captions or story reds into the rest of the site.",
+      "Don't present a before treatment as a real result or invent prices, results or claims on tape."
+    ]
+  }
+}

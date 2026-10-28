@@ -1,0 +1,26 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Tape line</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0}body{width:1440px;height:900px;overflow:hidden;background:#060607;color:#f4f4f2;font-family:'Barlow Condensed',sans-serif}
+.before,.after{position:absolute;top:0;bottom:0;background:url(suv.webp) center/cover}
+.before{left:0;width:720px;filter:saturate(.4) contrast(.8) brightness(.75) blur(1px)}
+.before::after{content:"";position:absolute;inset:0;background:repeating-radial-gradient(circle at 60% 40%,#fff1 0 1px,transparent 1px 7px)}
+.after{left:720px;right:0;background-position:right center;filter:contrast(1.15) saturate(1.1)}
+.tape{position:absolute;left:688px;top:-20px;bottom:-20px;width:64px;background:#d9c49a;box-shadow:0 0 0 1px #0003,0 6px 18px #0007;transform:rotate(.6deg);display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:60px 0}
+.tape a{writing-mode:vertical-rl;transform:rotate(180deg);color:#2b241a;font-weight:800;font-size:24px;letter-spacing:3px;text-transform:uppercase;text-decoration:none}
+.tape .b{background:#e3172b;color:#fff;padding:18px 10px}
+.l,.r{position:absolute;bottom:70px;width:560px}
+.l{left:64px}.r{right:64px;text-align:right}
+.tag{font-size:20px;letter-spacing:4px;text-transform:uppercase;opacity:.8}
+h1{font-size:132px;line-height:.82;font-weight:800;text-transform:uppercase;letter-spacing:-2px}
+.r h1{color:#fff}.l h1{color:#bdbdb8}
+.r p{font-size:24px;margin-top:16px}
+.logo{position:absolute;left:64px;top:44px;font-weight:800;font-size:34px;letter-spacing:6px}
+.read{position:absolute;right:64px;top:44px;font-size:22px;letter-spacing:3px;text-transform:uppercase}
+</style></head><body>
+<div class="before"></div><div class="after"></div>
+<div class="logo">DAPPER</div><div class="read">Drag the tape · before / after</div>
+<div class="l"><p class="tag">Before · as it arrived</p><h1>Road-<br>worn.</h1></div>
+<div class="r"><p class="tag">After · Dapper bay 01</p><h1>Mirror<br>deep.</h1><p>Detailing, ceramic coating, film and tint in Peterborough.</p></div>
+<div class="tape"><a href="#">Services</a><a href="#">Portfolio</a><a class="b" href="#">Book a bay</a><a href="#">About</a><a href="#">Contact</a></div>
+</body></html>
