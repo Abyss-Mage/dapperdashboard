@@ -31,7 +31,6 @@ type Person = {
 
 type Section = 'roster' | 'invitations' | 'roles' | 'assign' | 'assignments';
 const SECTIONS: { id: Section; label: string }[] = [
-  { id: 'roster', label: 'People' },
   { id: 'invitations', label: 'Invitations' },
   { id: 'roles', label: 'Roles' },
   { id: 'assign', label: 'Assign roles' },
@@ -127,16 +126,12 @@ function Roster({ organizationId, revision }: { organizationId: string; revision
           ))}
         </ul>
       )}
-      <p className={styles.footnote}>
-        Shows state only. Passwords, authenticator secrets and recovery codes are never visible to anyone. An administrator who loses their
-        device is reset by the machine owner, not from this screen.
-      </p>
     </div>
   );
 }
 
 export default function PeopleAccess({ organizationId, revision, onSaved }: { organizationId: string; revision: number; onSaved: () => Promise<void> }) {
-  const [section, setSection] = useState<Section>('roster');
+  const [section, setSection] = useState<Section>('invitations');
   const [bump, setBump] = useState(0);
   return (
     <div className={styles.stack}>

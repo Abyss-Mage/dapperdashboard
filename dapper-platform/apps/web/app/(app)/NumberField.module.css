@@ -10,7 +10,7 @@
 /* The inner input drops its own border, background and focus ring: the whole control carries them. */
 .wrap .input {
   flex: 1; min-width: 0; width: 100%; min-height: 0; margin: 0; padding: 0 6px; border: 0; border-radius: 0; outline: 0; box-shadow: none;
-  background: transparent !important; border: 0 !important; box-shadow: none !important; color: var(--text, inherit); font: inherit; font-size: 16.1px; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums;
+  background: transparent !important; border: 0 !important; box-shadow: none !important; color: var(--text, inherit); font: inherit; font-size: 14.7px; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums;
 }
 .wrap .input:focus, .wrap .input:focus-visible { outline: 0; box-shadow: none; }
 .btn {

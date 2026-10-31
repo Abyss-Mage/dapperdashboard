@@ -11,12 +11,12 @@
 @media (prefers-color-scheme: dark) { :global(:root:not([data-theme=light])) .card { --c-bg: rgba(28, 28, 36, .78); --c-edge: rgba(255, 255, 255, .13); --c-line: rgba(255, 255, 255, .16); --c-text: #f5f5f7; --c-muted: #a8a8b3; --c-tint: rgba(255, 190, 80, .14); --c-tint-text: #ffd98a; } }
 .badge { display: inline-grid; place-items: center; width: 52px; height: 52px; border-radius: 18px; color: var(--c-tint-text); background: var(--c-tint); margin-bottom: 14px; }
 .badgeDanger { color: #ff6a76; background: rgba(251, 26, 43, .14); box-shadow: 0 0 0 6px rgba(251, 26, 43, .06); }
-.title { margin: 0; font-size: 24.1px; line-height: 1.2; font-weight: 800; letter-spacing: -.02em; color: var(--c-text); }
-.body { margin-top: 10px; font-size: 17.2px; line-height: 1.55; }
+.title { margin: 0; font-size: 22px; line-height: 1.2; font-weight: 800; letter-spacing: -.02em; color: var(--c-text); }
+.body { margin-top: 10px; font-size: 15.7px; line-height: 1.55; }
 .body p { margin: 0 0 10px; }
 .muted { color: var(--c-muted); }
-.notice { margin: 12px 0 0; padding: 12px 14px; border-radius: 14px; font-size: 16.1px; background: var(--c-tint); color: var(--c-tint-text); border: 1px solid color-mix(in srgb, var(--c-tint-text) 25%, transparent); }
+.notice { margin: 12px 0 0; padding: 12px 14px; border-radius: 14px; font-size: 14.7px; background: var(--c-tint); color: var(--c-tint-text); border: 1px solid color-mix(in srgb, var(--c-tint-text) 25%, transparent); }
 .actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; flex-wrap: wrap; }
-.actions button { min-height: 44px; padding: 0 20px; border-radius: 14px; font-size: 16.1px; }
+.actions button { min-height: 44px; padding: 0 20px; border-radius: 14px; font-size: 14.7px; }
 .danger { background: linear-gradient(135deg, #fb1a2b, #c1121f); border-color: #c1121f; }
 @media (max-width: 480px) { .actions { flex-direction: column-reverse; } .actions button { width: 100%; } }

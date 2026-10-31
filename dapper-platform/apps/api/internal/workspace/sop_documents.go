@@ -3,6 +3,7 @@ package workspace
 import (
 	"dapper.local/platform/internal/postgres"
 	"errors"
+	"io"
 	"net/http"
 	"strings"
 )
@@ -10,6 +11,18 @@ import (
 func sopFailure(w http.ResponseWriter, err error) {
 	if errors.Is(err, postgres.ErrSOPDocumentNotFound) {
 		reply(w, 404, map[string]string{"error": "SOP document not found"})
+		return
+	}
+	if errors.Is(err, postgres.ErrSOPFileInput) {
+		reply(w, 422, map[string]string{"error": "Add a PDF under 10 MB, give it a title of 3 to 150 characters and pick a category"})
+		return
+	}
+	if errors.Is(err, postgres.ErrSOPStorageOff) {
+		reply(w, 503, map[string]string{"error": "Document storage is not set up on this server"})
+		return
+	}
+	if errors.Is(err, postgres.ErrDocumentUnavailable) {
+		reply(w, 409, map[string]string{"error": "The document file is missing or no longer matches its checksum"})
 		return
 	}
 	if errors.Is(err, postgres.ErrSOPHashMismatch) {
@@ -44,6 +57,80 @@ func registerSOPRoutes(mux *http.ServeMux, store *postgres.Store) {
 			return
 		}
 		reply(w, 200, map[string]any{"items": docs})
+	})
+
+	// Add a document: the raw PDF is the request body; title and category travel in the query string.
+	mux.HandleFunc("POST "+base, func(w http.ResponseWriter, r *http.Request) {
+		org, loc := r.PathValue("organization"), r.PathValue("location")
+		if !uuid(org) || !uuid(loc) {
+			reply(w, 400, map[string]string{"error": "Valid organization and location selectors required"})
+			return
+		}
+		scope, err := store.ResolveScope(r.Context(), requestSession(r).principalID, org, loc, "sop.manage")
+		if err != nil {
+			failure(w, err)
+			return
+		}
+		data, err := io.ReadAll(http.MaxBytesReader(w, r.Body, postgres.MaxSOPFileBytes+1))
+		if err != nil {
+			reply(w, 413, map[string]string{"error": "The PDF must be under 10 MB"})
+			return
+		}
+		doc, err := store.AddSOPDocument(r.Context(), scope, r.URL.Query().Get("title"), r.URL.Query().Get("category"), data)
+		if err != nil {
+			sopFailure(w, err)
+			return
+		}
+		reply(w, 201, doc)
+	})
+
+	// Remove a document from the employee list (the record and file are kept as evidence).
+	mux.HandleFunc("DELETE "+base+"/{sopId}", func(w http.ResponseWriter, r *http.Request) {
+		org, loc, sopID := r.PathValue("organization"), r.PathValue("location"), r.PathValue("sopId")
+		if !uuid(org) || !uuid(loc) || !uuid(sopID) {
+			reply(w, 400, map[string]string{"error": "Valid selectors required"})
+			return
+		}
+		scope, err := store.ResolveScope(r.Context(), requestSession(r).principalID, org, loc, "sop.manage")
+		if err != nil {
+			failure(w, err)
+			return
+		}
+		if err = store.RemoveSOPDocument(r.Context(), scope, sopID); err != nil {
+			sopFailure(w, err)
+			return
+		}
+		reply(w, 200, map[string]bool{"removed": true})
+	})
+
+	// View a document
+	mux.HandleFunc("GET "+base+"/{sopId}/file", func(w http.ResponseWriter, r *http.Request) {
+		org, loc, sopID := r.PathValue("organization"), r.PathValue("location"), r.PathValue("sopId")
+		if !uuid(org) || !uuid(loc) || !uuid(sopID) {
+			reply(w, 400, map[string]string{"error": "Valid selectors required"})
+			return
+		}
+		scope, err := store.ResolveScope(r.Context(), requestSession(r).principalID, org, loc, "sop.read")
+		if err != nil {
+			failure(w, err)
+			return
+		}
+		data, title, err := store.SOPDocumentFile(r.Context(), scope, sopID)
+		if err != nil {
+			sopFailure(w, err)
+			return
+		}
+		name := strings.Map(func(c rune) rune {
+			if c < 32 || c > 126 || c == '"' || c == '\\' {
+				return '-'
+			}
+			return c
+		}, title) + ".pdf"
+		w.Header().Set("Content-Type", "application/pdf")
+		w.Header().Set("Content-Disposition", `inline; filename="`+name+`"`)
+		w.Header().Set("Cache-Control", "private, no-store")
+		w.WriteHeader(200)
+		_, _ = w.Write(data)
 	})
 
 	// List SOP Acknowledgments

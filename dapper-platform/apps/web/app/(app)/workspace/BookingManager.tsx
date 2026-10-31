@@ -1,9 +1,10 @@
 'use client';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import BookingRescheduler from './BookingRescheduler';
-import { InvoiceDocument, printInvoiceDocument, usePrintTemplate, type PrintInvoice } from './InvoicePrint';
+import { fillInvoiceWindow, openInvoiceWindow, usePrintTemplate } from './InvoicePrint';
 import Select from '../GlassSelect';
-import { DateTimePicker } from '../Pickers';
+import { DatePicker, DateTimePicker } from '../Pickers';
+import t from './bookingTable.module.css';
 
 type Customer = {id: string; name: string; email: string; phone: string};
 type Vehicle = {id: string; customerId: string; description: string; identifier: string};
@@ -24,6 +25,7 @@ type Booking = {
   channel: 'online' | 'internal' | 'phone' | 'walk_in' | 'dealership';
   status: 'pending' | 'awaiting_payment' | 'confirmed' | 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
   bookingTime: string;
+  serviceAddress?: string;
   notes: string;
   cancellationReason: string;
   createdAt: string;
@@ -63,8 +65,13 @@ export default function BookingManager({
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [bookingsLoading, setBookingsLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [customerQ, setCustomerQ] = useState('');
+  const [serviceF, setServiceF] = useState('');
+  const [open, setOpen] = useState<Set<string>>(new Set());
   // Each booking's invoice (one per booking), so the appointment shows what is still owed or already paid.
-  const [invoices, setInvoices] = useState<Record<string, { id: string; version: number; invoiceNumber: string; status: string; totalCents: number; paidCents: number }>>({});
+  const [invoices, setInvoices] = useState<Record<string, { id: string; version: number; invoiceNumber: string; status: string; totalCents: number; paidCents: number; discountCents?: number; couponCode?: string }>>({});
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [events, setEvents] = useState<BookingEvent[]>([]);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -115,8 +122,8 @@ export default function BookingManager({
     try {
       const r = await fetch(base + '/invoices', { cache: 'no-store' });
       if (!r.ok) return;
-      const map: Record<string, { id: string; version: number; invoiceNumber: string; status: string; totalCents: number; paidCents: number }> = {};
-      for (const i of ((await r.json()).items ?? []) as { id: string; version: number; bookingId?: string; invoiceNumber: string; status: string; totalCents: number; paidCents: number }[]) if (i.bookingId && i.status !== 'void') map[i.bookingId] = i;
+      const map: Record<string, { id: string; version: number; invoiceNumber: string; status: string; totalCents: number; paidCents: number; discountCents?: number; couponCode?: string }> = {};
+      for (const i of ((await r.json()).items ?? []) as { id: string; version: number; bookingId?: string; invoiceNumber: string; status: string; totalCents: number; paidCents: number; discountCents?: number; couponCode?: string }[]) if (i.bookingId && i.status !== 'void') map[i.bookingId] = i;
       setInvoices(map);
     } catch { /* invoices are optional here */ }
   }, [base]);
@@ -132,7 +139,14 @@ export default function BookingManager({
     setBookingsLoading(true);
     setError('');
     try {
-      const url = `${base}/bookings${statusFilter ? `?status=${statusFilter}` : ''}`;
+      const query = new URLSearchParams({ limit: '500' });
+      if (statusFilter) query.set('status', statusFilter);
+      if (dateFrom || dateTo) {
+        const from = dateFrom ? new Date(dateFrom + 'T00:00:00') : new Date(new Date(dateTo + 'T00:00:00').getTime() - 365 * 86400000);
+        const to = dateTo ? new Date(dateTo + 'T23:59:59') : new Date(from.getTime() + 365 * 86400000);
+        query.set('from', from.toISOString()); query.set('to', to.toISOString());
+      }
+      const url = `${base}/bookings?${query}`;
       const r = await fetch(url);
       if (reqId !== bookingsReqIdRef.current) return;
       if (r.status === 403) {
@@ -158,7 +172,7 @@ export default function BookingManager({
         setBookingsLoading(false);
       }
     }
-  }, [base, statusFilter]);
+  }, [base, statusFilter, dateFrom, dateTo]);
 
   const loadChoices = useCallback(async () => {
     const reqId = ++choicesReqIdRef.current;
@@ -254,17 +268,16 @@ export default function BookingManager({
   // Completing a booking: the invoice can be settled in cash at the same moment (it is issued first if it is still a draft),
   // or the booking can be completed with the money still owed.
   const printTemplate = usePrintTemplate(`${base}/invoice-template`);
-  const [viewing, setViewing] = useState<{ booking: Booking; invoice: PrintInvoice | null; error: string } | null>(null);
-  async function viewInvoice(b: Booking) {
+  // The invoice opens as its own page in a new window (opened straight from the click so the browser allows it).
+  function viewInvoice(b: Booking) {
     const inv = invoices[b.id];
     if (!inv) return;
-    setViewing({ booking: b, invoice: null, error: '' });
-    try {
-      const r = await fetch(base + '/invoices/' + inv.id, { cache: 'no-store' });
-      const body = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(body.error ?? 'The invoice could not be loaded.');
-      setViewing({ booking: b, invoice: body, error: '' });
-    } catch (e) { setViewing({ booking: b, invoice: null, error: e instanceof Error ? e.message : 'The invoice could not be loaded.' }); }
+    const w = openInvoiceWindow();
+    if (!w) { setError('Allow pop-ups for this site to open the invoice in a new window.'); return; }
+    fetch(base + '/invoices/' + inv.id, { cache: 'no-store' })
+      .then(async (r) => { const body = await r.json().catch(() => ({})); if (!r.ok) throw new Error(body.error ?? 'The invoice could not be loaded.'); return body; })
+      .then((body) => fillInvoiceWindow(w, body, printTemplate))
+      .catch((e) => { w.close(); setError(e instanceof Error ? e.message : 'The invoice could not be loaded.'); });
   }
   // A booking that holds no calendar reservation (entered by hand) is moved by changing its time directly.
   const [moving, setMoving] = useState<Booking | null>(null);
@@ -283,6 +296,23 @@ export default function BookingManager({
     } catch (e) { setMoveError(e instanceof Error ? e.message : 'The time could not be changed.'); }
     finally { setMoveBusy(false); }
   }
+  // A coupon can be put on an invoice that is still a draft (before it is issued), from the appointment.
+  const [couponCodes, setCouponCodes] = useState<Record<string, string>>({});
+  const [couponBusy, setCouponBusy] = useState(false);
+  async function couponAction(b: Booking, remove: boolean) {
+    const inv = invoices[b.id];
+    if (!inv) return;
+    setCouponBusy(true); setError(''); setNotice('');
+    try {
+      const r = await fetch(base + '/invoices/' + inv.id + '/coupon', remove ? { method: 'DELETE' } : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: couponCodes[b.id] ?? '' }) });
+      const body = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(body.error ?? 'The coupon could not be applied.');
+      setNotice(remove ? 'Coupon removed.' : 'Coupon applied.');
+      setCouponCodes((prev) => ({ ...prev, [b.id]: '' }));
+      await loadInvoices();
+    } catch (e) { setError(e instanceof Error ? e.message : 'The coupon could not be applied.'); }
+    finally { setCouponBusy(false); }
+  }
   const [completing, setCompleting] = useState<Booking | null>(null);
   const [completeBusy, setCompleteBusy] = useState(false);
   const [completeError, setCompleteError] = useState('');
@@ -295,10 +325,10 @@ export default function BookingManager({
         if (inv.status === 'draft') {
           const pr = await fetch(base + '/invoices/' + id + '/issuance-preview', { cache: 'no-store' });
           const preview = await pr.json().catch(() => ({}));
-          if (!pr.ok) throw new Error(preview.error ?? 'The invoice issuer is not set up, so the invoice cannot be issued yet.');
+          if (!pr.ok) throw new Error('Your business details are not set up yet. Open Settings > Invoice template, add the business name, address and invoice numbering, and link them to this franchise. Then try again.');
           const ir = await fetch(base + '/invoices/' + id + '/issue', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ issuerId: preview.id, issuerVersion: preview.version, invoiceVersion: inv.version }) });
           const issued = await ir.json().catch(() => ({}));
-          if (!ir.ok) throw new Error(issued.error ?? 'The invoice could not be issued.');
+          if (!ir.ok) throw new Error(/issuer/i.test(issued.error ?? '') ? 'Your business details are not set up yet. Open Settings > Invoice template, add the business name, address and invoice numbering, and link them to this franchise. Then try again.' : issued.error ?? 'The invoice could not be issued.');
           id = issued.id;
         }
         const fr = await fetch(base + '/invoices/' + id, { cache: 'no-store' });
@@ -410,15 +440,16 @@ export default function BookingManager({
     });
   }
 
+  const serviceChoices = [...new Set(bookings.map((b) => b.serviceName))].sort();
+  const shown = bookings.filter((b) => {
+    const q = customerQ.trim().toLowerCase();
+    return (!serviceF || b.serviceName === serviceF) && (!q || [b.customerName, b.customerEmail, b.customerPhone].some((v) => (v ?? '').toLowerCase().includes(q)));
+  });
   return (
     <section className="panel detail-card">
       <div className="section-head">
         <div>
           <h2>Bookings & Appointments</h2>
-          <p>
-            Customer appointments, online bookings, dealership requests, and walk-in schedules. All status transitions
-            are validated and logged in an immutable audit ledger.
-          </p>
         </div>
         <div style={{display: 'flex', gap: '0.5rem', flexWrap: 'wrap'}}>
           {canCreate && (
@@ -569,101 +600,83 @@ export default function BookingManager({
         </form>
       )}
 
-      <div style={{display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap'}}>
-        {['', 'confirmed', 'completed', 'cancelled'].map((st) => (
-          <button
-            key={st}
-            type="button"
-            className={statusFilter === st ? 'secondary active' : 'secondary'}
-            onClick={() => {
-              bookingsReqIdRef.current++;
-              setBookings([]);
-              setBookingsLoading(true);
-              setStatusFilter(st);
-            }}
-            style={{textTransform: 'capitalize'}}
-            aria-pressed={statusFilter === st}
-          >
-            {st ? STATUS_LABEL[st] : 'All statuses'}
-          </button>
-        ))}
+      <div className={t.filters}>
+        <label>Appointment date
+          <span className={t.dates}>
+            <DatePicker value={dateFrom} max={dateTo || undefined} onChange={(e) => { setBookings([]); setBookingsLoading(true); setDateFrom(e.target.value); }} aria-label="From date" />
+            <DatePicker value={dateTo} min={dateFrom || undefined} onChange={(e) => { setBookings([]); setBookingsLoading(true); setDateTo(e.target.value); }} aria-label="To date" />
+          </span>
+        </label>
+        <label>Customer<input type="search" value={customerQ} onChange={(e) => setCustomerQ(e.target.value)} placeholder="Name, phone or email" /></label>
+        <label>Service
+          <Select value={serviceF} onChange={(e) => setServiceF(e.target.value)} aria-label="Service"><option value="">All services</option>{serviceChoices.map((n) => <option key={n} value={n}>{n}</option>)}</Select>
+        </label>
+        <label>Status
+          <Select value={statusFilter} onChange={(e) => { bookingsReqIdRef.current++; setBookings([]); setBookingsLoading(true); setStatusFilter(e.target.value); }} aria-label="Status">
+            <option value="">All statuses</option><option value="confirmed">Approved</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option>
+          </Select>
+        </label>
+        <button type="button" className="secondary" onClick={() => { setDateFrom(''); setDateTo(''); setCustomerQ(''); setServiceF(''); setStatusFilter(''); }}>Reset</button>
       </div>
-
-      <div className="management-list">
-        {bookings.map((b) => (
-          <article key={b.id} style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem'}}>
-            <div>
-              <div style={{display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.25rem'}}>
-                <strong>{b.serviceName}</strong>
-                <span className={`status ${b.status === 'completed' ? 'progress' : b.status === 'cancelled' ? 'quote' : 'scheduled'}`}>
-                  {STATUS_LABEL[b.status] ?? b.status}
+      <p className={t.count}>{bookingsLoading ? 'Loading appointments…' : `${shown.length} appointment${shown.length === 1 ? '' : 's'}`}</p>
+      <div className={t.table} role="table" aria-label="Appointments">
+        <div className={t.head} role="row"><span /><span>ID</span><span>Date</span><span>Customer</span><span>Service</span><span>Status</span><span>Payment</span></div>
+        {shown.map((b) => {
+          const inv = invoices[b.id];
+          const owed = inv ? inv.totalCents - inv.paidCents : 0;
+          const isOpen = open.has(b.id);
+          const final = b.status === 'completed' || b.status === 'cancelled';
+          return (
+            <div key={b.id} className={t.item}>
+              <div className={t.row} role="row">
+                <button type="button" className={t.chev} aria-expanded={isOpen} aria-label={isOpen ? 'Hide details' : 'Show details'} onClick={() => setOpen((prev) => { const next = new Set(prev); if (next.has(b.id)) next.delete(b.id); else next.add(b.id); return next; })}>›</button>
+                <span className={t.id}>#{b.id.slice(0, 6).toUpperCase()}</span>
+                <span>{formatTime(b.bookingTime)}</span>
+                <span><strong>{b.customerName}</strong><br /><span className={t.muted}>{b.customerPhone || b.customerEmail}</span></span>
+                <span>{b.serviceName}{b.addons?.length > 0 && <span className={t.muted}> + {b.addons.length}</span>}</span>
+                <span className={t.status}>
+                  {canManage && !final ? (
+                    <Select value={b.status === 'pending' ? 'pending' : 'confirmed'} disabled={busy} aria-label="Change status" onChange={(e) => { const v = e.target.value; if (v === 'completed') { setCompleteError(''); setCompleting(b); } else if (v === 'cancelled') { setCancellationReason(''); setError(''); setCancellingBooking(b); } else if (v === 'confirmed') void updateStatus(b.id, 'confirmed'); }}>
+                      {b.status === 'pending' && <option value="pending">Pending</option>}
+                      <option value="confirmed">Approved</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option>
+                    </Select>
+                  ) : <span className={`status ${b.status === 'completed' ? 'progress' : b.status === 'cancelled' ? 'quote' : 'scheduled'}`}>{STATUS_LABEL[b.status] ?? b.status}</span>}
                 </span>
-                <small style={{textTransform: 'uppercase', fontSize: '0.75rem', color: 'var(--muted)'}}>
-                  via {b.channel}
-                </small>
+                <span>{inv ? (owed <= 0 && inv.totalCents > 0 ? <><strong>{money(inv.paidCents)}</strong> <span className={t.muted}>paid</span></> : <><strong>{money(owed)}</strong> <span className={t.muted}>due</span></>) : <span className={t.muted}>No invoice</span>}</span>
               </div>
-              <small>
-                Customer: <strong>{b.customerName}</strong> ({b.customerPhone || b.customerEmail || 'No phone'}) · Scheduled for {formatTime(b.bookingTime)}
-              </small>
-              {b.addons?.length > 0 && (
-                <small>Add-ons: {b.addons.map((a) => a.name).join(', ')}</small>
-              )}
-              {b.reservationId && (
-                <small>Capacity reservation: {b.reservationId.slice(0, 8)}</small>
-              )}
-              {invoices[b.id] && (() => { const inv = invoices[b.id]; const owed = inv.totalCents - inv.paidCents; return (
-                <small><strong>Invoice {inv.invoiceNumber}</strong> · {owed <= 0 && inv.totalCents > 0 ? `Paid ${money(inv.paidCents)} · Pending $0.00` : `Dues pending ${money(owed)}`}{inv.status === 'draft' ? ' · draft' : ''}</small>
-              ); })()}
-              {b.notes && <small>Notes: {b.notes}</small>}
-              {b.cancellationReason && (
-                <small style={{color: 'var(--error)'}}>Cancelled: {b.cancellationReason}</small>
-              )}
-            </div>
-
-            <div style={{display: 'flex', gap: '0.5rem', flexWrap: 'wrap'}}>
-              {invoices[b.id] && <button className="secondary" onClick={() => void viewInvoice(b)}>Invoice</button>}
-              <button className="secondary" onClick={() => viewEvents(b)}>
-                History trail
-              </button>
-
-              {canManage && (
-                <>
-                  {b.status === 'pending' && (
-                    <button className="primary" disabled={busy} onClick={() => updateStatus(b.id, 'confirmed')}>
-                      Approve
-                    </button>
-                  )}
-                  {b.status !== 'completed' && b.status !== 'cancelled' && b.status !== 'pending' && (
-                    <button className="primary" disabled={busy} onClick={() => { setCompleteError(''); setCompleting(b); }}>
-                      Mark completed
-                    </button>
-                  )}
-                  {b.status !== 'completed' && b.status !== 'cancelled' && (
-                    <button
-                      className="secondary"
-                      disabled={busy}
-                      onClick={(event) => {
-                        cancellationTrigger.current = event.currentTarget;
-                        setCancellationReason(''); setError(''); setCancellingBooking(b);
-                      }}
-                    >
-                      Cancel
-                    </button>
-                  )}
-                  {!b.reservationId && b.status !== 'completed' && b.status !== 'cancelled' && <button className="secondary" disabled={busy} onClick={() => { setMoveError(''); setMoveTime(''); setMoving(b); }}>Reschedule</button>}
-                  {b.reservationId && b.status !== 'completed' && b.status !== 'cancelled' && <button className="secondary" disabled={busy} onClick={event => {rescheduleTrigger.current=event.currentTarget; setReschedulingBooking(b);}}>Reschedule</button>}
-                </>
-              )}
-              {canCreateWorkOrders && b.status !== 'cancelled' && b.status !== 'completed' && (
-                <button className="secondary" disabled={busy} onClick={() => createWorkOrder(b)}>
-                  Start the job
-                </button>
+              {isOpen && (
+                <div className={t.detail}>
+                  <div className={t.detailTop}>
+                    <h3>{b.serviceName}{inv && <span className={t.price}>{money(inv.totalCents)}</span>}</h3>
+                    <div className={t.actions}>
+                      {inv && <button className="secondary" onClick={() => viewInvoice(b)}>Invoice</button>}
+                      <button className="secondary" onClick={() => viewEvents(b)}>History</button>
+                      {canManage && !final && b.status !== 'pending' && <button className="primary" disabled={busy} onClick={() => { setCompleteError(''); setCompleting(b); }}>Mark completed</button>}
+                      {canManage && !final && !b.reservationId && <button className="secondary" disabled={busy} onClick={() => { setMoveError(''); setMoveTime(''); setMoving(b); }}>Reschedule</button>}
+                      {canManage && !final && b.reservationId && <button className="secondary" disabled={busy} onClick={(event) => { rescheduleTrigger.current = event.currentTarget; setReschedulingBooking(b); }}>Reschedule</button>}
+                      {canManage && !final && <button className="secondary" disabled={busy} onClick={(event) => { cancellationTrigger.current = event.currentTarget; setCancellationReason(''); setError(''); setCancellingBooking(b); }}>Cancel</button>}
+                      {canCreateWorkOrders && !final && <button className="secondary" disabled={busy} onClick={() => createWorkOrder(b)}>Start the job</button>}
+                    </div>
+                  </div>
+                  <div className={t.detailCols}>
+                    <div><h4>Booking</h4><dl className={t.kv}><dt>Date</dt><dd>{formatTime(b.bookingTime)}</dd><dt>Booked</dt><dd>{b.channel === 'online' ? 'Online' : b.channel === 'walk_in' ? 'Walk-in' : b.channel === 'phone' ? 'Phone' : 'By staff'}</dd>{b.addons?.length > 0 && <><dt>Add-ons</dt><dd>{b.addons.map((a) => a.name).join(', ')}</dd></>}{b.notes && <><dt>Notes</dt><dd>{b.notes}</dd></>}{b.cancellationReason && <><dt>Cancelled</dt><dd>{b.cancellationReason}</dd></>}</dl></div>
+                    <div><h4>Customer</h4><dl className={t.kv}><dt>Name</dt><dd>{b.customerName}</dd>{b.customerEmail && <><dt>Email</dt><dd>{b.customerEmail}</dd></>}{b.customerPhone && <><dt>Phone</dt><dd>{b.customerPhone}</dd></>}<dt>Service location</dt><dd>{b.serviceAddress ? b.serviceAddress : 'At the shop'}</dd></dl></div>
+                    <div><h4>Payment</h4><dl className={t.kv}>{inv ? <><dt>Invoice</dt><dd>{inv.invoiceNumber}{inv.status === 'draft' ? ' (draft)' : ''}</dd>{(inv.discountCents ?? 0) > 0 && <><dt>Discount</dt><dd>−{money(inv.discountCents ?? 0)} ({inv.couponCode})</dd></>}<dt>Total</dt><dd>{money(inv.totalCents)}</dd><dt>Paid</dt><dd>{money(inv.paidCents)}</dd><dt>Pending</dt><dd>{money(Math.max(0, owed))}</dd></> : <><dt>Invoice</dt><dd>None yet</dd></>}</dl>
+                      {inv && inv.status === 'draft' && canManage && (
+                        <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                          {(inv.discountCents ?? 0) > 0
+                            ? <button type="button" className="secondary" disabled={couponBusy} onClick={() => void couponAction(b, true)}>Remove coupon</button>
+                            : <><input aria-label="Coupon code" placeholder="Coupon code" value={couponCodes[b.id] ?? ''} maxLength={32} onChange={(e) => setCouponCodes((prev) => ({ ...prev, [b.id]: e.target.value.toUpperCase() }))} style={{ flex: '1 1 140px', minWidth: 0, padding: '9px 12px', borderRadius: 12, border: '1px solid var(--glass-line, #3a3a42)', background: 'transparent', color: 'inherit', font: 'inherit' }} /><button type="button" className="secondary" disabled={couponBusy || !(couponCodes[b.id] ?? '').trim()} onClick={() => void couponAction(b, false)}>Apply</button></>}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
-          </article>
-        ))}
-        {bookingsLoading && <p style={{color: 'var(--text-muted, var(--text-muted, #6b5558))', margin: '0.75rem 0'}}>Loading appointments…</p>}
-        {!bookingsLoading && !bookings.length && <p>No bookings found matching filter.</p>}
+          );
+        })}
+        {!bookingsLoading && shown.length === 0 && <p className={t.empty}>No appointments match these filters.</p>}
       </div>
 
       {moving && (
@@ -676,19 +689,6 @@ export default function BookingManager({
             <div className="form-actions" style={{ justifyContent: 'flex-start' }}>
               <button className="primary" disabled={moveBusy || !moveTime} onClick={() => void saveMove()}>{moveBusy ? 'Saving…' : 'Move appointment'}</button>
               <button className="secondary" disabled={moveBusy} onClick={() => setMoving(null)}>Back</button>
-            </div>
-          </div>
-        </div>
-      )}
-      {viewing && (
-        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Invoice" onClick={() => setViewing(null)}>
-          <div className="modal" style={{ width: 860, maxHeight: '92vh', overflow: 'auto', padding: 24, background: '#fff' }} onClick={(e) => e.stopPropagation()}>
-            {viewing.error && <p role="alert" className="field-error">{viewing.error}</p>}
-            {!viewing.invoice && !viewing.error && <p role="status">Loading invoice…</p>}
-            {viewing.invoice && <InvoiceDocument invoice={viewing.invoice} template={printTemplate} />}
-            <div className="form-actions" style={{ justifyContent: 'flex-start' }}>
-              {viewing.invoice && <button className="primary" onClick={() => printInvoiceDocument(viewing.invoice as PrintInvoice, printTemplate)}>Print or save as PDF</button>}
-              <button className="secondary" onClick={() => setViewing(null)}>Close</button>
             </div>
           </div>
         </div>

@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"net/mail"
 	"strings"
+	"time"
 	"unicode/utf8"
 )
 
@@ -145,8 +146,13 @@ func NewHandlerWithFullServices(store *postgres.Store, origin string, invitation
 	registerMemberInvitationRoutes(mux, store, invitations, emailSender)
 	registerAccountCredentialRoutes(mux, store, emailSender, origin)
 	registerWebsiteTrackingRoutes(mux, store)
+	registerCustomScriptRoutes(mux, store)
 	registerCalendarFeedRoutes(mux, store, origin)
 	registerWebsiteEnquiryRoutes(mux, store)
+	registerActivityLogRoutes(mux, store)
+	registerMemberTerminationRoutes(mux, store)
+	registerCouponRoutes(mux, store)
+	registerReportRoutes(mux, store)
 	registerCustomerAccountManagementRoutes(mux, store)
 	registerQuoteRoutes(mux, store, sqClient)
 	registerSquareIntentRoutes(mux, store)
@@ -364,6 +370,17 @@ func NewHandlerWithFullServices(store *postgres.Store, origin string, invitation
 				return
 			}
 		}
-		mux.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), sessionKey{}, sessionActor{principalID: actorID, token: token})))
+		recorder := &statusRecorder{ResponseWriter: w, status: 200}
+		mux.ServeHTTP(recorder, r.WithContext(context.WithValue(r.Context(), sessionKey{}, sessionActor{principalID: actorID, token: token})))
+		// Every change a signed-in person makes is written to the activity log (who, when, from where, on what device).
+		if r.Method != http.MethodGet && r.Method != http.MethodHead && r.Method != http.MethodOptions {
+			method, path, status := r.Method, r.URL.Path, recorder.status
+			ip, agent := postgres.ClientIP(r.RemoteAddr, r.Header.Get("X-Forwarded-For")), r.UserAgent()
+			go func() {
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				_ = store.RecordActivity(ctx, actorID, "", "write", method, path, status, ip, agent)
+			}()
+		}
 	})
 }

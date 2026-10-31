@@ -684,6 +684,7 @@ export default function SecureWorkspace({ownerView=false}:{ownerView?:boolean}) 
               key={'sop-' + base}
               base={base}
               canAcknowledge={scope.actions.includes('sop.acknowledge')}
+              canManage={scope.actions.includes('sop.manage')}
             />
           )}
           {ownerView && scope && <OwnerOverview key={base} base={base} location={scope.locationName} />}

@@ -101,7 +101,7 @@ func (s *Store) UpdateInvoiceDraft(ctx context.Context, scope Scope, id string, 
 			return Invoice{}, err
 		}
 	}
-	if _, err = tx.Exec(ctx, `UPDATE invoices SET subtotal_cents=$4,tax_cents=$5,total_cents=$4::bigint+$5::bigint,due_cents=$4::bigint+$5::bigint,notes=$6,updated_at=now() WHERE organization_id=$1 AND location_id=$2 AND id=$3`, scope.OrganizationID, scope.LocationID, id, subtotal, input.TaxCents, strings.TrimSpace(input.Notes)); err != nil {
+	if _, err = tx.Exec(ctx, `UPDATE invoices SET subtotal_cents=$4,tax_cents=$5,total_cents=GREATEST(0,$4::bigint-discount_cents+$5::bigint),due_cents=GREATEST(0,$4::bigint-discount_cents+$5::bigint),notes=$6,updated_at=now() WHERE organization_id=$1 AND location_id=$2 AND id=$3`, scope.OrganizationID, scope.LocationID, id, subtotal, input.TaxCents, strings.TrimSpace(input.Notes)); err != nil {
 		return Invoice{}, err
 	}
 	after, err := scanInvoice(tx.QueryRow(ctx, `SELECT `+invoiceSelectColumns+` FROM invoices i JOIN customers c ON (c.organization_id,c.location_id,c.id)=(i.organization_id,i.location_id,i.customer_id) WHERE i.id=$1`, id))

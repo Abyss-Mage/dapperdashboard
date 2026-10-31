@@ -19,6 +19,7 @@ export type PrintTemplate = {
 export type PrintInvoice = {
   invoiceNumber: string; status: string; currency: string; issuedAt?: string | null; createdAt?: string;
   subtotalCents: number; taxCents: number; totalCents: number; paidCents: number; dueCents: number;
+  discountCents?: number; couponCode?: string;
   customerName?: string;
   issuerSnapshot?: { legalName: string; address: string; taxRegistration: string } | null;
   customerSnapshot?: { name: string; email: string; phone: string } | null;
@@ -82,7 +83,7 @@ export const TEMPLATE_PLACEHOLDERS: [string, string][] = [
   ['logo_url', 'Address of the logo image'], ['business_name', 'Your legal business name'], ['business_address', 'Your address'], ['tax_registration', 'Tax registration number'],
   ['customer_name', 'Customer name'], ['customer_email', 'Customer email'], ['customer_phone', 'Customer phone'],
   ['items', 'The item rows (<tr> with description, quantity, unit price and amount)'],
-  ['subtotal', 'Subtotal'], ['tax', 'Tax'], ['total', 'Total'], ['paid', 'Paid'], ['balance_due', 'Balance due'], ['currency', 'Currency'],
+  ['subtotal', 'Subtotal'], ['discount', 'Discount (a coupon), 0.00 when none'], ['tax', 'Tax'], ['total', 'Total'], ['paid', 'Paid'], ['balance_due', 'Balance due'], ['currency', 'Currency'],
   ['header_note', 'Note above the items'], ['payment_instructions', 'Payment instructions'], ['footer_note', 'Footer'],
 ];
 export const STARTER_HTML = [
@@ -135,7 +136,7 @@ export function customInvoicePage(invoice: PrintInvoice, t: PrintTemplate): stri
     business_name: esc(invoice.issuerSnapshot?.legalName ?? ''), business_address: esc(invoice.issuerSnapshot?.address ?? ''), tax_registration: esc(invoice.issuerSnapshot?.taxRegistration ?? ''),
     customer_name: esc(customer?.name ?? ''), customer_email: esc(customer?.email ?? ''), customer_phone: esc(customer?.phone ?? ''),
     items: (invoice.items ?? []).map((it) => `<tr><td>${esc(it.description)}</td><td>${it.quantity}</td><td>${m(it.unitPriceCents ?? Math.round(it.totalPriceCents / Math.max(1, it.quantity)))}</td><td>${m(it.totalPriceCents)}</td></tr>`).join(''),
-    subtotal: m(invoice.subtotalCents), tax: m(invoice.taxCents), total: m(invoice.totalCents), paid: m(invoice.paidCents), balance_due: m(invoice.dueCents), currency: esc(invoice.currency),
+    subtotal: m(invoice.subtotalCents), discount: m(invoice.discountCents ?? 0), tax: m(invoice.taxCents), total: m(invoice.totalCents), paid: m(invoice.paidCents), balance_due: m(invoice.dueCents), currency: esc(invoice.currency),
     header_note: esc(t.headerNote), payment_instructions: esc(t.paymentInstructions), footer_note: esc(t.footerNote),
   };
   const body = t.customHtml.replace(/\{\{\s*([a-z_]+)\s*\}\}/g, (_all, key: string) => (key in values ? values[key] : ''));
@@ -207,6 +208,7 @@ export function InvoiceDocument({ invoice, template }: { invoice: PrintInvoice; 
       </table>
       <div className="ddTotals">
         <div><span>Subtotal</span><span>{money(invoice.subtotalCents, invoice.currency)}</span></div>
+        {(invoice.discountCents ?? 0) > 0 && <div><span>Discount{invoice.couponCode ? ` (${invoice.couponCode})` : ''}</span><span>−{money(invoice.discountCents ?? 0, invoice.currency)}</span></div>}
         <div><span>Tax</span><span>{money(invoice.taxCents, invoice.currency)}</span></div>
         <div className="ddTot"><span>Total</span><span>{money(invoice.totalCents, invoice.currency)}</span></div>
         <div><span>Paid</span><span>{money(invoice.paidCents, invoice.currency)}</span></div>
@@ -250,6 +252,36 @@ export function printInvoiceDocument(invoice: PrintInvoice, template: PrintTempl
   const logo = host.querySelector('img');
   const go = () => setTimeout(() => { window.print(); }, 50);
   if (logo && !logo.complete) { logo.addEventListener('load', go, { once: true }); logo.addEventListener('error', go, { once: true }); } else go();
+}
+
+/* The invoice as its own page in a new browser window, with a Print or save as PDF button. Open the window straight away from the
+   click (browsers block windows opened after a wait), then fill it once the invoice has loaded. */
+export function openInvoiceWindow(): Window | null {
+  const w = window.open('', '_blank');
+  if (!w) return null;
+  w.document.open();
+  w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Invoice</title></head><body style="font:16px system-ui;padding:32px">Loading the invoice…</body></html>');
+  w.document.close();
+  return w;
+}
+export function fillInvoiceWindow(w: Window, invoice: PrintInvoice, template: PrintTemplate) {
+  const toolbar = '<div class="ddBar"><button onclick="window.print()">Print or save as PDF</button><button class="ddGhost" onclick="window.close()">Close</button></div>';
+  const barCss = '.ddBar{position:sticky;top:0;z-index:5;display:flex;gap:10px;justify-content:center;padding:12px;background:#17171a}.ddBar button{font:600 14px system-ui;padding:9px 18px;border-radius:999px;border:0;background:#d22b2b;color:#fff;cursor:pointer}.ddBar .ddGhost{background:#3a3a40}@media print{.ddBar{display:none}body{background:#fff!important;padding:0!important}.ddSheet{box-shadow:none!important;margin:0!important;padding:0!important}}';
+  let html: string;
+  if (template.customHtml?.trim()) {
+    html = customInvoicePage(invoice, template).replace('</style>', barCss + '</style>').replace('<body>', '<body>' + toolbar);
+  } else {
+    const host = document.createElement('div');
+    const root = createRoot(host);
+    flushSync(() => root.render(<InvoiceDocument invoice={invoice} template={template} />));
+    const inner = host.innerHTML;
+    root.unmount();
+    html = '<!doctype html><html><head><meta charset="utf-8"><title>Invoice ' + esc(invoice.invoiceNumber) + '</title><style>@page{size:' + (template.paperSize === 'a4' ? 'A4' : 'letter') + ';margin:14mm}body{margin:0;background:#e9e9ec;font-family:system-ui,sans-serif}.ddSheet{max-width:820px;margin:24px auto;background:#fff;padding:32px;box-shadow:0 6px 30px rgba(0,0,0,.18)}' + barCss + '</style></head><body>' + toolbar + '<div class="ddSheet">' + inner + '</div></body></html>';
+  }
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+  w.document.title = 'Invoice ' + invoice.invoiceNumber;
 }
 
 /* Loads the organization's template once; falls back to the built-in layout if it cannot be read. */

@@ -162,6 +162,8 @@ type PublicBookingInput struct {
 	Notes       string    `json:"notes"`
 	// ServiceAddress is where mobile or valet work happens (empty for in-shop work).
 	ServiceAddress string `json:"serviceAddress"`
+	// CouponCode is an optional discount code; an invalid one stops the booking before anything is held.
+	CouponCode string `json:"couponCode"`
 }
 type PublicBookingResult struct {
 	BookingID     string `json:"bookingId"`
@@ -245,6 +247,11 @@ func (s *Store) PublicBook(ctx context.Context, slug string, in PublicBookingInp
 	} else if err != nil {
 		return out, err
 	}
+	if strings.TrimSpace(in.CouponCode) != "" {
+		if _, err = s.evaluateCoupon(ctx, s.pool, scope, in.CouponCode, customerID, &serviceID, subtotal); err != nil {
+			return out, err
+		}
+	}
 	booking, err := s.ReserveBooking(ctx, scope, ReserveBookingInput{RequestKey: in.RequestKey, CustomerID: customerID, ResourceID: in.ResourceID, RuleID: in.RuleID, RuleVersion: in.RuleVersion, Start: in.Start, Channel: "online", Notes: in.Notes, ServiceAddress: in.ServiceAddress, AddonIDs: in.AddonIDs})
 	if err != nil {
 		return out, err
@@ -267,6 +274,13 @@ func (s *Store) PublicBook(ctx context.Context, slug string, in PublicBookingInp
 	if err != nil {
 		release()
 		return out, err
+	}
+	if strings.TrimSpace(in.CouponCode) != "" {
+		if _, err = s.ApplyCouponToInvoice(ctx, scope, inv.ID, in.CouponCode); err != nil {
+			_, _ = s.VoidInvoice(context.WithoutCancel(ctx), scope, inv.ID, "The coupon could not be applied")
+			release()
+			return out, err
+		}
 	}
 	issued, err := s.IssueInvoice(ctx, scope, inv.ID)
 	if err != nil {

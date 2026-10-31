@@ -27,15 +27,17 @@ export default function BookingRescheduler({base, booking, onClose, onSaved}: {b
   const [resource, setResource] = useState(''), [rule, setRule] = useState(''), [start, setStart] = useState(''), [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(true), [busy, setBusy] = useState(false), [error, setError] = useState('');
   useEffect(() => {
-    dialog.current?.showModal(); let disposed = false;
+    dialog.current?.show(); let disposed = false;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !document.querySelector('[role="listbox"], [data-picker-open]')) onClose(); };
+    window.addEventListener('keydown', onKey);
     fetch(`${base}/bookings/reschedule-options`, {cache:'no-store'}).then(async response => {
       if (!response.ok) throw new Error('Scheduling choices are unavailable or your access has changed.');
       const body = await response.json(); if (disposed) return;
       const expected = booking.addons.map(item => item.serviceId).sort().join(',');
       setRules(body.rules.filter((item: Rule) => item.serviceId === booking.serviceId && [...item.addonIds].sort().join(',') === expected)); setResources(body.resources);
     }).catch(failure => {if (!disposed) setError(failure instanceof Error ? failure.message : 'Scheduling choices unavailable.');}).finally(() => {if (!disposed) setLoading(false);});
-    return () => {disposed = true;};
-  }, [base, booking]);
+    return () => {disposed = true; window.removeEventListener('keydown', onKey);};
+  }, [base, booking]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {if (error && !busy && !loading) errorRef.current?.focus();}, [error, busy, loading]);
   const usable = resources.filter(item => rules.some(choice => choice.resourceId === item.id));
   useEffect(() => {if (!resource && usable.length === 1) setResource(usable[0].id);}, [usable, resource]);
@@ -59,7 +61,8 @@ export default function BookingRescheduler({base, booking, onClose, onSaved}: {b
     } catch (failure) {setError(failure instanceof Error ? failure.message : 'The booking could not be moved. Your details are preserved.');}
     finally {setBusy(false);}
   }
-  return <dialog className="booking-reschedule" ref={dialog} aria-labelledby="reschedule-booking-title" onCancel={event => {event.preventDefault(); if (!busy) onClose();}} style={{width:'min(34rem, calc(100vw - 2rem))',padding:'1.5rem'}}>
+  return <><div aria-hidden="true" onClick={() => { if (!busy) onClose(); }} style={{position:'fixed',inset:0,zIndex:1400,background:'rgb(0 0 0 / 45%)'}} />
+  <dialog className="booking-reschedule" ref={dialog} aria-labelledby="reschedule-booking-title" style={{position:'fixed',zIndex:1500,top:'50%',left:'50%',transform:'translate(-50%,-50%)',margin:0,width:'min(34rem, calc(100vw - 2rem))',padding:'1.5rem'}}>
     <form onSubmit={save} style={{display:'grid',gap:'.85rem'}}>
       <h3 id="reschedule-booking-title">Move this booking</h3>
       <p><strong>{booking.customerName}</strong> · {booking.serviceName}</p><p>Now booked for {new Date(booking.bookingTime).toLocaleString('en-CA', {weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: zone})}. If the move cannot be made, the current time stays reserved.</p>
@@ -71,5 +74,5 @@ export default function BookingRescheduler({base, booking, onClose, onSaved}: {b
       {error && <p ref={errorRef} role="alert" tabIndex={-1}>{error}</p>}
       <div style={{display:'flex',gap:'.75rem',marginTop:'1rem',flexWrap:'wrap'}}><button type="button" className="secondary" disabled={busy} onClick={onClose}>Keep it as is</button><button type="submit" className="primary" disabled={busy || loading || !selectedRule || !booking.reservationVersion}>{busy?'Moving…':'Move booking'}</button></div>
     </form>
-  </dialog>;
+  </dialog></>;
 }

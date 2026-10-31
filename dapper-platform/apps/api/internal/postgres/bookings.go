@@ -58,7 +58,7 @@ type BookingEvent struct {
 const bookingColumns = `b.id::text, b.organization_id::text, b.location_id::text, b.customer_id::text,
 b.vehicle_id::text, b.service_id::text, b.service_name, b.addons, b.reservation_id::text,
 b.channel, b.status, b.booking_time, b.notes, b.cancellation_reason, b.created_at, b.updated_at,
-c.name, c.email, c.phone,(SELECT r.version FROM capacity_reservations r WHERE r.organization_id=b.organization_id AND r.location_id=b.location_id AND r.id=b.reservation_id)`
+c.name, c.email, c.phone,(SELECT r.version FROM capacity_reservations r WHERE r.organization_id=b.organization_id AND r.location_id=b.location_id AND r.id=b.reservation_id), b.service_address`
 
 func scanBooking(row pgx.Row) (Booking, error) {
 	var b Booking
@@ -83,6 +83,7 @@ func scanBooking(row pgx.Row) (Booking, error) {
 		&b.CustomerEmail,
 		&b.CustomerPhone,
 		&b.ReservationVersion,
+		&b.ServiceAddress,
 	)
 	return b, err
 }

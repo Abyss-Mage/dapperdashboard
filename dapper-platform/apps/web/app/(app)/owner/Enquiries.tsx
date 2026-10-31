@@ -38,7 +38,6 @@ export default function Enquiries({ organizationId, canManage }: { organizationI
       <div className={styles.rowBetween}>
         <div>
           <h2 className={styles.setupTitle} style={{ fontSize: 20, margin: 0 }}>Enquiries{fresh ? ` · ${fresh} new` : ''}</h2>
-          <p className={styles.personSub}>Messages from the website contact form. Call or email the person back, then mark it read or archive it.</p>
         </div>
         <button type="button" className="secondary" disabled={busy} onClick={() => void load().catch((e) => setError(e.message))}>Refresh</button>
       </div>

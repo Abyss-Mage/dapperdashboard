@@ -16,7 +16,13 @@ import InvoiceManager from '../workspace/InvoiceManager';
 import SOPCompliancePanel from '../workspace/SOPCompliancePanel';
 import InvoiceTemplateEditor from '../workspace/InvoiceTemplateEditor';
 import WebsiteTrackingEditor from './WebsiteTrackingEditor';
+import InvoiceIssuerEditor from '../workspace/InvoiceIssuerEditor';
 import Enquiries from './Enquiries';
+import Coupons from './Coupons';
+import Reports from './Reports';
+import CustomScripts from './CustomScripts';
+import Employees from './Employees';
+import ActivityLog from './ActivityLog';
 import BookingManager from '../workspace/BookingManager';
 import CalendarFeeds from '../workspace/CalendarFeeds';
 import MyAccount from './MyAccount';
@@ -26,7 +32,6 @@ import { MfaSetup } from '../workspace/AccountSecurity';
 import QuoteManager from '../workspace/QuoteManager';
 import MarketingPopupManager from '../workspace/MarketingPopupManager';
 import BookingCalendar from './BookingCalendar';
-import AppointmentsList from './AppointmentsList';
 import StaffHours from './StaffHours';
 import AvailabilityReview from './AvailabilityReview';
 import Dealerships from './Dealerships';
@@ -56,7 +61,7 @@ type Org = {
 type TabId =
   | 'overview' | 'calendar' | 'new-booking' | 'requests' | 'customers' | 'staff-hours' | 'availability' | 'dealership-tags' | 'customer-cars'
   | 'invoices' | 'quotes' | 'dealerships' | 'marketing'
-  | 'team' | 'franchises' | 'services' | 'hours' | 'taxes' | 'sop' | 'invoice-template' | 'payments' | 'tracking' | 'enquiries'
+  | 'team' | 'franchises' | 'services' | 'hours' | 'taxes' | 'sop' | 'invoice-template' | 'payments' | 'tracking' | 'enquiries' | 'employees' | 'activity' | 'coupons' | 'reports' | 'scripts'
   | 'account';
 
 type Ctx = { scope: Access | undefined; organizations: Org[]; orgActions: string[] };
@@ -81,10 +86,11 @@ const TABS: TabDefinition[] = [
   { id: 'availability', label: 'Staff availability', icon: 'work', description: 'Approve or reject the times staff can work', show: (c) => has(c, 'attendance.manage') || org(c, 'access.manage') },
   { id: 'dealership-tags', label: 'Dealership tags', icon: 'dealership', description: 'Key-tag photos your team posted at dealerships', show: (c) => has(c, 'attendance.read') },
   { id: 'customer-cars', label: 'Customer cars', icon: 'work', description: 'Before and after photos of customers\' cars', show: (c) => has(c, 'attendance.read') },
-  { id: 'invoices', label: 'Invoices', icon: 'finance', description: 'Invoices and payments', show: (c) => has(c, 'invoices.read') },
   { id: 'quotes', label: 'Quotes', icon: 'finance', description: 'Price quotes for customers', show: (c) => has(c, 'quotes.read') },
   { id: 'dealerships', label: 'Dealerships', icon: 'dealership', description: 'Car dealerships you work with', show: (c) => has(c, 'dealership.read') },
   { id: 'marketing', label: 'Mailchimp', icon: 'marketing', description: 'Your Mailchimp email list', show: (c) => has(c, 'marketing.read') },
+  { id: 'employees', label: 'Employees', icon: 'customers', description: 'Everyone on your team', show: (c) => org(c, 'access.manage') },
+  { id: 'activity', label: 'Activity log', icon: 'admin', description: 'Who signed in and what they changed', show: (c) => org(c, 'access.manage') },
   { id: 'team', label: 'Team', icon: 'customers', description: 'Your team, invitations and roles', show: (c) => org(c, 'access.manage') },
   { id: 'franchises', label: 'Franchises', icon: 'admin', description: 'Your franchises and their details', show: (c) => org(c, 'structure.read') },
   { id: 'services', label: 'Services', icon: 'admin', description: 'Services and prices', show: (c) => has(c, 'catalogue.read') || org(c, 'catalogue.read') },
@@ -92,24 +98,26 @@ const TABS: TabDefinition[] = [
   { id: 'taxes', label: 'Taxes', icon: 'finance', description: 'Tax rates for this franchise', show: (c) => !!c.scope && org(c, 'invoices.configure') },
   { id: 'sop', label: 'SOP & Compliance', icon: 'admin', description: 'Standard operating procedures your team must read', show: (c) => has(c, 'sop.read') },
   { id: 'invoice-template', label: 'Invoice template', icon: 'finance', description: 'How printed invoices look', show: (c) => org(c, 'invoices.configure') },
+  { id: 'reports', label: 'Reports', icon: 'overview', description: 'Appointments, revenue and customers', show: (c) => has(c, 'bookings.read', 'payments.read', 'customers.read') },
+  { id: 'coupons', label: 'Coupons', icon: 'marketing', description: 'Discount codes for your customers', show: (c) => has(c, 'marketing.read') },
   { id: 'enquiries', label: 'Enquiries', icon: 'marketing', description: 'Messages from the website contact form', show: (c) => org(c, 'marketing.read') },
+  { id: 'scripts', label: 'Custom scripts', icon: 'marketing', description: 'Extra code for the public website', show: (c) => org(c, 'access.manage') },
   { id: 'tracking', label: 'Website tracking', icon: 'marketing', description: 'Google Tag, Meta Pixel and the Mailchimp popup', show: (c) => org(c, 'content.manage') },
   { id: 'payments', label: 'Card payments', icon: 'finance', description: 'This franchise’s Square account', show: (c) => org(c, 'invoices.configure') && has(c, 'payments.read') },
   { id: 'account', label: 'My account', icon: 'customers', description: 'Your name, phone and two-factor sign-in', show: () => true },
 ];
 
 const NAV_GROUPS: { label: string; ids: TabId[] }[] = [
-  { label: 'Every day', ids: ['overview', 'calendar', 'new-booking', 'requests', 'customers'] },
-  { label: 'Team', ids: ['staff-hours', 'availability', 'dealership-tags', 'customer-cars', 'sop'] },
-  { label: 'Money', ids: ['invoices', 'quotes', 'payments', 'dealerships', 'marketing', 'enquiries'] },
-  { label: 'Settings', ids: ['services', 'hours', 'taxes', 'franchises', 'team', 'invoice-template', 'tracking'] },
+  { label: 'Every day', ids: ['overview', 'calendar', 'new-booking', 'requests', 'customers', 'reports'] },
+  { label: 'Team', ids: ['employees', 'staff-hours', 'availability', 'dealership-tags', 'customer-cars', 'sop'] },
+  { label: 'Money', ids: ['quotes', 'payments', 'dealerships', 'marketing', 'coupons', 'enquiries'] },
+  { label: 'Settings', ids: ['services', 'hours', 'taxes', 'franchises', 'team', 'activity', 'invoice-template', 'tracking', 'scripts'] },
 ];
 const isTab = (v: string): v is TabId => TABS.some((t) => t.id === v);
 const ORDER: TabId[] = [...NAV_GROUPS.flatMap((g) => g.ids), 'account'];
 
 export default function OwnerDashboardClient() {
   const [principal, setPrincipal] = useState('');
-  const [appointmentsView, setAppointmentsView] = useState<'manage' | 'search'>('manage');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -544,23 +552,13 @@ export default function OwnerDashboardClient() {
           {hasTabPermission && scope && <>
             {activeTab === 'calendar' && <><BookingCalendar key={base} base={base} timezone={timezone} calendarLink={`${base}/calendar.ics`} /><CalendarFeeds key={'feeds-' + base} endpoint={`${base}/calendar-feeds`} title="Add this franchise’s bookings to Apple Calendar" hint="Make a private link and add it once to Apple Calendar, Google Calendar or Outlook. It then keeps updating by itself. Anyone with the link can see these bookings, so turn it off if it is shared by mistake." /></>}
             {activeTab === 'new-booking' && <StaffBookingWizard mode="master" base={base} timezone={timezone} onBooked={refresh} />}
-            {activeTab === 'requests' && (
-              <>
-                <div className={styles.segments} role="group" aria-label="Appointments view" style={{ marginBottom: 12 }}>
-                  <button type="button" className={styles.segment} aria-pressed={appointmentsView === 'manage'} onClick={() => setAppointmentsView('manage')}>Manage</button>
-                  <button type="button" className={styles.segment} aria-pressed={appointmentsView === 'search'} onClick={() => setAppointmentsView('search')}>Search and dates</button>
-                </div>
-                {appointmentsView === 'manage'
-                  ? <BookingManager key={'booking-mgr-' + base} base={base} canCreate={scope.actions.includes('bookings.create')} canManage={scope.actions.includes('bookings.manage')} canCreateWorkOrders={false} />
-                  : <AppointmentsList key={base} base={base} timezone={timezone} />}
-              </>
-            )}
+            {activeTab === 'requests' && <BookingManager key={'booking-mgr-' + base} base={base} canCreate={scope.actions.includes('bookings.create')} canManage={scope.actions.includes('bookings.manage')} canCreateWorkOrders={false} />}
             {activeTab === 'customers' && <CustomerManager key={base} base={base} canCreate={scope.actions.includes('customers.create')} canDelete={scope.actions.includes('customer_accounts.manage')} onChanged={() => setCustomerRevision((v) => v + 1)} />}
             {activeTab === 'staff-hours' && <StaffHours key={base} base={base} timezone={timezone} />}
             {activeTab === 'availability' && <AvailabilityReview key={scope.organizationId} organizationId={scope.organizationId} locationId={scope.locationId} />}
             {activeTab === 'dealership-tags' && <EmployeeUploadsReview key={'tags-' + base} base={base} fixedKind="dealership_tag" title="Dealership tags" canSeeLog={scope.actions.includes('attendance.manage')} />}
             {activeTab === 'customer-cars' && <EmployeeUploadsReview key={'cars-' + base} base={base} fixedKind="customer_car" title="Customer cars" canSeeLog={scope.actions.includes('attendance.manage')} />}
-            {activeTab === 'sop' && <SOPCompliancePanel base={base} canAcknowledge={scope.actions.includes('sop.acknowledge')} />}
+            {activeTab === 'sop' && <SOPCompliancePanel base={base} canAcknowledge={scope.actions.includes('sop.acknowledge')} canManage={scope.actions.includes('sop.manage')} />}
             {activeTab === 'invoices' && <InvoiceManager base={base} canCreate={scope.actions.includes('invoices.create')} canManage={scope.actions.includes('invoices.manage')} canRecordPayment={scope.actions.includes('payments.record')} canIssue={scope.actions.includes('invoices.issue')} />}
             {activeTab === 'quotes' && <QuoteManager organizationId={scope.organizationId} locationId={scope.locationId} canCreate={scope.actions.includes('quotes.create')} canManage={scope.actions.includes('quotes.manage')} canIssue={scope.actions.includes('quotes.issue')} />}
             {activeTab === 'payments' && (
@@ -587,9 +585,15 @@ export default function OwnerDashboardClient() {
           </>}
           {hasTabPermission && activeTab === 'franchises' && currentOrg && <FranchiseManager organization={currentOrg} selectedId={scope?.locationId} onSaved={refresh} />}
           {hasTabPermission && activeTab === 'team' && currentOrg && <PeopleAccess key={'people-' + currentOrg.id} organizationId={currentOrg.id} revision={accessRevision} onSaved={refresh} />}
+          {hasTabPermission && activeTab === 'invoice-template' && currentOrg && <InvoiceIssuerEditor key={'issuer-' + currentOrg.id} organizationId={currentOrg.id} revision={accessRevision} />}
           {hasTabPermission && activeTab === 'invoice-template' && currentOrg && <InvoiceTemplateEditor key={'template-' + currentOrg.id} organizationId={currentOrg.id} revision={accessRevision} locationId={scope?.locationId} locationName={scope?.locationName} />}
+          {hasTabPermission && activeTab === 'scripts' && currentOrg && <CustomScripts key={'scripts-' + currentOrg.id} organizationId={currentOrg.id} revision={accessRevision} />}
           {hasTabPermission && activeTab === 'tracking' && currentOrg && <WebsiteTrackingEditor key={'tracking-' + currentOrg.id} organizationId={currentOrg.id} revision={accessRevision} />}
           {hasTabPermission && activeTab === 'enquiries' && currentOrg && <Enquiries key={'enquiries-' + currentOrg.id} organizationId={currentOrg.id} canManage={currentOrg.actions.includes('marketing.manage')} />}
+          {hasTabPermission && activeTab === 'employees' && currentOrg && <Employees key={'employees-' + currentOrg.id} organizationId={currentOrg.id} onChanged={refresh} />}
+          {hasTabPermission && activeTab === 'activity' && currentOrg && <ActivityLog key={'activity-' + currentOrg.id} organizationId={currentOrg.id} />}
+          {activeTab === 'reports' && scope && <Reports key={'reports-' + base} base={base} />}
+          {activeTab === 'coupons' && scope && <Coupons key={'coupons-' + base} base={base} canManage={scope.actions.includes('marketing.manage')} />}
           {activeTab === 'account' && <MyAccount />}
         </main>
       </div>

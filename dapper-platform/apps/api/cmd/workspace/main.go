@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 )
@@ -114,7 +115,12 @@ func main() {
 			time.Sleep(6 * time.Hour)
 		}
 	}()
-	store.SetSOPDirectory(os.Getenv("DAPPER_SOP_DIR"))
+	sopDir := os.Getenv("DAPPER_SOP_DIR")
+	if sopDir == "" && uploadDir != "" {
+		// Policy PDFs added from the dashboard live beside the uploads folder.
+		sopDir = filepath.Join(filepath.Dir(uploadDir), "sops")
+	}
+	store.SetSOPDirectory(sopDir)
 	store.SetSquareApplicationIDs(map[string]string{
 		"sandbox":    os.Getenv("DAPPER_SQUARE_SANDBOX_APPLICATION_ID"),
 		"production": os.Getenv("DAPPER_SQUARE_PRODUCTION_APPLICATION_ID"),

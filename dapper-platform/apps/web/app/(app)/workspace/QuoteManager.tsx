@@ -368,9 +368,6 @@ export default function QuoteManager({
         </div>
       </div>
 
-      <p style={{ fontSize: '0.9rem', color: 'var(--muted, #6b5558)' }}>
-        Staff quotation pipeline attached to customer booking requests. Itemized revisions are frozen upon issuance and immutably accepted by customers.
-      </p>
 
       {notice && <p role="status" style={{ color: 'var(--success, #15804f)', fontWeight: 600 }}>{notice}</p>}
       {error && <p ref={errorRef} role="alert" tabIndex={-1} className="field-error">{error}</p>}
@@ -379,12 +376,16 @@ export default function QuoteManager({
       {isFormOpen && (
         <form onSubmit={handleSaveQuote} className={form.form}>
           <h4>{editingQuoteId ? `Edit draft (revision ${editingVersion})` : 'New quotation'}</h4>
-          <div className={form.grid}>
-            {!editingQuoteId && !formRequestId && (
+          {!editingQuoteId && !formRequestId && (
+            <div className={form.grid3}>
               <label className={form.field} htmlFor="q-client">Client name
-                <input id="q-client" required minLength={2} maxLength={100} autoComplete="off" value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Who is this quotation for?" />
+                <input id="q-client" required minLength={2} maxLength={100} autoComplete="off" value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Who is this for?" />
               </label>
-            )}
+              <label className={form.field} htmlFor="q-client-phone">Phone (optional)<input id="q-client-phone" type="tel" maxLength={30} autoComplete="off" value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} /></label>
+              <label className={form.field} htmlFor="q-client-email">Email (optional)<input id="q-client-email" type="email" maxLength={254} autoComplete="off" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} /></label>
+            </div>
+          )}
+          <div className={form.grid}>
             <label className={form.field} htmlFor="q-req-id">{editingQuoteId ? 'Booking request' : 'Booking request (optional)'}
               {editingQuoteId ? (
                 <input id="q-req-id" value={formRequestId || 'None, quoted by client name'} disabled readOnly />
@@ -399,12 +400,6 @@ export default function QuoteManager({
               <DateTimePicker id="q-expires" value={formExpiresAt} onChange={(e) => setFormExpiresAt(e.target.value)} />
             </label>
           </div>
-          {!editingQuoteId && !formRequestId && (
-            <div className={form.grid}>
-              <label className={form.field} htmlFor="q-client-phone">Phone (optional)<input id="q-client-phone" type="tel" maxLength={30} autoComplete="off" value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} /></label>
-              <label className={form.field} htmlFor="q-client-email">Email (optional)<input id="q-client-email" type="email" maxLength={254} autoComplete="off" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} /></label>
-            </div>
-          )}
           {pickedRequest && !editingQuoteId && (
             <div className={form.picked}>
               <strong>{pickedRequest.customerName}</strong>
@@ -428,13 +423,13 @@ export default function QuoteManager({
             <div><button type="button" className="secondary" onClick={() => setLines([...lines, { description: '', quantity: 1, unitPriceDollars: '' }])}>+ Add a line</button></div>
           </div>
 
-          <div className={form.grid}>
-            <label className={form.field} htmlFor="q-tax">Tax ($)<NumberField id="q-tax" step="0.01" min="0" inputMode="decimal" value={formTaxDollars} onChange={(e) => setFormTaxDollars(e.target.value)} /></label>
-          </div>
-          <div className={form.totals} aria-live="polite">
-            <div><span>Subtotal</span><span>{formatMoney(subtotalCents)}</span></div>
-            <div><span>Tax</span><span>{formatMoney(taxCents)}</span></div>
-            <div className={form.grand}><span>Total</span><span>{formatMoney(subtotalCents + taxCents)}</span></div>
+          <div className={form.summary}>
+            <label className={`${form.field} ${form.taxField}`} htmlFor="q-tax">Tax ($)<NumberField id="q-tax" step="0.01" min="0" inputMode="decimal" value={formTaxDollars} onChange={(e) => setFormTaxDollars(e.target.value)} /></label>
+            <div className={form.totals} aria-live="polite">
+              <div><span>Subtotal</span><span>{formatMoney(subtotalCents)}</span></div>
+              <div><span>Tax</span><span>{formatMoney(taxCents)}</span></div>
+              <div className={form.grand}><span>Total</span><span>{formatMoney(subtotalCents + taxCents)}</span></div>
+            </div>
           </div>
 
           <div className={form.grid}>

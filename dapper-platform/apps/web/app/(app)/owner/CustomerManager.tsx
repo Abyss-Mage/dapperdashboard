@@ -140,7 +140,6 @@ export default function CustomerManager({ base, canCreate, canDelete, onChanged 
       <div className={styles.rowBetween}>
         <div>
           <h2 className={styles.setupTitle} style={{ fontSize: 20, margin: 0 }}>Customers</h2>
-          <p className={styles.personSub}>Click a name to see their vehicles, bookings, jobs and invoices. Each email and phone number belongs to one customer.</p>
         </div>
         <div className={styles.svcActions}>
           <button type="button" className="secondary" disabled={!visible.length} onClick={exportCsv}>Export</button>

@@ -8,7 +8,7 @@ import CustomerQuoteList from './CustomerQuoteList';
 import InvoicePaymentForm from './InvoicePaymentForm';
 import Select from '../GlassSelect';
 import { SignInDetails } from '../workspace/AccountSecurity';
-import { DEFAULT_PRINT_TEMPLATE, InvoiceDocument, printInvoiceDocument, type PrintInvoice } from '../workspace/InvoicePrint';
+import { DEFAULT_PRINT_TEMPLATE, fillInvoiceWindow, openInvoiceWindow } from '../workspace/InvoicePrint';
 
 type Account = {customerId: string; name: string; locationName: string; email?: string; phone?: string; address?: string};
 type Records = {
@@ -38,7 +38,6 @@ export default function CustomerAccount() {
   const [error, setError] = useState('');
   const [revision, setRevision] = useState(0);
   const [detailName, setDetailName] = useState(''), [detailPhone, setDetailPhone] = useState(''), [detailAddress, setDetailAddress] = useState('');
-  const [viewInvoice, setViewInvoice] = useState<PrintInvoice | null>(null);
   useEffect(() => { if (records) { setDetailName(records.account.name); setDetailPhone(records.account.phone ?? ''); setDetailAddress(records.account.address ?? ''); } }, [records]);
   async function saveDetails(event: React.FormEvent) {
     event.preventDefault();
@@ -51,14 +50,14 @@ export default function CustomerAccount() {
     } catch (err) { setError(err instanceof Error ? err.message : 'Your details could not be saved.'); }
     finally { setBusy(false); }
   }
-  async function openInvoice(invoiceId: string) {
+  function openInvoice(invoiceId: string) {
     setError('');
-    try {
-      const response = await fetch(`/api/v1/portal/accounts/${encodeURIComponent(selected)}/invoices/${encodeURIComponent(invoiceId)}`, {cache: 'no-store'});
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(body.error ?? 'The invoice could not be opened.');
-      setViewInvoice(body);
-    } catch (err) { setError(err instanceof Error ? err.message : 'The invoice could not be opened.'); }
+    const w = openInvoiceWindow();
+    if (!w) { setError('Allow pop-ups for this site to open the invoice in a new window.'); return; }
+    fetch(`/api/v1/portal/accounts/${encodeURIComponent(selected)}/invoices/${encodeURIComponent(invoiceId)}`, {cache: 'no-store'})
+      .then(async (response) => { const body = await response.json().catch(() => ({})); if (!response.ok) throw new Error(body.error ?? 'The invoice could not be opened.'); return body; })
+      .then((body) => fillInvoiceWindow(w, body, DEFAULT_PRINT_TEMPLATE))
+      .catch((err) => { w.close(); setError(err instanceof Error ? err.message : 'The invoice could not be opened.'); });
   }
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
@@ -172,17 +171,6 @@ export default function CustomerAccount() {
           <CustomerAvailabilityBrowser key={selected+'-availability'} customerId={selected} vehicles={records.vehicles} onSubmitted={()=>setRequestRevision(current=>current+1)}/>
           <CustomerBookingRequestList key={selected+'-requests'} endpoint={`/api/v1/portal/accounts/${encodeURIComponent(selected)}/booking-requests`} revision={requestRevision}/>
           <CustomerQuoteList key={selected+'-quotes'} customerId={selected} revision={requestRevision}/>
-          {viewInvoice && (
-            <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Invoice" onClick={() => setViewInvoice(null)}>
-              <div className="modal" style={{width: 860, maxHeight: '92vh', overflow: 'auto', padding: 24, background: '#fff'}} onClick={(e) => e.stopPropagation()}>
-                <InvoiceDocument invoice={viewInvoice} template={DEFAULT_PRINT_TEMPLATE} />
-                <div className="form-actions" style={{justifyContent: 'flex-start'}}>
-                  <button className="primary" onClick={() => printInvoiceDocument(viewInvoice, DEFAULT_PRINT_TEMPLATE)}>Print or save as PDF</button>
-                  <button className="secondary" onClick={() => setViewInvoice(null)}>Close</button>
-                </div>
-              </div>
-            </div>
-          )}
           <form className="panel detail-card" onSubmit={saveDetails}>
             <h3>Your details</h3>
             {records.account.email && <p>You sign in with <strong>{records.account.email}</strong>.</p>}
@@ -213,7 +201,7 @@ export default function CustomerAccount() {
                   <p style={{ margin: '0.3rem 0' }}>
                     Total: {amount(i.totalCents, i.currency)} · Balance Due: {amount(i.dueCents, i.currency)}
                   </p>
-                  <button type="button" className="secondary" onClick={() => void openInvoice(i.id)}>View or download invoice</button>
+                  <button type="button" className="secondary" onClick={() => openInvoice(i.id)}>View or download invoice</button>
                   {i.dueCents > 0 && (
                     <InvoicePaymentForm
                       customerId={selected}

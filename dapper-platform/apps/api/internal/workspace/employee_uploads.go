@@ -224,6 +224,26 @@ func registerUploadReviewRoutes(mux *http.ServeMux, store *postgres.Store) {
 		w.WriteHeader(200)
 		_, _ = w.Write(data)
 	})
+	mux.HandleFunc("GET "+base+"/photos/{photo}/thumbnail", func(w http.ResponseWriter, r *http.Request) {
+		scope, ok := resolve(w, r, "attendance.read")
+		if !ok {
+			return
+		}
+		if !uuid(r.PathValue("photo")) {
+			reply(w, 400, map[string]string{"error": "Valid photo required"})
+			return
+		}
+		data, err := store.ReviewUploadThumbnail(r.Context(), scope, r.PathValue("photo"))
+		if err != nil {
+			uploadFailure(w, err)
+			return
+		}
+		w.Header().Set("Content-Type", "image/jpeg")
+		w.Header().Set("Cache-Control", "private, max-age=300")
+		w.Header().Set("Content-Disposition", "inline")
+		w.WriteHeader(200)
+		_, _ = w.Write(data)
+	})
 	mux.HandleFunc("GET "+base+"/views", func(w http.ResponseWriter, r *http.Request) {
 		scope, ok := resolve(w, r, "attendance.manage")
 		if !ok {

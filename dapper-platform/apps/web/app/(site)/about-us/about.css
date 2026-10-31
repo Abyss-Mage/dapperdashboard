@@ -1,0 +1,95 @@
+/* About: only what differs from the shared paper system in ../paper.css. */
+.a-h1{font-size:clamp(56px,10.6vw,176px)}
+.a-facts dd{font:400 clamp(20px,2vw,30px)/1.25 var(--cb);color:var(--ink);letter-spacing:-.01em}
+.a-page .c-hero__band{height:clamp(220px,25vw,400px)}
+.a-page .c-hero__photo img{object-position:50% 58%}
+.a-page .c-hero__info{padding-bottom:clamp(48px,6vw,96px)}
+@media(max-width:720px){.a-h1{font-size:clamp(46px,14.5vw,90px)}}
+
+/* A2 Our story: stacked by default; a pinned sideways strip on desktop with motion (.is-pinned is set by the page script) */
+.a-story{position:relative;padding:clamp(72px,9vw,140px) var(--cg);border-top:1px solid var(--rule)}
+.a-story__head h2{font-size:clamp(46px,6.4vw,104px);line-height:.98}
+.a-story__head .c-sub{margin-top:clamp(14px,1.6vw,24px)}
+.a-story__items{margin:clamp(40px,6vw,80px) 0 0;padding:0;list-style:none;display:grid;gap:clamp(36px,5vw,64px)}
+.a-story__item{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:0 clamp(20px,4vw,56px);align-items:start;padding-top:clamp(20px,2.4vw,32px);border-top:1px solid var(--rule)}
+.a-story__year{grid-row:span 2;font:900 clamp(72px,18vw,150px)/.82 var(--ch);letter-spacing:-.04em;color:var(--ink);font-variant-numeric:tabular-nums}
+.a-story__item:last-child .a-story__year{color:var(--red)}
+.a-story__item h3{font-size:clamp(26px,3vw,40px);line-height:1.05}
+.a-story__item p{margin-top:12px;color:var(--ink-2);max-width:40ch}
+.a-story__bar{display:none}
+.is-pinned .a-story{height:100svh;padding:76px 0 0;overflow:hidden;border-top:0;display:flex;align-items:center}
+.is-pinned .a-story__strip{display:flex;align-items:flex-end;gap:clamp(56px,7vw,120px);width:max-content;padding:0 var(--cg) clamp(48px,7vh,88px)}
+.is-pinned .a-story__head{flex:none;width:min(44vw,700px);align-self:center}
+.is-pinned .a-story__items{margin:0;display:flex;gap:clamp(56px,7vw,120px)}
+.is-pinned .a-story__item{display:block;flex:none;min-width:clamp(360px,30vw,520px);border-top:0;padding-top:0}
+.is-pinned .a-story__year{display:block;white-space:nowrap;font-size:clamp(130px,15vw,250px);margin-bottom:clamp(14px,2vw,30px)}
+.is-pinned .a-story__bar{display:block;position:absolute;left:var(--cg);right:var(--cg);bottom:clamp(24px,4.5vh,52px);height:2px;background:var(--rule)}
+.is-pinned .a-story__bar i{display:block;height:100%;background:var(--red);transform:scaleX(0);transform-origin:left}
+@media(max-width:720px){.a-story__item{grid-template-columns:minmax(0,1fr)}.a-story__year{grid-row:auto;margin-bottom:12px}}
+
+/* A3 The founders */
+.a-founders{padding:clamp(72px,9vw,140px) var(--cg);border-top:1px solid var(--rule)}
+.a-founders h2{font-size:clamp(46px,6.4vw,104px);line-height:.98}
+.a-founders__grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(24px,4vw,64px);margin-top:clamp(40px,6vw,88px)}
+.a-founder{border-top:1px solid var(--ink);padding-top:clamp(16px,2vw,28px);overflow:clip}
+.a-founder__role{margin:0;font:900 clamp(110px,16vw,260px)/.86 var(--ch);letter-spacing:-.04em;color:var(--ink)}
+.a-founder__role span{display:inline-block}
+.a-founder h3{margin-top:clamp(20px,2.4vw,36px);font-size:clamp(30px,3.4vw,54px);line-height:1.02}
+.a-founder .c-muted{margin-top:12px;font-size:clamp(17px,1.4vw,21px)}
+@media(max-width:720px){.a-founders__grid{grid-template-columns:minmax(0,1fr)}}
+
+/* A4 Core values: ink band */
+.a-values{background:var(--ink);color:#f3f2ee;padding:clamp(72px,9vw,140px) var(--cg)}
+.a-values h2{color:#f3f2ee;font-size:clamp(46px,6.4vw,104px);line-height:.98;max-width:16ch}
+.a-values__word{margin:clamp(36px,5vw,72px) 0;font:900 clamp(44px,8.4vw,140px)/1 var(--ch);letter-spacing:-.04em;color:var(--red);min-height:2.05em;overflow-wrap:anywhere}
+.a-values__list{display:none;margin:clamp(28px,4vw,48px) 0;padding:0;list-style:none;gap:8px 28px;flex-wrap:wrap;font:850 clamp(24px,3vw,44px)/1.1 var(--ch);letter-spacing:-.03em;color:var(--red)}
+.a-values__foot{display:grid;grid-template-columns:minmax(0,1.3fr) auto;gap:clamp(24px,4vw,64px);align-items:end;padding-top:clamp(24px,3vw,40px);border-top:1px solid #ffffff2e}
+.a-values__foot p{max-width:60ch;color:#c9c6bf;font-size:clamp(17px,1.4vw,21px)}
+@media(prefers-reduced-motion:reduce){.a-values__word{display:none}.a-values__list{display:flex}}
+@media(max-width:720px){.a-values__foot{grid-template-columns:minmax(0,1fr);align-items:start}}
+
+/* A5 Why trust Dapper: stacked reasons by default; a pinned list + one reason at a time on desktop with motion (.is-why) */
+.a-why{padding:clamp(72px,9vw,140px) var(--cg)}
+.a-why h2{font-size:clamp(42px,5.4vw,92px);line-height:.98}
+.a-why__listwrap{display:none}
+.a-why__slides{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(28px,4vw,56px) clamp(24px,4vw,64px);margin-top:clamp(36px,5vw,72px)}
+.a-why__slide{border-top:1px solid var(--ink);padding-top:clamp(16px,2vw,24px)}
+.a-why__slide h3{font-size:clamp(26px,2.8vw,44px);line-height:1.05}
+.a-why__slide p{margin-top:12px;color:var(--ink-2);max-width:48ch}
+@media(max-width:720px){.a-why__slides{grid-template-columns:minmax(0,1fr)}}
+.is-why .a-why{height:100svh;padding:76px var(--cg) 0;display:flex;align-items:center}
+.is-why .a-why__inner{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:clamp(40px,6vw,110px);align-items:center;width:100%}
+.is-why .a-why__side{display:grid;gap:clamp(24px,4vh,48px)}
+.is-why .a-why__listwrap{display:block;position:relative;padding-left:clamp(20px,2vw,32px)}
+.is-why .a-why__fill{position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--rule)}
+.is-why .a-why__fill i{display:block;width:100%;height:100%;background:var(--red)}
+.is-why .a-why__list{margin:0;padding:0;list-style:none;display:grid;gap:clamp(6px,1.2vh,14px)}
+.is-why .a-why__list li{font:850 clamp(24px,2.9vw,46px)/1.12 var(--ch);letter-spacing:-.04em;color:#8a8780;}
+
+.is-why .a-why__slides{display:block;position:relative;margin:0;min-height:clamp(260px,38vh,420px)}
+.is-why .a-why__slide{position:absolute;inset:0 0 auto 0;border-top:0;padding-top:0}
+.is-why .a-why__slide h3{font-size:clamp(34px,4.2vw,68px);letter-spacing:-.04em}
+.is-why .a-why__slide p{margin-top:clamp(14px,2vh,24px);font:300 clamp(19px,1.9vw,29px)/1.4 var(--cb);max-width:34ch}
+
+/* A6 Partners: ink band, hairline grid of logos */
+.a-partners{background:var(--ink);color:#f3f2ee;padding:clamp(72px,9vw,140px) var(--cg)}
+.a-partners h2{color:#f3f2ee;font-size:clamp(42px,6.4vw,104px);line-height:.98;max-width:20ch}
+.a-partners__grid{margin:clamp(36px,5vw,72px) 0 0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:#ffffff2e;border:1px solid #ffffff2e}
+.a-partners__grid li{background:var(--ink);display:grid;place-items:center;aspect-ratio:1/1;padding:clamp(20px,3vw,48px)}
+.a-partners__grid img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;transition:transform .45s var(--ease)}
+@media(hover:hover) and (pointer:fine){.a-partners__grid li:hover img{transform:scale(1.04)}}
+@media(max-width:900px){.a-partners__grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* The McGee file stacks the Chevrolet, Buick and GMC marks under the oval; show the oval alone (the source file is untouched). */
+.a-partners__grid img.is-crop{width:100%;height:auto;max-height:none;aspect-ratio:629/290;object-fit:cover;object-position:50% 0}
+
+/* A7 Closing band */
+.a-close{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:clamp(28px,5vw,88px);align-items:center;padding:clamp(72px,9vw,140px) 0 clamp(72px,9vw,140px) var(--cg)}
+.a-close h2{font-size:clamp(46px,6.4vw,108px);line-height:.98}
+.a-close__lede{margin-top:clamp(18px,2vw,28px);font-size:clamp(17px,1.5vw,22px);line-height:1.5}
+.a-close__actions{display:flex;align-items:center;gap:clamp(16px,2vw,32px);flex-wrap:wrap;margin-top:clamp(24px,3vw,40px)}
+.a-close__call{font-size:clamp(17px,1.4vw,21px);color:var(--ink-2)}
+.a-close__call span{color:var(--red-ink);text-decoration:underline;text-underline-offset:.22em;text-decoration-thickness:1px;font-variant-numeric:tabular-nums}
+.a-close__media{position:relative;overflow:hidden;min-height:clamp(300px,42vw,640px);background:#ddd9d2}
+.a-close__mask{position:absolute;inset:0;overflow:hidden}
+.a-close__mask img{width:100%;height:100%;object-fit:cover;object-position:60% 50%}
+@media(max-width:1023px){.a-close{grid-template-columns:minmax(0,1fr);padding:clamp(56px,9vw,100px) 0 0}.a-close__text{padding-right:var(--cg)}.a-close__media{min-height:clamp(260px,62vw,480px)}}

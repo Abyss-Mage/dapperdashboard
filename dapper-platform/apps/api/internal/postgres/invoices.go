@@ -42,6 +42,8 @@ type Invoice struct {
 	Status           string                   `json:"status"`
 	Currency         string                   `json:"currency"`
 	SubtotalCents    int64                    `json:"subtotalCents"`
+	DiscountCents    int64                    `json:"discountCents"`
+	CouponCode       string                   `json:"couponCode,omitempty"`
 	TaxCents         int64                    `json:"taxCents"`
 	TotalCents       int64                    `json:"totalCents"`
 	PaidCents        int64                    `json:"paidCents"`
@@ -135,7 +137,7 @@ func generateDefaultInvoiceNumber() (string, error) {
 const invoiceSelectColumns = `i.id::text, i.organization_id::text, i.location_id::text, i.customer_id::text,
 i.booking_id::text, i.job_id::text, i.invoice_number, i.status, i.currency, i.subtotal_cents,
 i.tax_cents, i.total_cents, i.paid_cents, i.due_cents, i.notes, i.issued_at, i.due_at, i.paid_at,
-i.created_at, i.updated_at, c.name, c.email, i.issuer_id::text,i.issuer_snapshot,i.customer_snapshot,i.issued_by::text,i.version`
+i.created_at, i.updated_at, c.name, c.email, i.issuer_id::text,i.issuer_snapshot,i.customer_snapshot,i.issued_by::text,i.version,i.discount_cents,i.coupon_code`
 
 func scanInvoice(row pgx.Row) (Invoice, error) {
 	var inv Invoice
@@ -146,6 +148,7 @@ func scanInvoice(row pgx.Row) (Invoice, error) {
 		&inv.Notes, &inv.IssuedAt, &inv.DueAt, &inv.PaidAt,
 		&inv.CreatedAt, &inv.UpdatedAt, &inv.CustomerName, &inv.CustomerEmail,
 		&inv.IssuerID, &inv.IssuerSnapshot, &inv.CustomerSnapshot, &inv.IssuedBy, &inv.Version,
+		&inv.DiscountCents, &inv.CouponCode,
 	)
 	if inv.CustomerSnapshot != nil {
 		inv.CustomerName = inv.CustomerSnapshot.Name

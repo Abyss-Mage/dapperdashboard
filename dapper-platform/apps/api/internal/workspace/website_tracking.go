@@ -62,6 +62,21 @@ func registerWebsiteTrackingRoutes(mux *http.ServeMux, store *postgres.Store) {
 			failure(w, err)
 			return
 		}
-		reply(w, 200, map[string]string{"gtmId": t.GTMID, "metaPixelId": t.MetaPixelID, "mailchimpScriptUrl": t.MailchimpScriptURL})
+		scripts, err := store.PublicCustomScripts(r.Context())
+		if err != nil {
+			failure(w, err)
+			return
+		}
+		type pub struct {
+			ID        string   `json:"id"`
+			Placement string   `json:"placement"`
+			Code      string   `json:"code"`
+			Paths     []string `json:"paths"`
+		}
+		snippets := make([]pub, 0, len(scripts))
+		for _, c := range scripts {
+			snippets = append(snippets, pub{c.ID, c.Placement, c.Code, c.Paths})
+		}
+		reply(w, 200, map[string]any{"gtmId": t.GTMID, "metaPixelId": t.MetaPixelID, "mailchimpScriptUrl": t.MailchimpScriptURL, "scripts": snippets})
 	})
 }

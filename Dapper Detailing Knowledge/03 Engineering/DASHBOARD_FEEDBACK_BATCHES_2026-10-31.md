@@ -57,3 +57,41 @@ Source: the tester's 29-point list. Evidence level: **source present, TypeScript
 ## Overview "Access needed" on the server: cause and fix
 - Cause: the dashboard sends the browser's time zone to the charts API. A browser in India reports the legacy name `Asia/Calcutta`; Go accepts it but the server's PostgreSQL (no legacy tz files) rejects it, so the charts call failed, and the overview then labelled the Bookings, Payments and Bookings-completed tiles "Access needed" even for the Super Admin (the permissions were fine).
 - Fix: legacy zone names are mapped to current ones (`timezone_names.go`) before they reach the database, and a charts failure that is not a permission refusal now says "Unavailable / Use Refresh" instead of "Access needed". Verified by calling the charts and insights code on the server for the Super Admin with `Asia/Calcutta` (all succeed).
+
+## Second tester round (2026-10-31, later): coupons
+- Coupons (migration 75, owner dashboard > Money > Coupons; `marketing.read` to see, `marketing.manage` to change): date range or never expires, title, code (generate button), percentage or fixed amount, optional single customer, optional services, times allowed (0 = unlimited), on/off. A used coupon cannot be deleted, only switched off.
+- Applying: staff type a code in the appointment's Payment panel (draft invoices only); customers type it in the online booking form. An invalid code (unknown, expired, wrong customer, wrong service, used up) stops the booking before any time is held. Tax is worked out on the reduced amount. The invoice stores `discount_cents` and `coupon_code`; its total is subtotal minus discount plus tax, and the printed invoice shows a Discount line.
+- Not done: coupons are per franchise (not organization-wide); the staff and employee booking wizards have no coupon box (staff use the appointment panel); expiry dates use the America/Toronto calendar day.
+
+## Reports (second list, item 18)
+
+- New Reports tab (Every day group), shown to anyone with bookings, payments or customers read access.
+- Three reports: Appointments, Revenue (net payments, per day), Customers. Filters: date range with quick ranges, service, status. Range limit about two years, 5,000 rows.
+- API: `GET /api/v1/organizations/{organization}/locations/{location}/reports/{kind}?from&to&tz&service&status`. Access is checked per report (appointments need bookings.read, revenue needs payments.read and invoices.read, customers need customers.read and bookings.read).
+- Download CSV is built in the browser (formula-looking cells are prefixed so spreadsheets show them as text). Download PDF opens a print page; the user chooses Save as PDF.
+- Evidence: Go test TestReports and the full suite pass against a real isolated PostgreSQL; web build passes; deployed to production 2026-10-31 (backup `dapper-before-reports-2026-10-31-1643.dump`). The screen has not been visually checked by me.
+
+## SOP add and remove (second list, item 2)
+
+- SOP & Compliance (owner dashboard and staff workspace) now has "Add document" for anyone with `sop.manage`: title, category, PDF up to 10 MB. The server checks it is a PDF, stores the original bytes under a checksum-based name, and publishes it to employees. Each card has Open PDF and Remove.
+- Remove hides the document from employees; the record and file stay so earlier acknowledgments keep their evidence. Adding the same PDF again restores it.
+- Routes: `POST .../sops?title&category` (raw PDF body), `DELETE .../sops/{id}`, `GET .../sops/{id}/file`. When `DAPPER_SOP_DIR` is unset, files go in a `sops` folder beside the uploads folder (on the server `/opt/dapper/app/.dapper/sops`).
+- Evidence: Go test TestSOPManage and the full suite pass on real PostgreSQL; web build passes; deployed 2026-10-31. Screen not visually checked by me.
+
+## Custom scripts (second list, item 5)
+
+- New Settings > Custom scripts page: any number (up to 50) of snippets, each with a name, placement (page head or end of body), the code pasted as the provider gives it, optional page paths, and an on/off switch. Edit, turn off and delete are available. Works like WPCode in WordPress.
+- Only roles with `access.manage` (Super Admin, Owner) can see or change it. Website tracking (GTM, Meta Pixel, Mailchimp) is unchanged and still takes identifiers only.
+- Migration 76 `custom_scripts`. API: `GET/POST .../organizations/{org}/custom-scripts`, `PUT/DELETE .../{script}`; the public tracking response now includes the active snippets. The site rebuilds script tags so they run, once per page load, on matching paths.
+- Security note, shown on the page: the public site and the dashboard share one address, so a malicious snippet could act as a signed-in person viewing the website. This is reduced once the website has its own domain separate from the dashboard.
+- Evidence: Go test TestCustomScripts and the full suite pass; web build passes; deployed 2026-10-31 with backup `dapper-before-scripts-*.dump`. A snippet was not run in a browser by me.
+
+## Quotes layout (second list, item 3)
+
+- New quotation form: client name, phone and email now sit on one row; booking request and valid-until on the next. The tax field is a narrow box beside the totals instead of stretching across the form, and the line-item columns are narrower. Web-only change, deployed 2026-10-31; not visually checked by me.
+
+## Dealership tag gallery (second list, item 14)
+
+- Dealership tags now show only the posted photos, as a grid of small previews. Clicking one opens it full size with its details (dealership, who posted, time, GPS, notes, retention) and a strip to flip between the post's other photos.
+- Logging: previews come from a new `.../employee-uploads/photos/{photo}/thumbnail` route (same access, downscaled, not logged). Opening the full photo is logged in the viewing log as before. Customer-car uploads keep the old "open photos" list.
+- Evidence: Go test TestShrinkJPEG and the full suite pass; web build passes; deployed 2026-10-31. Not visually checked by me and not tried with real photos.

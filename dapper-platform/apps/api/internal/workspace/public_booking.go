@@ -79,6 +79,8 @@ func registerPublicBookingRoutes(mux *http.ServeMux, store *postgres.Store) {
 			reply(w, 404, map[string]string{"error": "Online booking is not available right now."})
 		case errors.Is(err, postgres.ErrPublicBookingInput), errors.Is(err, postgres.ErrBookingInput), errors.Is(err, postgres.ErrAvailabilityInput), errors.Is(err, postgres.ErrSchedulingRule), errors.Is(err, postgres.ErrSchedulingRuleConflict):
 			reply(w, 422, map[string]string{"error": "Please check your choices and try again."})
+		case errors.As(err, new(postgres.CouponInvalid)):
+			reply(w, 422, map[string]string{"error": err.Error()})
 		case errors.Is(err, postgres.ErrPublicBookingPrice):
 			reply(w, 422, map[string]string{"error": "This service needs a quote. Please contact us to book it."})
 		case errors.Is(err, postgres.ErrPhoneVerificationUnavailable):

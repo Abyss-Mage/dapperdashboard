@@ -2,7 +2,8 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { CalendarCheck, Menu, Phone, Wrench, X } from 'lucide-react';
+import { ArrowRight, CalendarCheck, Menu, Phone, Wrench, X } from 'lucide-react';
+import { categories } from '../content';
 import { contact } from '../dapper';
 
 const links = [
@@ -13,11 +14,23 @@ const links = [
   { href: '/contact-us', label: 'Contact us' },
 ];
 
+// Contact's paper header: the five pages in the comp's order.
+const paperLinks = [
+  { href: '/', label: 'Home' },
+  { href: '/services', label: 'Services' },
+  { href: '/portfolio', label: 'Portfolio' },
+  { href: '/about-us', label: 'About' },
+  { href: '/contact-us', label: 'Contact' },
+];
+
 // Floating pill navigation (solid once the page scrolls), a full-screen menu and an app-like dock on phones.
 export function Nav3() {
   const [solid, setSolid] = useState(false);
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  // The vehicle pages (/sedan-detailing and the rest) belong to Services; every redesigned page wears the paper header.
+  const onVehicle = categories.some((c) => '/' + c.slug === pathname);
+  const paper = onVehicle || ['/services', '/contact-us', '/about-us', '/portfolio'].includes(pathname);
   useEffect(() => setOpen(false), [pathname]);
   useEffect(() => {
     const on = () => setSolid(scrollY > 30);
@@ -26,11 +39,15 @@ export function Nav3() {
   }, []);
   return (
     <>
-      <header className={'d-nav' + (solid || open ? ' is-solid' : '')}>
-        <Link href="/" className="d-brand" aria-label="Dapper Detailing Pros, home"><img src="/site/assets/logo.webp" alt="" width={36} height={36} /><span>Dapper<small>Detailing Pros</small></span></Link>
-        <nav aria-label="Main">{links.map((l) => <Link key={l.href} href={l.href}>{l.label}</Link>)}</nav>
+      <header className={'d-nav' + (solid || open ? ' is-solid' : '') + (paper ? ' d-nav--paper' : '') + (pathname === '/services' ? ' d-nav--dark' : '')}>
+        {paper
+          ? <Link href="/" className="d-brand" aria-label="Dapper Detailing Pros, home">Dapper</Link>
+          : <Link href="/" className="d-brand" aria-label="Dapper Detailing Pros, home"><img src="/site/assets/logo.webp" alt="" width={36} height={36} /><span>Dapper<small>Detailing Pros</small></span></Link>}
+        <nav aria-label="Main">{(paper ? paperLinks : links).map((l) => <Link key={l.href} href={l.href} aria-current={pathname === l.href ? 'page' : paper && onVehicle && l.href === '/services' ? 'true' : undefined}>{l.label}</Link>)}</nav>
         <a className="d-nav__call" href={'tel:' + contact.tel}><Phone size={15} />{contact.phone}</a>
-        <a className="d-btn d-btn--red d-btn--sm" href="/booking">Book now</a>
+        {paper
+          ? <a className="d-btn d-btn--red" href="/booking"><span className="c-roll"><span>Book now</span><span aria-hidden="true">Book now</span></span><ArrowRight size={20} aria-hidden="true" /></a>
+          : <a className="d-btn d-btn--red d-btn--sm" href="/booking">Book now</a>}
         <button type="button" className="d-nav__menu" aria-expanded={open} aria-controls="d-menu" onClick={() => setOpen((o) => !o)}>{open ? <X size={22} /> : <Menu size={22} />}<span className="sr">Menu</span></button>
       </header>
       <div id="d-menu" className={'d-menu' + (open ? ' is-open' : '')} inert={!open}>

@@ -130,6 +130,11 @@ func (p *PasswordLogin) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		token, err = p.verifier.SignIn(r.Context(), input.Email, input.Password, p.lifetime)
 	}
 	input.Password, input.Code = "", ""
+	if recorder, ok := p.verifier.(interface {
+		RecordSignIn(context.Context, string, bool, string, string)
+	}); ok && !errors.Is(err, postgres.ErrMFARequired) {
+		recorder.RecordSignIn(r.Context(), input.Email, err == nil, postgres.ClientIP(r.RemoteAddr, r.Header.Get("X-Forwarded-For")), r.UserAgent())
+	}
 	if errors.Is(err, postgres.ErrMFARequired) || errors.Is(err, postgres.ErrMFAInvalid) {
 		message := "Enter the 6-digit code from your authenticator app, or a recovery code"
 		if errors.Is(err, postgres.ErrMFAInvalid) {

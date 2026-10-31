@@ -38,6 +38,13 @@ export const studio = {
   maps: 'https://www.google.com/maps/search/?api=1&query=660+The+Kingsway+Peterborough+ON+K9J+7C8',
 };
 
+// The weekly schedule shown on Contact; the same hours as studio.hours above.
+export const weekHours = {
+  open: '8:00 AM',
+  close: '9:00 PM',
+  days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+};
+
 export const nav = [
   { href: '/services', label: 'Services' },
   { href: '/portfolio', label: 'Portfolio' },

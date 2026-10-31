@@ -14,7 +14,7 @@ export type WizardTaxes = { rates: { rateBasisPoints: number; active: boolean }[
 export type WizardAvailability = { timezone: string; durationMinutes: number; days: { date: string; starts: string[] }[] };
 export type WizardCustomer = { id?: string; name: string; email: string; phone: string };
 export type WizardBooking = {
-  customer: WizardCustomer; rule: WizardRule; startIso: string; localStart: string; addonIds: string[]; notes: string; serviceAddress: string;
+  customer: WizardCustomer; rule: WizardRule; startIso: string; localStart: string; addonIds: string[]; notes: string; serviceAddress: string; couponCode: string;
   deposit?: { method: 'card' | 'cash'; sourceId?: string };
 };
 /* Customer-facing extras: a phone check for returning customers, and a deposit step with a card form. */
@@ -119,6 +119,7 @@ export default function BookingWizard(p: WizardProps) {
   const [start, setStart] = useState('');
   const [me, setMe] = useState<WizardCustomer>({ name: '', email: '', phone: '' });
   const [notes, setNotes] = useState('');
+  const [coupon, setCoupon] = useState('');
   const [referred, setReferred] = useState(false);
   const [ref, setRef] = useState({ name: '', phone: '' });
   const [found, setFound] = useState<WizardCustomer[] | null>(null);
@@ -223,7 +224,7 @@ export default function BookingWizard(p: WizardProps) {
           deposit = { method: 'card', sourceId: await tokenizer.current() };
         } else deposit = { method: 'cash' };
       }
-      await p.submit({ customer: { ...me, name: me.name.trim(), email: me.email.trim(), phone: me.phone.trim() }, rule, startIso: start, localStart: `${z.date}T${z.time}`, addonIds: picked, notes: lines.join('\n'), serviceAddress: where === 'shop' ? '' : address.trim(), deposit });
+      await p.submit({ customer: { ...me, name: me.name.trim(), email: me.email.trim(), phone: me.phone.trim() }, rule, startIso: start, localStart: `${z.date}T${z.time}`, addonIds: picked, notes: lines.join('\n'), serviceAddress: where === 'shop' ? '' : address.trim(), couponCode: coupon.trim(), deposit });
       const when = `${new Date(`${z.date}T12:00:00`).toLocaleDateString('en-CA', { weekday: 'long', month: 'long', day: 'numeric' })} at ${slotLabel(start, tz)}`;
       setDoneInfo(p.doneNote ? p.doneNote({ name: me.name.trim(), pack: parsed.get(rule.id)!.pack, when, deposit: deposit?.method }) : null);
       setDone(true);
@@ -383,6 +384,7 @@ export default function BookingWizard(p: WizardProps) {
             <label className={`${styles.field} ${styles.half}`}>Email<input type="email" value={me.email} onChange={(e) => setMe({ ...me, email: e.target.value })} autoComplete="email" /></label>
             {p.findCustomers && <div className={styles.wide}><button type="button" className={styles.back} disabled={me.phone.replace(/\D/g, '').length < 4} onClick={() => void lookup()}>Find an existing customer by phone</button>
               {found && (found.length ? <div className={styles.choices} style={{ marginTop: 8 }}>{found.map((c) => <button key={c.id} type="button" className={styles.choice} onClick={() => { setMe({ id: c.id, name: c.name, email: c.email, phone: c.phone }); setFound(null); }}><span><strong>{c.name}</strong><small>{c.email || 'No email'} · {c.phone}</small></span></button>)}</div> : <p className={styles.help}>No customer with that number.</p>)}</div>}
+            {p.deposit && <label className={`${styles.field} ${styles.wide}`}>Coupon code (optional)<input value={coupon} maxLength={32} onChange={(e) => setCoupon(e.target.value.toUpperCase())} autoComplete="off" placeholder="Have a coupon? Enter it here" /></label>}
             <label className={`${styles.field} ${styles.wide}`}>Notes (optional)<textarea rows={3} maxLength={1000} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything we should know?" /></label>
           </div>
           <div><div className={styles.ask}><strong>Were they referred?</strong>
