@@ -17,6 +17,7 @@ import SOPCompliancePanel from '../workspace/SOPCompliancePanel';
 import InvoiceTemplateEditor from '../workspace/InvoiceTemplateEditor';
 import WebsiteTrackingEditor from './WebsiteTrackingEditor';
 import Enquiries from './Enquiries';
+import BookingManager from '../workspace/BookingManager';
 import CalendarFeeds from '../workspace/CalendarFeeds';
 import MyAccount from './MyAccount';
 import SquareMerchantPanel from '../workspace/SquareMerchantPanel';
@@ -108,6 +109,7 @@ const ORDER: TabId[] = [...NAV_GROUPS.flatMap((g) => g.ids), 'account'];
 
 export default function OwnerDashboardClient() {
   const [principal, setPrincipal] = useState('');
+  const [appointmentsView, setAppointmentsView] = useState<'manage' | 'search'>('manage');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -542,7 +544,17 @@ export default function OwnerDashboardClient() {
           {hasTabPermission && scope && <>
             {activeTab === 'calendar' && <><BookingCalendar key={base} base={base} timezone={timezone} calendarLink={`${base}/calendar.ics`} /><CalendarFeeds key={'feeds-' + base} endpoint={`${base}/calendar-feeds`} title="Add this franchise’s bookings to Apple Calendar" hint="Make a private link and add it once to Apple Calendar, Google Calendar or Outlook. It then keeps updating by itself. Anyone with the link can see these bookings, so turn it off if it is shared by mistake." /></>}
             {activeTab === 'new-booking' && <StaffBookingWizard mode="master" base={base} timezone={timezone} onBooked={refresh} />}
-            {activeTab === 'requests' && <AppointmentsList key={base} base={base} timezone={timezone} />}
+            {activeTab === 'requests' && (
+              <>
+                <div className={styles.segments} role="group" aria-label="Appointments view" style={{ marginBottom: 12 }}>
+                  <button type="button" className={styles.segment} aria-pressed={appointmentsView === 'manage'} onClick={() => setAppointmentsView('manage')}>Manage</button>
+                  <button type="button" className={styles.segment} aria-pressed={appointmentsView === 'search'} onClick={() => setAppointmentsView('search')}>Search and dates</button>
+                </div>
+                {appointmentsView === 'manage'
+                  ? <BookingManager key={'booking-mgr-' + base} base={base} canCreate={scope.actions.includes('bookings.create')} canManage={scope.actions.includes('bookings.manage')} canCreateWorkOrders={false} />
+                  : <AppointmentsList key={base} base={base} timezone={timezone} />}
+              </>
+            )}
             {activeTab === 'customers' && <CustomerManager key={base} base={base} canCreate={scope.actions.includes('customers.create')} canDelete={scope.actions.includes('customer_accounts.manage')} onChanged={() => setCustomerRevision((v) => v + 1)} />}
             {activeTab === 'staff-hours' && <StaffHours key={base} base={base} timezone={timezone} />}
             {activeTab === 'availability' && <AvailabilityReview key={scope.organizationId} organizationId={scope.organizationId} locationId={scope.locationId} />}

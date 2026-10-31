@@ -1,20 +1,20 @@
 .form { border: 1px solid var(--border); border-radius: 18px; padding: 22px; margin: 16px 0; display: grid; gap: 20px; background: color-mix(in srgb, var(--surface-alt) 70%, transparent); }
-.form h4 { margin: 0; font-size: 23.4px; }
+.form h4 { margin: 0; font-size: 20.7px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
-.field { display: grid; gap: 6px; font-size: 16.9px; font-weight: 650; color: var(--text-muted); min-width: 0; }
+.field { display: grid; gap: 6px; font-size: 14.9px; font-weight: 650; color: var(--text-muted); min-width: 0; }
 .field input, .field textarea { width: 100%; min-width: 0; box-sizing: border-box; }
-.hint { font-size: 15.6px; font-weight: 400; color: var(--text-muted); }
-.picked { display: grid; gap: 2px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); font-size: 18.2px; }
-.picked span { color: var(--text-muted); font-size: 16.9px; }
+.hint { font-size: 13.8px; font-weight: 400; color: var(--text-muted); }
+.picked { display: grid; gap: 2px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); font-size: 16.1px; }
+.picked span { color: var(--text-muted); font-size: 14.9px; }
 .lines { display: grid; gap: 8px; }
 .lineHead, .line { display: grid; grid-template-columns: minmax(0, 1fr) 150px 180px 110px 44px; gap: 10px; align-items: center; }
-.lineHead { font-size: 14.3px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); padding: 0 2px; }
+.lineHead { font-size: 12.6px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); padding: 0 2px; }
 .line input { width: 100%; min-width: 0; box-sizing: border-box; }
 .lineTotal { text-align: right; font-variant-numeric: tabular-nums; font-weight: 650; }
 .remove { min-height: 40px; padding: 0; }
-.totals { justify-self: end; width: min(360px, 100%); display: grid; gap: 6px; font-size: 18.2px; font-variant-numeric: tabular-nums; }
+.totals { justify-self: end; width: min(360px, 100%); display: grid; gap: 6px; font-size: 16.1px; font-variant-numeric: tabular-nums; }
 .totals div { display: flex; justify-content: space-between; gap: 16px; }
-.totals .grand { border-top: 1px solid var(--border); padding-top: 8px; font-size: 20.8px; font-weight: 800; }
+.totals .grand { border-top: 1px solid var(--border); padding-top: 8px; font-size: 18.4px; font-weight: 800; }
 .actions { display: flex; gap: 10px; flex-wrap: wrap; }
 @media (max-width: 760px) {
   .lineHead { display: none; }

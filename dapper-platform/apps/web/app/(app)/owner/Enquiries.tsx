@@ -52,15 +52,15 @@ export default function Enquiries({ organizationId, canManage }: { organizationI
         {(items ?? []).map((e) => (
           <li key={e.id} className={styles.person} style={{ display: 'grid', gap: 8, borderLeft: e.status === 'new' ? '4px solid var(--red, #d22b2b)' : undefined }}>
             <div className={styles.rowBetween}>
-              <strong style={{ fontSize: 18 }}>{e.name}{e.status === 'new' && <span className={styles.badge} style={{ marginLeft: 10 }}>New</span>}</strong>
+              <strong style={{ fontSize: 16 }}>{e.name}{e.status === 'new' && <span className={styles.badge} style={{ marginLeft: 10 }}>New</span>}</strong>
               <span className={styles.personSub}>{when(e.createdAt)}</span>
             </div>
-            <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', fontSize: 18, fontWeight: 600 }}>
+            <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', fontSize: 16, fontWeight: 600 }}>
               {e.phone && <a href={`tel:${e.phone}`} style={{ textDecoration: 'underline' }}>{e.phone}</a>}
               {e.email && <a href={`mailto:${e.email}`} style={{ textDecoration: 'underline' }}>{e.email}</a>}
             </div>
-            {(e.service || e.vehicle) && <p style={{ margin: 0, fontSize: 17 }}>{[e.service, e.vehicle].filter(Boolean).join(' · ')}</p>}
-            {e.message && <p style={{ margin: 0, fontSize: 17, whiteSpace: 'pre-wrap' }}>{e.message}</p>}
+            {(e.service || e.vehicle) && <p style={{ margin: 0, fontSize: 15 }}>{[e.service, e.vehicle].filter(Boolean).join(' · ')}</p>}
+            {e.message && <p style={{ margin: 0, fontSize: 15, whiteSpace: 'pre-wrap' }}>{e.message}</p>}
             {canManage && (
               <div className={styles.svcActions}>
                 {e.status !== 'read' && e.status !== 'archived' && <button type="button" className="secondary" disabled={busy} onClick={() => void mark(e.id, 'read')}>Mark read</button>}

@@ -2,8 +2,8 @@
 .card { width: 100%; max-width: 560px; max-height: min(86vh, 760px); display: flex; flex-direction: column; border-radius: 22px; border: 1px solid var(--border); background: var(--surface); color: var(--text); box-shadow: 0 40px 80px -24px rgba(0, 0, 0, .6); outline: none; overflow: hidden; }
 .wide { max-width: 820px; }
 .head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 20px 22px 12px; border-bottom: 1px solid var(--border); }
-.head h2 { margin: 0; font-size: 24.7px; letter-spacing: -.01em; }
-.head p { margin: 4px 0 0; font-size: 16.9px; color: var(--text-muted); }
-.close { width: 36px; height: 36px; border-radius: 12px; border: 1px solid var(--border); background: transparent; color: var(--text); font-size: 28.6px; line-height: 1; cursor: pointer; flex: none; }
+.head h2 { margin: 0; font-size: 21.8px; letter-spacing: -.01em; }
+.head p { margin: 4px 0 0; font-size: 14.9px; color: var(--text-muted); }
+.close { width: 36px; height: 36px; border-radius: 12px; border: 1px solid var(--border); background: transparent; color: var(--text); font-size: 25.3px; line-height: 1; cursor: pointer; flex: none; }
 .close:hover { background: var(--surface-alt); }
 .body { padding: 16px 22px 22px; overflow: auto; }

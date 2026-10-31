@@ -10,6 +10,7 @@ import CustomerBookingRequestList from '../account/CustomerBookingRequestList';
 /* Appointments: every appointment for the franchise, whether it was booked on the website, by phone or by a staff member.
    Online requests that still need an answer sit on top. Click a row for the details. */
 
+const statusLabel = (s: string) => ({ pending: 'Pending', awaiting_payment: 'Awaiting payment', confirmed: 'Approved', scheduled: 'Approved', in_progress: 'Approved', completed: 'Completed', cancelled: 'Cancelled' } as Record<string, string>)[s] ?? s.replaceAll('_', ' ');
 type Booking = { id: string; customerName: string; customerEmail: string; customerPhone: string; serviceName: string; bookingTime: string; status: string; channel: string; addons: { name: string }[] };
 
 export default function AppointmentsList({ base, timezone }: { base: string; timezone: string }) {
@@ -51,7 +52,7 @@ export default function AppointmentsList({ base, timezone }: { base: string; tim
         <div className={styles.stack} style={{ gap: 10, marginTop: 12 }}>
           <RangeBar presets={['next7', 'next30', 'last7', 'last30', 'month']} preset={preset} custom={custom} onPreset={setPreset} onCustom={setCustom} />
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-            <label className={styles.filterSelect}><span>Status</span><Select value={status} onChange={(e) => setStatus(e.target.value)}><option value="">Any</option>{statuses.map((s) => <option key={s} value={s}>{s.replaceAll('_', ' ')}</option>)}</Select></label>
+            <label className={styles.filterSelect}><span>Status</span><Select value={status} onChange={(e) => setStatus(e.target.value)}><option value="">Any</option>{statuses.map((s) => <option key={s} value={s}>{statusLabel(s)}</option>)}</Select></label>
             <label className={styles.filterSelect}><span>Booked</span><Select value={channel} onChange={(e) => setChannel(e.target.value)}><option value="">Any way</option><option value="online">Online</option><option value="walk_in">Walk-in / phone</option></Select></label>
             <input type="search" className={styles.searchBox} placeholder="Search customer or service" aria-label="Search appointments" value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
@@ -68,7 +69,7 @@ export default function AppointmentsList({ base, timezone }: { base: string; tim
                 {shown.map((b) => (
                   <tr key={b.id} tabIndex={0} style={{ cursor: 'pointer' }} onClick={() => setOpen(b)} onKeyDown={(e) => { if (e.key === 'Enter') setOpen(b); }}>
                     <td>{fmt(b.bookingTime)}</td><td>{b.customerName}</td><td>{b.serviceName}{b.addons?.length ? ` + ${b.addons.length}` : ''}</td>
-                    <td>{b.status.replaceAll('_', ' ')}</td><td>{b.channel === 'online' ? 'Online' : 'Walk-in / phone'}</td>
+                    <td>{statusLabel(b.status)}</td><td>{b.channel === 'online' ? 'Online' : 'Walk-in / phone'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -80,7 +81,7 @@ export default function AppointmentsList({ base, timezone }: { base: string; tim
         {open && (
           <div className={styles.stack} style={{ gap: 8 }}>
             <p><strong>{open.serviceName}</strong>{open.addons?.length ? <><br /><span className={styles.personSub}>Extras: {open.addons.map((a) => a.name).join(', ')}</span></> : null}</p>
-            <p className={styles.personSub}>Status: {open.status.replaceAll('_', ' ')} · Booked {open.channel === 'online' ? 'online' : 'by phone or walk-in'}</p>
+            <p className={styles.personSub}>Status: {statusLabel(open.status)} · Booked {open.channel === 'online' ? 'online' : 'by phone or walk-in'}</p>
             <p>{open.customerEmail && <a href={`mailto:${open.customerEmail}`}>{open.customerEmail}</a>}{open.customerEmail && open.customerPhone ? ' · ' : ''}{open.customerPhone && <a href={`tel:${open.customerPhone}`}>{open.customerPhone}</a>}</p>
           </div>
         )}
