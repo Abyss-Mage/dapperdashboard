@@ -265,7 +265,7 @@ func registerInvoiceRoutes(mux *http.ServeMux, store *postgres.Store, sqClient s
 		}
 		method := strings.TrimSpace(input.Method)
 		switch method {
-		case "cash":
+		case "cash", "bank_transfer":
 			pmt, updatedInv, err := store.RecordPayment(r.Context(), scope, postgres.RecordPaymentInput{
 				InvoiceID:         invID,
 				AmountCents:       input.AmountCents,

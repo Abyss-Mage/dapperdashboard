@@ -16,6 +16,7 @@ import InvoiceManager from '../workspace/InvoiceManager';
 import SOPCompliancePanel from '../workspace/SOPCompliancePanel';
 import InvoiceTemplateEditor from '../workspace/InvoiceTemplateEditor';
 import WebsiteTrackingEditor from './WebsiteTrackingEditor';
+import Enquiries from './Enquiries';
 import CalendarFeeds from '../workspace/CalendarFeeds';
 import MyAccount from './MyAccount';
 import SquareMerchantPanel from '../workspace/SquareMerchantPanel';
@@ -54,7 +55,7 @@ type Org = {
 type TabId =
   | 'overview' | 'calendar' | 'new-booking' | 'requests' | 'customers' | 'staff-hours' | 'availability' | 'dealership-tags' | 'customer-cars'
   | 'invoices' | 'quotes' | 'dealerships' | 'marketing'
-  | 'team' | 'franchises' | 'services' | 'hours' | 'taxes' | 'sop' | 'invoice-template' | 'payments' | 'tracking'
+  | 'team' | 'franchises' | 'services' | 'hours' | 'taxes' | 'sop' | 'invoice-template' | 'payments' | 'tracking' | 'enquiries'
   | 'account';
 
 type Ctx = { scope: Access | undefined; organizations: Org[]; orgActions: string[] };
@@ -90,6 +91,7 @@ const TABS: TabDefinition[] = [
   { id: 'taxes', label: 'Taxes', icon: 'finance', description: 'Tax rates for this franchise', show: (c) => !!c.scope && org(c, 'invoices.configure') },
   { id: 'sop', label: 'SOP & Compliance', icon: 'admin', description: 'Standard operating procedures your team must read', show: (c) => has(c, 'sop.read') },
   { id: 'invoice-template', label: 'Invoice template', icon: 'finance', description: 'How printed invoices look', show: (c) => org(c, 'invoices.configure') },
+  { id: 'enquiries', label: 'Enquiries', icon: 'marketing', description: 'Messages from the website contact form', show: (c) => org(c, 'marketing.read') },
   { id: 'tracking', label: 'Website tracking', icon: 'marketing', description: 'Google Tag, Meta Pixel and the Mailchimp popup', show: (c) => org(c, 'content.manage') },
   { id: 'payments', label: 'Card payments', icon: 'finance', description: 'This franchise’s Square account', show: (c) => org(c, 'invoices.configure') && has(c, 'payments.read') },
   { id: 'account', label: 'My account', icon: 'customers', description: 'Your name, phone and two-factor sign-in', show: () => true },
@@ -98,7 +100,7 @@ const TABS: TabDefinition[] = [
 const NAV_GROUPS: { label: string; ids: TabId[] }[] = [
   { label: 'Every day', ids: ['overview', 'calendar', 'new-booking', 'requests', 'customers'] },
   { label: 'Team', ids: ['staff-hours', 'availability', 'dealership-tags', 'customer-cars', 'sop'] },
-  { label: 'Money', ids: ['invoices', 'quotes', 'payments', 'dealerships', 'marketing'] },
+  { label: 'Money', ids: ['invoices', 'quotes', 'payments', 'dealerships', 'marketing', 'enquiries'] },
   { label: 'Settings', ids: ['services', 'hours', 'taxes', 'franchises', 'team', 'invoice-template', 'tracking'] },
 ];
 const isTab = (v: string): v is TabId => TABS.some((t) => t.id === v);
@@ -575,6 +577,7 @@ export default function OwnerDashboardClient() {
           {hasTabPermission && activeTab === 'team' && currentOrg && <PeopleAccess key={'people-' + currentOrg.id} organizationId={currentOrg.id} revision={accessRevision} onSaved={refresh} />}
           {hasTabPermission && activeTab === 'invoice-template' && currentOrg && <InvoiceTemplateEditor key={'template-' + currentOrg.id} organizationId={currentOrg.id} revision={accessRevision} locationId={scope?.locationId} locationName={scope?.locationName} />}
           {hasTabPermission && activeTab === 'tracking' && currentOrg && <WebsiteTrackingEditor key={'tracking-' + currentOrg.id} organizationId={currentOrg.id} revision={accessRevision} />}
+          {hasTabPermission && activeTab === 'enquiries' && currentOrg && <Enquiries key={'enquiries-' + currentOrg.id} organizationId={currentOrg.id} canManage={currentOrg.actions.includes('marketing.manage')} />}
           {activeTab === 'account' && <MyAccount />}
         </main>
       </div>

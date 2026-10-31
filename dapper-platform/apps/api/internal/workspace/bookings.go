@@ -53,6 +53,39 @@ func registerBookingRoutes(mux *http.ServeMux, store *postgres.Store) {
 		}
 		reply(w, 200, choices)
 	})
+	mux.HandleFunc("POST "+base+"/{booking}/move", func(w http.ResponseWriter, r *http.Request) {
+		org, loc, id := r.PathValue("organization"), r.PathValue("location"), r.PathValue("booking")
+		if !uuid(org) || !uuid(loc) || !uuid(id) {
+			reply(w, 400, map[string]string{"error": "Valid scoped booking selectors required"})
+			return
+		}
+		scope, err := store.ResolveScope(r.Context(), requestSession(r).principalID, org, loc, "bookings.manage")
+		if err != nil {
+			failure(w, err)
+			return
+		}
+		var input struct {
+			BookingTime string `json:"bookingTime"`
+		}
+		if !decode(w, r, &input) {
+			return
+		}
+		to, perr := time.Parse(time.RFC3339Nano, input.BookingTime)
+		if perr != nil {
+			reply(w, 422, map[string]any{"errors": map[string]string{"bookingTime": "Provide a timestamp with an explicit UTC offset"}})
+			return
+		}
+		if err = store.CheckEmployeeBookingStatus(r.Context(), scope, id, "rescheduled"); err != nil {
+			bookingFailure(w, err)
+			return
+		}
+		booking, err := store.MoveUnreservedBooking(r.Context(), scope, id, to)
+		if err != nil {
+			bookingFailure(w, err)
+			return
+		}
+		reply(w, 200, booking)
+	})
 	mux.HandleFunc("POST "+base+"/{booking}/reschedule", func(w http.ResponseWriter, r *http.Request) {
 		org, loc, id := r.PathValue("organization"), r.PathValue("location"), r.PathValue("booking")
 		if !uuid(org) || !uuid(loc) || !uuid(id) {

@@ -23,6 +23,7 @@ export default function InvoiceTemplateEditor({ organizationId, revision, locati
   // The template is shared by the whole organization unless this franchise is given its own.
   const [target, setTarget] = useState<'organization' | 'franchise'>('organization');
   const [hasOwn, setHasOwn] = useState(false);
+  const [logoUrl, setLogoUrl] = useState('');
   const url = target === 'franchise' && locationId ? `/api/v1/organizations/${organizationId}/locations/${locationId}/invoice-template` : `/api/v1/organizations/${organizationId}/invoice-template`;
   const [form, setForm] = useState<PrintTemplate>(DEFAULT_PRINT_TEMPLATE);
   const [version, setVersion] = useState(0);
@@ -36,6 +37,7 @@ export default function InvoiceTemplateEditor({ organizationId, revision, locati
     if (!r.ok) throw new Error('The invoice template is unavailable or access has changed.');
     const b = await r.json();
     setForm({ ...DEFAULT_PRINT_TEMPLATE, ...b.template });
+    setLogoUrl(b.logoUrl ?? '');
     const own = target === 'franchise' && b.scope === 'franchise';
     setHasOwn(own);
     setVersion(target === 'franchise' && !own ? 0 : b.version);
@@ -60,6 +62,28 @@ export default function InvoiceTemplateEditor({ organizationId, revision, locati
     } catch (err) {
       setError(err instanceof Error ? err.message : 'The template could not be saved.');
     } finally { setBusy(false); }
+  }
+
+  const logoEndpoint = locationId ? `/api/v1/organizations/${organizationId}/locations/${locationId}/logo` : '';
+  async function uploadLogo(file: File | undefined) {
+    if (!file || !logoEndpoint) return;
+    setBusy(true); setError(''); setNotice('');
+    try {
+      const r = await fetch(logoEndpoint, { method: 'PUT', headers: { 'Content-Type': file.type || 'application/octet-stream' }, body: file });
+      const b = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(b.error ?? 'The logo could not be saved.');
+      setLogoUrl(b.logoUrl ?? ''); setNotice('Logo saved for this franchise. New invoices print with it.');
+    } catch (err) { setError(err instanceof Error ? err.message : 'The logo could not be saved.'); }
+    finally { setBusy(false); }
+  }
+  async function removeLogo() {
+    setBusy(true); setError(''); setNotice('');
+    try {
+      const r = await fetch(logoEndpoint, { method: 'DELETE' });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? 'The logo could not be removed.');
+      setLogoUrl(''); setNotice('Logo removed. Invoices use the default logo again.');
+    } catch (err) { setError(err instanceof Error ? err.message : 'The logo could not be removed.'); }
+    finally { setBusy(false); }
   }
 
   async function removeOwn() {
@@ -90,6 +114,17 @@ export default function InvoiceTemplateEditor({ organizationId, revision, locati
             </Select>
           </label>
           {target === 'franchise' && <p className="help">{hasOwn ? 'This franchise has its own template.' : 'This franchise uses the organization template. Saving here gives it its own copy, started from the one below.'}</p>}
+          {target === 'franchise' && (
+            <div className="form-field">
+              Logo for {locationName ?? 'this franchise'}
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                {logoUrl ? <img src={logoUrl} alt="This franchise's logo" style={{ height: 56, maxWidth: 160, objectFit: 'contain', background: '#fff', borderRadius: 8, padding: 4 }} /> : <span className="help">Using the default logo.</span>}
+                <label className="secondary" style={{ padding: '10px 16px', borderRadius: 12, cursor: 'pointer' }}>{logoUrl ? 'Replace logo' : 'Upload logo'}<input type="file" accept="image/png,image/jpeg,image/webp" hidden disabled={busy} onChange={(e) => { void uploadLogo(e.target.files?.[0]); e.target.value = ''; }} /></label>
+                {logoUrl && <button type="button" className="secondary" disabled={busy} onClick={() => void removeLogo()}>Remove logo</button>}
+              </div>
+              <span className="help">PNG, JPEG or WebP, under 512 KB. It only shows when “Show the logo” is ticked below.</span>
+            </div>
+          )}
           {target === 'franchise' && hasOwn && <button type="button" className="secondary" disabled={busy} onClick={() => void removeOwn()}>Go back to the organization template</button>}
         </div>
       )}
@@ -138,7 +173,7 @@ export default function InvoiceTemplateEditor({ organizationId, revision, locati
         </div>
       </form>
       <h3>Preview (sample data)</h3>
-      <div style={{ background: '#fff', borderRadius: 12, padding: 24, overflowX: 'auto' }}><InvoiceDocument invoice={SAMPLE} template={form} /></div>
+      <div style={{ background: '#fff', borderRadius: 12, padding: 24, overflowX: 'auto' }}><InvoiceDocument invoice={SAMPLE} template={{ ...form, logoUrl: target === 'franchise' ? logoUrl || undefined : undefined }} /></div>
     </section>
   );
 }

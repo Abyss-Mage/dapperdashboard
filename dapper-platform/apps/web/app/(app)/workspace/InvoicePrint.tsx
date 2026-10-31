@@ -13,6 +13,8 @@ export type PrintTemplate = {
   showTaxRegistration: boolean; showCustomerContact: boolean; paymentInstructions: string; footerNote: string; paperSize: 'letter' | 'a4';
   /** Owner-written layout (HTML with {{placeholders}}) and its CSS. Empty = the built-in layout. */
   customHtml: string; customCss: string;
+  /** The franchise's own logo, when it has one; otherwise the default logo is used. */
+  logoUrl?: string;
 };
 export type PrintInvoice = {
   invoiceNumber: string; status: string; currency: string; issuedAt?: string | null; createdAt?: string;
@@ -129,7 +131,7 @@ export function customInvoicePage(invoice: PrintInvoice, t: PrintTemplate): stri
   const m = (c: number) => esc(money(c, invoice.currency));
   const values: Record<string, string> = {
     title: esc(t.title), invoice_number: esc(invoice.invoiceNumber), date: esc(day(invoice.issuedAt ?? invoice.createdAt)), status: esc(invoice.status.replaceAll('_', ' ')),
-    logo_url: `${typeof window === 'undefined' ? '' : window.location.origin}/site/assets/logo.webp`,
+    logo_url: `${typeof window === 'undefined' ? '' : window.location.origin}${t.logoUrl || '/site/assets/logo.webp'}`,
     business_name: esc(invoice.issuerSnapshot?.legalName ?? ''), business_address: esc(invoice.issuerSnapshot?.address ?? ''), tax_registration: esc(invoice.issuerSnapshot?.taxRegistration ?? ''),
     customer_name: esc(customer?.name ?? ''), customer_email: esc(customer?.email ?? ''), customer_phone: esc(customer?.phone ?? ''),
     items: (invoice.items ?? []).map((it) => `<tr><td>${esc(it.description)}</td><td>${it.quantity}</td><td>${m(it.unitPriceCents ?? Math.round(it.totalPriceCents / Math.max(1, it.quantity)))}</td><td>${m(it.totalPriceCents)}</td></tr>`).join(''),
@@ -153,7 +155,7 @@ export function InvoiceDocument({ invoice, template }: { invoice: PrintInvoice; 
       <style>{css(t)}</style>
       <div className="ddHead">
         <div className="ddBrand">
-          {t.showLogo && <img src="/site/assets/logo.webp" alt="" />}
+          {t.showLogo && <img src={t.logoUrl || '/site/assets/logo.webp'} alt="" />}
           <div className="ddIssuer">
             {invoice.issuerSnapshot && <>
               <p className="ddName">{invoice.issuerSnapshot.legalName}</p>
@@ -255,7 +257,7 @@ export function usePrintTemplate(url: string): PrintTemplate {
   const [template, setTemplate] = useState<PrintTemplate>(DEFAULT_PRINT_TEMPLATE);
   useEffect(() => {
     let live = true;
-    fetch(url, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).then((b) => { if (live && b?.template) setTemplate({ ...DEFAULT_PRINT_TEMPLATE, ...b.template }); }).catch(() => undefined);
+    fetch(url, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).then((b) => { if (live && b?.template) setTemplate({ ...DEFAULT_PRINT_TEMPLATE, ...b.template, logoUrl: b.logoUrl || undefined }); }).catch(() => undefined);
     return () => { live = false; };
   }, [url]);
   return template;

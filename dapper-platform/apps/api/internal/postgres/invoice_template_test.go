@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 )
@@ -82,6 +83,34 @@ func verifyInvoicePrintTemplate(t *testing.T, ctx context.Context, s *Store, a, 
 	}
 	if orgOnly, e := s.InvoicePrintTemplate(ctx, a.ActorID, a.OrganizationID); e != nil || orgOnly.Template.Title != "Invoice / Facture" {
 		t.Fatal("the organization template was changed by a franchise save", orgOnly, e)
+	}
+	// A franchise can have its own logo: raster images only, sniffed from the bytes, small, and only for invoices.configure.
+	defer s.pool.Exec(ctx, `DELETE FROM location_logos WHERE organization_id=$1`, a.OrganizationID)
+	png := append([]byte{0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a}, make([]byte, 300)...)
+	if _, err = s.SaveLocationLogo(ctx, b.ActorID, a.OrganizationID, a.LocationID, png); !errors.Is(err, ErrForbidden) {
+		t.Fatal("logo saved without invoices.configure", err)
+	}
+	for name, bad := range map[string][]byte{"svg": []byte("<svg xmlns=\"http://www.w3.org/2000/svg\"><script>alert(1)</script></svg>" + string(make([]byte, 200))), "tiny": png[:20], "text": []byte(strings.Repeat("hello ", 100)), "huge": append(png[:8:8], make([]byte, 600*1024)...)} {
+		if _, err = s.SaveLocationLogo(ctx, a.ActorID, a.OrganizationID, a.LocationID, bad); !errors.Is(err, ErrLogoInput) {
+			t.Fatalf("%s logo accepted: %v", name, err)
+		}
+	}
+	digest, err := s.SaveLocationLogo(ctx, a.ActorID, a.OrganizationID, a.LocationID, png)
+	if err != nil || len(digest) != 64 {
+		t.Fatal("logo save failed", digest, err)
+	}
+	kind, data, got2, found, err := s.LocationLogo(ctx, a.ActorID, a.OrganizationID, a.LocationID)
+	if err != nil || !found || kind != "image/png" || len(data) != len(png) || got2 != digest {
+		t.Fatal("logo not returned", kind, len(data), found, err)
+	}
+	if withLogo, e := s.LocationInvoicePrintTemplate(ctx, a.ActorID, a.OrganizationID, a.LocationID); e != nil || !strings.Contains(withLogo.LogoURL, "/logo?v="+digest) {
+		t.Fatal("template does not point at the franchise logo", withLogo, e)
+	}
+	if err = s.DeleteLocationLogo(ctx, a.ActorID, a.OrganizationID, a.LocationID); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, found, err = s.LocationLogo(ctx, a.ActorID, a.OrganizationID, a.LocationID); err != nil || found {
+		t.Fatal("logo still there after delete", found, err)
 	}
 	if err = s.DeleteLocationInvoicePrintTemplate(ctx, a.ActorID, a.OrganizationID, a.LocationID); err != nil {
 		t.Fatal(err)

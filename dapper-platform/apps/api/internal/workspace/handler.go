@@ -146,6 +146,7 @@ func NewHandlerWithFullServices(store *postgres.Store, origin string, invitation
 	registerAccountCredentialRoutes(mux, store, emailSender, origin)
 	registerWebsiteTrackingRoutes(mux, store)
 	registerCalendarFeedRoutes(mux, store, origin)
+	registerWebsiteEnquiryRoutes(mux, store)
 	registerCustomerAccountManagementRoutes(mux, store)
 	registerQuoteRoutes(mux, store, sqClient)
 	registerSquareIntentRoutes(mux, store)

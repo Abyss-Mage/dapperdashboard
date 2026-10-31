@@ -52,6 +52,7 @@ func (s *Store) OwnerInsights(ctx context.Context, scope Scope, section, from, t
 	if section != "finance" && section != "work" && section != "customers" {
 		return OwnerInsights{}, ErrTrendsInput
 	}
+	tz = canonicalZone(tz)
 	if _, err := time.LoadLocation(tz); err != nil || tz == "" || tz == "Local" {
 		return OwnerInsights{}, ErrTrendsInput
 	}

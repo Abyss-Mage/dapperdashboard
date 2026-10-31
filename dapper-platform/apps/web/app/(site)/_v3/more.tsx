@@ -7,8 +7,7 @@ import { Chip, SectionHead } from './blocks';
 
 /* The remaining home-page sections, in the same family as Delta's (booking band, online booking, live availability, mobile
    detailing, a film showcase, a contact form), written in Dapper's own words and backed by Dapper's real systems:
-   the availability calendars read the public booking API; the contact form hands a ready-addressed email to the visitor's
-   mail app (there is no public enquiry endpoint yet). Nothing here invents a claim, price or result. */
+   the availability calendars read the public booking API; the contact form saves the enquiry to the dashboard inbox (an email draft is the fallback). Nothing here invents a claim, price or result. */
 
 // "Ready for precise detailing?" — the short booking band (the current site's own closing line).
 export function ReadyBand() {
@@ -153,15 +152,27 @@ export function GlossFilm() {
   );
 }
 
-// Contact form: composes a ready-addressed email in the visitor's own mail app.
+// Contact form: saves the enquiry to the dashboard inbox; if that cannot be reached it falls back to an email in the visitor's own mail app.
 export function ContactForm() {
-  const [sent, setSent] = useState(false);
-  const submit = (e: FormEvent<HTMLFormElement>) => {
+  const [state, setState] = useState<'idle' | 'sending' | 'saved' | 'mail'>('idle');
+  const [error, setError] = useState('');
+  const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const f = new FormData(e.currentTarget);
-    const body = `Name: ${f.get('name')}\nPhone: ${f.get('phone')}\nEmail: ${f.get('email')}\nVehicle: ${f.get('vehicle')}\nService: ${f.get('service')}\n\n${f.get('message')}`;
-    location.href = 'mailto:' + contact.email + '?subject=' + encodeURIComponent('Website enquiry: ' + f.get('service')) + '&body=' + encodeURIComponent(body);
-    setSent(true);
+    const form = e.currentTarget;
+    const f = new FormData(form);
+    const field = (k: string) => String(f.get(k) ?? '').trim();
+    setState('sending'); setError('');
+    try {
+      const r = await fetch('/api/v1/public/enquiries', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: field('name'), email: field('email'), phone: field('phone'), vehicle: field('vehicle'), service: field('service'), message: field('message'), website: field('website') }) });
+      if (r.status === 422 || r.status === 429) { setError((await r.json().catch(() => ({}))).error ?? 'Your message could not be sent. Please call us.'); setState('idle'); return; }
+      if (!r.ok) throw new Error('unavailable');
+      form.reset();
+      setState('saved');
+    } catch {
+      const body = `Name: ${field('name')}\nPhone: ${field('phone')}\nEmail: ${field('email')}\nVehicle: ${field('vehicle')}\nService: ${field('service')}\n\n${field('message')}`;
+      location.href = 'mailto:' + contact.email + '?subject=' + encodeURIComponent('Website enquiry: ' + field('service')) + '&body=' + encodeURIComponent(body);
+      setState('mail');
+    }
   };
   return (
     <section className="d-section d-contact-form" id="contact">
@@ -173,7 +184,7 @@ export function ContactForm() {
           <li data-d-in><MapPin size={18} /><a href={contact.directions} target="_blank" rel="noopener noreferrer">{contact.street}, {contact.city}</a></li>
         </ul>
       </div>
-      <form className="d-form" onSubmit={submit} data-d-in>
+      <form className="d-form" onSubmit={(e) => void submit(e)} data-d-in style={{ position: 'relative' }}>
         <label>Name<input name="name" required autoComplete="name" /></label>
         <label>Phone<input name="phone" type="tel" autoComplete="tel" inputMode="tel" /></label>
         <label className="d-form__wide">Email<input name="email" type="email" required autoComplete="email" /></label>
@@ -183,9 +194,10 @@ export function ContactForm() {
             <option>Detailing</option><option>Ceramic coating</option><option>Paint protection film</option><option>Window tint</option><option>Mobile detailing</option><option>Something else</option>
           </select>
         </label>
-        <label className="d-form__wide">Message<textarea name="message" rows={4} placeholder="Condition, timing, anything we should know" /></label>
-        <button type="submit" className="d-btn d-btn--red d-form__wide"><Send size={16} />Write the email</button>
-        <p className="d-form__note d-form__wide" role="status">{sent ? 'Your mail app should open with the message ready — press send there. Nothing opened? Email ' + contact.email + '.' : 'This opens your mail app with the message ready to send to ' + contact.email + '.'}</p>
+        <label className="d-form__wide">Message<textarea name="message" rows={4} maxLength={3000} placeholder="Condition, timing, anything we should know" /></label>
+        <div aria-hidden="true" style={{ position: 'absolute', left: '-9999px', width: 1, height: 1, overflow: 'hidden' }}><label>Leave this empty<input name="website" tabIndex={-1} autoComplete="off" /></label></div>
+        <button type="submit" className="d-btn d-btn--red d-form__wide"><Send size={16} />{state === 'sending' ? 'Sending…' : 'Send message'}</button>
+        <p className="d-form__note d-form__wide" role="status">{state === 'saved' ? 'Thank you. Your message reached the team and we will get back to you soon.' : state === 'mail' ? 'We could not reach our inbox, so your mail app should open with the message ready. Press send there, or email ' + contact.email + '.' : error || 'We reply by phone or email.'}</p>
       </form>
     </section>
   );

@@ -101,4 +101,35 @@ func TestWebsiteTrackingSettings(t *testing.T) {
 	if public.GTMID != "GTM-ZZZZ99" || public.MetaPixelID != "" || public.MailchimpScriptURL != "" {
 		t.Fatalf("public settings wrong: %+v", public)
 	}
+
+	// Website enquiries: anyone can send one; only marketing administrators read and sort them.
+	_, err = pool.Exec(ctx, `INSERT INTO role_capabilities(role_id,action) VALUES($1,'marketing.read'),($1,'marketing.manage')`, role)
+	must(err)
+	for _, bad := range []WebsiteEnquiryInput{{Name: "X", Email: "a@example.invalid"}, {Name: "Synthetic Visitor"}, {Name: "Synthetic Visitor", Email: "not-an-email"}} {
+		if _, err = s.CreateWebsiteEnquiry(ctx, bad); !errors.Is(err, ErrEnquiryInput) {
+			t.Fatalf("invalid enquiry accepted: %+v %v", bad, err)
+		}
+	}
+	id, err := s.CreateWebsiteEnquiry(ctx, WebsiteEnquiryInput{Name: " Synthetic Visitor ", Email: "visitor@example.invalid", Service: "Ceramic coating", Message: "Hello"})
+	must(err)
+	if _, _, err = s.WebsiteEnquiries(ctx, stranger, org, ""); !errors.Is(err, ErrForbidden) {
+		t.Fatal("a member without marketing.read read enquiries", err)
+	}
+	items, fresh, err := s.WebsiteEnquiries(ctx, manager, org, "")
+	if err != nil || fresh != 1 || len(items) != 1 || items[0].Name != "Synthetic Visitor" || items[0].Status != "new" {
+		t.Fatalf("enquiry list wrong: %+v fresh=%d %v", items, fresh, err)
+	}
+	if err = s.SetWebsiteEnquiryStatus(ctx, stranger, org, id, "read"); !errors.Is(err, ErrForbidden) {
+		t.Fatal("a member without marketing.manage changed an enquiry", err)
+	}
+	if err = s.SetWebsiteEnquiryStatus(ctx, manager, org, id, "nonsense"); !errors.Is(err, ErrEnquiryInput) {
+		t.Fatal("an unknown status was accepted", err)
+	}
+	must(s.SetWebsiteEnquiryStatus(ctx, manager, org, id, "archived"))
+	if items, _, err = s.WebsiteEnquiries(ctx, manager, org, ""); err != nil || len(items) != 0 {
+		t.Fatal("an archived enquiry is still in the default list", items, err)
+	}
+	if items, _, err = s.WebsiteEnquiries(ctx, manager, org, "archived"); err != nil || len(items) != 1 {
+		t.Fatal("the archived list is missing the enquiry", items, err)
+	}
 }

@@ -42,6 +42,8 @@ type InvoicePrintTemplateState struct {
 	Version  int                  `json:"version"`
 	// Scope says which template this is: "organization" (shared) or "franchise" (one location's own).
 	Scope string `json:"scope,omitempty"`
+	// LogoURL is the franchise's own logo (empty when it has none and the default logo applies).
+	LogoURL string `json:"logoUrl,omitempty"`
 }
 
 func DefaultInvoicePrintTemplate() InvoicePrintTemplate {
@@ -124,7 +126,11 @@ func (s *Store) EmployeeInvoicePrintTemplate(ctx context.Context, actor string) 
 	if err != nil {
 		return InvoicePrintTemplateState{}, err
 	}
-	return loadEffectiveInvoiceTemplate(ctx, tx, a.OrganizationID, a.LocationID)
+	out, err := loadEffectiveInvoiceTemplate(ctx, tx, a.OrganizationID, a.LocationID)
+	if d := logoDigest(ctx, tx, a.OrganizationID, a.LocationID); err == nil && d != "" {
+		out.LogoURL = "/api/v1/employee/logo?v=" + d
+	}
+	return out, err
 }
 
 // SaveInvoicePrintTemplate needs invoices.configure. version is the revision the editor loaded (0 when it was the unsaved default).

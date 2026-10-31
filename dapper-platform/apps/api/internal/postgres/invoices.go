@@ -446,7 +446,7 @@ func (s *Store) RecordPayment(ctx context.Context, scope Scope, input RecordPaym
 	}
 	method := strings.TrimSpace(input.Method)
 	switch method {
-	case "cash":
+	case "cash", "bank_transfer":
 		if strings.TrimSpace(input.ProviderReference) != "" {
 			return Payment{}, Invoice{}, ErrPaymentInput
 		}

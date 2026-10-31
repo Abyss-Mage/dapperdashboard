@@ -266,14 +266,31 @@ export default function BookingManager({
       setViewing({ booking: b, invoice: body, error: '' });
     } catch (e) { setViewing({ booking: b, invoice: null, error: e instanceof Error ? e.message : 'The invoice could not be loaded.' }); }
   }
+  // A booking that holds no calendar reservation (entered by hand) is moved by changing its time directly.
+  const [moving, setMoving] = useState<Booking | null>(null);
+  const [moveTime, setMoveTime] = useState('');
+  const [moveBusy, setMoveBusy] = useState(false);
+  const [moveError, setMoveError] = useState('');
+  async function saveMove() {
+    if (!moving || !moveTime) return;
+    setMoveBusy(true); setMoveError('');
+    try {
+      const r = await fetch(`${base}/bookings/${moving.id}/move`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookingTime: new Date(moveTime).toISOString() }) });
+      const body = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(body.error ?? Object.values(body.errors ?? {}).join('. ') ?? 'The time could not be changed.');
+      setMoving(null); setNotice('The appointment was moved.');
+      await loadBookings();
+    } catch (e) { setMoveError(e instanceof Error ? e.message : 'The time could not be changed.'); }
+    finally { setMoveBusy(false); }
+  }
   const [completing, setCompleting] = useState<Booking | null>(null);
   const [completeBusy, setCompleteBusy] = useState(false);
   const [completeError, setCompleteError] = useState('');
-  async function finishBooking(b: Booking, cash: boolean) {
+  async function finishBooking(b: Booking, method: '' | 'cash' | 'bank_transfer') {
     setCompleteBusy(true); setCompleteError('');
     try {
       const inv = invoices[b.id];
-      if (cash && inv) {
+      if (method && inv) {
         let id = inv.id;
         if (inv.status === 'draft') {
           const pr = await fetch(base + '/invoices/' + id + '/issuance-preview', { cache: 'no-store' });
@@ -288,7 +305,7 @@ export default function BookingManager({
         const full = await fr.json().catch(() => ({}));
         if (!fr.ok) throw new Error(full.error ?? 'The invoice could not be read.');
         if (full.dueCents > 0) {
-          const pay = await fetch(base + '/invoices/' + id + '/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amountCents: full.dueCents, method: 'cash', idempotencyKey: 'complete-' + b.id, notes: 'Cash received when the booking was completed' }) });
+          const pay = await fetch(base + '/invoices/' + id + '/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amountCents: full.dueCents, method, idempotencyKey: 'complete-' + b.id, notes: method === 'cash' ? 'Cash received when the booking was completed' : 'Interac e-transfer received when the booking was completed' }) });
           const paid = await pay.json().catch(() => ({}));
           if (!pay.ok) throw new Error(paid.error ?? 'The cash payment could not be recorded.');
         }
@@ -633,6 +650,7 @@ export default function BookingManager({
                       Cancel
                     </button>
                   )}
+                  {!b.reservationId && b.status !== 'completed' && b.status !== 'cancelled' && <button className="secondary" disabled={busy} onClick={() => { setMoveError(''); setMoveTime(''); setMoving(b); }}>Reschedule</button>}
                   {b.reservationId && b.status !== 'completed' && b.status !== 'cancelled' && <button className="secondary" disabled={busy} onClick={event => {rescheduleTrigger.current=event.currentTarget; setReschedulingBooking(b);}}>Reschedule</button>}
                 </>
               )}
@@ -648,6 +666,20 @@ export default function BookingManager({
         {!bookingsLoading && !bookings.length && <p>No bookings found matching filter.</p>}
       </div>
 
+      {moving && (
+        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Reschedule appointment">
+          <div className="modal" style={{ padding: 24, display: 'grid', gap: 14 }}>
+            <h3 style={{ margin: 0 }}>Reschedule “{moving.serviceName}”</h3>
+            <p>Currently {formatTime(moving.bookingTime)}. This appointment holds no calendar slot, so choose the new date and time yourself.</p>
+            <label className="form-field">New date and time<DateTimePicker value={moveTime} onChange={(e) => setMoveTime(e.target.value)} /></label>
+            {moveError && <p role="alert" className="field-error">{moveError}</p>}
+            <div className="form-actions" style={{ justifyContent: 'flex-start' }}>
+              <button className="primary" disabled={moveBusy || !moveTime} onClick={() => void saveMove()}>{moveBusy ? 'Saving…' : 'Move appointment'}</button>
+              <button className="secondary" disabled={moveBusy} onClick={() => setMoving(null)}>Back</button>
+            </div>
+          </div>
+        </div>
+      )}
       {viewing && (
         <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Invoice" onClick={() => setViewing(null)}>
           <div className="modal" style={{ width: 860, maxHeight: '92vh', overflow: 'auto', padding: 24, background: '#fff' }} onClick={(e) => e.stopPropagation()}>
@@ -666,12 +698,13 @@ export default function BookingManager({
           <div className="modal" style={{ padding: 24, display: 'grid', gap: 14 }}>
             <h3 style={{ margin: 0 }}>Complete “{completing.serviceName}”</h3>
             {!inv && <p>This booking has no invoice, so there is nothing to collect here.</p>}
-            {inv && owed > 0 && <p>{money(owed)} is still owed on invoice {inv.invoiceNumber}. {inv.status === 'draft' ? 'Recording cash will issue the invoice first.' : ''}</p>}
+            {inv && owed > 0 && <p>{money(owed)} is still owed on invoice {inv.invoiceNumber}. {inv.status === 'draft' ? 'Recording a payment will issue the invoice first.' : ''}</p>}
             {inv && owed <= 0 && inv.totalCents > 0 && <p>Invoice {inv.invoiceNumber} is already paid.</p>}
             {completeError && <p role="alert" className="field-error">{completeError}</p>}
             <div className="form-actions" style={{ justifyContent: 'flex-start', flexWrap: 'wrap' }}>
-              {inv && owed > 0 && <button className="primary" disabled={completeBusy} onClick={() => void finishBooking(completing, true)}>{completeBusy ? 'Saving…' : `Cash received · ${money(owed)}`}</button>}
-              <button className={inv && owed > 0 ? 'secondary' : 'primary'} disabled={completeBusy} onClick={() => void finishBooking(completing, false)}>{owed > 0 ? 'Complete, money still owed' : 'Complete'}</button>
+              {inv && owed > 0 && <button className="primary" disabled={completeBusy} onClick={() => void finishBooking(completing, 'cash')}>{completeBusy ? 'Saving…' : `Cash received · ${money(owed)}`}</button>}
+              {inv && owed > 0 && <button className="primary" disabled={completeBusy} onClick={() => void finishBooking(completing, 'bank_transfer')}>E-transfer received · {money(owed)}</button>}
+              <button className={inv && owed > 0 ? 'secondary' : 'primary'} disabled={completeBusy} onClick={() => void finishBooking(completing, '')}>{owed > 0 ? 'Complete, money still owed' : 'Complete'}</button>
               <button className="secondary" disabled={completeBusy} onClick={() => setCompleting(null)}>Back</button>
             </div>
           </div>

@@ -84,18 +84,22 @@ func verifyInvoices(t *testing.T, ctx context.Context, s *Store, a, b Scope, cus
 			t.Fatalf("overflow invoice accepted: %v", err)
 		}
 	}
-	// 4. Record partial payment of $69.50 (6950 cents) via cash
+	// E-transfer (bank transfer) is a method staff can record; a provider reference is not accepted for it.
+	if _, _, err := s.RecordPayment(ctx, a, RecordPaymentInput{InvoiceID: inv.ID, AmountCents: 100, Method: "bank_transfer", ProviderReference: "made-up", IdempotencyKey: "idem-etransfer-ref"}); !errors.Is(err, ErrPaymentProvider) && !errors.Is(err, ErrPaymentInput) {
+		t.Fatalf("bank transfer with a provider reference accepted: %v", err)
+	}
+	// 4. Record partial payment of $69.50 (6950 cents) as an e-transfer
 	pmt1, updated1, err := s.RecordPayment(ctx, a, RecordPaymentInput{
 		InvoiceID:      inv.ID,
 		AmountCents:    6950,
-		Method:         "cash",
+		Method:         "bank_transfer",
 		IdempotencyKey: "idem-cash-001",
 		Notes:          "Deposit received in cash",
 	})
 	if err != nil {
 		t.Fatalf("failed to record partial payment: %v", err)
 	}
-	if pmt1.AmountCents != 6950 || pmt1.Method != "cash" || pmt1.Status != "completed" {
+	if pmt1.AmountCents != 6950 || pmt1.Method != "bank_transfer" || pmt1.Status != "completed" {
 		t.Fatalf("unexpected payment record: %+v", pmt1)
 	}
 	if updated1.PaidCents != 6950 || updated1.DueCents != 10000 || updated1.Status != "partially_paid" {
@@ -106,7 +110,7 @@ func verifyInvoices(t *testing.T, ctx context.Context, s *Store, a, b Scope, cus
 	pmt1Dup, _, err := s.RecordPayment(ctx, a, RecordPaymentInput{
 		InvoiceID:      inv.ID,
 		AmountCents:    6950,
-		Method:         "cash",
+		Method:         "bank_transfer",
 		IdempotencyKey: "idem-cash-001",
 		Notes:          "Deposit received in cash",
 	})

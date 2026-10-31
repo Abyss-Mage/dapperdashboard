@@ -160,6 +160,8 @@ type PublicBookingInput struct {
 	Email       string    `json:"email"`
 	Phone       string    `json:"phone"`
 	Notes       string    `json:"notes"`
+	// ServiceAddress is where mobile or valet work happens (empty for in-shop work).
+	ServiceAddress string `json:"serviceAddress"`
 }
 type PublicBookingResult struct {
 	BookingID     string `json:"bookingId"`
@@ -243,7 +245,7 @@ func (s *Store) PublicBook(ctx context.Context, slug string, in PublicBookingInp
 	} else if err != nil {
 		return out, err
 	}
-	booking, err := s.ReserveBooking(ctx, scope, ReserveBookingInput{RequestKey: in.RequestKey, CustomerID: customerID, ResourceID: in.ResourceID, RuleID: in.RuleID, RuleVersion: in.RuleVersion, Start: in.Start, Channel: "online", Notes: in.Notes, AddonIDs: in.AddonIDs})
+	booking, err := s.ReserveBooking(ctx, scope, ReserveBookingInput{RequestKey: in.RequestKey, CustomerID: customerID, ResourceID: in.ResourceID, RuleID: in.RuleID, RuleVersion: in.RuleVersion, Start: in.Start, Channel: "online", Notes: in.Notes, ServiceAddress: in.ServiceAddress, AddonIDs: in.AddonIDs})
 	if err != nil {
 		return out, err
 	}

@@ -40,7 +40,11 @@ func (s *Store) LocationInvoicePrintTemplate(ctx context.Context, actor, org, lo
 	if err := s.memberOf(ctx, actor, org); err != nil {
 		return InvoicePrintTemplateState{}, err
 	}
-	return loadEffectiveInvoiceTemplate(ctx, s.pool, org, loc)
+	out, err := loadEffectiveInvoiceTemplate(ctx, s.pool, org, loc)
+	if d := logoDigest(ctx, s.pool, org, loc); err == nil && d != "" {
+		out.LogoURL = "/api/v1/organizations/" + org + "/locations/" + loc + "/logo?v=" + d
+	}
+	return out, err
 }
 
 // SaveLocationInvoicePrintTemplate creates or replaces a franchise's own template. It needs invoices.configure, like the

@@ -44,7 +44,7 @@ export default function StaffBookingWizard(props: StaffBookingWizardProps) {
       }}
       submit={async (b: WizardBooking) => {
         if (employee) {
-          const body = { name: b.customer.name, email: b.customer.email, phone: b.customer.phone, ruleId: b.rule.id, ruleVersion: b.rule.version, resourceId: b.rule.resourceId, localStart: b.localStart, ...(b.addonIds.length ? { addonIds: b.addonIds } : {}), notes: b.notes };
+          const body = { name: b.customer.name, email: b.customer.email, phone: b.customer.phone, ruleId: b.rule.id, ruleVersion: b.rule.version, resourceId: b.rule.resourceId, localStart: b.localStart, ...(b.addonIds.length ? { addonIds: b.addonIds } : {}), notes: b.notes, serviceAddress: b.serviceAddress };
           await json(await fetch('/api/v1/employee/walk-in', post({ ...body, requestKey: keyFor(body) })));
         } else {
           let customerId = b.customer.id;
@@ -58,7 +58,7 @@ export default function StaffBookingWizard(props: StaffBookingWizardProps) {
             const made = await json<{ id: string }>(await fetch(`${base}/customers`, post({ name: b.customer.name, email: b.customer.email, phone: b.customer.phone })));
             customerId = made.id;
           }
-          const body = { customerId, vehicleId: null, resourceId: b.rule.resourceId, ruleId: b.rule.id, ruleVersion: b.rule.version, start: b.startIso, channel: 'walk_in', notes: b.notes, ...(b.addonIds.length ? { addonIds: b.addonIds } : {}) };
+          const body = { customerId, vehicleId: null, resourceId: b.rule.resourceId, ruleId: b.rule.id, ruleVersion: b.rule.version, start: b.startIso, channel: 'walk_in', notes: b.notes, serviceAddress: b.serviceAddress, ...(b.addonIds.length ? { addonIds: b.addonIds } : {}) };
           await json(await fetch(`${base}/bookings/reserve`, post({ ...body, requestKey: keyFor(body) })));
         }
         await props.onBooked();

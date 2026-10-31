@@ -34,6 +34,8 @@ type EmployeeWalkInInput struct {
 	AddonIDs []string `json:"addonIds"`
 	// Notes carry the vehicle, where the work happens, any referral and the customer's own notes (shown to staff on the booking).
 	Notes string `json:"notes"`
+	// ServiceAddress is where mobile or valet work happens (empty for in-shop work).
+	ServiceAddress string `json:"serviceAddress"`
 }
 
 func normalizeEmployeeContact(name, email, phone string) (string, string, string, error) {
@@ -207,7 +209,7 @@ func (s *Store) CreateEmployeeWalkIn(ctx context.Context, actor string, input Em
 		}
 		addons = append([]string{}, input.AddonIDs...)
 	}
-	b, err := s.createBookingInTransaction(ctx, tx, scope, Booking{CustomerID: customer, ServiceID: &rule.ServiceID, AddonIDs: addons, ReservationID: &reservation.ID, Channel: "walk_in", Status: "confirmed", BookingTime: start, Notes: input.Notes})
+	b, err := s.createBookingInTransaction(ctx, tx, scope, Booking{CustomerID: customer, ServiceID: &rule.ServiceID, AddonIDs: addons, ReservationID: &reservation.ID, Channel: "walk_in", Status: "confirmed", BookingTime: start, Notes: input.Notes, ServiceAddress: strings.TrimSpace(input.ServiceAddress)})
 	if err != nil {
 		return Booking{}, bookingWriteError(err)
 	}

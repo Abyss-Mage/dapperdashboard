@@ -14,7 +14,7 @@ export type WizardTaxes = { rates: { rateBasisPoints: number; active: boolean }[
 export type WizardAvailability = { timezone: string; durationMinutes: number; days: { date: string; starts: string[] }[] };
 export type WizardCustomer = { id?: string; name: string; email: string; phone: string };
 export type WizardBooking = {
-  customer: WizardCustomer; rule: WizardRule; startIso: string; localStart: string; addonIds: string[]; notes: string;
+  customer: WizardCustomer; rule: WizardRule; startIso: string; localStart: string; addonIds: string[]; notes: string; serviceAddress: string;
   deposit?: { method: 'card' | 'cash'; sourceId?: string };
 };
 /* Customer-facing extras: a phone check for returning customers, and a deposit step with a card form. */
@@ -223,7 +223,7 @@ export default function BookingWizard(p: WizardProps) {
           deposit = { method: 'card', sourceId: await tokenizer.current() };
         } else deposit = { method: 'cash' };
       }
-      await p.submit({ customer: { ...me, name: me.name.trim(), email: me.email.trim(), phone: me.phone.trim() }, rule, startIso: start, localStart: `${z.date}T${z.time}`, addonIds: picked, notes: lines.join('\n'), deposit });
+      await p.submit({ customer: { ...me, name: me.name.trim(), email: me.email.trim(), phone: me.phone.trim() }, rule, startIso: start, localStart: `${z.date}T${z.time}`, addonIds: picked, notes: lines.join('\n'), serviceAddress: where === 'shop' ? '' : address.trim(), deposit });
       const when = `${new Date(`${z.date}T12:00:00`).toLocaleDateString('en-CA', { weekday: 'long', month: 'long', day: 'numeric' })} at ${slotLabel(start, tz)}`;
       setDoneInfo(p.doneNote ? p.doneNote({ name: me.name.trim(), pack: parsed.get(rule.id)!.pack, when, deposit: deposit?.method }) : null);
       setDone(true);

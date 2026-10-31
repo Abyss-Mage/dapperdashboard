@@ -50,11 +50,13 @@ function Card({ title, sub, legend, span = 1, children }: { title: string; sub?:
     </section>
   );
 }
-function Locked({ title, grant }: { title: string; grant: string }) {
+function Locked({ title, grant, down }: { title: string; grant: string; down?: boolean }) {
   return (
     <section className={`${styles.chartCard} ${styles.locked}`}>
       <h3>{title}</h3>
-      <p className={styles.chartEmpty}>Access needed. Your role does not include <code>{grant}</code> for this franchise, so nothing is shown rather than a misleading zero.</p>
+      {down
+        ? <p className={styles.chartEmpty}>This chart could not be loaded right now. Use Refresh to try again.</p>
+        : <p className={styles.chartEmpty}>Access needed. Your role does not include <code>{grant}</code> for this franchise, so nothing is shown rather than a misleading zero.</p>}
     </section>
   );
 }
@@ -65,6 +67,8 @@ export default function OwnerOverview({ base, location, organizationName, onNavi
   const [channel, setChannel] = useState('');
   const [overview, setOverview] = useState<Overview | null>(null);
   const [trends, setTrends] = useState<Trends | null>(null);
+  // The charts call can fail for reasons that are not about permission; say so instead of claiming access is missing.
+  const [trendsDown, setTrendsDown] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -88,6 +92,8 @@ export default function OwnerOverview({ base, location, organizationName, onNavi
         if (live) {
           setOverview(ov);
           setTrends(tr);
+          setTrendsDown(!t.ok && t.status !== 403);
+          if (!t.ok && t.status !== 403) setError('The charts could not be loaded. Use Refresh to try again.');
         }
       })
       .catch((e) => live && setError(e.message || 'The overview could not be loaded.'))
@@ -108,15 +114,16 @@ export default function OwnerOverview({ base, location, organizationName, onNavi
   const payPts = trends?.payments?.byDay ?? [];
   const money = (k: string) => (m[k] === null || m[k] === undefined ? null : (m[k] as number));
 
+  const trendGrants = ['bookings.read', 'payments.read', 'jobs.read'];
   const tile = (label: string, value: string | null, foot: string, tab: string, icon: OwnerIconName, spark?: number[], grant?: string) => (
-    <button type="button" className={styles.tile} onClick={() => onNavigate?.(tab)} aria-label={`${label}: ${value ?? 'Access needed'}. Open details.`}>
+    <button type="button" className={styles.tile} onClick={() => onNavigate?.(tab)} aria-label={`${label}: ${value ?? (trendsDown && trendGrants.includes(grant ?? '') ? 'Unavailable' : 'Access needed')}. Open details.`}>
       <span className={styles.cardTop}>
         <span className={styles.tileLabel}>{label}</span>
         <OwnerIcon name={icon} size={18} />
       </span>
-      <span className={`${styles.tileValue} ${value === null ? styles.valueMuted : ''}`}>{value === null ? 'Access needed' : <AnimatedNumber text={value} />}</span>
+      <span className={`${styles.tileValue} ${value === null ? styles.valueMuted : ''}`}>{value === null ? (trendsDown && trendGrants.includes(grant ?? '') ? 'Unavailable' : 'Access needed') : <AnimatedNumber text={value} />}</span>
       <span className={styles.tileFoot}>
-        <span>{value === null && grant ? `Needs ${grant}` : foot}</span>
+        <span>{value === null && grant ? (trendsDown && trendGrants.includes(grant) ? 'Try Refresh' : `Needs ${grant}`) : foot}</span>
         {value !== null && spark && <Sparkline values={spark} />}
       </span>
     </button>
@@ -177,7 +184,7 @@ export default function OwnerOverview({ base, location, organizationName, onNavi
                 </Card>
               </>
             ) : (
-              <Locked title="Bookings" grant="bookings.read" />
+              <Locked down={trendsDown} title="Bookings" grant="bookings.read" />
             )}
 
             {trends?.payments ? (
@@ -197,7 +204,7 @@ export default function OwnerOverview({ base, location, organizationName, onNavi
                 </Card>
               </>
             ) : (
-              <Locked title="Payments" grant="payments.read" />
+              <Locked down={trendsDown} title="Payments" grant="payments.read" />
             )}
 
             {trends?.jobs ? (
@@ -218,7 +225,7 @@ export default function OwnerOverview({ base, location, organizationName, onNavi
                 <DataTable caption="Bookings per day" head={['Date', 'Created', 'Completed']} rows={trends.jobs.createdByDay.map((d, i) => [d.date, d.count, trends.jobs?.completedByDay[i]?.count ?? 0])} />
               </Card>
             ) : (
-              <Locked title="Bookings completed" grant="jobs.read" />
+              <Locked down={trendsDown} title="Bookings completed" grant="jobs.read" />
             )}
 
             {trends?.invoices ? (
@@ -226,7 +233,7 @@ export default function OwnerOverview({ base, location, organizationName, onNavi
                 <BarList rows={trends.invoices.byStatus.map((x) => ({ label: nice(x.key), value: x.count, display: `${x.count} · ${dollarsCompact(x.cents)}`, sub: `${dollars(x.dueCents)} still due` }))} emptyText="No invoices created in this period." />
               </Card>
             ) : (
-              <Locked title="Invoices" grant="invoices.read" />
+              <Locked down={trendsDown} title="Invoices" grant="invoices.read" />
             )}
 
             {trends?.bookings && (

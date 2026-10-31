@@ -56,7 +56,7 @@ export default function PublicBookingWizard() {
         ],
       })}
       submit={async (b: WizardBooking) => {
-        const body = { requestKey: key.current, resourceId: b.rule.resourceId, ruleId: b.rule.id, ruleVersion: b.rule.version, start: b.startIso, addonIds: b.addonIds, name: b.customer.name, email: b.customer.email, phone: b.customer.phone, notes: b.notes, depositMethod: b.deposit?.method ?? 'cash', sourceId: b.deposit?.sourceId };
+        const body = { requestKey: key.current, resourceId: b.rule.resourceId, ruleId: b.rule.id, ruleVersion: b.rule.version, start: b.startIso, addonIds: b.addonIds, name: b.customer.name, email: b.customer.email, phone: b.customer.phone, notes: b.notes, serviceAddress: b.serviceAddress, depositMethod: b.deposit?.method ?? 'cash', sourceId: b.deposit?.sourceId };
         try {
           await json(await fetch(`${api}/book`, post(body)));
           key.current = crypto.randomUUID();
