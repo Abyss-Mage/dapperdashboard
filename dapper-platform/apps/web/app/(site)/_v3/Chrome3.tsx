@@ -30,7 +30,7 @@ export function Nav3() {
   const pathname = usePathname();
   // The vehicle pages (/sedan-detailing and the rest) belong to Services; every redesigned page wears the paper header.
   const onVehicle = categories.some((c) => '/' + c.slug === pathname);
-  const paper = onVehicle || ['/services', '/contact-us', '/about-us', '/portfolio'].includes(pathname);
+  const paper = onVehicle || ['/', '/services', '/contact-us', '/about-us', '/portfolio'].includes(pathname);
   useEffect(() => setOpen(false), [pathname]);
   useEffect(() => {
     const on = () => setSolid(scrollY > 30);
@@ -39,7 +39,7 @@ export function Nav3() {
   }, []);
   return (
     <>
-      <header className={'d-nav' + (solid || open ? ' is-solid' : '') + (paper ? ' d-nav--paper' : '') + (pathname === '/services' ? ' d-nav--dark' : '')}>
+      <header className={'d-nav' + (solid || open ? ' is-solid' : '') + (paper ? ' d-nav--paper' : '') + (pathname === '/' || pathname === '/services' || onVehicle ? ' d-nav--dark' : '')}>
         {paper
           ? <Link href="/" className="d-brand" aria-label="Dapper Detailing Pros, home">Dapper</Link>
           : <Link href="/" className="d-brand" aria-label="Dapper Detailing Pros, home"><img src="/site/assets/logo.webp" alt="" width={36} height={36} /><span>Dapper<small>Detailing Pros</small></span></Link>}
@@ -65,19 +65,22 @@ export function Nav3() {
 
 export function Footer3() {
   return (
-    <footer className="d-foot">
-      <div className="d-foot__top">
-        <div className="d-foot__brand">
-          <Link href="/" className="d-brand"><img src="/site/assets/logo.webp" alt="" width={40} height={40} /><span>Dapper<small>Detailing Pros</small></span></Link>
-          <p>Ready for precise detailing? Book online or call the studio.</p>
-          <a className="d-btn d-btn--red" href="/booking">Book now</a>
+    <footer className="f-foot">
+      <div className="f-foot__cta">
+        <p className="f-foot__lead">Ready for <em>precise detailing?</em></p>
+        <div className="f-foot__act">
+          <a className="f-btn" href="/booking"><span className="f-roll"><span>Book now</span><span aria-hidden="true">Book now</span></span><ArrowRight size={22} aria-hidden="true" /></a>
+          <a className="f-foot__call" href={'tel:' + contact.tel}>or call <span>+1 {contact.phone}</span></a>
         </div>
+      </div>
+      <div className="f-foot__cols">
         <div><h2>Visit</h2><p>{contact.street}<br />{contact.city}<br />{contact.country}</p><a href={contact.directions} target="_blank" rel="noopener noreferrer">Get directions</a></div>
         <div><h2>Contact</h2><a href={'tel:' + contact.tel}>{contact.phone}</a><a href={'mailto:' + contact.email}>{contact.email}</a>
-          <span className="d-social"><a href={contact.instagram} target="_blank" rel="noopener noreferrer">Instagram</a><a href={contact.youtube} target="_blank" rel="noopener noreferrer">YouTube</a></span></div>
+          <span className="f-foot__social"><a href={contact.instagram} target="_blank" rel="noopener noreferrer">Instagram</a><a href={contact.youtube} target="_blank" rel="noopener noreferrer">YouTube</a></span></div>
         <div><h2>Explore</h2><Link href="/services">Services</Link><Link href="/portfolio">Portfolio</Link><Link href="/about-us">About us</Link><Link href="/contact-us">Contact us</Link><a href="/account">My bookings</a></div>
       </div>
-      <div className="d-foot__legal"><span>© 2026 Dapper Detailing Pros Ltd. • All Rights Reserved</span><span><a href="/privacy-policy">Privacy policy</a><a href="/terms-conditions">Terms &amp; conditions</a><a href="/refund-and-cancellation">Refund &amp; cancellation</a></span></div>
+      <p className="f-foot__mark" aria-hidden="true">Dapper</p>
+      <div className="f-foot__legal"><span>© 2026 Dapper Detailing Pros Ltd. • All Rights Reserved</span><span><a href="/privacy-policy">Privacy policy</a><a href="/terms-conditions">Terms &amp; conditions</a><a href="/refund-and-cancellation">Refund &amp; cancellation</a></span></div>
     </footer>
   );
 }
