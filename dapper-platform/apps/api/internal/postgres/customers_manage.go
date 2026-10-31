@@ -49,6 +49,11 @@ type DirectoryCustomer struct {
 	Bookings  int    `json:"bookings"`
 	Jobs      int    `json:"jobs"`
 	Invoices  int    `json:"invoices"`
+	Address   string `json:"address"`
+	// What the staff screens filter on: the services and statuses of this customer's bookings, and the days they fall on.
+	Services    []string `json:"services"`
+	Statuses    []string `json:"statuses"`
+	BookingDays []string `json:"bookingDays"`
 }
 
 // CustomerDirectory lists up to 1000 customers of one franchise with their record counts.
@@ -60,8 +65,14 @@ func (s *Store) CustomerDirectory(ctx context.Context, scope Scope) ([]Directory
  (SELECT count(*) FROM vehicles v WHERE v.organization_id=c.organization_id AND v.location_id=c.location_id AND v.customer_id=c.id),
  (SELECT count(*) FROM bookings b WHERE b.organization_id=c.organization_id AND b.location_id=c.location_id AND b.customer_id=c.id),
  (SELECT count(*) FROM jobs j WHERE j.organization_id=c.organization_id AND j.location_id=c.location_id AND j.customer_id=c.id),
- (SELECT count(*) FROM invoices i WHERE i.organization_id=c.organization_id AND i.location_id=c.location_id AND i.customer_id=c.id)
-FROM customers c WHERE c.organization_id=$1 AND c.location_id=$2 AND c.removed_at IS NULL ORDER BY lower(c.name),c.id LIMIT 1000`, scope.OrganizationID, scope.LocationID)
+ (SELECT count(*) FROM invoices i WHERE i.organization_id=c.organization_id AND i.location_id=c.location_id AND i.customer_id=c.id),
+ COALESCE(NULLIF(c.address,''),(SELECT b.service_address FROM bookings b WHERE b.organization_id=c.organization_id AND b.location_id=c.location_id AND b.customer_id=c.id AND b.service_address<>'' ORDER BY b.booking_time DESC LIMIT 1),''),
+ COALESCE((SELECT array_agg(DISTINCT b.service_name) FROM bookings b WHERE b.organization_id=c.organization_id AND b.location_id=c.location_id AND b.customer_id=c.id AND b.service_name<>''),'{}'),
+ COALESCE((SELECT array_agg(DISTINCT b.status) FROM bookings b WHERE b.organization_id=c.organization_id AND b.location_id=c.location_id AND b.customer_id=c.id),'{}'),
+ COALESCE((SELECT array_agg(DISTINCT to_char(b.booking_time AT TIME ZONE 'UTC','YYYY-MM-DD')) FROM bookings b WHERE b.organization_id=c.organization_id AND b.location_id=c.location_id AND b.customer_id=c.id),'{}')
+FROM customers c WHERE c.organization_id=$1 AND c.location_id=$2 AND c.removed_at IS NULL
+ AND NOT EXISTS(SELECT 1 FROM dealership_accounts d WHERE d.organization_id=c.organization_id AND d.location_id=c.location_id AND d.customer_id=c.id)
+ ORDER BY lower(c.name),c.id LIMIT 1000`, scope.OrganizationID, scope.LocationID)
 	if err != nil {
 		return nil, err
 	}
@@ -69,12 +80,31 @@ FROM customers c WHERE c.organization_id=$1 AND c.location_id=$2 AND c.removed_a
 	out := []DirectoryCustomer{}
 	for rows.Next() {
 		var c DirectoryCustomer
-		if err = rows.Scan(&c.ID, &c.Name, &c.Email, &c.Phone, &c.CreatedAt, &c.Vehicles, &c.Bookings, &c.Jobs, &c.Invoices); err != nil {
+		if err = rows.Scan(&c.ID, &c.Name, &c.Email, &c.Phone, &c.CreatedAt, &c.Vehicles, &c.Bookings, &c.Jobs, &c.Invoices, &c.Address, &c.Services, &c.Statuses, &c.BookingDays); err != nil {
 			return nil, err
 		}
 		out = append(out, c)
 	}
 	return out, rows.Err()
+}
+
+// SetCustomerAddress records where a customer wants mobile service (empty clears it).
+func (s *Store) SetCustomerAddress(ctx context.Context, scope Scope, id, address string) error {
+	address = strings.TrimSpace(address)
+	if utf8.RuneCountInString(address) > 300 {
+		return ErrCustomerInput
+	}
+	if err := s.authorize(ctx, scope, "customers.create"); err != nil {
+		return err
+	}
+	tag, err := s.pool.Exec(ctx, `UPDATE customers SET address=$4 WHERE organization_id=$1 AND location_id=$2 AND id=$3 AND removed_at IS NULL`, scope.OrganizationID, scope.LocationID, id, address)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrCustomerNotFound
+	}
+	return nil
 }
 
 // UpdateCustomer changes a customer's name, email and phone (the same limits as creating one).

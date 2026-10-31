@@ -65,6 +65,22 @@ func verifyCustomerAccountManagement(t *testing.T, ctx context.Context, s *Store
 	if _, err = s.CustomerRecords(ctx, target, foreignCustomer); !errors.Is(err, ErrForbidden) {
 		t.Fatal("new link exposed foreign matching-email customer", err)
 	}
+	// A customer corrects their own details, but only on a record linked to them.
+	if err = s.UpdatePortalDetails(ctx, target, customer, " Synthetic Portal Name ", "+14165550188", " 5 Synthetic Lane, Peterborough "); err != nil {
+		t.Fatal("customer could not edit their own details", err)
+	}
+	if records, err = s.CustomerRecords(ctx, target, customer); err != nil || records.Account.Name != "Synthetic Portal Name" || records.Account.Phone != "+14165550188" || records.Account.Address != "5 Synthetic Lane, Peterborough" {
+		t.Fatalf("portal details not saved: %+v %v", records.Account, err)
+	}
+	if err = s.UpdatePortalDetails(ctx, target, foreignCustomer, "Intruder", "", ""); !errors.Is(err, ErrForbidden) {
+		t.Fatal("a customer edited a record that is not linked to them", err)
+	}
+	if err = s.UpdatePortalDetails(ctx, target, customer, "X", "", ""); !errors.Is(err, ErrCustomerInput) {
+		t.Fatal("a one-letter name was accepted", err)
+	}
+	if _, err = s.PortalInvoice(ctx, target, foreignCustomer, "00000000-0000-0000-0000-000000000000"); !errors.Is(err, ErrForbidden) {
+		t.Fatal("invoice of an unlinked customer was readable", err)
+	}
 	var count int
 	if err = s.pool.QueryRow(ctx, `SELECT count(*) FROM customer_account_events WHERE customer_id=$1 AND principal_id=$2 AND enabled`, customer, target).Scan(&count); err != nil || count != 1 {
 		t.Fatal("duplicate customer link audit", err)

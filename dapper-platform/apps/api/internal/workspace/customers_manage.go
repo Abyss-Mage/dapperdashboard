@@ -87,6 +87,12 @@ func registerCustomerManageRoutes(mux *http.ServeMux, store *postgres.Store) {
 			fail(w, err)
 			return
 		}
+		if input.Address != nil {
+			if err = store.SetCustomerAddress(r.Context(), scope, id, *input.Address); err != nil {
+				fail(w, err)
+				return
+			}
+		}
 		reply(w, 200, c)
 	})
 	mux.HandleFunc("DELETE "+base+"/customers/{customer}", func(w http.ResponseWriter, r *http.Request) {

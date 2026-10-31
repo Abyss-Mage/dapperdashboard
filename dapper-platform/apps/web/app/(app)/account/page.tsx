@@ -7,8 +7,10 @@ import CustomerBookingRequestList from './CustomerBookingRequestList';
 import CustomerQuoteList from './CustomerQuoteList';
 import InvoicePaymentForm from './InvoicePaymentForm';
 import Select from '../GlassSelect';
+import { SignInDetails } from '../workspace/AccountSecurity';
+import { DEFAULT_PRINT_TEMPLATE, InvoiceDocument, printInvoiceDocument, type PrintInvoice } from '../workspace/InvoicePrint';
 
-type Account = {customerId: string; name: string; locationName: string};
+type Account = {customerId: string; name: string; locationName: string; email?: string; phone?: string; address?: string};
 type Records = {
   account: Account;
   vehicles: {id: string; description: string; categoryDescription: string; identifier: string}[];
@@ -35,6 +37,29 @@ export default function CustomerAccount() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [revision, setRevision] = useState(0);
+  const [detailName, setDetailName] = useState(''), [detailPhone, setDetailPhone] = useState(''), [detailAddress, setDetailAddress] = useState('');
+  const [viewInvoice, setViewInvoice] = useState<PrintInvoice | null>(null);
+  useEffect(() => { if (records) { setDetailName(records.account.name); setDetailPhone(records.account.phone ?? ''); setDetailAddress(records.account.address ?? ''); } }, [records]);
+  async function saveDetails(event: React.FormEvent) {
+    event.preventDefault();
+    setBusy(true); setError(''); setNotice('');
+    try {
+      const response = await fetch(`/api/v1/portal/accounts/${encodeURIComponent(selected)}/details`, {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({name: detailName, phone: detailPhone, address: detailAddress})});
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error ?? 'Your details could not be saved.');
+      setNotice('Your details were saved.'); setRevision((value) => value + 1);
+    } catch (err) { setError(err instanceof Error ? err.message : 'Your details could not be saved.'); }
+    finally { setBusy(false); }
+  }
+  async function openInvoice(invoiceId: string) {
+    setError('');
+    try {
+      const response = await fetch(`/api/v1/portal/accounts/${encodeURIComponent(selected)}/invoices/${encodeURIComponent(invoiceId)}`, {cache: 'no-store'});
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error ?? 'The invoice could not be opened.');
+      setViewInvoice(body);
+    } catch (err) { setError(err instanceof Error ? err.message : 'The invoice could not be opened.'); }
+  }
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [identifier, setIdentifier] = useState('');
@@ -134,6 +159,7 @@ export default function CustomerAccount() {
       <h2>Sign in</h2>
       <label className="form-field">Email<input type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} disabled={busy} /></label>
       <label className="form-field">Password<input type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} disabled={busy} /></label>
+      <p><a href="/reset-password" style={{ textDecoration: 'underline' }}>Forgot your password?</a></p>
       <button className="primary" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
       <p>Use your Dapper customer account to access your records.</p>
     </form> : <>
@@ -146,6 +172,26 @@ export default function CustomerAccount() {
           <CustomerAvailabilityBrowser key={selected+'-availability'} customerId={selected} vehicles={records.vehicles} onSubmitted={()=>setRequestRevision(current=>current+1)}/>
           <CustomerBookingRequestList key={selected+'-requests'} endpoint={`/api/v1/portal/accounts/${encodeURIComponent(selected)}/booking-requests`} revision={requestRevision}/>
           <CustomerQuoteList key={selected+'-quotes'} customerId={selected} revision={requestRevision}/>
+          {viewInvoice && (
+            <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Invoice" onClick={() => setViewInvoice(null)}>
+              <div className="modal" style={{width: 860, maxHeight: '92vh', overflow: 'auto', padding: 24, background: '#fff'}} onClick={(e) => e.stopPropagation()}>
+                <InvoiceDocument invoice={viewInvoice} template={DEFAULT_PRINT_TEMPLATE} />
+                <div className="form-actions" style={{justifyContent: 'flex-start'}}>
+                  <button className="primary" onClick={() => printInvoiceDocument(viewInvoice, DEFAULT_PRINT_TEMPLATE)}>Print or save as PDF</button>
+                  <button className="secondary" onClick={() => setViewInvoice(null)}>Close</button>
+                </div>
+              </div>
+            </div>
+          )}
+          <form className="panel detail-card" onSubmit={saveDetails}>
+            <h3>Your details</h3>
+            {records.account.email && <p>You sign in with <strong>{records.account.email}</strong>.</p>}
+            <label className="form-field">Name<input required minLength={2} maxLength={100} autoComplete="name" value={detailName} onChange={(e) => setDetailName(e.target.value)} disabled={busy} /></label>
+            <label className="form-field">Phone<input type="tel" maxLength={30} autoComplete="tel" value={detailPhone} onChange={(e) => setDetailPhone(e.target.value)} disabled={busy} /></label>
+            <label className="form-field">Address (for mobile detailing)<input maxLength={300} autoComplete="street-address" value={detailAddress} onChange={(e) => setDetailAddress(e.target.value)} disabled={busy} /></label>
+            <button className="primary" disabled={busy}>{busy ? 'Saving…' : 'Save my details'}</button>
+          </form>
+          <section className="panel detail-card"><h3>Email and password</h3><SignInDetails email={records.account.email} /></section>
           <section className="panel detail-card"><h3>Your vehicles and equipment</h3>{records.vehicles.length ? records.vehicles.map((v) => <p key={v.id}>{v.description} · {v.categoryDescription || 'Category not provided'}{v.identifier ? ` · ${v.identifier}` : ''}</p>) : <p>No equipment recorded.</p>}</section>
           <form className="panel detail-card" onSubmit={addEquipment}>
             <h3>Add your vehicle or equipment</h3>
@@ -167,6 +213,7 @@ export default function CustomerAccount() {
                   <p style={{ margin: '0.3rem 0' }}>
                     Total: {amount(i.totalCents, i.currency)} · Balance Due: {amount(i.dueCents, i.currency)}
                   </p>
+                  <button type="button" className="secondary" onClick={() => void openInvoice(i.id)}>View or download invoice</button>
                   {i.dueCents > 0 && (
                     <InvoicePaymentForm
                       customerId={selected}

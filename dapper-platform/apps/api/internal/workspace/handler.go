@@ -71,9 +71,10 @@ func failure(w http.ResponseWriter, err error) {
 }
 
 type customerInput struct {
-	Name  string `json:"name"`
-	Email string `json:"email"`
-	Phone string `json:"phone"`
+	Name    string  `json:"name"`
+	Email   string  `json:"email"`
+	Phone   string  `json:"phone"`
+	Address *string `json:"address"`
 }
 type vehicleInput struct {
 	CustomerID  string `json:"customerId"`
@@ -142,6 +143,9 @@ func NewHandlerWithFullServices(store *postgres.Store, origin string, invitation
 	registerRuleAvailabilityRoutes(mux, store)
 	registerPublicBookingRoutes(mux, store)
 	registerMemberInvitationRoutes(mux, store, invitations, emailSender)
+	registerAccountCredentialRoutes(mux, store, emailSender, origin)
+	registerWebsiteTrackingRoutes(mux, store)
+	registerCalendarFeedRoutes(mux, store, origin)
 	registerCustomerAccountManagementRoutes(mux, store)
 	registerQuoteRoutes(mux, store, sqClient)
 	registerSquareIntentRoutes(mux, store)

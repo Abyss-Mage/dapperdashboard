@@ -7,6 +7,7 @@ import ConfirmDialog from '../workspace/ConfirmDialog';
 import Select from '../GlassSelect';
 import Collapse from '../motion/Collapse';
 import NumberField from '../NumberField';
+import ServiceSlots from './ServiceSlots';
 
 type Service = { id: string; name: string; kind: string; parentId: string | null; version: number; archived: boolean; centralServiceId?: string | null; priceCents?: number | null; durationMinutes?: number | null };
 const money = (c: number) => `$${(c / 100).toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -22,7 +23,10 @@ const send = (method: string, body?: unknown): RequestInit => ({ method, headers
 
 /* One catalogue screen for both levels. mode "central" = the organization catalogue; mode "franchise" = the selected franchise's own
    services, with a one-click way to switch on central services. Behaviour matches the older editors: revisions, archive, delete. */
-const minutesText = (m: number) => (m < 60 ? `${m} min` : `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''}`);
+const minutesText = (m: number) => (m % 1440 === 0 ? `${m / 1440} day${m === 1440 ? '' : 's'}` : m < 60 ? `${m} min` : `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''}`);
+const UNITS = { minutes: 1, hours: 60, days: 1440 } as const;
+type Unit = keyof typeof UNITS;
+const bestUnit = (m: number): Unit => (m % 1440 === 0 ? 'days' : m % 60 === 0 ? 'hours' : 'minutes');
 
 export default function ServicesManager({ mode, listUrl, organizationId, canManage, title, intro, extrasOnly = false }: { mode: 'central' | 'franchise'; listUrl: string; organizationId: string; canManage: boolean; title: string; intro: string; extrasOnly?: boolean }) {
   const [items, setItems] = useState<Service[] | null>(null);
@@ -33,8 +37,12 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
   const [name, setName] = useState('');
   const [kind, setKind] = useState('main');
   const [parentId, setParentId] = useState('');
+  const [parentIds, setParentIds] = useState<string[]>([]);
+  const [slotsFor, setSlotsFor] = useState<Service | null>(null);
   const [price, setPrice] = useState('');
   const [duration, setDuration] = useState('');
+  const [unit, setUnit] = useState<Unit>('minutes');
+  const durationMinutes = duration.trim() === '' ? null : Math.round(Number(duration) * UNITS[unit]);
   const [target, setTarget] = useState<Target | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -86,6 +94,9 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
   const orphans = visible.filter((s) => s.kind === 'addon' && !mains.some((m) => m.id === s.parentId));
   const nameOf = (id: string | null) => all.find((s) => s.id === id)?.name ?? 'a main service';
 
+  // An add-on can belong to several main services: each one is its own row (same name, price) and edits are applied to all of them.
+  const siblingsOf = (s: Service) => all.filter((x) => x.kind === 'addon' && !x.archived && x.name.trim().toLowerCase() === s.name.trim().toLowerCase());
+
   function open(next: Service | 'new') {
     setEditing(next);
     setError('');
@@ -93,8 +104,11 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
     setName(next === 'new' ? '' : next.name);
     setKind(next === 'new' ? 'main' : next.kind);
     setParentId(next === 'new' ? '' : next.parentId ?? '');
+    setParentIds(next === 'new' || next.kind !== 'addon' ? [] : siblingsOf(next).map((x) => x.parentId).filter((x): x is string => !!x));
     setPrice(next === 'new' || next.priceCents == null ? '' : (next.priceCents / 100).toFixed(2));
-    setDuration(next === 'new' || next.durationMinutes == null ? '' : String(next.durationMinutes));
+    const u = next === 'new' || next.durationMinutes == null ? 'minutes' : bestUnit(next.durationMinutes);
+    setUnit(u);
+    setDuration(next === 'new' || next.durationMinutes == null ? '' : String(next.durationMinutes / UNITS[u]));
   }
 
   async function run(fn: () => Promise<string>) {
@@ -113,14 +127,27 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
   const save = (e: React.FormEvent) => {
     e.preventDefault();
     const was = editing;
+    const fields = { name: name.trim(), kind, ...(mode === 'central' ? { priceCents: price.trim() === '' ? null : Math.round(Number(price) * 100) } : {}), durationMinutes };
     void run(async () => {
-      await readJson(await fetch(was === 'new' || !was ? listUrl : `${listUrl}/${was.id}`, send(was === 'new' || !was ? 'POST' : 'PUT', { name: name.trim(), kind, parentId: kind === 'addon' ? parentId : null, ...(mode === 'central' ? { priceCents: price.trim() === '' ? null : Math.round(Number(price) * 100) } : {}), durationMinutes: duration.trim() === '' ? null : Math.round(Number(duration)), ...(was && was !== 'new' ? { version: was.version } : {}) })));
+      if (kind === 'addon') {
+        const sibs = was && was !== 'new' ? siblingsOf(was) : [];
+        for (const sb of sibs) await readJson(await fetch(`${listUrl}/${sb.id}`, send('PUT', { ...fields, parentId: sb.parentId, version: sb.version })));
+        const have = new Set(sibs.map((x) => x.parentId));
+        for (const pid of parentIds) if (!have.has(pid)) await readJson(await fetch(listUrl, send('POST', { ...fields, parentId: pid })));
+      } else {
+        await readJson(await fetch(was === 'new' || !was ? listUrl : `${listUrl}/${was.id}`, send(was === 'new' || !was ? 'POST' : 'PUT', { ...fields, parentId: null, ...(was && was !== 'new' ? { version: was.version } : {}) })));
+      }
       setEditing(null);
       return `Service “${name.trim()}” saved.`;
     });
   };
   const archive = (s: Service) => run(async () => { await readJson(await fetch(`${listUrl}/${s.id}/archive`, send('POST', { version: s.version }))); return `“${s.name}” archived.`; });
   const del = (s: Service) => run(async () => { const b = await readJson(await fetch(`${listUrl}/${s.id}?version=${s.version}`, send('DELETE'))); return b.message ?? `“${s.name}” removed.`; });
+  const duplicate = (s: Service) => run(async () => {
+    const copy = `${s.name} (copy)`.slice(0, 120);
+    await readJson(await fetch(listUrl, send('POST', { name: copy, kind: s.kind, parentId: s.kind === 'addon' ? s.parentId : null, ...(mode === 'central' ? { priceCents: s.priceCents ?? null } : {}), durationMinutes: s.durationMinutes ?? null })));
+    return `“${copy}” created. Rename it and adjust the price.`;
+  });
   const enable = (c: Service) => run(async () => { await readJson(await fetch(`${listUrl}/from-central`, send('POST', { centralServiceId: c.id, version: c.version }))); return `Central service “${c.name}” is now available here.`; });
 
   const linked = new Set(all.map((s) => s.centralServiceId).filter(Boolean));
@@ -133,19 +160,15 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6 3.5L10.5 8 6 12.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </button>
       )}
-      <div className={styles.svcMain}>
-        <strong>{s.name}</strong>
-        <span className={styles.personSub}>
-          {s.kind === 'addon' ? `Add-on to ${nameOf(s.parentId)}` : addonCount > 0 ? `Main service · ${addonCount} add-on${addonCount === 1 ? '' : 's'}` : 'Main service'} · {s.priceCents != null ? `${money(s.priceCents)} before tax` : 'no price set'} · {s.durationMinutes != null ? `takes ${minutesText(s.durationMinutes)}` : 'no time set'} · revision {s.version}
-        </span>
-      </div>
-      <div className={styles.svcTags}>
-        {s.centralServiceId && <span className={styles.chip}>From central catalogue</span>}
-        {s.archived && <span className={styles.badge}>Archived</span>}
-      </div>
+      <strong className={styles.svcName} title={s.name}>{s.name}</strong>
+      <span className={styles.svcCell}>{s.archived ? 'Archived' : s.kind === 'addon' ? 'Add-on' : 'Main'}</span>
+      <span className={styles.svcCell}>{s.priceCents != null ? money(s.priceCents) : 'No price'}</span>
+      <span className={styles.svcCell}>{s.durationMinutes != null ? minutesText(s.durationMinutes) : 'No time'}</span>
       {canManage && !s.archived && (
         <div className={styles.svcActions}>
           {(mode === 'central' || !s.centralServiceId) && <button type="button" className="secondary" disabled={busy || !!editing} onClick={() => open(s)}>Edit</button>}
+          {mode === 'franchise' && s.kind === 'main' && <button type="button" className="secondary" disabled={busy || !!editing} onClick={() => setSlotsFor(s)}>Slots</button>}
+          {(mode === 'central' || !s.centralServiceId) && <button type="button" className="secondary" disabled={busy || !!editing} onClick={() => void duplicate(s)}>Duplicate</button>}
           <button type="button" className="secondary" disabled={busy} onClick={() => setTarget({ action: 'archive', item: s })}>Archive</button>
           <button type="button" className="secondary" disabled={busy} onClick={() => setTarget({ action: 'delete', item: s })}>Delete</button>
         </div>
@@ -189,27 +212,39 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
               </label>
             )}
             {kind === 'main' && (
-              <label className="form-field">Time to complete (minutes)
-                <NumberField inputMode="numeric" min="1" max="10080" step="5" placeholder="Not set" value={duration} onChange={(e) => setDuration(e.target.value)} disabled={busy} />
-                <small className={styles.personSub}>{duration && Number(duration) > 0 ? `About ${minutesText(Number(duration))}. ` : ''}This is how long each booking holds the calendar.</small>
+              <label className="form-field">Time to complete
+                <span className={styles.durationRow}>
+                  <NumberField inputMode="decimal" min="0.5" step={unit === 'minutes' ? '5' : '0.5'} placeholder="Not set" value={duration} onChange={(e) => setDuration(e.target.value)} disabled={busy} />
+                  <Select value={unit} onChange={(e) => setUnit(e.target.value as Unit)} disabled={busy} aria-label="Time unit">
+                    <option value="minutes">Minutes</option><option value="hours">Hours</option><option value="days">Days</option>
+                  </Select>
+                </span>
               </label>
             )}
             {kind === 'addon' && (
-              <label className="form-field">Belongs to
-                <Select required value={parentId} onChange={(e) => setParentId(e.target.value)} disabled={busy}>
-                  <option value="">Choose a main service</option>
-                  {all.filter((s) => !s.archived && s.kind === 'main' && (editing === 'new' || s.id !== editing.id)).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </Select>
-              </label>
+              <fieldset className={styles.parentPick}>
+                <legend>Offered with these main services</legend>
+                {all.filter((x) => !x.archived && x.kind === 'main').map((m) => {
+                  const locked = editing !== 'new' && editing !== null && siblingsOf(editing).some((x) => x.parentId === m.id);
+                  return (
+                    <label key={m.id} className={styles.parentOpt}>
+                      <input type="checkbox" checked={parentIds.includes(m.id)} disabled={busy || locked} title={locked ? 'Already offered. Archive its row to remove it.' : undefined} onChange={(e) => setParentIds(e.target.checked ? [...parentIds, m.id] : parentIds.filter((x) => x !== m.id))} />
+                      <span>{m.name}</span>
+                    </label>
+                  );
+                })}
+              </fieldset>
             )}
           </div>
           <div className={styles.rowBetween}>
-            <button className="primary" disabled={busy || name.trim().length < 2 || (kind === 'addon' && !parentId) || (price.trim() !== '' && !(Number(price) >= 0)) || (duration.trim() !== '' && !(Number(duration) >= 1 && Number(duration) <= 10080))}>{busy ? 'Saving…' : editing === 'new' ? 'Add service' : 'Save revision'}</button>
+            <button className="primary" disabled={busy || name.trim().length < 2 || (kind === 'addon' && parentIds.length === 0) || (price.trim() !== '' && !(Number(price) >= 0)) || (durationMinutes !== null && !(durationMinutes >= 1 && durationMinutes <= 10080))}>{busy ? 'Saving…' : editing === 'new' ? 'Add service' : 'Save revision'}</button>
             <button type="button" className="secondary" disabled={busy} onClick={() => setEditing(null)}>Cancel</button>
           </div>
           <p className={styles.footnote}>{mode === 'central' ? 'The price is entered before tax; each franchise adds its own taxes. ' : 'Prices come from the central catalogue. '}Each save keeps a revision; past work orders and invoices keep the name they were created with.</p>
         </form>
       )}
+
+      {slotsFor && <ServiceSlots base={listUrl.slice(0, -'/services'.length)} service={slotsFor} onClose={() => setSlotsFor(null)} />}
 
       {mode === 'franchise' && canManage && available.length > 0 && (
         <section className={styles.resource}>

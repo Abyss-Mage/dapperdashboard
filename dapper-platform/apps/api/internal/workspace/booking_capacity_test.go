@@ -75,7 +75,7 @@ func verifyBookingCapacityHTTP(t *testing.T, ctx context.Context, store *postgre
 	}
 	var booking, replayed postgres.Booking
 	created := send("POST", base+"/reserve", string(encoded), token, origin)
-	if created.Code != 201 || json.Unmarshal(created.Body.Bytes(), &booking) != nil || booking.Status != "pending" || booking.ReservationID == nil || booking.Notes != "" || booking.CustomerEmail != "" {
+	if created.Code != 201 || json.Unmarshal(created.Body.Bytes(), &booking) != nil || booking.Status != "confirmed" || booking.ReservationID == nil || booking.Notes != "" || booking.CustomerEmail != "" {
 		t.Fatal("HTTP atomic booking failed or leaked private fields", created.Code)
 	}
 	replay := send("POST", base+"/reserve", string(encoded), token, origin)

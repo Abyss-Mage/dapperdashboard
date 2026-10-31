@@ -233,6 +233,54 @@ func nextEmployeeWeek(now time.Time, zone string) (string, error) {
 	return time.Date(n.Year(), n.Month(), n.Day()+days, 0, 0, 0, 0, z).Format("2006-01-02"), nil
 }
 
+// validEmployeeWeek: the employee picks the week themselves. It must be a Monday, from the current week up to twelve weeks ahead.
+func validEmployeeWeek(now time.Time, zone, week string) error {
+	z, err := time.LoadLocation(zone)
+	if err != nil {
+		return ErrEmployeeInput
+	}
+	day, err := time.ParseInLocation("2006-01-02", week, z)
+	if err != nil || day.Weekday() != time.Monday {
+		return ErrEmployeeInput
+	}
+	n := now.In(z)
+	sinceMonday := (int(n.Weekday()) + 6) % 7
+	thisMonday := time.Date(n.Year(), n.Month(), n.Day()-sinceMonday, 0, 0, 0, 0, z)
+	if day.Before(thisMonday) || day.After(thisMonday.AddDate(0, 0, 7*12)) {
+		return ErrEmployeeInput
+	}
+	return nil
+}
+
+// EmployeeAvailabilityFor reads what this employee already submitted for the chosen week (empty and version 0 if nothing yet).
+func (s *Store) EmployeeAvailabilityFor(ctx context.Context, actor, week string) (EmployeeAvailability, error) {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return EmployeeAvailability{}, err
+	}
+	defer tx.Rollback(ctx)
+	a, err := employeeWorksite(ctx, tx, actor)
+	if err != nil {
+		return EmployeeAvailability{}, err
+	}
+	if err = validEmployeeWeek(time.Now(), a.Timezone, week); err != nil {
+		return EmployeeAvailability{}, err
+	}
+	av := EmployeeAvailability{WeekStart: week, Timezone: a.Timezone, Intervals: []AvailabilityInterval{}}
+	var data []byte
+	var stamp time.Time
+	err = tx.QueryRow(ctx, `SELECT intervals,notes,version,submitted_at FROM employee_availability_submissions WHERE organization_id=$1 AND location_id=$2 AND principal_id=$3 AND week_start=$4::date`, a.OrganizationID, a.LocationID, actor, week).Scan(&data, &av.Notes, &av.Version, &stamp)
+	if err == nil {
+		if err = json.Unmarshal(data, &av.Intervals); err != nil {
+			return av, err
+		}
+		av.SubmittedAt = &stamp
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return av, err
+	}
+	return av, nil
+}
+
 // EmployeeDesk is personal and server-scoped: no client organization/location selector.
 func (s *Store) EmployeeWorkspace(ctx context.Context, actor string) (EmployeeDesk, error) {
 	r := EmployeeDesk{Actions: []string{}, Bookings: []Booking{}, Attendance: []AttendanceRecord{}, GeneratedAt: time.Now().UTC()}
@@ -456,12 +504,9 @@ func (s *Store) SubmitEmployeeAvailability(ctx context.Context, actor string, in
 	if err != nil {
 		return input, err
 	}
-	week, err := nextEmployeeWeek(time.Now(), a.Timezone)
-	if err != nil {
+	week := input.WeekStart
+	if err = validEmployeeWeek(time.Now(), a.Timezone, week); err != nil {
 		return input, err
-	}
-	if input.WeekStart != week {
-		return input, ErrEmployeeInput
 	}
 	if _, err = tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, actor+"/availability/"+week); err != nil {
 		return input, err

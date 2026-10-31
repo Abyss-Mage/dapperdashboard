@@ -41,6 +41,47 @@ func registerCustomerPortalRoutes(mux *http.ServeMux, store *postgres.Store, sqC
 		}
 		reply(w, 200, map[string]any{"items": items, "limit": 100})
 	})
+	mux.HandleFunc("PUT /api/v1/portal/accounts/{customer}/details", func(w http.ResponseWriter, r *http.Request) {
+		customer := r.PathValue("customer")
+		if !uuid(customer) {
+			reply(w, 400, map[string]string{"error": "Valid customer selector required"})
+			return
+		}
+		var input struct {
+			Name    string `json:"name"`
+			Phone   string `json:"phone"`
+			Address string `json:"address"`
+		}
+		if !decode(w, r, &input) {
+			return
+		}
+		if err := store.UpdatePortalDetails(r.Context(), requestSession(r).principalID, customer, input.Name, input.Phone, input.Address); err != nil {
+			if errors.Is(err, postgres.ErrCustomerInput) {
+				reply(w, 422, map[string]string{"error": "Enter your name (2 to 100 characters), a phone number and an address under 300 characters"})
+				return
+			}
+			if errors.Is(err, postgres.ErrCustomerDuplicate) {
+				reply(w, 409, map[string]string{"error": "Another customer already uses that phone number"})
+				return
+			}
+			failure(w, err)
+			return
+		}
+		reply(w, 200, map[string]bool{"saved": true})
+	})
+	mux.HandleFunc("GET /api/v1/portal/accounts/{customer}/invoices/{invoice}", func(w http.ResponseWriter, r *http.Request) {
+		customer, invoice := r.PathValue("customer"), r.PathValue("invoice")
+		if !uuid(customer) || !uuid(invoice) {
+			reply(w, 400, map[string]string{"error": "Valid selectors required"})
+			return
+		}
+		inv, err := store.PortalInvoice(r.Context(), requestSession(r).principalID, customer, invoice)
+		if err != nil {
+			invoiceFailure(w, err)
+			return
+		}
+		reply(w, 200, inv)
+	})
 	mux.HandleFunc("GET /api/v1/portal/accounts/{customer}/records", func(w http.ResponseWriter, r *http.Request) {
 		customer := r.PathValue("customer")
 		if !uuid(customer) {

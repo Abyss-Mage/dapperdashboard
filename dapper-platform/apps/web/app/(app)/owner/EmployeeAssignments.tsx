@@ -23,20 +23,18 @@ export default function EmployeeAssignments({ organizationId }: { organizationId
   const label = (f: Franchise) => (f.code ? `${f.code} · ${f.locationName}` : f.locationName);
   async function save(e: React.FormEvent) {
     e.preventDefault(); if (!site || !principal) return; setBusy(true); setError(''); setNotice('');
-    try { await read(await fetch(`${base}/employee-worksites/${principal}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ locationId: site, dealershipId: dealer, timezone: zone, version: existing?.version ?? 0 }) })); await load(); setNotice('Franchise assignment saved. No operational permissions were added.'); }
+    try { await read(await fetch(`${base}/employee-worksites/${principal}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ locationId: site, dealershipId: '', timezone: zone || 'America/Toronto', version: existing?.version ?? 0 }) })); await load(); setNotice('Franchise assignment saved. No operational permissions were added.'); }
     catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   }
-  return <section className="panel detail-card"><h2>Employee franchise &amp; dealership</h2><p>Employees work at the franchise you assign. A partner dealership is optional and is only a focus: it never replaces the franchise. Assigning a franchise does not grant customer, finance or attendance permissions.</p>
+  return <section className="panel detail-card"><h2>Employee franchise</h2><p>Employees work at the franchise you assign. Assigning a franchise does not grant customer, finance or attendance permissions.</p>
     {error && <p role="alert" className="field-error">{error}</p>}{notice && <p role="status">{notice}</p>}
     {!data && !error && <p role="status">Loading employee assignments…</p>}
     {data && <><form className="management-form" onSubmit={save}>
       <label className="form-field">Employee<Select required disabled={busy} value={principal} onChange={e => { const id = e.target.value; setPrincipal(id); const a = data.assignments.find(a => a.principalId === id); setSite(a?.locationId ?? ''); setDealer(a?.dealershipId ?? ''); setZone(a?.timezone ?? ''); }}><option value="">Choose employee</option>{members.filter(m => m.active).map(m => <option value={m.principalId} key={m.principalId}>{m.email || 'Enrolled member'}</option>)}</Select></label>
       <label className="form-field">Franchise<Select required disabled={busy} value={site} onChange={e => { setSite(e.target.value); setDealer(''); }}><option value="">Choose franchise</option>{data.locations.map(f => <option key={f.locationId} value={f.locationId}>{label(f)}</option>)}</Select></label>
-      <label className="form-field">Partner dealership (optional)<Select disabled={busy || !site} value={dealer} onChange={e => setDealer(e.target.value)}><option value="">No dealership</option>{siteDealerships.map(d => <option key={d.dealershipId} value={d.dealershipId}>{d.dealershipName}</option>)}</Select></label>
-      <label className="form-field">Timezone<input required disabled={busy} maxLength={100} value={zone} onChange={e => setZone(e.target.value)} placeholder="IANA timezone, e.g. America/Toronto" /></label>
       <button className="primary" disabled={busy || !principal || !site}>{busy ? 'Saving…' : existing ? 'Update assignment' : 'Assign employee'}</button>
     </form>{!data.locations.length && <p>Create a franchise first (Administration → Franchises).</p>}
-    <h3>Current assignments</h3>{data.assignments.length ? <ul>{data.assignments.map(a => <li key={a.principalId}>{members.find(m => m.principalId === a.principalId)?.email || 'Organization member'} — {a.locationName}{a.dealershipName ? ` · dealership focus: ${a.dealershipName}` : ''} · {a.timezone}</li>)}</ul> : <p>No employees assigned to a franchise.</p>}
+    <h3>Current assignments</h3>{data.assignments.length ? <ul>{data.assignments.map(a => <li key={a.principalId}>{members.find(m => m.principalId === a.principalId)?.email || 'Organization member'} — {a.locationName}</li>)}</ul> : <p>No employees assigned to a franchise.</p>}
     <p>Staff availability is approved or rejected on its own page: Staff availability.</p></>}
   </section>;
 }

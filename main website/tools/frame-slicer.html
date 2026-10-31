@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dapper frame slicer</title>
+<style>
+  /* A small working tool, not part of the website. Open it in Chrome or Edge (it writes files with the File System Access API). */
+  :root{color-scheme:dark;--bg:#0b0b0d;--panel:#16161a;--line:#2a2a31;--ink:#f1f0ec;--dim:#a3a19b;--tape:#d9c59c;--red:#e3172b}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,sans-serif}
+  main{max-width:980px;margin:0 auto;padding:32px 20px 64px}
+  h1{font-size:28px;margin:0 0 6px}
+  p.lead{color:var(--dim);margin:0 0 28px;max-width:70ch}
+  fieldset{border:1px solid var(--line);background:var(--panel);margin:0 0 16px;padding:18px 20px}
+  legend{padding:0 6px;font-weight:700}
+  label{display:grid;gap:4px;font-size:13px;color:var(--dim)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px}
+  input,textarea,select{font:inherit;color:var(--ink);background:#0f0f12;border:1px solid var(--line);padding:8px 10px;width:100%}
+  textarea{min-height:120px;font-family:ui-monospace,Consolas,monospace;font-size:13px}
+  input:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px solid var(--tape);outline-offset:2px}
+  button{font:inherit;font-weight:700;border:0;padding:12px 20px;cursor:pointer;background:var(--tape);color:#2a2318}
+  button.go{background:var(--red);color:#fff}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  progress{width:100%;height:10px;accent-color:var(--red)}
+  .note{color:var(--dim);font-size:13px;margin:8px 0 0}
+  .previews{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-top:14px}
+  .previews canvas{width:100%;height:auto;background:#000;display:block}
+  #status{white-space:pre-wrap;font-family:ui-monospace,Consolas,monospace;font-size:13px;color:var(--dim);margin-top:12px}
+  .error{color:#ff8a95}
+</style>
+</head>
+<body>
+<main>
+  <h1>Frame slicer</h1>
+  <p class="lead">Turns the finished hero video into the numbered WebP frames and <code>manifest.json</code> that the home page's scroll story plays. Pick the video, check the settings, then choose the <code>main website/assets/frames</code> folder. Run <code>python build-pages.py</code> afterwards to copy the frames into the web app.</p>
+
+  <fieldset>
+    <legend>1. Video</legend>
+    <input id="file" type="file" accept="video/*">
+    <p class="note" id="info">No video chosen.</p>
+  </fieldset>
+
+  <fieldset>
+    <legend>2. Frames</legend>
+    <div class="grid">
+      <label>Number of frames<input id="count" type="number" min="20" max="900" value="240"></label>
+      <label>Start at (seconds)<input id="start" type="number" min="0" step="0.1" value="0"></label>
+      <label>End at (seconds, empty = end)<input id="end" type="number" min="0" step="0.1"></label>
+      <label>WebP quality (0–1)<input id="quality" type="number" min="0.4" max="1" step="0.02" value="0.78"></label>
+    </div>
+    <div class="grid" style="margin-top:14px">
+      <label>Desktop width<input id="dw" type="number" value="1600"></label>
+      <label>Desktop height<input id="dh" type="number" value="900"></label>
+      <label>Phone width (0 = no phone set)<input id="mw" type="number" value="900"></label>
+      <label>Phone height<input id="mh" type="number" value="1125"></label>
+      <label>Phone crop centre (0–1, left to right)<input id="mx" type="number" min="0" max="1" step="0.05" value="0.5"></label>
+    </div>
+    <p class="note">Desktop frames fill the box from the middle of the video. Phone frames are a portrait cut; move the crop centre to keep the car in shot.</p>
+  </fieldset>
+
+  <fieldset>
+    <legend>3. Where each story step rests (optional)</legend>
+    <textarea id="keys" spellcheck="false" placeholder="clear = 0s&#10;glass = 10s&#10;tint50 = 15s&#10;tint35 = 20s&#10;ppf = 25s&#10;satin = 30s&#10;nardo = 35s&#10;candy = 40s&#10;shift = end"></textarea>
+    <p class="note">One step per line, as a time in the video (<code>12.5s</code>), a frame number (<code>120</code>) or <code>end</code>. Leave it empty to spread the nine steps evenly. Step names: clear, glass, tint50, tint35, ppf, satin, nardo, candy, shift (see frames-brief/VEO_PROMPTS.md).</p>
+  </fieldset>
+
+  <div class="row">
+    <button id="go" class="go" type="button" disabled>Choose frames folder and export</button>
+    <span class="note" id="support"></span>
+  </div>
+  <progress id="bar" value="0" max="1" style="margin-top:14px"></progress>
+  <div class="previews"><canvas id="pd" width="480" height="270"></canvas><canvas id="pm" width="180" height="225"></canvas></div>
+  <div id="status" role="status" aria-live="polite"></div>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const STEPS = ['clear', 'glass', 'tint50', 'tint35', 'ppf', 'satin', 'nardo', 'candy', 'shift'];
+let video = null;
+
+function loadVideo(url) {
+  return new Promise((resolve, reject) => {
+    const v = document.createElement('video');
+    v.muted = true; v.playsInline = true; v.preload = 'auto'; v.src = url;
+    v.onloadeddata = () => resolve(v);
+    v.onerror = () => reject(new Error('This browser cannot decode the video (' + (v.error && v.error.code) + '). Export it as H.264 MP4 and try again.'));
+  });
+}
+function seek(v, t) {
+  return new Promise((resolve) => {
+    // Wait for the seeked frame to be presented; some browsers never present a paused frame, so a short timer backs it up.
+    const done = () => {
+      let settled = false; const finish = () => { if (!settled) { settled = true; resolve(); } };
+      if (v.requestVideoFrameCallback) v.requestVideoFrameCallback(finish);
+      setTimeout(finish, 120);
+    };
+    if (Math.abs(v.currentTime - t) < 1e-4) { done(); return; }
+    v.addEventListener('seeked', done, { once: true });
+    v.currentTime = t;
+  });
+}
+// Draws the video into a w x h box, filling it; cx moves a narrower crop from left (0) to right (1).
+function drawCover(ctx, v, w, h, cx = 0.5) {
+  const s = Math.max(w / v.videoWidth, h / v.videoHeight), sw = v.videoWidth * s, sh = v.videoHeight * s;
+  ctx.drawImage(v, (w - sw) * cx, (h - sh) / 2, sw, sh);
+}
+const toBlob = (canvas, q) => new Promise((r) => canvas.toBlob(r, 'image/webp', q));
+
+// Reads the step lines into frame numbers. Times are converted with the chosen range and frame count.
+function parseKeys(text, { start, end, count }) {
+  const keys = {};
+  for (const raw of text.split(/\n/)) {
+    const line = raw.trim(); if (!line) continue;
+    const m = /^(\w+)\s*[=:]\s*(\S+)$/.exec(line);
+    if (!m || !STEPS.includes(m[1])) throw new Error('Cannot read "' + line + '". Use a step name, then = and a time, frame or "end".');
+    const v = m[2];
+    let f;
+    if (v === 'end') f = count - 1;
+    else if (/s$/.test(v)) f = Math.round(((parseFloat(v) - start) / (end - start)) * (count - 1));
+    else f = parseInt(v, 10);
+    if (!Number.isFinite(f) || f < 0 || f > count - 1) throw new Error(m[1] + ' lands outside the frames (' + v + ').');
+    keys[m[1]] = f;
+  }
+  return keys;
+}
+
+/* The slicing itself. `write(path, blob)` saves one file; the page writes into a chosen folder, the test script saves to disk. */
+async function slice(v, opts, write, onProgress = () => {}) {
+  const { count, start, end, quality, dw, dh, mw, mh, mx } = opts;
+  const d = Object.assign(document.createElement('canvas'), { width: dw, height: dh });
+  const m = mw > 0 ? Object.assign(document.createElement('canvas'), { width: mw, height: mh }) : null;
+  const dc = d.getContext('2d'), mc = m && m.getContext('2d');
+  const last = Math.max(start, end - 0.04);
+  for (let i = 0; i < count; i++) {
+    const t = start + (last - start) * (i / (count - 1));
+    await seek(v, t);
+    const name = String(i).padStart(4, '0') + '.webp';
+    drawCover(dc, v, dw, dh);
+    await write('desktop/' + name, await toBlob(d, quality));
+    if (m) { drawCover(mc, v, mw, mh, mx); await write('mobile/' + name, await toBlob(m, quality)); }
+    onProgress(i + 1, d, m);
+  }
+  const manifest = { version: 1, pad: 4, desktop: { dir: 'desktop/', ext: 'webp', count } };
+  if (m) manifest.mobile = { dir: 'mobile/', ext: 'webp', count };
+  if (opts.keys && Object.keys(opts.keys).length) manifest.keys = opts.keys;
+  manifest.source = { seconds: [Number(start.toFixed(2)), Number(end.toFixed(2))], sliced: new Date().toISOString().slice(0, 10) };
+  await write('manifest.json', new Blob([JSON.stringify(manifest, null, 2) + '\n'], { type: 'application/json' }));
+  return manifest;
+}
+window.dapperSlice = { loadVideo, slice, parseKeys };
+
+function readOptions() {
+  const start = Number($('start').value) || 0;
+  const end = $('end').value ? Number($('end').value) : video.duration;
+  const count = Math.round(Number($('count').value));
+  if (!(end > start)) throw new Error('The end time must be after the start time.');
+  if (!(count >= 20)) throw new Error('Use at least 20 frames.');
+  const o = { count, start, end, quality: Number($('quality').value), dw: +$('dw').value, dh: +$('dh').value, mw: +$('mw').value, mh: +$('mh').value, mx: Number($('mx').value) };
+  o.keys = parseKeys($('keys').value, o);
+  return o;
+}
+
+$('support').textContent = 'showDirectoryPicker' in window ? '' : 'This browser cannot write folders. Use Chrome or Edge.';
+$('file').addEventListener('change', async () => {
+  const f = $('file').files[0]; if (!f) return;
+  $('go').disabled = true; $('status').textContent = '';
+  try {
+    video = await loadVideo(URL.createObjectURL(f));
+    $('info').textContent = f.name + ' · ' + video.videoWidth + ' × ' + video.videoHeight + ' · ' + video.duration.toFixed(1) + ' s';
+    if (video.videoWidth < +$('dw').value) $('info').textContent += ' · smaller than the desktop size, so frames will be scaled up';
+    $('go').disabled = !('showDirectoryPicker' in window);
+    await seek(video, 0); drawCover($('pd').getContext('2d'), video, 480, 270); drawCover($('pm').getContext('2d'), video, 180, 225, Number($('mx').value));
+  } catch (e) { $('info').innerHTML = '<span class="error">' + e.message + '</span>'; }
+});
+$('mx').addEventListener('input', () => { if (video) drawCover($('pm').getContext('2d'), video, 180, 225, Number($('mx').value)); });
+
+$('go').addEventListener('click', async () => {
+  let opts;
+  try { opts = readOptions(); } catch (e) { $('status').innerHTML = '<span class="error">' + e.message + '</span>'; return; }
+  let root;
+  try { root = await window.showDirectoryPicker({ id: 'dapper-frames', mode: 'readwrite' }); } catch { return; }
+  $('go').disabled = true; $('bar').max = opts.count; $('bar').value = 0;
+  const dirs = {};
+  const write = async (p, blob) => {
+    const parts = p.split('/'); let dir = root;
+    for (const part of parts.slice(0, -1)) dir = dirs[part] ||= await root.getDirectoryHandle(part, { create: true });
+    const h = await dir.getFileHandle(parts.at(-1), { create: true }); const w = await h.createWritable(); await w.write(blob); await w.close();
+  };
+  const t0 = performance.now();
+  try {
+    const manifest = await slice(video, opts, write, (n, d, m) => {
+      $('bar').value = n; $('status').textContent = 'Frame ' + n + ' of ' + opts.count;
+      if (n % 4 === 1) { $('pd').getContext('2d').drawImage(d, 0, 0, 480, 270); if (m) $('pm').getContext('2d').drawImage(m, 0, 0, 180, 225); }
+    });
+    $('status').textContent = 'Done in ' + ((performance.now() - t0) / 1000).toFixed(0) + ' s. Wrote ' + opts.count + ' frames' + (manifest.mobile ? ' (desktop and phone)' : '') + ' and manifest.json.\nNext: run "python build-pages.py" in the main website folder, then rebuild and restart the web app.';
+  } catch (e) { $('status').innerHTML = '<span class="error">Stopped: ' + e.message + '</span>'; }
+  $('go').disabled = false;
+});
+</script>
+</body>
+</html>

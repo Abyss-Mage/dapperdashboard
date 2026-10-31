@@ -2,7 +2,8 @@
 import { LogOut, MapPin, ShieldCheck } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import ThemeToggle from '../ThemeToggle';
-import { MfaManager, ProfileForm, type Profile } from './AccountSecurity';
+import { MfaManager, ProfileForm, SignInDetails, type Profile } from './AccountSecurity';
+import CalendarFeeds from './CalendarFeeds';
 import styles from './employee.module.css';
 
 type Site = { locationName: string; dealershipName: string; timezone: string };
@@ -40,6 +41,8 @@ export default function EmployeeAccount({ employee, site, actions, busy, onSignO
       {actions.length ? <ul className={styles.recentList}>{actions.map(a => <li key={a}><strong>{capabilityLabels[a] ?? a}</strong></li>)}</ul> : <p className={styles.emptyNote}>No access has been assigned yet.</p>}
     </aside>
     <section className={styles.uploadCard} aria-labelledby="details-title"><div className={styles.sectionTop}><h2 id="details-title">Your details</h2></div><ProfileForm initial={profile} onSaved={setProfile} /></section>
+    <section className={styles.recentCard} aria-labelledby="signin-title"><div className={styles.sectionTop}><h2 id="signin-title">Email and password</h2></div><SignInDetails email={profile?.email} /></section>
+    <div className={styles.recentCard}><CalendarFeeds endpoint="/api/v1/employee/calendar-feeds" title="Add your calendar to Apple Calendar" hint="Make a private link and add it once to Apple Calendar, Google Calendar or Outlook. It shows the same appointments as your calendar here and keeps updating by itself." /></div>
     <section className={styles.recentCard} aria-labelledby="security-title"><div className={styles.sectionTop}><h2 id="security-title">Two-factor authentication</h2></div><MfaManager /></section>
   </div>;
 }

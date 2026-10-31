@@ -2,39 +2,30 @@
 
 The home page can play a pre-made image sequence (AI-generated frames, stitched) instead of the real-time 3D scene. Drop the frames and a `manifest.json` into `assets/frames/` and the site switches over by itself; delete `manifest.json` and the 3D scene comes back. Nothing in the words, dots, buttons or scroll behaviour changes.
 
-Status: **player built and tested with placeholder frames (source/runtime). No real frames exist yet.** Do not describe AI-generated frames as footage of real work; the page already carries "Real-time 3D visualisation… illustrative" wording that must be reviewed and reworded when the frames go live.
+Status: **player built and tested; slicer tool added and tested with a reference clip (2026-10-28). No real frames exist yet.** Do not describe AI-generated frames as footage of real work; the story now swaps its small print to "AI-generated illustration of our process, not footage of a customer’s vehicle" whenever frames are playing.
 
 ## How it plays
 Scrolling moves a playhead through the sequence. Each of the ten story steps has a frame number (`keys`); the playhead rests exactly on that frame at the step and travels between the numbers while the visitor scrolls. The next frame is cross-faded in, so even 150 to 240 frames feel smooth. Frames load progressively (step frames first), and the nearest loaded frame shows while the rest arrive.
 
-## The ten steps (frame each one must show)
-| # | key | what the frame shows | text side |
-|---|-----|----------------------|-----------|
-| 1 | `road` | the dirty SUV on the coastal road | text left, car right |
-| 2 | `garage` | the car arriving in the Dapper garage | text right, car left |
-| 3 | `foam` | snow foam being applied | text left |
-| 4 | `rinse` | pressure rinse, half the car clean | text right |
-| 5 | `tintOut` | window prep, shade picker on screen | text left |
-| 6 | `tintIn` | film applied, glass at the default 50% shade | text right |
-| 7 | `coat` | ceramic coating being applied | text left |
-| 8 | `beads` | water beading on the coated paint | text right |
-| 9 | `film` | paint protection film on the panels | text left |
-| 10 | `done` | clean car, door open, "ready for the road" | text right |
-
-Leave roughly the left or right 40% calm (no bright detail) on the side where the words sit, as in the reference stills in `frames-brief/reference/` (exported from the current 3D scene so the composition and camera angles can be matched).
+## The nine steps (showroom style, 2026-10-28)
+The client's reference replaced the ten-step process story: one car under studio lights changes as the visitor scrolls. Step keys, page words and the clip for each are in `frames-brief/VEO_PROMPTS.md`:
+`clear`, `glass` (window tint, bright studio), `tint50`, `tint35`, `ppf` (exploded film panels, dark studio), `satin`, `nardo`, `candy`, `shift` (colour-change wraps). After the film, "Try it on" (wrap colours) and "Find your shade" (Clear / 50% / 35%) cards reuse the frames at those keys. Without a published sequence the studio photo stands in and the cards are hidden; the real-time 3D scene is no longer used on the home page.
 
 ## Files
 ```
 assets/frames/manifest.json
 assets/frames/desktop/0000.webp ... (landscape, 16:9)
 assets/frames/mobile/0000.webp  ... (optional, portrait 4:5, same frame count and same key numbers)
-assets/frames/tint/70.webp 50.webp 35.webp 20.webp 5.webp   (optional, see below)
 ```
-Targets: desktop 1600 x 900 WebP quality ~78 (about 60 to 110 KB each; 240 frames is roughly 20 MB); mobile 900 x 1125 (about 40 to 70 KB each). Zero-padded sequential numbers, no gaps. Keep the vehicle, garage, lighting and camera path consistent across all frames: generate the key frames first, then interpolate between neighbours (first/last-frame video generation or frame interpolation), then export with `ffmpeg`:
+Targets: desktop 1600 x 900 WebP quality ~78 (about 60 to 110 KB each; 240 frames is roughly 20 MB); mobile 900 x 1125 (about 40 to 70 KB each). Zero-padded sequential numbers, no gaps.
 
-```
-ffmpeg -i story.mp4 -vf "scale=1600:900" -c:v libwebp -quality 78 desktop/%04d.webp
-```
+## Slicing the finished video (no ffmpeg needed)
+Open `tools/frame-slicer.html` in Chrome or Edge, choose the finished video, set the number of frames (240 is a good default), optionally type where each story step rests (`foam = 8s`, a frame number, or `end`), then press **Choose frames folder and export** and pick `main website/assets/frames`. It writes `desktop/`, `mobile/` and `manifest.json`. Then run `python build-pages.py`, rebuild and restart the web app; the home story switches from 3D to the film by itself, and its small print changes to the AI-film wording.
+
+Tested 2026-10-28 (runtime, this machine): a 40 s 1280 x 720 H.264 reference clip sliced into 240 desktop + 240 phone frames in 84 s (19 MB + 11 MB), and the home story played them in step with the scroll. The test frames were deleted; that clip is reference only and must not ship (it shows a real branded car and a store sign).
+
+## Making the AI video
+Prompts, clip order, studio descriptions and slicer step positions: `frames-brief/VEO_PROMPTS.md` (Google Veo, the Dodge Charger Daytona from the user's reference clip, nine 5 s clips). The earlier ten-step process prompts were retired when the client chose the showroom style.
 
 ## manifest.json
 ```json
@@ -43,15 +34,12 @@ ffmpeg -i story.mp4 -vf "scale=1600:900" -c:v libwebp -quality 78 desktop/%04d.w
   "pad": 4,
   "desktop": { "dir": "desktop/", "ext": "webp", "count": 240 },
   "mobile":  { "dir": "mobile/",  "ext": "webp", "count": 240 },
-  "keys": { "road": 0, "garage": 28, "foam": 55, "rinse": 80, "tintOut": 104, "tintIn": 126,
-            "coat": 150, "beads": 178, "film": 205, "done": 239 },
-  "tint": { "key": "tintIn", "dir": "tint/", "ext": "webp" }
+  "keys": { "clear": 0, "glass": 53, "tint50": 80, "tint35": 106, "ppf": 133, "satin": 159, "nardo": 186, "candy": 212, "shift": 239 }
 }
 ```
 - `mobile` is optional (phones fall back to `desktop`). `keys` may be left out for any step; it is then spread evenly.
-- `tint` is optional: one full-frame still per shade (file names `70`, `50`, `35`, `20`, `5`), the same picture as the `tintIn` frame with that window shade. They cross-fade in when the visitor picks a shade. Without them the shade buttons simply do nothing visible, so supply them or remove the shade buttons.
 
 ## Things to decide before generating
-1. The vehicle: the Mercedes model's licence is unconfirmed; an AI-generated SUV should not copy a real customer's car or a trademarked design beyond what is already on the road scene.
+1. The vehicle: the user chose the Dodge Charger Daytona (2026-10-28). Keep its badges unreadable and show no plate; the footer already states that manufacturer affiliation is not implied.
 2. No fake customer, plate, logo or invented credentials in the frames; the Dapper sign and shop must match the real shop photos.
-3. Wording near the player ("Real-time 3D visualisation…") must be changed to match what the frames are.
+3. Wording near the player switches automatically to the AI-film note; check it still matches what the frames show.

@@ -72,7 +72,7 @@ func verifyEmployeeWalkIn(t *testing.T, ctx context.Context, s *Store, owner Sco
 		go func() { b, e := s.CreateEmployeeWalkIn(ctx, actor, input); ch <- result{b, e} }()
 	}
 	a, b := <-ch, <-ch
-	if a.e != nil || b.e != nil || a.b.ID == "" || a.b.ID != b.b.ID || a.b.ReservationID == nil || a.b.Status != "pending" {
+	if a.e != nil || b.e != nil || a.b.ID == "" || a.b.ID != b.b.ID || a.b.ReservationID == nil || a.b.Status != "confirmed" {
 		t.Fatal("atomic retry", a, b)
 	}
 	changed := input

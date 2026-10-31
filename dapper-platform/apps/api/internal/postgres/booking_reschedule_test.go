@@ -75,7 +75,7 @@ func verifyBookingReschedule(t *testing.T, ctx context.Context, s *Store, a, b S
 	}
 	for i := 0; i < 2; i++ {
 		r := <-results
-		if r.err != nil || r.booking.ID != one.ID || r.booking.ReservationVersion == nil || *r.booking.ReservationVersion != 2 || !r.booking.BookingTime.Equal(input.Start) || r.booking.Status != "pending" || r.booking.Notes != "" || r.booking.CustomerEmail != "" {
+		if r.err != nil || r.booking.ID != one.ID || r.booking.ReservationVersion == nil || *r.booking.ReservationVersion != 2 || !r.booking.BookingTime.Equal(input.Start) || r.booking.Status != "confirmed" || r.booking.Notes != "" || r.booking.CustomerEmail != "" {
 			t.Fatal("duplicate move failed/leaked", r.err)
 		}
 	}

@@ -46,6 +46,17 @@ func verifyCustomerManagement(t *testing.T, ctx context.Context, s *Store, a, b 
 	if err != nil || up.Name != "Synthetic Renamed" || up.Phone != "+14165550199" {
 		t.Fatal("customer edit failed", err)
 	}
+	if err = s.SetCustomerAddress(ctx, a, free.ID, "  12 Synthetic Road, Peterborough  "); err != nil {
+		t.Fatal("customer address not saved", err)
+	}
+	if dir, err = s.CustomerDirectory(ctx, a); err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range dir {
+		if c.ID == free.ID && c.Address != "12 Synthetic Road, Peterborough" {
+			t.Fatalf("directory address wrong: %q", c.Address)
+		}
+	}
 	if _, err = s.UpdateCustomer(ctx, a, free.ID, "X", "", ""); !errors.Is(err, ErrCustomerInput) {
 		t.Fatal("one-letter name accepted", err)
 	}

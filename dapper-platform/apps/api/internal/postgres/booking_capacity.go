@@ -124,7 +124,7 @@ func (s *Store) ReserveBooking(ctx context.Context, scope Scope, input ReserveBo
 		}
 		addons = append([]string{}, input.AddonIDs...)
 	}
-	booking, err := s.createBookingInTransaction(ctx, tx, scope, Booking{CustomerID: input.CustomerID, VehicleID: input.VehicleID, ServiceID: &rule.ServiceID, AddonIDs: addons, ReservationID: &reservation.ID, Channel: input.Channel, Status: "pending", BookingTime: reservation.Request.Start, Notes: input.Notes})
+	booking, err := s.createBookingInTransaction(ctx, tx, scope, Booking{CustomerID: input.CustomerID, VehicleID: input.VehicleID, ServiceID: &rule.ServiceID, AddonIDs: addons, ReservationID: &reservation.ID, Channel: input.Channel, Status: "confirmed", BookingTime: reservation.Request.Start, Notes: input.Notes})
 	if err != nil {
 		return Booking{}, bookingWriteError(err)
 	}

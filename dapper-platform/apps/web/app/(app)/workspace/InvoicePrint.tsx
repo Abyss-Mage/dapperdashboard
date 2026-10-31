@@ -24,7 +24,7 @@ export type PrintInvoice = {
 };
 
 export const DEFAULT_PRINT_TEMPLATE: PrintTemplate = {
-  title: 'Invoice', accentColor: '#111111', showLogo: true, headerNote: '', billToLabel: 'Bill to', itemLabel: 'Item', quantityLabel: 'Qty',
+  title: 'Invoice', accentColor: '#d22b2b', showLogo: true, headerNote: '', billToLabel: 'Bill to', itemLabel: 'Item', quantityLabel: 'Qty',
   unitPriceLabel: 'Unit price', amountLabel: 'Amount', showTaxRegistration: true, showCustomerContact: true, paymentInstructions: '', footerNote: '', paperSize: 'letter',
   customHtml: '', customCss: '',
 };
@@ -33,31 +33,45 @@ const money = (cents: number, currency = 'CAD') => `${(cents / 100).toLocaleStri
 const day = (iso?: string | null) => (iso ? new Date(iso).toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' }) : '');
 
 const css = (t: PrintTemplate) => `
-.ddInv{font:14px/1.45 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:#111;background:#fff;padding:0;max-width:760px;margin:0 auto}
+.ddInv{font:14px/1.5 'Manrope',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:#17171a;background:#fff;padding:0;max-width:780px;margin:0 auto;border-top:8px solid ${t.accentColor}}
 .ddInv *{box-sizing:border-box;background:transparent;border-radius:0;box-shadow:none;backdrop-filter:none}
-.ddInv,.ddInv *{color:#111!important;opacity:1!important;text-shadow:none!important}
-.ddInv .ddStatus{border-radius:999px}
-.ddInv .ddHead{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;padding-bottom:16px;border-bottom:3px solid ${t.accentColor}}
+.ddInv,.ddInv *{color:#17171a!important;opacity:1!important;text-shadow:none!important}
+.ddInv .ddHead{display:flex;justify-content:space-between;align-items:flex-start;gap:28px;padding:22px 0 18px}
 .ddInv .ddBrand{display:flex;gap:14px;align-items:flex-start}
-.ddInv .ddBrand img{width:64px;height:64px;object-fit:contain}
-.ddInv h1{margin:0 0 2px;font-size:28px;letter-spacing:-.01em;color:${t.accentColor}!important}
-.ddInv .ddNum{font-size:16px;font-weight:600}
-.ddInv .ddMeta{text-align:right;font-size:13px}
-.ddInv .ddStatus{display:inline-block;margin-top:6px;padding:2px 10px;border:1px solid ${t.accentColor};border-radius:999px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:${t.accentColor}!important}
-.ddInv .ddParties{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin:20px 0}
-.ddInv h2{margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#555!important}
+.ddInv .ddBrand img{width:72px;height:72px;object-fit:contain}
+.ddInv .ddIssuer p{font-size:13px;color:#4a4a52!important;margin:0}
+.ddInv .ddIssuer .ddName{font-size:17px;font-weight:800;color:#17171a!important}
+.ddInv h1{margin:0;font-size:34px;line-height:1;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:${t.accentColor}!important}
+.ddInv .ddMeta{text-align:right}
+.ddInv .ddMeta dl{display:grid;grid-template-columns:auto auto;gap:3px 14px;margin:10px 0 0;justify-content:end;font-size:13px}
+.ddInv .ddMeta dt{color:#6b6b74!important;text-align:right}
+.ddInv .ddMeta dd{margin:0;font-weight:700;text-align:right}
+.ddInv .ddStatus{display:inline-block;margin-top:10px;padding:3px 12px;border:1.5px solid #17171a;border-radius:999px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em}
+.ddInv .ddStatus.paid{border-color:#17171a;background:#17171a;color:#fff!important}
+.ddInv .ddParties{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin:6px 0 18px;padding:14px 0;border-top:1px solid #e4e4e8;border-bottom:1px solid #e4e4e8}
+.ddInv h2{margin:0 0 5px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#6b6b74!important}
 .ddInv p{margin:0 0 2px;white-space:pre-line}
-.ddInv .ddNote{margin:0 0 16px;color:#333}
-.ddInv table{width:100%;border-collapse:collapse;margin-top:8px}
-.ddInv th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#555!important;border-bottom:1px solid #999;padding:6px 0}
-.ddInv td{padding:8px 0;border-bottom:1px solid #ddd;vertical-align:top}
+.ddInv .ddNote{margin:0 0 14px;color:#33333a!important}
+.ddInv .ddBanner{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:0 0 18px;padding:14px 18px;border:2px solid ${t.accentColor}}
+.ddInv .ddBanner b{font-size:12px;letter-spacing:.1em;text-transform:uppercase}
+.ddInv .ddBanner strong{font-size:24px;font-weight:800;font-variant-numeric:tabular-nums}
+.ddInv .ddBanner.paid{border-color:#17171a;background:#f1f1f3}
+.ddInv .ddBanner small{display:block;font-size:12px;color:#4a4a52!important}
+.ddInv table{width:100%;border-collapse:collapse;margin-top:4px}
+.ddInv th{text-align:left;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;background:#17171a;color:#fff!important;padding:9px 10px}
+.ddInv th.r{text-align:right}
+.ddInv td{padding:11px 10px;border-bottom:1px solid #e4e4e8;vertical-align:top}
+.ddInv tbody tr:nth-child(even) td{background:#f7f7f8}
 .ddInv .r{text-align:right;font-variant-numeric:tabular-nums}
-.ddInv .ddTotals{margin:14px 0 0 auto;width:min(320px,100%)}
-.ddInv .ddTotals div{display:flex;justify-content:space-between;padding:3px 0;font-variant-numeric:tabular-nums}
-.ddInv .ddDue{border-top:2px solid ${t.accentColor};margin-top:6px;padding-top:8px!important;font-size:17px;font-weight:700}
-.ddInv .ddPay,.ddInv .ddFoot{margin-top:22px;padding-top:12px;border-top:1px solid #ddd}
-.ddInv .ddFoot,.ddInv .ddFoot *{color:#444!important}
+.ddInv .ddTotals{margin:16px 0 0 auto;width:min(340px,100%)}
+.ddInv .ddTotals div{display:flex;justify-content:space-between;padding:4px 10px;font-variant-numeric:tabular-nums}
+.ddInv .ddTotals .ddTot{border-top:1px solid #17171a;margin-top:4px;padding-top:8px;font-weight:800}
+.ddInv .ddDue{background:#17171a;margin-top:8px;padding:10px!important;font-size:17px;font-weight:800}
+.ddInv .ddDue,.ddInv .ddDue *{color:#fff!important}
+.ddInv .ddPay,.ddInv .ddFoot{margin-top:22px;padding-top:12px;border-top:1px solid #e4e4e8}
+.ddInv .ddFoot,.ddInv .ddFoot *{color:#4a4a52!important}
 .ddInv .ddFoot{font-size:12.5px}
+@media print{.ddInv .ddStatus.paid,.ddInv th,.ddInv .ddDue,.ddInv tbody tr:nth-child(even) td,.ddInv .ddBanner.paid{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 `;
 
 /* The placeholders a custom layout can use. Every value is escaped, so invoice text can never become markup. */
@@ -133,30 +147,31 @@ export function InvoiceDocument({ invoice, template }: { invoice: PrintInvoice; 
   const t = template;
   if (t.customHtml?.trim()) return <iframe title="Invoice preview" sandbox={FRAME_SANDBOX} srcDoc={customInvoicePage(invoice, t)} style={{ width: '100%', minHeight: 900, border: 0, background: '#fff' }} />;
   const customer = invoice.customerSnapshot ?? (invoice.customerName ? { name: invoice.customerName, email: '', phone: '' } : null);
+  const paidInFull = invoice.totalCents > 0 && invoice.dueCents <= 0;
   return (
     <div className="ddInv">
       <style>{css(t)}</style>
       <div className="ddHead">
         <div className="ddBrand">
           {t.showLogo && <img src="/site/assets/logo.webp" alt="" />}
-          <div>
-            <h1>{t.title}</h1>
-            <div className="ddNum">{invoice.invoiceNumber}</div>
+          <div className="ddIssuer">
+            {invoice.issuerSnapshot && <>
+              <p className="ddName">{invoice.issuerSnapshot.legalName}</p>
+              <p>{invoice.issuerSnapshot.address}</p>
+              {t.showTaxRegistration && invoice.issuerSnapshot.taxRegistration && <p>Tax registration: {invoice.issuerSnapshot.taxRegistration}</p>}
+            </>}
           </div>
         </div>
         <div className="ddMeta">
-          {(invoice.issuedAt || invoice.createdAt) && <div>{invoice.issuedAt ? 'Issued' : 'Created'} {day(invoice.issuedAt ?? invoice.createdAt)}</div>}
-          <span className="ddStatus">{invoice.status.replaceAll('_', ' ')}</span>
+          <h1>{t.title}</h1>
+          <dl>
+            <dt>Number</dt><dd>{invoice.invoiceNumber}</dd>
+            {(invoice.issuedAt || invoice.createdAt) && <><dt>{invoice.issuedAt ? 'Issued' : 'Created'}</dt><dd>{day(invoice.issuedAt ?? invoice.createdAt)}</dd></>}
+          </dl>
+          <span className={'ddStatus' + (paidInFull ? ' paid' : '')}>{paidInFull ? 'Paid' : invoice.status.replaceAll('_', ' ')}</span>
         </div>
       </div>
       <div className="ddParties">
-        <div>
-          {invoice.issuerSnapshot && <>
-            <p><strong>{invoice.issuerSnapshot.legalName}</strong></p>
-            <p>{invoice.issuerSnapshot.address}</p>
-            {t.showTaxRegistration && invoice.issuerSnapshot.taxRegistration && <p>Tax registration: {invoice.issuerSnapshot.taxRegistration}</p>}
-          </>}
-        </div>
         <div>
           {customer && <>
             <h2>{t.billToLabel}</h2>
@@ -165,6 +180,14 @@ export function InvoiceDocument({ invoice, template }: { invoice: PrintInvoice; 
             {t.showCustomerContact && customer.phone && <p>{customer.phone}</p>}
           </>}
         </div>
+        <div className="r">
+          <h2>Currency</h2>
+          <p>{invoice.currency}</p>
+        </div>
+      </div>
+      <div className={'ddBanner' + (paidInFull ? ' paid' : '')}>
+        <div><b>{paidInFull ? 'Paid in full' : 'Dues pending'}</b>{paidInFull && <small>Thank you. Nothing further is owed.</small>}</div>
+        <strong>{paidInFull ? money(invoice.paidCents, invoice.currency) : money(invoice.dueCents, invoice.currency)}</strong>
       </div>
       {t.headerNote && <p className="ddNote">{t.headerNote}</p>}
       <table>
@@ -183,9 +206,9 @@ export function InvoiceDocument({ invoice, template }: { invoice: PrintInvoice; 
       <div className="ddTotals">
         <div><span>Subtotal</span><span>{money(invoice.subtotalCents, invoice.currency)}</span></div>
         <div><span>Tax</span><span>{money(invoice.taxCents, invoice.currency)}</span></div>
-        <div><span>Total ({invoice.currency})</span><span>{money(invoice.totalCents, invoice.currency)}</span></div>
-        {invoice.paidCents > 0 && <div><span>Paid</span><span>{money(invoice.paidCents, invoice.currency)}</span></div>}
-        <div className="ddDue"><span>Balance due</span><span>{money(invoice.dueCents, invoice.currency)}</span></div>
+        <div className="ddTot"><span>Total</span><span>{money(invoice.totalCents, invoice.currency)}</span></div>
+        <div><span>Paid</span><span>{money(invoice.paidCents, invoice.currency)}</span></div>
+        <div className="ddDue"><span>Pending</span><span>{money(invoice.dueCents, invoice.currency)}</span></div>
       </div>
       {t.paymentInstructions && <div className="ddPay"><h2>Payment</h2><p>{t.paymentInstructions}</p></div>}
       {t.footerNote && <div className="ddFoot"><p>{t.footerNote}</p></div>}

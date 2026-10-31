@@ -53,6 +53,10 @@ type PortalAccount struct {
 	CustomerID   string `json:"customerId"`
 	Name         string `json:"name"`
 	LocationName string `json:"locationName"`
+	// Filled in by CustomerRecords so the customer can see and correct their own details.
+	Email   string `json:"email,omitempty"`
+	Phone   string `json:"phone"`
+	Address string `json:"address"`
 }
 type PortalBooking struct {
 	ID          string    `json:"id"`
@@ -115,11 +119,11 @@ func (s *Store) CustomerRecords(ctx context.Context, actor, customer string) (Po
 	var org, loc string
 	// Hold the membership and active principal through the entire read, so link
 	// revocation/deactivation cannot race a separately authorized record query.
-	err = tx.QueryRow(ctx, `SELECT a.organization_id::text,a.location_id::text,c.id::text,c.name,l.name
+	err = tx.QueryRow(ctx, `SELECT a.organization_id::text,a.location_id::text,c.id::text,c.name,l.name,c.email,c.phone,c.address
  FROM customer_account_links a JOIN principals p ON p.id=a.principal_id AND p.active
  JOIN customers c ON (c.organization_id,c.location_id,c.id)=(a.organization_id,a.location_id,a.customer_id)
  JOIN locations l ON (l.organization_id,l.id)=(a.organization_id,a.location_id)
- WHERE a.principal_id=$1 AND a.customer_id=$2 FOR SHARE OF a,p`, actor, customer).Scan(&org, &loc, &result.Account.CustomerID, &result.Account.Name, &result.Account.LocationName)
+ WHERE a.principal_id=$1 AND a.customer_id=$2 FOR SHARE OF a,p`, actor, customer).Scan(&org, &loc, &result.Account.CustomerID, &result.Account.Name, &result.Account.LocationName, &result.Account.Email, &result.Account.Phone, &result.Account.Address)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return PortalRecords{}, ErrForbidden
 	}

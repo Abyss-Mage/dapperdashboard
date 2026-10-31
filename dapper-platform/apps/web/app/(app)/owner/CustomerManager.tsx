@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import styles from './owner.module.css';
 import ConfirmDialog from '../workspace/ConfirmDialog';
+import Select from '../GlassSelect';
+import { DatePicker } from '../Pickers';
 
-type Customer = { id: string; name: string; email: string; phone: string; createdAt: string; vehicles: number; bookings: number; jobs: number; invoices: number };
+type Customer = { id: string; name: string; email: string; phone: string; createdAt: string; vehicles: number; bookings: number; jobs: number; invoices: number; address: string; services: string[]; statuses: string[]; bookingDays: string[] };
 type Line = { id: string; title: string; status: string; at: string; cents?: number | null };
 type Records = { vehicles: Line[]; bookings: Line[]; jobs: Line[]; invoices: Line[] };
 
@@ -27,6 +29,11 @@ export default function CustomerManager({ base, canCreate, canDelete, onChanged 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const [service, setService] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [fields, setFields] = useState<Record<string, string>>({});
   const [target, setTarget] = useState<Customer | null>(null);
   const [open, setOpen] = useState<Customer | null>(null);
@@ -58,7 +65,7 @@ export default function CustomerManager({ base, canCreate, canDelete, onChanged 
 
   function edit(c: Customer | 'new') {
     setEditing(c); setError(''); setNotice(''); setFields({});
-    setName(c === 'new' ? '' : c.name); setEmail(c === 'new' ? '' : c.email); setPhone(c === 'new' ? '' : c.phone);
+    setName(c === 'new' ? '' : c.name); setEmail(c === 'new' ? '' : c.email); setPhone(c === 'new' ? '' : c.phone); setAddress(c === 'new' ? '' : c.address);
   }
 
   // Before saving, point out a customer who already has this email or phone (the server refuses duplicates too).
@@ -73,7 +80,7 @@ export default function CustomerManager({ base, canCreate, canDelete, onChanged 
     setBusy(true); setError(''); setFields({});
     try {
       const was = editing;
-      await readJson(await fetch(was === 'new' || !was ? `${base}/customers` : `${base}/customers/${was.id}`, send(was === 'new' || !was ? 'POST' : 'PUT', { name, email, phone })));
+      await readJson(await fetch(was === 'new' || !was ? `${base}/customers` : `${base}/customers/${was.id}`, send(was === 'new' || !was ? 'POST' : 'PUT', { name, email, phone, ...(was && was !== 'new' ? { address } : {}) })));
       setNotice(was === 'new' ? 'Customer added.' : 'Customer updated.');
       setEditing(null);
       await load();
@@ -99,16 +106,24 @@ export default function CustomerManager({ base, canCreate, canDelete, onChanged 
     } finally { setBusy(false); }
   }
 
+  const serviceChoices = useMemo(() => [...new Set((items ?? []).flatMap((c) => c.services))].sort((x, y) => x.localeCompare(y)), [items]);
+  // Status here means the status of any of the customer's bookings; the dates and service narrow to bookings too.
+  const STATUS_CHOICES: [string, string][] = [['', 'Any status'], ['confirmed', 'Approved'], ['completed', 'Completed'], ['cancelled', 'Cancelled']];
   const visible = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return (items ?? []).filter((c) => !q || c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q) || c.phone.toLowerCase().includes(q));
-  }, [items, query]);
+    const q = query.trim().toLowerCase(), qd = digits(query);
+    return (items ?? []).filter((c) =>
+      (!q || c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q) || c.phone.toLowerCase().includes(q) || (qd.length >= 3 && digits(c.phone).includes(qd))) &&
+      (!service || c.services.includes(service)) &&
+      (!statusFilter || (statusFilter === 'confirmed' ? c.statuses.some((s) => ['pending', 'awaiting_payment', 'confirmed', 'scheduled', 'in_progress'].includes(s)) : c.statuses.includes(statusFilter))) &&
+      ((!from && !to) || c.bookingDays.some((d) => (!from || d >= from) && (!to || d <= to))));
+  }, [items, query, service, statusFilter, from, to]);
+  const filtered = !!(query || service || statusFilter || from || to);
 
   // CSV of what is on screen (respects the search). Cells that start like a formula are prefixed so spreadsheets do not run them.
   function exportCsv() {
     const lead = ['=', '+', '-', '@', String.fromCharCode(9), String.fromCharCode(13)];
     const cell = (v: string | number) => { let t = String(v ?? ''); if (lead.includes(t.charAt(0))) t = "'" + t; return '"' + t.replaceAll('"', '""') + '"'; };
-    const rows = [['Name', 'Email', 'Phone', 'Customer since', 'Vehicles', 'Bookings', 'Invoices'], ...visible.map((c) => [c.name, c.email, c.phone, c.createdAt.slice(0, 10), c.vehicles, c.bookings, c.invoices])];
+    const rows = [['Name', 'Email', 'Phone', 'Address', 'Customer since', 'Vehicles', 'Bookings', 'Invoices'], ...visible.map((c) => [c.name, c.email, c.phone, c.address, c.createdAt.slice(0, 10), c.vehicles, c.bookings, c.invoices])];
     const blob = new Blob([String.fromCharCode(0xfeff) + rows.map((r) => r.map(cell).join(',')).join(String.fromCharCode(13, 10))], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `customers-${new Date().toISOString().slice(0, 10)}.csv`; a.click(); URL.revokeObjectURL(a.href);
   }
@@ -143,6 +158,7 @@ export default function CustomerManager({ base, canCreate, canDelete, onChanged 
             <label className="form-field">Email (optional)<input type="email" maxLength={254} autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={busy} aria-invalid={!!fields.email} />{fields.email && <span className="field-error">{fields.email}</span>}</label>
             <label className="form-field">Phone (optional)<input type="tel" maxLength={30} autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} disabled={busy} aria-invalid={!!fields.phone} />{fields.phone && <span className="field-error">{fields.phone}</span>}</label>
           </div>
+          {editing !== 'new' && <label className="form-field">Address (mobile service)<input maxLength={300} autoComplete="street-address" value={address} onChange={(e) => setAddress(e.target.value)} disabled={busy} /></label>}
           {clash && <p role="alert" className="field-error">{clash.name} already has this {clash.email.toLowerCase() === email.trim().toLowerCase() && email.trim() ? 'email' : 'phone number'}. Open that customer instead of adding a second one.</p>}
           <div className={styles.rowBetween}>
             <button className="primary" disabled={busy || name.trim().length < 2 || !!clash}>{busy ? 'Saving…' : editing === 'new' ? 'Add customer' : 'Save changes'}</button>
@@ -151,19 +167,31 @@ export default function CustomerManager({ base, canCreate, canDelete, onChanged 
         </form>
       )}
 
+      <div className={styles.custFilters}>
+        <input type="search" className={styles.searchBox} placeholder="Search name, phone or email" aria-label="Search customers" value={query} onChange={(e) => setQuery(e.target.value)} />
+        <DatePicker value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} aria-label="Booked from" />
+        <DatePicker value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} aria-label="Booked until" />
+        <Select value={service} onChange={(e) => setService(e.target.value)} aria-label="Service"><option value="">Any service</option>{serviceChoices.map((s) => <option key={s} value={s}>{s}</option>)}</Select>
+        <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label="Booking status">{STATUS_CHOICES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Select>
+        {filtered && <button type="button" className="secondary" onClick={() => { setQuery(''); setFrom(''); setTo(''); setService(''); setStatusFilter(''); }}>Clear filters</button>}
+      </div>
       <div className={styles.rowBetween}>
-        <span className={styles.badge}>{items ? `${items.length} customer${items.length === 1 ? '' : 's'}` : 'Loading'}</span>
-        <input type="search" className={styles.searchBox} placeholder="Search name, email or phone" aria-label="Search customers" value={query} onChange={(e) => setQuery(e.target.value)} />
+        <span className={styles.badge}>{items ? (filtered ? `${visible.length} of ${items.length} customers` : `${items.length} customer${items.length === 1 ? '' : 's'}`) : 'Loading'}</span>
       </div>
 
       {!items && !error && <div className={`${styles.card} ${styles.skeleton}`} role="status" aria-label="Loading customers" />}
-      {items && visible.length === 0 && <p className={styles.status}>{items.length ? 'Nothing matches your search.' : 'No customers yet.'}</p>}
+      {items && visible.length === 0 && <p className={styles.status}>{items.length ? 'Nothing matches these filters.' : 'No customers yet.'}</p>}
       <ul className={styles.people}>
         {visible.map((c) => (
           <li key={c.id} className={styles.person} style={{ gridTemplateColumns: 'minmax(0,1fr) auto', alignItems: 'center' }}>
-            <button type="button" className={styles.personButton} onClick={() => setOpen(c)} aria-label={`Open ${c.name}`} style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 14, rowGap: 2 }}>
-              <strong className={styles.personName}>{c.name}</strong>
-              <span className={styles.personSub}>{c.email || 'No email'}{c.phone ? ` · ${c.phone}` : ''}</span>
+            <button type="button" className={styles.personButton} onClick={() => setOpen(c)} aria-label={`Open ${c.name}`}>
+              <span className={styles.custRow}>
+                <strong className={styles.custName}>{c.name}</strong>
+                <span className={styles.custContact}>{c.phone || 'No phone'}</span>
+                <span className={styles.custContact}>{c.email || 'No email'}</span>
+                <span className={styles.custCount}>{c.bookings} booking{c.bookings === 1 ? '' : 's'}</span>
+                {c.address && <span className={styles.custAddress}>{c.address}</span>}
+              </span>
             </button>
             <div className={styles.svcActions}>
               {canCreate && <button type="button" className="secondary" disabled={busy || !!editing} onClick={() => edit(c)}>Edit</button>}

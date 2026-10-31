@@ -91,7 +91,7 @@ export default function InvoiceManager({
   canRecordPayment: boolean;
   canIssue: boolean;
 }) {
-  const printTemplate = usePrintTemplate(`${base.split('/locations/')[0]}/invoice-template`);
+  const printTemplate = usePrintTemplate(`${base}/invoice-template`);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [statusFilter, setStatusFilter] = useState('all');

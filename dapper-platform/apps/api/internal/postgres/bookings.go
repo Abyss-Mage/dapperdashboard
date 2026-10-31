@@ -34,6 +34,7 @@ type Booking struct {
 	Status             string     `json:"status"`
 	BookingTime        time.Time  `json:"bookingTime"`
 	Notes              string     `json:"notes"`
+	ServiceAddress     string     `json:"serviceAddress,omitempty"`
 	CancellationReason string     `json:"cancellationReason"`
 	CreatedAt          time.Time  `json:"createdAt"`
 	UpdatedAt          time.Time  `json:"updatedAt"`
@@ -104,7 +105,8 @@ func (s *Store) CreateBooking(ctx context.Context, scope Scope, input Booking) (
 func (s *Store) createBookingInTransaction(ctx context.Context, tx pgx.Tx, scope Scope, input Booking) (Booking, error) {
 	input.ServiceName = strings.TrimSpace(input.ServiceName)
 	input.Notes = strings.TrimSpace(input.Notes)
-	if input.CustomerID == "" || input.BookingTime.IsZero() || utf8.RuneCountInString(input.Notes) > 2000 {
+	input.ServiceAddress = strings.TrimSpace(input.ServiceAddress)
+	if input.CustomerID == "" || input.BookingTime.IsZero() || utf8.RuneCountInString(input.Notes) > 2000 || utf8.RuneCountInString(input.ServiceAddress) > 300 {
 		return Booking{}, ErrBookingInput
 	}
 	switch input.Channel {
@@ -113,7 +115,7 @@ func (s *Store) createBookingInTransaction(ctx context.Context, tx pgx.Tx, scope
 		return Booking{}, ErrBookingInput
 	}
 	if input.Status == "" {
-		input.Status = "pending"
+		input.Status = "confirmed"
 	}
 	switch input.Status {
 	case "pending", "awaiting_payment", "confirmed", "scheduled", "in_progress", "completed", "cancelled":
@@ -203,13 +205,20 @@ func (s *Store) createBookingInTransaction(ctx context.Context, tx pgx.Tx, scope
 	}
 
 	var newID string
-	err = tx.QueryRow(ctx, `INSERT INTO bookings(organization_id, location_id, customer_id, vehicle_id, service_id, service_name, addons, reservation_id, channel, status, booking_time, notes)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+	err = tx.QueryRow(ctx, `INSERT INTO bookings(organization_id, location_id, customer_id, vehicle_id, service_id, service_name, addons, reservation_id, channel, status, booking_time, notes, service_address)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 RETURNING id::text`,
 		scope.OrganizationID, scope.LocationID, input.CustomerID, input.VehicleID, input.ServiceID, input.ServiceName,
-		input.Addons, input.ReservationID, input.Channel, input.Status, input.BookingTime, input.Notes).Scan(&newID)
+		input.Addons, input.ReservationID, input.Channel, input.Status, input.BookingTime, input.Notes, input.ServiceAddress).Scan(&newID)
 	if err != nil {
 		return Booking{}, err
+	}
+
+	// A service address (mobile booking) is also remembered on the customer for next time.
+	if input.ServiceAddress != "" {
+		if _, err = tx.Exec(ctx, `UPDATE customers SET address=$4 WHERE organization_id=$1 AND location_id=$2 AND id=$3`, scope.OrganizationID, scope.LocationID, input.CustomerID, input.ServiceAddress); err != nil {
+			return Booking{}, err
+		}
 	}
 
 	// Record creation event
@@ -384,13 +393,13 @@ func (s *Store) UpdateBookingStatus(ctx context.Context, scope Scope, id string,
 	validTransition := false
 	switch currentStatus {
 	case "pending":
-		validTransition = (toStatus == "confirmed" || toStatus == "awaiting_payment" || toStatus == "cancelled")
+		validTransition = (toStatus == "confirmed" || toStatus == "awaiting_payment" || toStatus == "completed" || toStatus == "cancelled")
 	case "awaiting_payment":
-		validTransition = (toStatus == "confirmed" || toStatus == "cancelled")
+		validTransition = (toStatus == "confirmed" || toStatus == "completed" || toStatus == "cancelled")
 	case "confirmed":
-		validTransition = (toStatus == "scheduled" || toStatus == "in_progress" || toStatus == "cancelled")
+		validTransition = (toStatus == "scheduled" || toStatus == "in_progress" || toStatus == "completed" || toStatus == "cancelled")
 	case "scheduled":
-		validTransition = (toStatus == "in_progress" || toStatus == "cancelled")
+		validTransition = (toStatus == "in_progress" || toStatus == "completed" || toStatus == "cancelled")
 	case "in_progress":
 		validTransition = (toStatus == "completed" || toStatus == "cancelled")
 	}

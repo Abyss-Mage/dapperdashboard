@@ -50,7 +50,7 @@ func verifyBookingCapacity(t *testing.T, ctx context.Context, s *Store, a, b Sco
 		go func() { v, e := s.ReserveBooking(ctx, a, input); results <- result{v, e} }()
 	}
 	one, two := <-results, <-results
-	if one.err != nil || two.err != nil || one.booking.ID == "" || one.booking.ID != two.booking.ID || one.booking.ReservationID == nil || one.booking.Status != "pending" || one.booking.ServiceID == nil || *one.booking.ServiceID != main.ID || len(one.booking.Addons) != 1 || one.booking.CustomerEmail != "" || one.booking.Notes != "" {
+	if one.err != nil || two.err != nil || one.booking.ID == "" || one.booking.ID != two.booking.ID || one.booking.ReservationID == nil || one.booking.Status != "confirmed" || one.booking.ServiceID == nil || *one.booking.ServiceID != main.ID || len(one.booking.Addons) != 1 || one.booking.CustomerEmail != "" || one.booking.Notes != "" {
 		t.Fatal("atomic retry failed, bypassed pending or exposed private fields", one.err, two.err)
 	}
 	changed := input
@@ -71,7 +71,7 @@ func verifyBookingCapacity(t *testing.T, ctx context.Context, s *Store, a, b Sco
 	if _, err = s.ReserveBooking(ctx, other, input); !errors.Is(err, ErrBookingCapacityRequest) {
 		t.Fatal("other actor replayed booking receipt", err)
 	}
-	if _, err = s.pool.Exec(ctx, `ALTER TABLE booking_events ADD CONSTRAINT isolated_booking_audit_failure CHECK(to_status<>'pending') NOT VALID`); err != nil {
+	if _, err = s.pool.Exec(ctx, `ALTER TABLE booking_events ADD CONSTRAINT isolated_booking_audit_failure CHECK(to_status<>'confirmed') NOT VALID`); err != nil {
 		t.Fatal(err)
 	}
 	rollback := input
@@ -125,7 +125,7 @@ func verifyBookingCapacity(t *testing.T, ctx context.Context, s *Store, a, b Sco
 	}
 	linked.AddonIDs = []string{addon.ID}
 	valid, err := s.CreateBooking(ctx, a, linked)
-	if err != nil || valid.Status != "pending" {
+	if err != nil || valid.Status != "confirmed" {
 		t.Fatal("matching reservation/default pending failed", err)
 	}
 	if _, err = s.CreateBooking(ctx, a, linked); !errors.Is(err, ErrBookingReservation) {
@@ -173,7 +173,7 @@ func verifyBookingCapacity(t *testing.T, ctx context.Context, s *Store, a, b Sco
 	}
 	var status string
 	var retainedVersion int
-	if err = s.pool.QueryRow(ctx, `SELECT b.status,r.version FROM bookings b JOIN capacity_reservations r ON r.id=b.reservation_id WHERE b.id=$1 AND r.cancelled_at IS NULL`, one.booking.ID).Scan(&status, &retainedVersion); err != nil || status != "pending" || retainedVersion != 1 {
+	if err = s.pool.QueryRow(ctx, `SELECT b.status,r.version FROM bookings b JOIN capacity_reservations r ON r.id=b.reservation_id WHERE b.id=$1 AND r.cancelled_at IS NULL`, one.booking.ID).Scan(&status, &retainedVersion); err != nil || status != "confirmed" || retainedVersion != 1 {
 		t.Fatal("failed cancellation lost booking/capacity state", err)
 	}
 	if _, err = s.pool.Exec(ctx, `ALTER TABLE audit_events DROP CONSTRAINT isolated_cancel_release_failure`); err != nil {

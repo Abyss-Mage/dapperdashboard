@@ -19,8 +19,11 @@ const SAMPLE: PrintInvoice = {
   ],
 };
 
-export default function InvoiceTemplateEditor({ organizationId, revision }: { organizationId: string; revision: number }) {
-  const url = `/api/v1/organizations/${organizationId}/invoice-template`;
+export default function InvoiceTemplateEditor({ organizationId, revision, locationId, locationName }: { organizationId: string; revision: number; locationId?: string; locationName?: string }) {
+  // The template is shared by the whole organization unless this franchise is given its own.
+  const [target, setTarget] = useState<'organization' | 'franchise'>('organization');
+  const [hasOwn, setHasOwn] = useState(false);
+  const url = target === 'franchise' && locationId ? `/api/v1/organizations/${organizationId}/locations/${locationId}/invoice-template` : `/api/v1/organizations/${organizationId}/invoice-template`;
   const [form, setForm] = useState<PrintTemplate>(DEFAULT_PRINT_TEMPLATE);
   const [version, setVersion] = useState(0);
   const [loaded, setLoaded] = useState(false);
@@ -33,10 +36,13 @@ export default function InvoiceTemplateEditor({ organizationId, revision }: { or
     if (!r.ok) throw new Error('The invoice template is unavailable or access has changed.');
     const b = await r.json();
     setForm({ ...DEFAULT_PRINT_TEMPLATE, ...b.template });
-    setVersion(b.version);
+    const own = target === 'franchise' && b.scope === 'franchise';
+    setHasOwn(own);
+    setVersion(target === 'franchise' && !own ? 0 : b.version);
     setLoaded(true);
-  }, [url]);
+  }, [url, target]);
   useEffect(() => { load().catch((e) => setError(e.message)); }, [load, revision]);
+  useEffect(() => { setTarget('organization'); }, [locationId]);
 
   const set = <K extends keyof PrintTemplate>(key: K, value: PrintTemplate[K]) => { setForm((f) => ({ ...f, [key]: value })); setNotice(''); };
 
@@ -49,10 +55,22 @@ export default function InvoiceTemplateEditor({ organizationId, revision }: { or
       if (!r.ok) throw new Error(b.error ?? 'The template could not be saved. Your changes are still here.');
       setForm({ ...DEFAULT_PRINT_TEMPLATE, ...b.template });
       setVersion(b.version);
+      if (target === 'franchise') setHasOwn(true);
       setNotice('Template saved. New prints use it right away; amounts and customer details always come from the invoice.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'The template could not be saved.');
     } finally { setBusy(false); }
+  }
+
+  async function removeOwn() {
+    setBusy(true); setError(''); setNotice('');
+    try {
+      const r = await fetch(url, { method: 'DELETE' });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? 'The franchise template could not be removed.');
+      setLoaded(false); await load();
+      setNotice('This franchise now prints with the organization template.');
+    } catch (err) { setError(err instanceof Error ? err.message : 'The franchise template could not be removed.'); }
+    finally { setBusy(false); }
   }
 
   const text = (key: 'title' | 'billToLabel' | 'itemLabel' | 'quantityLabel' | 'unitPriceLabel' | 'amountLabel', label: string, max: number) => (
@@ -61,8 +79,20 @@ export default function InvoiceTemplateEditor({ organizationId, revision }: { or
 
   return (
     <section className="panel detail-card">
-      <h2>Invoice template</h2>
+      <h2>Invoice template{target === 'franchise' && locationName ? ` · ${locationName}` : ''}</h2>
       <p>How printed invoices look. Change the title, labels, colour, notes and paper size, or write your own layout in HTML and CSS. The invoice always supplies every amount, customer detail and number.</p>
+      {locationId && (
+        <div className="management-form" style={{ alignItems: 'end' }}>
+          <label className="form-field">Which template are you editing?
+            <Select value={target} disabled={busy} onChange={(e) => { setLoaded(false); setNotice(''); setError(''); setTarget(e.target.value as 'organization' | 'franchise'); }}>
+              <option value="organization">The organization template (every franchise without its own)</option>
+              <option value="franchise">{locationName ? `${locationName} only` : 'This franchise only'}</option>
+            </Select>
+          </label>
+          {target === 'franchise' && <p className="help">{hasOwn ? 'This franchise has its own template.' : 'This franchise uses the organization template. Saving here gives it its own copy, started from the one below.'}</p>}
+          {target === 'franchise' && hasOwn && <button type="button" className="secondary" disabled={busy} onClick={() => void removeOwn()}>Go back to the organization template</button>}
+        </div>
+      )}
       {error && <p className="field-error" role="alert">{error}</p>}
       {notice && <p role="status">{notice}</p>}
       <form onSubmit={save}>

@@ -1,10 +1,10 @@
 package workspace
 
 import (
-	"strconv"
 	"dapper.local/platform/internal/postgres"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -16,6 +16,10 @@ func bookingFailure(w http.ResponseWriter, err error) {
 	}
 	if errors.Is(err, postgres.ErrBookingNotFound) {
 		reply(w, 404, map[string]string{"error": "Booking not found in this scope"})
+		return
+	}
+	if errors.Is(err, postgres.ErrEmployeeStatusRule) {
+		reply(w, 403, map[string]string{"error": err.Error()})
 		return
 	}
 	if errors.Is(err, postgres.ErrBookingTransition) {
@@ -189,16 +193,17 @@ func registerBookingRoutes(mux *http.ServeMux, store *postgres.Store) {
 			return
 		}
 		var input struct {
-			CustomerID    string   `json:"customerId"`
-			VehicleID     *string  `json:"vehicleId"`
-			ServiceID     *string  `json:"serviceId"`
-			ServiceName   string   `json:"serviceName"`
-			AddonIDs      []string `json:"addonIds"`
-			ReservationID *string  `json:"reservationId"`
-			Channel       string   `json:"channel"`
-			Status        string   `json:"status"`
-			BookingTime   string   `json:"bookingTime"`
-			Notes         string   `json:"notes"`
+			CustomerID     string   `json:"customerId"`
+			VehicleID      *string  `json:"vehicleId"`
+			ServiceID      *string  `json:"serviceId"`
+			ServiceName    string   `json:"serviceName"`
+			AddonIDs       []string `json:"addonIds"`
+			ReservationID  *string  `json:"reservationId"`
+			Channel        string   `json:"channel"`
+			Status         string   `json:"status"`
+			BookingTime    string   `json:"bookingTime"`
+			Notes          string   `json:"notes"`
+			ServiceAddress string   `json:"serviceAddress"`
 		}
 		if !decode(w, r, &input) {
 			return
@@ -236,16 +241,17 @@ func registerBookingRoutes(mux *http.ServeMux, store *postgres.Store) {
 		}
 
 		item, err := store.CreateBooking(r.Context(), scope, postgres.Booking{
-			CustomerID:    input.CustomerID,
-			VehicleID:     input.VehicleID,
-			ServiceID:     input.ServiceID,
-			ServiceName:   input.ServiceName,
-			AddonIDs:      input.AddonIDs,
-			ReservationID: input.ReservationID,
-			Channel:       input.Channel,
-			Status:        input.Status,
-			BookingTime:   t,
-			Notes:         input.Notes,
+			CustomerID:     input.CustomerID,
+			VehicleID:      input.VehicleID,
+			ServiceID:      input.ServiceID,
+			ServiceName:    input.ServiceName,
+			AddonIDs:       input.AddonIDs,
+			ReservationID:  input.ReservationID,
+			Channel:        input.Channel,
+			Status:         input.Status,
+			BookingTime:    t,
+			Notes:          input.Notes,
+			ServiceAddress: input.ServiceAddress,
 		})
 		if err != nil {
 			bookingFailure(w, err)
@@ -346,6 +352,10 @@ func registerBookingRoutes(mux *http.ServeMux, store *postgres.Store) {
 		}
 		var item postgres.Booking
 		input.ToStatus = strings.TrimSpace(input.ToStatus)
+		if err = store.CheckEmployeeBookingStatus(r.Context(), scope, id, input.ToStatus); err != nil {
+			bookingFailure(w, err)
+			return
+		}
 		if input.ToStatus == "cancelled" {
 			if input.ReservationVersion == nil || *input.ReservationVersion < 0 {
 				reply(w, 422, map[string]string{"error": "Provide the observed reservationVersion, or0 for an unreserved booking"})

@@ -13,7 +13,6 @@ import CustomerAccountManager from './CustomerAccountManager';
 import ReservedBookingForm from './ReservedBookingForm';
 import BookingOfferManager from './BookingOfferManager';
 import CustomerBookingRequestList from '../account/CustomerBookingRequestList';
-import InvoiceManager from './InvoiceManager';
 import SOPCompliancePanel from './SOPCompliancePanel';
 import ThemeToggle from '../ThemeToggle';
 import AccessManager from './AccessManager';
@@ -384,6 +383,7 @@ export default function SecureWorkspace({ownerView=false}:{ownerView?:boolean}) 
                 onChange={(e) => setPassword(e.target.value)}
               />
             </label>
+            <p><a href="/reset-password" style={{ textDecoration: 'underline' }}>Forgot your password?</a></p>
             <button className="primary" disabled={busy || !ready}>
               {busy ? 'Signing in…' : 'Sign in'}
             </button>
@@ -705,16 +705,7 @@ export default function SecureWorkspace({ownerView=false}:{ownerView?:boolean}) 
 
           {/* 3. Finance & Quotes */}
           <div id="finance" className="jump-target" />
-          {!ownerView && scope && scope.actions.includes('invoices.read') && (
-            <InvoiceManager
-              key={'inv-' + base}
-              base={base}
-              canCreate={scope.actions.includes('invoices.create')}
-              canManage={scope.actions.includes('invoices.manage')}
-              canRecordPayment={scope.actions.includes('payments.record')}
-              canIssue={scope.actions.includes('invoices.issue')}
-            />
-          )}
+          {/* Invoices are opened from each appointment (Bookings & Appointments); the separate list lives on the owner dashboard. */}
           {!ownerView && scope && scope.actions.includes('quotes.read') && (
             <QuoteManager
               key={'quotes-' + base}

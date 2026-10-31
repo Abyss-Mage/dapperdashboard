@@ -1,6 +1,7 @@
 'use client';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import BookingRescheduler from './BookingRescheduler';
+import { InvoiceDocument, printInvoiceDocument, usePrintTemplate, type PrintInvoice } from './InvoicePrint';
 import Select from '../GlassSelect';
 import { DateTimePicker } from '../Pickers';
 
@@ -41,6 +42,9 @@ type BookingEvent = {
   createdAt: string;
 };
 
+const STATUS_LABEL: Record<string, string> = { pending: 'Pending', awaiting_payment: 'Awaiting payment', confirmed: 'Approved', scheduled: 'Approved', in_progress: 'Approved', completed: 'Completed', cancelled: 'Cancelled' };
+const money = (c: number) => '$' + (c / 100).toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 export default function BookingManager({
   base,
   canCreate,
@@ -59,6 +63,8 @@ export default function BookingManager({
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [bookingsLoading, setBookingsLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
+  // Each booking's invoice (one per booking), so the appointment shows what is still owed or already paid.
+  const [invoices, setInvoices] = useState<Record<string, { id: string; version: number; invoiceNumber: string; status: string; totalCents: number; paidCents: number }>>({});
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [events, setEvents] = useState<BookingEvent[]>([]);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -79,6 +85,7 @@ export default function BookingManager({
   const [channel, setChannel] = useState<'internal' | 'phone' | 'walk_in' | 'dealership'>('internal');
   const [bookingTime, setBookingTime] = useState('');
   const [notes, setNotes] = useState('');
+  const [serviceAddress, setServiceAddress] = useState('');
   const [cancellationReason, setCancellationReason] = useState('');
   const [cancellingBooking, setCancellingBooking] = useState<Booking | null>(null);
   const [reschedulingBooking, setReschedulingBooking] = useState<Booking | null>(null);
@@ -103,6 +110,17 @@ export default function BookingManager({
     cancellationTrigger.current?.focus();
   }
 
+  const loadInvoices = useCallback(async () => {
+    if (!base) { setInvoices({}); return; }
+    try {
+      const r = await fetch(base + '/invoices', { cache: 'no-store' });
+      if (!r.ok) return;
+      const map: Record<string, { id: string; version: number; invoiceNumber: string; status: string; totalCents: number; paidCents: number }> = {};
+      for (const i of ((await r.json()).items ?? []) as { id: string; version: number; bookingId?: string; invoiceNumber: string; status: string; totalCents: number; paidCents: number }[]) if (i.bookingId && i.status !== 'void') map[i.bookingId] = i;
+      setInvoices(map);
+    } catch { /* invoices are optional here */ }
+  }, [base]);
+  useEffect(() => { void loadInvoices(); }, [loadInvoices, revision]);
   const loadBookings = useCallback(async () => {
     const reqId = ++bookingsReqIdRef.current;
     if (!base) {
@@ -200,7 +218,7 @@ export default function BookingManager({
     }
   }
 
-  async function updateStatus(bookingId: string, toStatus: string, reason = '') {
+  async function updateStatus(bookingId: string, toStatus: string, reason = ''): Promise<boolean> {
     setBusy(true);
     setError('');
     setNotice('');
@@ -213,9 +231,10 @@ export default function BookingManager({
       const body = await r.json();
       if (!r.ok) {
         setError(body.error ?? 'Status update failed');
-        return;
+        return false;
       }
-      setNotice(`Booking updated to ${toStatus}.`);
+      setNotice(`Booking marked ${STATUS_LABEL[toStatus] ?? toStatus}.`);
+      void loadInvoices();
       if (toStatus === 'cancelled') closeCancellation();
       if (selectedBooking?.id === bookingId) {
         setSelectedBooking(body);
@@ -223,10 +242,64 @@ export default function BookingManager({
         if (evR.ok) {const detail=await evR.json();setEvents(detail.events??[]);setSelectedBooking(detail.booking);}
       }
       await loadBookings();
+      return true;
     } catch {
       setError('Could not update booking status. Refresh before retrying.');
+      return false;
     } finally {
       setBusy(false);
+    }
+  }
+
+  // Completing a booking: the invoice can be settled in cash at the same moment (it is issued first if it is still a draft),
+  // or the booking can be completed with the money still owed.
+  const printTemplate = usePrintTemplate(`${base}/invoice-template`);
+  const [viewing, setViewing] = useState<{ booking: Booking; invoice: PrintInvoice | null; error: string } | null>(null);
+  async function viewInvoice(b: Booking) {
+    const inv = invoices[b.id];
+    if (!inv) return;
+    setViewing({ booking: b, invoice: null, error: '' });
+    try {
+      const r = await fetch(base + '/invoices/' + inv.id, { cache: 'no-store' });
+      const body = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(body.error ?? 'The invoice could not be loaded.');
+      setViewing({ booking: b, invoice: body, error: '' });
+    } catch (e) { setViewing({ booking: b, invoice: null, error: e instanceof Error ? e.message : 'The invoice could not be loaded.' }); }
+  }
+  const [completing, setCompleting] = useState<Booking | null>(null);
+  const [completeBusy, setCompleteBusy] = useState(false);
+  const [completeError, setCompleteError] = useState('');
+  async function finishBooking(b: Booking, cash: boolean) {
+    setCompleteBusy(true); setCompleteError('');
+    try {
+      const inv = invoices[b.id];
+      if (cash && inv) {
+        let id = inv.id;
+        if (inv.status === 'draft') {
+          const pr = await fetch(base + '/invoices/' + id + '/issuance-preview', { cache: 'no-store' });
+          const preview = await pr.json().catch(() => ({}));
+          if (!pr.ok) throw new Error(preview.error ?? 'The invoice issuer is not set up, so the invoice cannot be issued yet.');
+          const ir = await fetch(base + '/invoices/' + id + '/issue', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ issuerId: preview.id, issuerVersion: preview.version, invoiceVersion: inv.version }) });
+          const issued = await ir.json().catch(() => ({}));
+          if (!ir.ok) throw new Error(issued.error ?? 'The invoice could not be issued.');
+          id = issued.id;
+        }
+        const fr = await fetch(base + '/invoices/' + id, { cache: 'no-store' });
+        const full = await fr.json().catch(() => ({}));
+        if (!fr.ok) throw new Error(full.error ?? 'The invoice could not be read.');
+        if (full.dueCents > 0) {
+          const pay = await fetch(base + '/invoices/' + id + '/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amountCents: full.dueCents, method: 'cash', idempotencyKey: 'complete-' + b.id, notes: 'Cash received when the booking was completed' }) });
+          const paid = await pay.json().catch(() => ({}));
+          if (!pay.ok) throw new Error(paid.error ?? 'The cash payment could not be recorded.');
+        }
+      }
+      if (await updateStatus(b.id, 'completed')) setCompleting(null);
+      else setCompleteError('The booking could not be completed. See the message above.');
+    } catch (e) {
+      setCompleteError(e instanceof Error ? e.message : 'The booking could not be completed.');
+    } finally {
+      setCompleteBusy(false);
+      void loadInvoices();
     }
   }
 
@@ -281,9 +354,10 @@ export default function BookingManager({
           addonIds,
           reservationId: reservationId || null,
           channel,
-          status: 'pending',
+          status: 'confirmed',
           bookingTime: parsedTime,
           notes,
+          serviceAddress: serviceAddress.trim(),
         }),
       });
       const body = await r.json();
@@ -300,6 +374,7 @@ export default function BookingManager({
       setReservationId('');
       setBookingTime('');
       setNotes('');
+      setServiceAddress('');
       await loadBookings();
     } catch {
       setError('Could not save booking. Input preserved.');
@@ -456,6 +531,11 @@ export default function BookingManager({
           )}
 
           <label className="form-field">
+            Service address (mobile detailing only)
+            <input type="text" maxLength={300} autoComplete="street-address" placeholder="Leave empty for in-shop work" value={serviceAddress} onChange={(e) => setServiceAddress(e.target.value)} />
+          </label>
+
+          <label className="form-field">
             Appointment notes
             <input
               type="text"
@@ -473,7 +553,7 @@ export default function BookingManager({
       )}
 
       <div style={{display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap'}}>
-        {['', 'pending', 'awaiting_payment', 'confirmed', 'scheduled', 'in_progress', 'completed', 'cancelled'].map((st) => (
+        {['', 'confirmed', 'completed', 'cancelled'].map((st) => (
           <button
             key={st}
             type="button"
@@ -487,7 +567,7 @@ export default function BookingManager({
             style={{textTransform: 'capitalize'}}
             aria-pressed={statusFilter === st}
           >
-            {st === 'awaiting_payment' ? 'Awaiting payment' : (st ? st.replace('_', ' ') : 'All statuses')}
+            {st ? STATUS_LABEL[st] : 'All statuses'}
           </button>
         ))}
       </div>
@@ -499,7 +579,7 @@ export default function BookingManager({
               <div style={{display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.25rem'}}>
                 <strong>{b.serviceName}</strong>
                 <span className={`status ${b.status === 'completed' ? 'progress' : b.status === 'cancelled' ? 'quote' : 'scheduled'}`}>
-                  {b.status.replace('_', ' ')}
+                  {STATUS_LABEL[b.status] ?? b.status}
                 </span>
                 <small style={{textTransform: 'uppercase', fontSize: '0.75rem', color: 'var(--muted)'}}>
                   via {b.channel}
@@ -514,6 +594,9 @@ export default function BookingManager({
               {b.reservationId && (
                 <small>Capacity reservation: {b.reservationId.slice(0, 8)}</small>
               )}
+              {invoices[b.id] && (() => { const inv = invoices[b.id]; const owed = inv.totalCents - inv.paidCents; return (
+                <small><strong>Invoice {inv.invoiceNumber}</strong> · {owed <= 0 && inv.totalCents > 0 ? `Paid ${money(inv.paidCents)} · Pending $0.00` : `Dues pending ${money(owed)}`}{inv.status === 'draft' ? ' · draft' : ''}</small>
+              ); })()}
               {b.notes && <small>Notes: {b.notes}</small>}
               {b.cancellationReason && (
                 <small style={{color: 'var(--error)'}}>Cancelled: {b.cancellationReason}</small>
@@ -521,6 +604,7 @@ export default function BookingManager({
             </div>
 
             <div style={{display: 'flex', gap: '0.5rem', flexWrap: 'wrap'}}>
+              {invoices[b.id] && <button className="secondary" onClick={() => void viewInvoice(b)}>Invoice</button>}
               <button className="secondary" onClick={() => viewEvents(b)}>
                 History trail
               </button>
@@ -529,26 +613,12 @@ export default function BookingManager({
                 <>
                   {b.status === 'pending' && (
                     <button className="primary" disabled={busy} onClick={() => updateStatus(b.id, 'confirmed')}>
-                      Confirm
+                      Approve
                     </button>
                   )}
-                  {b.status === 'confirmed' && (
-                    <>
-                      <button className="secondary" disabled={busy} onClick={() => updateStatus(b.id, 'scheduled')}>
-                        Schedule
-                      </button>
-                    </>
-                  )}
-                  {b.status === 'scheduled' && (
-                    <>
-                      <button className="primary" disabled={busy} onClick={() => updateStatus(b.id, 'in_progress')}>
-                        Start bay work
-                      </button>
-                    </>
-                  )}
-                  {b.status === 'in_progress' && (
-                    <button className="primary" disabled={busy} onClick={() => updateStatus(b.id, 'completed')}>
-                      Complete
+                  {b.status !== 'completed' && b.status !== 'cancelled' && b.status !== 'pending' && (
+                    <button className="primary" disabled={busy} onClick={() => { setCompleteError(''); setCompleting(b); }}>
+                      Mark completed
                     </button>
                   )}
                   {b.status !== 'completed' && b.status !== 'cancelled' && (
@@ -563,7 +633,7 @@ export default function BookingManager({
                       Cancel
                     </button>
                   )}
-                  {b.reservationId && b.status !== 'completed' && b.status !== 'cancelled' && b.status !== 'in_progress' && <button className="secondary" disabled={busy} onClick={event => {rescheduleTrigger.current=event.currentTarget; setReschedulingBooking(b);}}>Reschedule</button>}
+                  {b.reservationId && b.status !== 'completed' && b.status !== 'cancelled' && <button className="secondary" disabled={busy} onClick={event => {rescheduleTrigger.current=event.currentTarget; setReschedulingBooking(b);}}>Reschedule</button>}
                 </>
               )}
               {canCreateWorkOrders && b.status !== 'cancelled' && b.status !== 'completed' && (
@@ -578,6 +648,35 @@ export default function BookingManager({
         {!bookingsLoading && !bookings.length && <p>No bookings found matching filter.</p>}
       </div>
 
+      {viewing && (
+        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Invoice" onClick={() => setViewing(null)}>
+          <div className="modal" style={{ width: 860, maxHeight: '92vh', overflow: 'auto', padding: 24, background: '#fff' }} onClick={(e) => e.stopPropagation()}>
+            {viewing.error && <p role="alert" className="field-error">{viewing.error}</p>}
+            {!viewing.invoice && !viewing.error && <p role="status">Loading invoice…</p>}
+            {viewing.invoice && <InvoiceDocument invoice={viewing.invoice} template={printTemplate} />}
+            <div className="form-actions" style={{ justifyContent: 'flex-start' }}>
+              {viewing.invoice && <button className="primary" onClick={() => printInvoiceDocument(viewing.invoice as PrintInvoice, printTemplate)}>Print or save as PDF</button>}
+              <button className="secondary" onClick={() => setViewing(null)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {completing && (() => { const inv = invoices[completing.id]; const owed = inv ? inv.totalCents - inv.paidCents : 0; return (
+        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Complete booking">
+          <div className="modal" style={{ padding: 24, display: 'grid', gap: 14 }}>
+            <h3 style={{ margin: 0 }}>Complete “{completing.serviceName}”</h3>
+            {!inv && <p>This booking has no invoice, so there is nothing to collect here.</p>}
+            {inv && owed > 0 && <p>{money(owed)} is still owed on invoice {inv.invoiceNumber}. {inv.status === 'draft' ? 'Recording cash will issue the invoice first.' : ''}</p>}
+            {inv && owed <= 0 && inv.totalCents > 0 && <p>Invoice {inv.invoiceNumber} is already paid.</p>}
+            {completeError && <p role="alert" className="field-error">{completeError}</p>}
+            <div className="form-actions" style={{ justifyContent: 'flex-start', flexWrap: 'wrap' }}>
+              {inv && owed > 0 && <button className="primary" disabled={completeBusy} onClick={() => void finishBooking(completing, true)}>{completeBusy ? 'Saving…' : `Cash received · ${money(owed)}`}</button>}
+              <button className={inv && owed > 0 ? 'secondary' : 'primary'} disabled={completeBusy} onClick={() => void finishBooking(completing, false)}>{owed > 0 ? 'Complete, money still owed' : 'Complete'}</button>
+              <button className="secondary" disabled={completeBusy} onClick={() => setCompleting(null)}>Back</button>
+            </div>
+          </div>
+        </div>
+      ); })()}
       {reschedulingBooking && <BookingRescheduler base={base} booking={reschedulingBooking} onSaved={loadBookings} onClose={() => setReschedulingBooking(null)}/>}
       {cancellingBooking && (
         <dialog ref={cancellationDialog} aria-labelledby="booking-cancel-title" onCancel={(event) => {event.preventDefault(); if (!busy) closeCancellation();}} style={{maxWidth:'min(32rem, calc(100vw - 2rem))',padding:'1.5rem',background:'var(--surface, #fff)',color:'var(--text, var(--text, #1a0b0d))',border:'1px solid var(--border, #f0dcde)',borderRadius:'12px'}}>

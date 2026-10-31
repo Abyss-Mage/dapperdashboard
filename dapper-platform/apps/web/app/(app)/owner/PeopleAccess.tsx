@@ -22,6 +22,7 @@ type Person = {
   locationCode: string;
   dealershipName: string;
   roles: string[];
+  scope: string;
   documentsTotal: number;
   documentsAcknowledged: number;
   onboardingStatus: 'complete' | 'incomplete' | 'not_assigned' | 'inactive';
@@ -34,7 +35,7 @@ const SECTIONS: { id: Section; label: string }[] = [
   { id: 'invitations', label: 'Invitations' },
   { id: 'roles', label: 'Roles' },
   { id: 'assign', label: 'Assign roles' },
-  { id: 'assignments', label: 'Franchise & dealership' },
+  { id: 'assignments', label: 'Franchise' },
 ];
 
 const STATUS_LABEL: Record<Person['onboardingStatus'], string> = {
@@ -110,7 +111,7 @@ function Roster({ organizationId, revision }: { organizationId: string; revision
                 {p.phone && <span className={styles.personSub}>{p.phone}</span>}
               </div>
               <div className={styles.personWork}>
-                <span>{p.locationName ? `${p.locationCode ? p.locationCode + ' · ' : ''}${p.locationName}` : 'No franchise'}</span>
+                <span>{p.locationName ? `${p.locationCode ? p.locationCode + ' · ' : ''}${p.locationName}` : p.scope || 'No franchise'}</span>
                 {p.dealershipName && <span className={styles.personSub}>Dealership focus: {p.dealershipName}</span>}
                 <span className={styles.personSub}>{p.roles.length ? p.roles.join(', ') : 'No role assigned'}</span>
               </div>

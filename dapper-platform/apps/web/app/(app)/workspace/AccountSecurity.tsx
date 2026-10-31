@@ -15,6 +15,37 @@ async function call<T>(url: string, init?: RequestInit): Promise<T> {
   return body as T;
 }
 
+/* Change the sign-in email or password. Both need the current password; afterwards every session ends, so the page returns to sign-in. */
+export function SignInDetails({ email }: { email?: string }) {
+  const [mode, setMode] = useState<'' | 'email' | 'password'>('');
+  const [current, setCurrent] = useState(''), [value, setValue] = useState(''), [again, setAgain] = useState('');
+  const [busy, setBusy] = useState(false), [error, setError] = useState('');
+  const reset = () => { setCurrent(''); setValue(''); setAgain(''); setError(''); };
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    if (mode === 'password' && value !== again) { setError('The two new passwords are not the same.'); return; }
+    setBusy(true); setError('');
+    try {
+      await call(mode === 'email' ? '/api/v1/account/email' : '/api/v1/account/password', { method: 'PUT', headers: json, body: JSON.stringify(mode === 'email' ? { password: current, email: value } : { current, newPassword: value }) });
+      location.reload();
+    } catch (err) { setError(err instanceof Error ? err.message : 'The change could not be saved.'); setBusy(false); }
+  }
+  if (!mode) return <div style={{ display: 'grid', gap: 10 }}>
+    {email && <p className={glass.lede}>You sign in with <strong>{email}</strong>.</p>}
+    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}><button type="button" className="secondary" onClick={() => { reset(); setMode('email'); }}>Change email</button><button type="button" className="secondary" onClick={() => { reset(); setMode('password'); }}>Change password</button></div>
+  </div>;
+  return <form onSubmit={save} style={{ display: 'grid', gap: 14 }}>
+    <label className={glass.field}>Current password<input type="password" autoComplete="current-password" required maxLength={1024} value={current} onChange={e => setCurrent(e.target.value)} disabled={busy} /></label>
+    {mode === 'email'
+      ? <label className={glass.field}>New email<input type="email" autoComplete="email" required maxLength={254} value={value} onChange={e => setValue(e.target.value)} disabled={busy} /></label>
+      : <><label className={glass.field}>New password (at least 15 characters)<input type="password" autoComplete="new-password" required minLength={15} maxLength={1024} value={value} onChange={e => setValue(e.target.value)} disabled={busy} /></label>
+        <label className={glass.field}>New password again<input type="password" autoComplete="new-password" required minLength={15} maxLength={1024} value={again} onChange={e => setAgain(e.target.value)} disabled={busy} /></label></>}
+    {error && <p role="alert" className="field-error">{error}</p>}
+    <p className={glass.lede}>After saving you will be signed out everywhere and asked to sign in again.</p>
+    <div style={{ display: 'flex', gap: 10 }}><button className="primary" disabled={busy}>{busy ? 'Saving…' : mode === 'email' ? 'Change email' : 'Change password'}</button><button type="button" className="secondary" disabled={busy} onClick={() => setMode('')}>Cancel</button></div>
+  </form>;
+}
+
 /* The person's own name and phone. Email is shown for reference (it is their sign-in). Phone is format-checked only. */
 export function ProfileForm({ initial, onSaved }: { initial: Profile | null; onSaved: (p: Profile) => void }) {
   const [name, setName] = useState(initial?.fullName ?? ''), [phone, setPhone] = useState(initial?.phone ?? ''), [busy, setBusy] = useState(false), [error, setError] = useState(''), [saved, setSaved] = useState(false);

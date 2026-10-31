@@ -200,8 +200,8 @@ func verifyPublicBookFlow(t *testing.T, ctx context.Context, s *Store, a Scope, 
 		t.Fatalf("totals wrong (want 28250 total, 8475 deposit): %+v", got)
 	}
 	var status, channel string
-	if err = s.pool.QueryRow(ctx, `SELECT b.status,b.channel FROM bookings b WHERE b.id=$1`, got.BookingID).Scan(&status, &channel); err != nil || status != "pending" || channel != "online" {
-		t.Fatal("booking not recorded as a pending online booking", status, channel, err)
+	if err = s.pool.QueryRow(ctx, `SELECT b.status,b.channel FROM bookings b WHERE b.id=$1`, got.BookingID).Scan(&status, &channel); err != nil || status != "confirmed" || channel != "online" {
+		t.Fatal("booking not recorded as an approved online booking", status, channel, err)
 	}
 	// The same request again returns the same booking and invoice and does not cancel anything.
 	again, err := s.PublicBook(ctx, slug, in)

@@ -40,6 +40,8 @@ type InvoicePrintTemplate struct {
 type InvoicePrintTemplateState struct {
 	Template InvoicePrintTemplate `json:"template"`
 	Version  int                  `json:"version"`
+	// Scope says which template this is: "organization" (shared) or "franchise" (one location's own).
+	Scope string `json:"scope,omitempty"`
 }
 
 func DefaultInvoicePrintTemplate() InvoicePrintTemplate {
@@ -122,7 +124,7 @@ func (s *Store) EmployeeInvoicePrintTemplate(ctx context.Context, actor string) 
 	if err != nil {
 		return InvoicePrintTemplateState{}, err
 	}
-	return loadInvoiceTemplate(ctx, tx, a.OrganizationID)
+	return loadEffectiveInvoiceTemplate(ctx, tx, a.OrganizationID, a.LocationID)
 }
 
 // SaveInvoicePrintTemplate needs invoices.configure. version is the revision the editor loaded (0 when it was the unsaved default).

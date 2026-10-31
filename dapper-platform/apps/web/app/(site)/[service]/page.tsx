@@ -1,11 +1,8 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { categories } from '../content';
-import SplitHero from '../_components/SplitHero';
-import Packages from '../_components/Packages';
-import CategoryNav from '../_components/CategoryNav';
-import Reveal from '../_components/Reveal';
-import { Close } from '../_components/Chrome';
-import { ArrowUpRight } from '../_components/Icons';
+import { CallToBook, PageHero, PageMotion, ProcessStrip, Reviews, SectionHead } from '../_v3/blocks';
+import Packages3 from '../_v3/Packages3';
 
 export const dynamicParams = false;
 export function generateStaticParams() { return categories.map((c) => ({ service: c.slug })); }
@@ -21,22 +18,21 @@ export default async function ServicePage({ params }: { params: Promise<{ servic
   const c = categories.find((x) => x.slug === service);
   if (!c) notFound();
   return (
-    <>
-      <SplitHero image={c.image} studioPhoto={!c.photo} alt={c.photo ? c.title + " at the Dapper studio" : "Inside the Dapper studio, Peterborough"} before="Road-worn." after={c.title + '.'} lead={c.summary}>
-        <a className="btn btn--red" href="/booking">Find an appointment<ArrowUpRight size={20} aria-hidden /></a>
-      </SplitHero>
-      <Reveal className="section" aria-labelledby="care-title">
-        <div className="wrap cat-layout">
-          <CategoryNav current={c.slug} />
-          <div>
-            <h2 id="care-title" className="headline" data-split>Find your<br /><span className="after">care.</span></h2>
-            <p className="lede" data-rise>Packages are published by the Dapper team. Sign in to choose one for your own vehicle and request a time.</p>
-            <Packages category={c.key} />
-            <p style={{ marginTop: 32 }} data-rise><a className="btn btn--line" href="/account">Sign in to your account<ArrowUpRight size={20} aria-hidden /></a></p>
-          </div>
-        </div>
-      </Reveal>
-      <Close />
-    </>
+    <PageMotion>
+      <PageHero chip="Our services" title={c.title} lead={c.summary} image={c.image} alt={c.photo ? c.title + ' at Dapper' : 'Vehicle detailed by Dapper'}>
+        {c.from ? <p className="d-price-tag">Starting from <b>${c.from}</b></p> : null}
+        <a className="d-btn d-btn--red" href="/booking">Book now</a>
+      </PageHero>
+      <section className="d-section">
+        <nav className="d-tabs" aria-label="Service categories">
+          {categories.map((x) => <Link key={x.slug} href={'/' + x.slug} aria-current={x.slug === c.slug ? 'page' : undefined}>{x.title}</Link>)}
+        </nav>
+        <SectionHead chip="Packages" title="Find your care" text="Packages are published by the Dapper team. Sign in to choose one for your own vehicle and request a time." />
+        <Packages3 category={c.key} />
+      </section>
+      <ProcessStrip />
+      <Reviews />
+      <CallToBook />
+    </PageMotion>
   );
 }

@@ -1,16 +1,14 @@
 import type { Metadata, Viewport } from 'next';
+import '@fontsource/sora/700.css';
+import '@fontsource/sora/800.css';
 import '@fontsource/manrope/400.css';
 import '@fontsource/manrope/500.css';
 import '@fontsource/manrope/600.css';
 import '@fontsource/manrope/700.css';
-import '@fontsource/barlow-condensed/600.css';
-import '@fontsource/barlow-condensed/700.css';
-import '@fontsource/barlow-condensed/800.css';
-import './site.css';
-import './story.css';
-import Header from './_components/Header';
+import './_v3/v3.css';
+import { Nav3, Footer3 } from './_v3/Chrome3';
 import SmoothScroll from './_components/SmoothScroll';
-import { Footer } from './_components/Chrome';
+import Tracking from './_components/Tracking';
 
 const indexing = process.env.DAPPER_PUBLIC_INDEXING === 'enabled';
 
@@ -20,27 +18,22 @@ export const metadata: Metadata = {
   description: 'Detailing, ceramic coating, paint protection film and window tint at 660 The Kingsway, Peterborough, Ontario.',
   icons: { icon: '/site/assets/favicon.webp' },
   robots: indexing ? { index: true, follow: true } : { index: false, follow: false },
-  openGraph: { type: 'website', images: ['/site/assets/hero.webp'] },
+  openGraph: { type: 'website', images: ['/site/assets/services/suv.webp'] },
   twitter: { card: 'summary_large_image' },
 };
 
-export const viewport: Viewport = { themeColor: '#09090b', width: 'device-width', initialScale: 1 };
-
-// The home story's 3D fallback is an ES module that imports "three" by name; this map tells the browser where it lives.
-const importMap = JSON.stringify({ imports: { three: '/site/assets/three/three.module.js', 'three/addons/': '/site/assets/three/addons/' } });
+export const viewport: Viewport = { themeColor: '#f6f4f1', width: 'device-width', initialScale: 1 };
 
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en-CA">
-      <head>
-        <script type="importmap" dangerouslySetInnerHTML={{ __html: importMap }} />
-      </head>
       <body>
-        <a className="skip" href="#main">Skip to content</a>
-        <Header />
+        <a className="d-skip" href="#main">Skip to content</a>
+        <Nav3 />
         <main id="main" tabIndex={-1}>{children}</main>
-        <Footer />
+        <Footer3 />
         <SmoothScroll />
+        <Tracking />
       </body>
     </html>
   );

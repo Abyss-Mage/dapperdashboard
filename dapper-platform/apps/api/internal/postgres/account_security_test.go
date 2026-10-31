@@ -95,8 +95,8 @@ func TestAccountSecurityLifecycle(t *testing.T) {
 		t.Fatal("an administrator was blocked although the server has no MFA key", err)
 	}
 	must(s.SetMFAKey([]byte("0123456789abcdef0123456789abcdef")))
-	if blocked, err := s.MFASetupBlocks(ctx, boss); err != nil || !blocked {
-		t.Fatal("an administrator without MFA must be told to set it up", err)
+	if blocked, err := s.MFASetupBlocks(ctx, boss); err != nil || blocked {
+		t.Fatal("MFA must be optional for administrators too", err)
 	}
 	if blocked, _ := s.MFASetupBlocks(ctx, employee); blocked {
 		t.Fatal("MFA must be optional for employees")
@@ -165,9 +165,9 @@ func TestAccountSecurityLifecycle(t *testing.T) {
 		t.Fatal("a password-only account could not sign in", err)
 	}
 
-	// Administrators cannot turn MFA off; employees can, with a valid code.
-	if err = s.DisableMFA(ctx, boss, "123456"); !errors.Is(err, ErrMFAAdminRequired) {
-		t.Fatal("an administrator disabled MFA", err)
+	// MFA is optional for everyone; turning it off needs a valid code. An administrator who never turned it on has nothing to turn off.
+	if err = s.DisableMFA(ctx, boss, "123456"); !errors.Is(err, ErrMFAState) {
+		t.Fatal("disabling MFA that is not on should be a state error", err)
 	}
 	if err = s.DisableMFA(ctx, employee, "not-a-code"); !errors.Is(err, ErrMFAInvalid) {
 		t.Fatal("MFA disabled without a valid code", err)
@@ -193,7 +193,67 @@ func TestAccountSecurityLifecycle(t *testing.T) {
 	if err != nil || status.Assigned || !status.Profile.Complete || !status.Complete {
 		t.Fatalf("onboarding for an unassigned employee with details %+v %v", status, err)
 	}
-	if status, err = s.OnboardingStatus(ctx, boss); err != nil || status.Complete || !status.MFA.Required {
+	if status, err = s.OnboardingStatus(ctx, boss); err != nil || status.Complete || status.MFA.Required {
 		t.Fatalf("an administrator without details/MFA must not be complete %+v %v", status, err)
+	}
+
+	// Change password: the current one is required, the new one must be long enough, and every session ends.
+	if err = auth.ChangePassword(ctx, boss, "wrong-password-0000", "a-brand-new-password-1"); !errors.Is(err, ErrPasswordWrong) {
+		t.Fatal("password changed without the current one", err)
+	}
+	if err = auth.ChangePassword(ctx, boss, password, "short"); !errors.Is(err, ErrPasswordPolicy) {
+		t.Fatal("a short password was accepted", err)
+	}
+	oldToken, err := auth.SignIn(ctx, "mfa-admin@example.invalid", password, time.Hour)
+	must(err)
+	must(auth.ChangePassword(ctx, boss, password, "a-brand-new-password-1"))
+	if _, err = s.SessionPrincipal(ctx, oldToken); err == nil {
+		t.Fatal("an old session survived a password change")
+	}
+	if _, err = auth.SignIn(ctx, "mfa-admin@example.invalid", password, time.Hour); err == nil {
+		t.Fatal("the old password still works")
+	}
+	if _, err = auth.SignIn(ctx, "mfa-admin@example.invalid", "a-brand-new-password-1", time.Hour); err != nil {
+		t.Fatal("the new password does not work", err)
+	}
+
+	// Change email: password required, address validated and unique; the new address signs in.
+	if err = auth.ChangeEmail(ctx, boss, "wrong-password-0000", "new-admin@example.invalid"); !errors.Is(err, ErrPasswordWrong) {
+		t.Fatal("email changed without the password", err)
+	}
+	if err = auth.ChangeEmail(ctx, boss, "a-brand-new-password-1", "not-an-email"); !errors.Is(err, ErrEmailInvalid) {
+		t.Fatal("an invalid email was accepted", err)
+	}
+	if err = auth.ChangeEmail(ctx, boss, "a-brand-new-password-1", "mfa-employee@example.invalid"); !errors.Is(err, ErrEmailTaken) {
+		t.Fatal("an email used by someone else was accepted", err)
+	}
+	must(auth.ChangeEmail(ctx, boss, "a-brand-new-password-1", "New-Admin@example.invalid"))
+	if _, err = auth.SignIn(ctx, "new-admin@example.invalid", "a-brand-new-password-1", time.Hour); err != nil {
+		t.Fatal("the new email does not sign in", err)
+	}
+
+	// Forgot password: unknown address gives nothing; a real one gives a one-time link token that sets a new password.
+	if token, err := auth.RequestPasswordReset(ctx, "nobody@example.invalid"); err != nil || token != "" {
+		t.Fatal("an unknown address produced a reset token", token, err)
+	}
+	resetToken, err := auth.RequestPasswordReset(ctx, "new-admin@example.invalid")
+	if err != nil || resetToken == "" {
+		t.Fatal("no reset token for a real account", err)
+	}
+	if again, _ := auth.RequestPasswordReset(ctx, "new-admin@example.invalid"); again != "" {
+		t.Fatal("reset requests were not rate limited per account")
+	}
+	if err = auth.ConfirmPasswordReset(ctx, "not-a-token", "yet-another-password-22"); !errors.Is(err, ErrResetTokenBad) {
+		t.Fatal("a garbage reset token was accepted", err)
+	}
+	if err = auth.ConfirmPasswordReset(ctx, resetToken, "short"); !errors.Is(err, ErrPasswordPolicy) {
+		t.Fatal("a short reset password was accepted", err)
+	}
+	must(auth.ConfirmPasswordReset(ctx, resetToken, "yet-another-password-22"))
+	if err = auth.ConfirmPasswordReset(ctx, resetToken, "one-more-password-333"); !errors.Is(err, ErrResetTokenBad) {
+		t.Fatal("a reset link worked twice", err)
+	}
+	if _, err = auth.SignIn(ctx, "new-admin@example.invalid", "yet-another-password-22", time.Hour); err != nil {
+		t.Fatal("the reset password does not work", err)
 	}
 }

@@ -93,6 +93,30 @@ func registerEmployeeWorkspaceRoutes(mux *http.ServeMux, store *postgres.Store) 
 		}
 		reply(w, 200, map[string]any{"items": items})
 	})
+	mux.HandleFunc("POST /api/v1/employee/bookings/{booking}/status", func(w http.ResponseWriter, r *http.Request) {
+		b := r.PathValue("booking")
+		if !uuid(b) {
+			reply(w, 400, map[string]string{"error": "Valid booking required"})
+			return
+		}
+		var input struct {
+			ToStatus string `json:"toStatus"`
+			Reason   string `json:"reason"`
+		}
+		if !decode(w, r, &input) {
+			return
+		}
+		item, err := store.EmployeeSetBookingStatus(r.Context(), requestSession(r).principalID, b, strings.TrimSpace(input.ToStatus), strings.TrimSpace(input.Reason))
+		if errors.Is(err, postgres.ErrEmployeeStatusRule) {
+			reply(w, 403, map[string]string{"error": err.Error()})
+			return
+		}
+		if err != nil {
+			bookingFailure(w, err)
+			return
+		}
+		reply(w, 200, item)
+	})
 	mux.HandleFunc("POST /api/v1/employee/bookings/{booking}/cash", func(w http.ResponseWriter, r *http.Request) {
 		b := r.PathValue("booking")
 		if !uuid(b) {
@@ -159,6 +183,14 @@ func registerEmployeeWorkspaceRoutes(mux *http.ServeMux, store *postgres.Store) 
 			return
 		}
 		data, err := store.EmployeeWorkspace(r.Context(), requestSession(r).principalID)
+		if err != nil {
+			employeeFailure(w, err)
+			return
+		}
+		reply(w, 200, data)
+	})
+	mux.HandleFunc("GET /api/v1/employee/availability", func(w http.ResponseWriter, r *http.Request) {
+		data, err := store.EmployeeAvailabilityFor(r.Context(), requestSession(r).principalID, r.URL.Query().Get("week"))
 		if err != nil {
 			employeeFailure(w, err)
 			return

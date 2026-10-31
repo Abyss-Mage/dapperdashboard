@@ -94,6 +94,9 @@ export default function QuoteManager({
   const [editingVersion, setEditingVersion] = useState<number>(1);
   const [formRequestId, setFormRequestId] = useState('');
   const [formCustomerId, setFormCustomerId] = useState('');
+  const [clientName, setClientName] = useState('');
+  const [clientPhone, setClientPhone] = useState('');
+  const [clientEmail, setClientEmail] = useState('');
   const [formVehicleId, setFormVehicleId] = useState('');
   const [formInternalNotes, setFormInternalNotes] = useState('');
   const [formCustomerNote, setFormCustomerNote] = useState('');
@@ -167,6 +170,7 @@ export default function QuoteManager({
     setFormRequestId('');
     setFormCustomerId('');
     setFormVehicleId('');
+    setClientName(''); setClientPhone(''); setClientEmail('');
     setFormInternalNotes('');
     setFormCustomerNote('');
     setFormTaxDollars('0.00');
@@ -242,10 +246,11 @@ export default function QuoteManager({
           requestId: formRequestId.trim(),
           customerId: formCustomerId.trim(),
           vehicleId: formVehicleId.trim(),
+          ...(formRequestId ? {} : { clientName: clientName.trim(), clientPhone: clientPhone.trim(), clientEmail: clientEmail.trim() }),
           internalNotes: formInternalNotes,
           customerNote: formCustomerNote,
           taxCents,
-          depositCents,
+          depositCents: 0,
           expiresAt: formExpiresAt ? new Date(formExpiresAt).toISOString() : undefined,
           items,
         };
@@ -375,21 +380,31 @@ export default function QuoteManager({
         <form onSubmit={handleSaveQuote} className={form.form}>
           <h4>{editingQuoteId ? `Edit draft (revision ${editingVersion})` : 'New quotation'}</h4>
           <div className={form.grid}>
-            <label className={form.field} htmlFor="q-req-id">Booking request
+            {!editingQuoteId && !formRequestId && (
+              <label className={form.field} htmlFor="q-client">Client name
+                <input id="q-client" required minLength={2} maxLength={100} autoComplete="off" value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Who is this quotation for?" />
+              </label>
+            )}
+            <label className={form.field} htmlFor="q-req-id">{editingQuoteId ? 'Booking request' : 'Booking request (optional)'}
               {editingQuoteId ? (
-                <input id="q-req-id" value={formRequestId} disabled readOnly />
+                <input id="q-req-id" value={formRequestId || 'None, quoted by client name'} disabled readOnly />
               ) : (
-                <Select id="q-req-id" required value={formRequestId} onChange={(e) => pickRequest(e.target.value)}>
-                  <option value="">{requests === null ? 'Loading requests…' : requests.length ? 'Choose the request this quote is for' : 'No booking requests yet'}</option>
+                <Select id="q-req-id" value={formRequestId} onChange={(e) => pickRequest(e.target.value)}>
+                  <option value="">{requests === null ? 'Loading requests…' : 'None, quote a client by name'}</option>
                   {(requests ?? []).map((r) => <option key={r.id} value={r.id}>{r.customerName} · {r.offer?.title ?? 'Request'} · {new Date(r.requestedStart).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' })}</option>)}
                 </Select>
               )}
-              <span className={form.hint}>A quotation answers a customer's online booking request.</span>
             </label>
             <label className={form.field} htmlFor="q-expires">Valid until (optional)
               <DateTimePicker id="q-expires" value={formExpiresAt} onChange={(e) => setFormExpiresAt(e.target.value)} />
             </label>
           </div>
+          {!editingQuoteId && !formRequestId && (
+            <div className={form.grid}>
+              <label className={form.field} htmlFor="q-client-phone">Phone (optional)<input id="q-client-phone" type="tel" maxLength={30} autoComplete="off" value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} /></label>
+              <label className={form.field} htmlFor="q-client-email">Email (optional)<input id="q-client-email" type="email" maxLength={254} autoComplete="off" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} /></label>
+            </div>
+          )}
           {pickedRequest && !editingQuoteId && (
             <div className={form.picked}>
               <strong>{pickedRequest.customerName}</strong>
@@ -415,13 +430,11 @@ export default function QuoteManager({
 
           <div className={form.grid}>
             <label className={form.field} htmlFor="q-tax">Tax ($)<NumberField id="q-tax" step="0.01" min="0" inputMode="decimal" value={formTaxDollars} onChange={(e) => setFormTaxDollars(e.target.value)} /></label>
-            <label className={form.field} htmlFor="q-deposit">Deposit required ($)<NumberField id="q-deposit" step="0.01" min="0" inputMode="decimal" value={formDepositDollars} onChange={(e) => setFormDepositDollars(e.target.value)} /></label>
           </div>
           <div className={form.totals} aria-live="polite">
             <div><span>Subtotal</span><span>{formatMoney(subtotalCents)}</span></div>
             <div><span>Tax</span><span>{formatMoney(taxCents)}</span></div>
             <div className={form.grand}><span>Total</span><span>{formatMoney(subtotalCents + taxCents)}</span></div>
-            <div><span>Deposit due</span><span>{formatMoney(depositCents)}</span></div>
           </div>
 
           <div className={form.grid}>
@@ -430,7 +443,7 @@ export default function QuoteManager({
           </div>
 
           <div className={form.actions}>
-            <button type="submit" className="primary" disabled={submitting || (!editingQuoteId && !formRequestId)}>{submitting ? 'Saving…' : editingQuoteId ? 'Update draft' : 'Create draft'}</button>
+            <button type="submit" className="primary" disabled={submitting || (!editingQuoteId && !formRequestId && clientName.trim().length < 2)}>{submitting ? 'Saving…' : editingQuoteId ? 'Update draft' : 'Create draft'}</button>
             <button type="button" className="secondary" onClick={resetForm}>Cancel</button>
           </div>
         </form>

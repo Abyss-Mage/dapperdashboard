@@ -1,27 +1,28 @@
-import SplitHero from '../_components/SplitHero';
-import ServiceRows from '../_components/ServiceRows';
-import Reveal from '../_components/Reveal';
-import { Close } from '../_components/Chrome';
-import { ArrowUpRight } from '../_components/Icons';
+import Link from 'next/link';
+import { ArrowRight } from 'lucide-react';
+import { categories } from '../content';
+import { servicesIntro } from '../dapper';
+import { CallToBook, PageHero, PageMotion, SectionHead, WhyGrid } from '../_v3/blocks';
 
-export const metadata = { title: 'Services', description: 'Vehicle detailing, ceramic coating and paint protection film in Peterborough.', alternates: { canonical: '/services' } };
+export const metadata = { title: 'Services', description: 'Detailing, ceramic coating and paint protection film for every vehicle, in Peterborough.', alternates: { canonical: '/services' } };
 
 export default function Services() {
   return (
-    <>
-      <SplitHero image="/site/assets/suv.webp" alt="An SUV in the Dapper studio" before="Care for every" after="kind of journey." lead="Find your vehicle. Explore the care. Choose your next step with Dapper.">
-        <a className="btn btn--red" href="/booking">Book an appointment<ArrowUpRight size={20} aria-hidden /></a>
-      </SplitHero>
-      <Reveal className="section" aria-labelledby="dir-title">
-        <div className="wrap">
-          <div className="head-row">
-            <h2 id="dir-title" className="headline" data-split>Ten kinds<br /><span className="after">of vehicle.</span></h2>
-            <p className="lede" data-rise>Cars, trucks, bikes, boats and aircraft, plus ceramic coating and paint protection film for any of them.</p>
-          </div>
-          <ServiceRows />
+    <PageMotion>
+      <PageHero chip="Our services" title={<>Detailing for <em>every vehicle.</em></>} lead={servicesIntro.text} image="/site/assets/services/suv.webp" alt="A black SUV in the Dapper studio" />
+      <section className="d-section">
+        <SectionHead chip="Choose your vehicle" title="Find the right care" />
+        <div className="d-services">
+          {categories.map((c) => (
+            <Link key={c.slug} href={'/' + c.slug} className="d-service" data-d-in>
+              <div className="d-service__img"><img src={c.image} alt={c.photo ? c.title : 'Vehicle detailed by Dapper'} loading="lazy" />{c.from ? <span className="d-price">Starting from <b>${c.from}</b></span> : null}</div>
+              <div className="d-service__body"><h3>{c.title}</h3><p>{c.summary}</p><span className="d-link">Check now<ArrowRight size={16} /></span></div>
+            </Link>
+          ))}
         </div>
-      </Reveal>
-      <Close />
-    </>
+      </section>
+      <WhyGrid />
+      <CallToBook />
+    </PageMotion>
   );
 }

@@ -15,6 +15,8 @@ import StaffBookingWizard from '../workspace/StaffBookingWizard';
 import InvoiceManager from '../workspace/InvoiceManager';
 import SOPCompliancePanel from '../workspace/SOPCompliancePanel';
 import InvoiceTemplateEditor from '../workspace/InvoiceTemplateEditor';
+import WebsiteTrackingEditor from './WebsiteTrackingEditor';
+import CalendarFeeds from '../workspace/CalendarFeeds';
 import MyAccount from './MyAccount';
 import SquareMerchantPanel from '../workspace/SquareMerchantPanel';
 import SquareKeys from './SquareKeys';
@@ -52,7 +54,7 @@ type Org = {
 type TabId =
   | 'overview' | 'calendar' | 'new-booking' | 'requests' | 'customers' | 'staff-hours' | 'availability' | 'dealership-tags' | 'customer-cars'
   | 'invoices' | 'quotes' | 'dealerships' | 'marketing'
-  | 'team' | 'franchises' | 'services' | 'hours' | 'taxes' | 'sop' | 'invoice-template' | 'payments'
+  | 'team' | 'franchises' | 'services' | 'hours' | 'taxes' | 'sop' | 'invoice-template' | 'payments' | 'tracking'
   | 'account';
 
 type Ctx = { scope: Access | undefined; organizations: Org[]; orgActions: string[] };
@@ -88,6 +90,7 @@ const TABS: TabDefinition[] = [
   { id: 'taxes', label: 'Taxes', icon: 'finance', description: 'Tax rates for this franchise', show: (c) => !!c.scope && org(c, 'invoices.configure') },
   { id: 'sop', label: 'SOP & Compliance', icon: 'admin', description: 'Standard operating procedures your team must read', show: (c) => has(c, 'sop.read') },
   { id: 'invoice-template', label: 'Invoice template', icon: 'finance', description: 'How printed invoices look', show: (c) => org(c, 'invoices.configure') },
+  { id: 'tracking', label: 'Website tracking', icon: 'marketing', description: 'Google Tag, Meta Pixel and the Mailchimp popup', show: (c) => org(c, 'content.manage') },
   { id: 'payments', label: 'Card payments', icon: 'finance', description: 'This franchise’s Square account', show: (c) => org(c, 'invoices.configure') && has(c, 'payments.read') },
   { id: 'account', label: 'My account', icon: 'customers', description: 'Your name, phone and two-factor sign-in', show: () => true },
 ];
@@ -96,7 +99,7 @@ const NAV_GROUPS: { label: string; ids: TabId[] }[] = [
   { label: 'Every day', ids: ['overview', 'calendar', 'new-booking', 'requests', 'customers'] },
   { label: 'Team', ids: ['staff-hours', 'availability', 'dealership-tags', 'customer-cars', 'sop'] },
   { label: 'Money', ids: ['invoices', 'quotes', 'payments', 'dealerships', 'marketing'] },
-  { label: 'Settings', ids: ['services', 'hours', 'taxes', 'franchises', 'team', 'invoice-template'] },
+  { label: 'Settings', ids: ['services', 'hours', 'taxes', 'franchises', 'team', 'invoice-template', 'tracking'] },
 ];
 const isTab = (v: string): v is TabId => TABS.some((t) => t.id === v);
 const ORDER: TabId[] = [...NAV_GROUPS.flatMap((g) => g.ids), 'account'];
@@ -351,6 +354,7 @@ export default function OwnerDashboardClient() {
                 onChange={(e) => setPassword(e.target.value)}
               />
             </label>
+            <p><a href="/reset-password" style={{ textDecoration: 'underline' }}>Forgot your password?</a></p>
             {needsCode && (
               <label className="form-field">
                 Authenticator code
@@ -534,7 +538,7 @@ export default function OwnerDashboardClient() {
             <OwnerOverview base={base} location={scope.locationName} organizationName={scope.organizationName} onNavigate={(tab) => goTo(isTab(tab) ? tab : tab === 'operations' ? 'calendar' : tab === 'finance' ? 'invoices' : tab === 'bookings' ? 'calendar' : 'overview')} />
           )}
           {hasTabPermission && scope && <>
-            {activeTab === 'calendar' && <BookingCalendar key={base} base={base} timezone={timezone} calendarLink={`${base}/calendar.ics`} />}
+            {activeTab === 'calendar' && <><BookingCalendar key={base} base={base} timezone={timezone} calendarLink={`${base}/calendar.ics`} /><CalendarFeeds key={'feeds-' + base} endpoint={`${base}/calendar-feeds`} title="Add this franchise’s bookings to Apple Calendar" hint="Make a private link and add it once to Apple Calendar, Google Calendar or Outlook. It then keeps updating by itself. Anyone with the link can see these bookings, so turn it off if it is shared by mistake." /></>}
             {activeTab === 'new-booking' && <StaffBookingWizard mode="master" base={base} timezone={timezone} onBooked={refresh} />}
             {activeTab === 'requests' && <AppointmentsList key={base} base={base} timezone={timezone} />}
             {activeTab === 'customers' && <CustomerManager key={base} base={base} canCreate={scope.actions.includes('customers.create')} canDelete={scope.actions.includes('customer_accounts.manage')} onChanged={() => setCustomerRevision((v) => v + 1)} />}
@@ -569,7 +573,8 @@ export default function OwnerDashboardClient() {
           </>}
           {hasTabPermission && activeTab === 'franchises' && currentOrg && <FranchiseManager organization={currentOrg} selectedId={scope?.locationId} onSaved={refresh} />}
           {hasTabPermission && activeTab === 'team' && currentOrg && <PeopleAccess key={'people-' + currentOrg.id} organizationId={currentOrg.id} revision={accessRevision} onSaved={refresh} />}
-          {hasTabPermission && activeTab === 'invoice-template' && currentOrg && <InvoiceTemplateEditor key={'template-' + currentOrg.id} organizationId={currentOrg.id} revision={accessRevision} />}
+          {hasTabPermission && activeTab === 'invoice-template' && currentOrg && <InvoiceTemplateEditor key={'template-' + currentOrg.id} organizationId={currentOrg.id} revision={accessRevision} locationId={scope?.locationId} locationName={scope?.locationName} />}
+          {hasTabPermission && activeTab === 'tracking' && currentOrg && <WebsiteTrackingEditor key={'tracking-' + currentOrg.id} organizationId={currentOrg.id} revision={accessRevision} />}
           {activeTab === 'account' && <MyAccount />}
         </main>
       </div>

@@ -174,6 +174,27 @@ func TestQuotationLifecycleAndFulfillment(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	t.Run("a client can be quoted by name without a booking request", func(t *testing.T) {
+		if _, err := s.pool.Exec(ctx, `INSERT INTO location_grants(principal_id,organization_id,location_id,action) VALUES($1,$2,$3,'customers.create') ON CONFLICT DO NOTHING`, scope.ActorID, org, loc); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() {
+			_, _ = s.pool.Exec(ctx, `DELETE FROM location_grants WHERE principal_id=$1 AND location_id=$2 AND action='customers.create'`, scope.ActorID, loc)
+		})
+		items := []QuoteItemInput{{Description: "Synthetic detail", Quantity: 1, UnitPriceCents: 10000}}
+		q, err := s.CreateQuote(ctx, scope, CreateQuoteInput{ClientName: "Synthetic Walk-up Client", ClientPhone: "+14165550177", Items: items})
+		if err != nil || q.CustomerName != "Synthetic Walk-up Client" || q.RequestID != "" || q.VehicleID != "" || q.SubtotalCents != 10000 || q.CustomerID == "" {
+			t.Fatalf("quote by client name failed: %+v %v", q, err)
+		}
+		again, err := s.CreateQuote(ctx, scope, CreateQuoteInput{ClientName: "Synthetic Walk-up Client", ClientPhone: "+1 (416) 555-0177", Items: items})
+		if err != nil || again.CustomerID != q.CustomerID {
+			t.Fatalf("the same client was added twice: %+v %v", again, err)
+		}
+		if _, err = s.CreateQuote(ctx, scope, CreateQuoteInput{Items: items}); !errors.Is(err, ErrQuoteInput) {
+			t.Fatal("a quote with no client was accepted", err)
+		}
+	})
+
 	t.Run("CreateQuote authorization and validation", func(t *testing.T) {
 		unauthorizedScope := Scope{OrganizationID: org, LocationID: loc, ActorID: otherStaff}
 		_, err := s.CreateQuote(ctx, unauthorizedScope, CreateQuoteInput{

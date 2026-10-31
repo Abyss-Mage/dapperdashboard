@@ -51,6 +51,52 @@ func registerInvoiceTemplateRoutes(mux *http.ServeMux, store *postgres.Store) {
 		}
 		reply(w, 200, out)
 	})
+	locBase := "/api/v1/organizations/{organization}/locations/{location}/invoice-template"
+	mux.HandleFunc("GET "+locBase, func(w http.ResponseWriter, r *http.Request) {
+		org, loc := r.PathValue("organization"), r.PathValue("location")
+		if !uuid(org) || !uuid(loc) {
+			reply(w, 400, map[string]string{"error": "Valid organization and location selectors required"})
+			return
+		}
+		out, err := store.LocationInvoicePrintTemplate(r.Context(), requestSession(r).principalID, org, loc)
+		if err != nil {
+			templateFailure(w, err)
+			return
+		}
+		reply(w, 200, out)
+	})
+	mux.HandleFunc("PUT "+locBase, func(w http.ResponseWriter, r *http.Request) {
+		org, loc := r.PathValue("organization"), r.PathValue("location")
+		if !uuid(org) || !uuid(loc) {
+			reply(w, 400, map[string]string{"error": "Valid organization and location selectors required"})
+			return
+		}
+		var input struct {
+			Template postgres.InvoicePrintTemplate `json:"template"`
+			Version  int                           `json:"version"`
+		}
+		if !decode(w, r, &input) {
+			return
+		}
+		out, err := store.SaveLocationInvoicePrintTemplate(r.Context(), requestSession(r).principalID, org, loc, input.Template, input.Version)
+		if err != nil {
+			templateFailure(w, err)
+			return
+		}
+		reply(w, 200, out)
+	})
+	mux.HandleFunc("DELETE "+locBase, func(w http.ResponseWriter, r *http.Request) {
+		org, loc := r.PathValue("organization"), r.PathValue("location")
+		if !uuid(org) || !uuid(loc) {
+			reply(w, 400, map[string]string{"error": "Valid organization and location selectors required"})
+			return
+		}
+		if err := store.DeleteLocationInvoicePrintTemplate(r.Context(), requestSession(r).principalID, org, loc); err != nil {
+			templateFailure(w, err)
+			return
+		}
+		reply(w, 200, map[string]bool{"removed": true})
+	})
 	mux.HandleFunc("GET /api/v1/employee/invoice-template", func(w http.ResponseWriter, r *http.Request) {
 		out, err := store.EmployeeInvoicePrintTemplate(r.Context(), requestSession(r).principalID)
 		if err != nil {

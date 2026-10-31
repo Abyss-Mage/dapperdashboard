@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import styles from './owner.module.css';
-import { MfaManager, ProfileForm, type Profile } from '../workspace/AccountSecurity';
+import { MfaManager, ProfileForm, SignInDetails, type Profile } from '../workspace/AccountSecurity';
 
 /* The signed-in person's own account in Master: name and phone, and two-factor sign-in. Roles and franchise access are assigned in
    People & Access, so nothing here changes permissions. */
@@ -31,7 +31,11 @@ export default function MyAccount() {
         <ProfileForm initial={profile} onSaved={setProfile} />
       </section>
       <section className={styles.resource}>
-        <h3>Two-factor sign-in</h3>
+        <h3>Email and password</h3>
+        <SignInDetails email={profile?.email} />
+      </section>
+      <section className={styles.resource}>
+        <h3>Two-factor sign-in (optional)</h3>
         <MfaManager />
       </section>
     </div>

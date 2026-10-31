@@ -207,7 +207,7 @@ func (s *Store) CreateEmployeeWalkIn(ctx context.Context, actor string, input Em
 		}
 		addons = append([]string{}, input.AddonIDs...)
 	}
-	b, err := s.createBookingInTransaction(ctx, tx, scope, Booking{CustomerID: customer, ServiceID: &rule.ServiceID, AddonIDs: addons, ReservationID: &reservation.ID, Channel: "walk_in", Status: "pending", BookingTime: start, Notes: input.Notes})
+	b, err := s.createBookingInTransaction(ctx, tx, scope, Booking{CustomerID: customer, ServiceID: &rule.ServiceID, AddonIDs: addons, ReservationID: &reservation.ID, Channel: "walk_in", Status: "confirmed", BookingTime: start, Notes: input.Notes})
 	if err != nil {
 		return Booking{}, bookingWriteError(err)
 	}
