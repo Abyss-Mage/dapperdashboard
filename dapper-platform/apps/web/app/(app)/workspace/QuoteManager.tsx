@@ -367,7 +367,7 @@ export default function QuoteManager({
     <section className="panel detail-card" style={{ marginTop: '1.5rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
         <h3>Quotation Management</h3>
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <label htmlFor="quote-filter" style={{ fontSize: '0.9rem' }}>Status:</label>
           <Select
             id="quote-filter"
@@ -384,7 +384,7 @@ export default function QuoteManager({
             <option value="expired">Expired</option>
           </Select>
           {canCreate && !isFormOpen && (
-            <button type="button" className="primary" style={{ whiteSpace: 'nowrap' }} onClick={() => setIsFormOpen(true)}>
+            <button type="button" className="primary" style={{ whiteSpace: 'nowrap', flexShrink: 0, overflow: 'visible', width: 'auto', minWidth: 'max-content' }} onClick={() => setIsFormOpen(true)}>
               + New Quotation
             </button>
           )}
