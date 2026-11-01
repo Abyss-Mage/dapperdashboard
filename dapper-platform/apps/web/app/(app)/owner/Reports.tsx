@@ -126,9 +126,9 @@ export default function Reports({ base }: { base: string }) {
           )}
           {report.rows.length === 0 ? <p className={styles.status}>Nothing matches these filters.</p> : (
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-                <thead><tr style={{ textAlign: 'left', color: 'var(--text-muted)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '.05em' }}>{report.columns.map((c) => <th key={c} style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>{c}</th>)}</tr></thead>
-                <tbody>{report.rows.map((row, i) => <tr key={i} style={{ borderTop: '1px solid var(--glass-line)' }}>{row.map((cell, j) => <td key={j} style={{ padding: '8px 10px' }}>{cell}</td>)}</tr>)}</tbody>
+              <table className={styles.reportTable}>
+                <thead><tr>{report.columns.map((c) => <th key={c}>{c}</th>)}</tr></thead>
+                <tbody>{report.rows.map((row, i) => <tr key={i}>{row.map((cell, j) => <td key={j}>{cell}</td>)}</tr>)}</tbody>
               </table>
             </div>
           )}

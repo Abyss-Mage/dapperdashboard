@@ -243,3 +243,5 @@ input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:foc
 html input[type="checkbox"], html input[type="radio"] { min-height: 0; min-width: 0; padding: 0; }
 html input[type="checkbox"]:checked, html input[type="radio"]:checked { background: linear-gradient(135deg, #fb1a2b, #c1121f) !important; border-color: #c1121f !important; }
 html input[type="file"] { background: transparent !important; border: 0 !important; padding: 0 !important; min-height: 0 !important; box-shadow: none !important; }
+.management-form .form-field { display: grid; gap: 7px; align-content: end; }
+.management-form .form-field > :is(input, textarea) { margin-top: 0; }

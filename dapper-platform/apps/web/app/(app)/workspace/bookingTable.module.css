@@ -2,15 +2,16 @@
 .pageHead { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0 0 18px; }
 .pageHead h2 { margin: 0; font-size: 24px; }
 .headActions { display: flex; gap: 10px; flex-wrap: wrap; }
-.addNew, .apply { border: 0; border-radius: 12px; padding: 11px 20px; font: inherit; font-weight: 700; color: #06281a; background: #34d399; cursor: pointer; transition: transform .15s ease, filter .2s ease; }
-.addNew:hover:not(:disabled), .apply:hover:not(:disabled), .exportBtn:hover:not(:disabled) { filter: brightness(1.08); }
-.addNew:active:not(:disabled), .apply:active:not(:disabled), .exportBtn:active:not(:disabled) { transform: scale(.97); }
-.exportBtn { border: 0; border-radius: 12px; padding: 11px 20px; font: inherit; font-weight: 700; color: #2a1a00; background: #f5a93b; cursor: pointer; transition: transform .15s ease, filter .2s ease; }
-.addNew:disabled, .apply:disabled, .exportBtn:disabled { opacity: .5; cursor: not-allowed; }
+:global(:root) .headActions .addNew, :global(:root) .filters2 .apply { border: 0; border-radius: 12px; padding: 11px 20px; font: inherit; font-weight: 700; color: #06281a !important; background: #34d399 !important; cursor: pointer; transition: transform .15s ease, filter .2s ease; }
+:global(:root) .headActions .addNew:hover:not(:disabled), :global(:root) .filters2 .apply:hover:not(:disabled), :global(:root) .filters2 .exportBtn:hover:not(:disabled) { filter: brightness(1.08); }
+:global(:root) .headActions .addNew:active:not(:disabled), :global(:root) .filters2 .apply:active:not(:disabled), :global(:root) .filters2 .exportBtn:active:not(:disabled) { transform: scale(.97); }
+:global(:root) .filters2 .exportBtn { border: 0; border-radius: 12px; padding: 11px 20px; font: inherit; font-weight: 700; color: #2a1a00 !important; background: #f5a93b !important; cursor: pointer; transition: transform .15s ease, filter .2s ease; }
+:global(:root) .headActions .addNew:disabled, :global(:root) .filters2 .apply:disabled, :global(:root) .filters2 .exportBtn:disabled { opacity: .5; cursor: not-allowed; }
 .filters2 { display: grid; grid-template-columns: minmax(160px, .7fr) minmax(220px, 2fr) auto auto auto; gap: 10px; align-items: center; margin: 0 0 16px; }
 .filters2 input { width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--glass-line, #3a3a42); background: var(--glass, transparent); color: inherit; font: inherit; }
 .pager { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 14px; font-size: 14px; }
-.perPage { display: flex; align-items: center; gap: 8px; color: var(--text-muted); }
+.perPage { display: flex; align-items: center; gap: 8px; color: var(--text-muted); white-space: nowrap; flex-wrap: nowrap; }
+.perPage > :last-child { min-width: 84px; }
 .pages { display: flex; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; }
 .filters { display: grid; grid-template-columns: minmax(240px, 1.2fr) minmax(200px, 1fr) minmax(180px, 1fr) minmax(160px, .8fr); gap: 10px; align-items: end; margin: 0 0 12px; }
 .filters label { display: grid; gap: 5px; font-size: 12px; font-weight: 700; color: var(--text-muted); }

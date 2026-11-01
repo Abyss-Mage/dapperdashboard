@@ -491,7 +491,7 @@ export default function BookingManager({
         <h2>Manage Appointments</h2>
         <div className={t.headActions}>
           {canCreate && (
-            <button className={t.addNew} disabled={busy} onClick={() => setShowCreateForm((prev) => !prev)}>
+            <button className={`primary ${t.addNew}`} disabled={busy} onClick={() => setShowCreateForm((prev) => !prev)}>
               {showCreateForm ? 'Cancel' : '+ Add New'}
             </button>
           )}
@@ -653,8 +653,8 @@ export default function BookingManager({
         <input type="search" aria-label="Appointment ID" value={idQ} onChange={(e) => { setPage(1); setIdQ(e.target.value); }} placeholder="Appointment ID" />
         <input type="search" aria-label="Search" value={textQ} onChange={(e) => { setPage(1); setTextQ(e.target.value); }} placeholder="Search for customers, services…" />
         <button type="button" className="secondary" onClick={() => { setDateFrom(''); setDateTo(''); setCustomerQ(''); setServiceF(''); setStatusFilter(''); setIdQ(''); setTextQ(''); setPage(1); setPicked(new Set()); }}>Reset</button>
-        <button type="button" className={t.apply} disabled={bookingsLoading} onClick={() => void loadBookings()}>Apply</button>
-        <button type="button" className={t.exportBtn} disabled={!shown.length} onClick={exportCsv}>Export{picked.size ? ' (' + picked.size + ')' : ''}</button>
+        <button type="button" className={`primary ${t.apply}`} disabled={bookingsLoading} onClick={() => void loadBookings()}>Apply</button>
+        <button type="button" className={`primary ${t.exportBtn}`} disabled={!shown.length} onClick={exportCsv}>Export{picked.size ? ' (' + picked.size + ')' : ''}</button>
       </div>
       <div className={t.table} role="table" aria-label="Appointments">
         <div className={t.head} role="row">
@@ -674,7 +674,7 @@ export default function BookingManager({
                 <span className={t.id}>#{b.id.slice(0, 6).toUpperCase()}</span>
                 <span>{formatTime(b.bookingTime)}</span>
                 <span><strong>{b.customerName}</strong><br /><span className={t.muted}>{b.customerPhone || b.customerEmail}</span></span>
-                <span>{b.serviceName}{b.addons?.length > 0 && <span className={t.muted}> + {b.addons.length}</span>}</span>
+                <span>{b.serviceName}{b.addons?.length > 0 && <span className={t.muted} style={{ whiteSpace: 'nowrap' }}> + {b.addons.length}</span>}</span>
                 <span>{lengthText(b.serviceId ? lengths[b.serviceId] : undefined)}</span>
                 <span className={t.status}>
                   {canManage ? (

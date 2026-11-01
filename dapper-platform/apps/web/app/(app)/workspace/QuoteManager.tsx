@@ -361,7 +361,7 @@ export default function QuoteManager({
             <option value="expired">Expired</option>
           </Select>
           {canCreate && !isFormOpen && (
-            <button type="button" className="primary" onClick={() => setIsFormOpen(true)}>
+            <button type="button" className="primary" style={{ whiteSpace: 'nowrap' }} onClick={() => setIsFormOpen(true)}>
               + New Quotation
             </button>
           )}
