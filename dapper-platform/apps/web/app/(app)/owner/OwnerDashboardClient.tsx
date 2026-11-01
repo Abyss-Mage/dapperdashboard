@@ -22,6 +22,7 @@ import Coupons from './Coupons';
 import Reports from './Reports';
 import CustomScripts from './CustomScripts';
 import WebsiteImages from './WebsiteImages';
+import MessagingSettings from './MessagingSettings';
 import Employees from './Employees';
 import ActivityLog from './ActivityLog';
 import BookingManager from '../workspace/BookingManager';
@@ -62,7 +63,7 @@ type Org = {
 type TabId =
   | 'overview' | 'calendar' | 'new-booking' | 'requests' | 'customers' | 'staff-hours' | 'availability' | 'dealership-tags' | 'customer-cars'
   | 'invoices' | 'quotes' | 'dealerships' | 'marketing'
-  | 'team' | 'franchises' | 'services' | 'hours' | 'taxes' | 'sop' | 'invoice-template' | 'payments' | 'tracking' | 'enquiries' | 'employees' | 'activity' | 'coupons' | 'reports' | 'scripts' | 'website-images'
+  | 'team' | 'franchises' | 'services' | 'hours' | 'taxes' | 'sop' | 'invoice-template' | 'payments' | 'tracking' | 'enquiries' | 'employees' | 'activity' | 'coupons' | 'reports' | 'scripts' | 'website-images' | 'messaging'
   | 'account';
 
 type Ctx = { scope: Access | undefined; organizations: Org[]; orgActions: string[] };
@@ -89,7 +90,7 @@ const TABS: TabDefinition[] = [
   { id: 'customer-cars', label: 'Customer cars', icon: 'work', description: 'Before and after photos of customers\' cars', show: (c) => has(c, 'attendance.read') },
   { id: 'quotes', label: 'Quotes', icon: 'finance', description: 'Price quotes for customers', show: (c) => has(c, 'quotes.read') },
   { id: 'dealerships', label: 'Dealerships', icon: 'dealership', description: 'Car dealerships you work with', show: (c) => has(c, 'dealership.read') },
-  { id: 'marketing', label: 'Mailchimp', icon: 'marketing', description: 'Your Mailchimp email list', show: (c) => has(c, 'marketing.read') },
+  { id: 'messaging', label: 'Email & SMS', icon: 'marketing', description: 'Outgoing email (SMTP) and text messages (Twilio)', show: (c) => org(c, 'access.manage') },
   { id: 'employees', label: 'Employees', icon: 'customers', description: 'Everyone on your team', show: (c) => org(c, 'access.manage') },
   { id: 'activity', label: 'Activity log', icon: 'admin', description: 'Who signed in and what they changed', show: (c) => org(c, 'access.manage') },
   { id: 'team', label: 'Team', icon: 'customers', description: 'Your team, invitations and roles', show: (c) => org(c, 'access.manage') },
@@ -112,7 +113,7 @@ const TABS: TabDefinition[] = [
 const NAV_GROUPS: { label: string; ids: TabId[] }[] = [
   { label: 'Every day', ids: ['overview', 'calendar', 'new-booking', 'requests', 'customers', 'reports'] },
   { label: 'Team', ids: ['employees', 'staff-hours', 'availability', 'dealership-tags', 'customer-cars', 'sop'] },
-  { label: 'Money', ids: ['quotes', 'payments', 'dealerships', 'marketing', 'coupons', 'enquiries'] },
+  { label: 'Money', ids: ['quotes', 'payments', 'dealerships', 'messaging', 'coupons', 'enquiries'] },
   { label: 'Settings', ids: ['services', 'hours', 'taxes', 'franchises', 'team', 'activity', 'invoice-template', 'website-images', 'tracking', 'scripts'] },
 ];
 const isTab = (v: string): v is TabId => TABS.some((t) => t.id === v);
@@ -589,6 +590,7 @@ export default function OwnerDashboardClient() {
           {hasTabPermission && activeTab === 'team' && currentOrg && <PeopleAccess key={'people-' + currentOrg.id} organizationId={currentOrg.id} revision={accessRevision} onSaved={refresh} />}
           {hasTabPermission && activeTab === 'invoice-template' && currentOrg && <InvoiceIssuerEditor key={'issuer-' + currentOrg.id} organizationId={currentOrg.id} revision={accessRevision} />}
           {hasTabPermission && activeTab === 'invoice-template' && currentOrg && <InvoiceTemplateEditor key={'template-' + currentOrg.id} organizationId={currentOrg.id} revision={accessRevision} locationId={scope?.locationId} locationName={scope?.locationName} />}
+          {hasTabPermission && activeTab === 'messaging' && currentOrg && <MessagingSettings key={'messaging-' + currentOrg.id} organizationId={currentOrg.id} revision={accessRevision} />}
           {hasTabPermission && activeTab === 'website-images' && scope && <WebsiteImages key={'images-' + base} base={base} franchiseName={scope.locationName} franchiseCode="" />}
           {hasTabPermission && activeTab === 'scripts' && currentOrg && <CustomScripts key={'scripts-' + currentOrg.id} organizationId={currentOrg.id} revision={accessRevision} />}
           {hasTabPermission && activeTab === 'tracking' && currentOrg && <WebsiteTrackingEditor key={'tracking-' + currentOrg.id} organizationId={currentOrg.id} revision={accessRevision} />}

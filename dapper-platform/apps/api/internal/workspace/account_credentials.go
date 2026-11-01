@@ -134,7 +134,7 @@ func registerAccountCredentialRoutes(mux *http.ServeMux, store *postgres.Store, 
 		}
 		if token != "" {
 			link := strings.TrimRight(origin, "/") + "/reset-password?token=" + token
-			if sender == nil {
+			if !emailReady(sender) {
 				log.Print("A password reset was requested but email delivery is not configured (DAPPER_SMTP_HOST)")
 			} else {
 				go func() {
