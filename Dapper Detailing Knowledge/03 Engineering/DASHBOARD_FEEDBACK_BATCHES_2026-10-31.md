@@ -109,3 +109,10 @@ Source: the tester's 29-point list. Evidence level: **source present, TypeScript
 - Reschedule: a booking that holds a calendar slot but has no matching service timing rule could not be moved ("No matching active service timing rules"). It can now be moved by hand: it gives its slot back, keeps the new time and shows in history. `MoveUnreservedBooking` handles reserved bookings (test extended).
 - Backdating: administrators with bookings.manage can step back to earlier months and pick days that already passed in New booking (`past=1` on the availability route, honoured only with bookings.manage).
 - Not done: true per-service slot capacity (Opening hours still has the shop-wide "Slots for each time"). Needs a scheduling engine change, see the chat.
+
+## Slots per service
+
+- Each service rule now has its own `slots` (migration 77): how many bookings of that service can run at the same time. When one is booked or offered, only bookings of the same service count against that limit; other services no longer use it up. Existing rules kept their old number (calendar slots divided by the units the service used).
+- Changed in all four places that count existing bookings: making a booking or moving one, staff and public availability, and the customer portal offers and requests. A reservation without a service rule still uses the shared calendar capacity as before.
+- Screens: Services > Slots (central catalogue services and franchise extras) edits "Slots (bookings of this service at the same time)". Opening hours no longer has the shop-wide slots field once a calendar exists.
+- Evidence: TestServiceSlots (service A with 1 slot refuses a second booking at the same time, service B with 2 slots is not blocked by A and refuses a third) and the full suite pass on real PostgreSQL; web build passes; deployed 2026-11-01 with backup `dapper-before-slots-2026-11-01-0621.dump`. Checked on the live site that Services > Slots shows the per-service number (2 for the first service).

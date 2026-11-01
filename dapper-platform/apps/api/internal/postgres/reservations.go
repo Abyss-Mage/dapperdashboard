@@ -142,6 +142,12 @@ func (s *Store) writeReservationInTransaction(ctx context.Context, tx pgx.Tx, sc
 		request.Units = rule.Units
 		request.WorkingTime = rule.WorkingTime
 	}
+	// With a service rule, only bookings of the same service count and the service has its own number of slots.
+	evalRequest := request
+	if resolvedRule != nil {
+		evalRequest.Units = 1
+		plan.Capacity = resolvedRule.Slots
+	}
 	if id != "" {
 		var current int
 		var existingRule *string
@@ -157,7 +163,7 @@ func (s *Store) writeReservationInTransaction(ctx context.Context, tx pgx.Tx, sc
 		}
 	}
 	// Bound work before loading allocations. Only intersecting rows are needed.
-	probe, err := scheduling.Evaluate(plan, request)
+	probe, err := scheduling.Evaluate(plan, evalRequest)
 	if err != nil {
 		return CapacityReservation{}, ErrReservationInput
 	}
@@ -167,15 +173,22 @@ func (s *Store) writeReservationInTransaction(ctx context.Context, tx pgx.Tx, sc
 	if !exactTime(probe.Occupied.Start) || !exactTime(probe.Occupied.End) {
 		return CapacityReservation{}, ErrReservationInput
 	}
-	rows, err := tx.Query(ctx, `SELECT occupied_start,occupied_end,units FROM capacity_reservations WHERE organization_id=$1 AND location_id=$2 AND resource_id=$3 AND cancelled_at IS NULL AND ($4='' OR id::text<>$4) AND occupied_start<$6 AND occupied_end>$5 LIMIT 10001`, scope.OrganizationID, scope.LocationID, resourceID, id, probe.Occupied.Start, probe.Occupied.End)
+	rows, err := tx.Query(ctx, `SELECT occupied_start,occupied_end,units,COALESCE(rule_snapshot->>'serviceId','') FROM capacity_reservations WHERE organization_id=$1 AND location_id=$2 AND resource_id=$3 AND cancelled_at IS NULL AND ($4='' OR id::text<>$4) AND occupied_start<$6 AND occupied_end>$5 LIMIT 10001`, scope.OrganizationID, scope.LocationID, resourceID, id, probe.Occupied.Start, probe.Occupied.End)
 	if err != nil {
 		return CapacityReservation{}, err
 	}
 	for rows.Next() {
 		var a scheduling.Allocation
-		if err = rows.Scan(&a.Start, &a.End, &a.Units); err != nil {
+		var service string
+		if err = rows.Scan(&a.Start, &a.End, &a.Units, &service); err != nil {
 			rows.Close()
 			return CapacityReservation{}, err
+		}
+		if resolvedRule != nil {
+			if service != resolvedRule.ServiceID {
+				continue
+			}
+			a.Units = 1
 		}
 		plan.Existing = append(plan.Existing, a)
 	}
@@ -183,7 +196,7 @@ func (s *Store) writeReservationInTransaction(ctx context.Context, tx pgx.Tx, sc
 	if err = rows.Err(); err != nil {
 		return CapacityReservation{}, err
 	}
-	decision, err := scheduling.Evaluate(plan, request)
+	decision, err := scheduling.Evaluate(plan, evalRequest)
 	if err != nil {
 		return CapacityReservation{}, ErrReservationInput
 	}

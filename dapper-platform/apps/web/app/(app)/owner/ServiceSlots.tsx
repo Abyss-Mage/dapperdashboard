@@ -6,7 +6,7 @@ import Select from '../GlassSelect';
 import NumberField from '../NumberField';
 
 type Resource = { id: string; name: string };
-type Rule = { id: string; serviceId: string; addonIds: string[]; durationMinutes: number; beforeMinutes: number; afterMinutes: number; units: number; workingTime?: boolean; version: number };
+type Rule = { id: string; serviceId: string; addonIds: string[]; durationMinutes: number; beforeMinutes: number; afterMinutes: number; units: number; slots: number; workingTime?: boolean; version: number };
 type Svc = { id: string; name: string; durationMinutes?: number | null };
 
 /* Slot settings for one service at one franchise: which calendar (resource) it is booked on, how long it holds the slot,
@@ -39,7 +39,7 @@ export default function ServiceSlots({ base, service, onClose }: { base: string;
     if (!r.ok) throw new Error('Slot settings could not be loaded.');
     const found = ((await r.json()).items as Rule[]).find((x) => x.serviceId === service.id && x.addonIds.length === 0) ?? null;
     setRule(found);
-    if (found) { setDuration(String(found.durationMinutes)); setBefore(String(found.beforeMinutes)); setAfter(String(found.afterMinutes)); setUnits(String(found.units)); }
+    if (found) { setDuration(String(found.durationMinutes)); setBefore(String(found.beforeMinutes)); setAfter(String(found.afterMinutes)); setUnits(String(found.slots || 1)); }
   }, [base, resource, service.id]);
   useEffect(() => { setError(''); setNotice(''); loadRule().catch((e) => setError(e.message)); }, [loadRule]);
 
@@ -50,7 +50,7 @@ export default function ServiceSlots({ base, service, onClose }: { base: string;
     try {
       const r = await fetch(`${base}/scheduling/resources/${resource}/rules${rule ? '/' + rule.id : ''}`, {
         method: rule ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ serviceId: service.id, addonIds: [], durationMinutes: Math.round(Number(duration)), beforeMinutes: Math.round(Number(before)), afterMinutes: Math.round(Number(after)), units: Math.round(Number(units)), workingTime: rule?.workingTime ?? false, ...(rule ? { version: rule.version } : {}) }),
+        body: JSON.stringify({ serviceId: service.id, addonIds: [], durationMinutes: Math.round(Number(duration)), beforeMinutes: Math.round(Number(before)), afterMinutes: Math.round(Number(after)), units: rule ? rule.units : 1, slots: Math.round(Number(units)), workingTime: rule?.workingTime ?? false, ...(rule ? { version: rule.version } : {}) }),
       });
       const body = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(body.error ?? (Object.values(body.errors ?? {}).join('. ') || 'The slot settings could not be saved.'));
@@ -83,11 +83,11 @@ export default function ServiceSlots({ base, service, onClose }: { base: string;
             <label className="form-field">Gap after (minutes)
               <NumberField inputMode="numeric" min="0" step="5" value={after} onChange={(e) => setAfter(e.target.value)} disabled={busy} />
             </label>
-            <label className="form-field">Bookings at the same time
-              <NumberField inputMode="numeric" min="1" step="1" value={units} onChange={(e) => setUnits(e.target.value)} disabled={busy} />
+            <label className="form-field">Slots (bookings of this service at the same time)
+              <NumberField inputMode="numeric" min="1" max="1000" step="1" value={units} onChange={(e) => setUnits(e.target.value)} disabled={busy} />
             </label>
           </div>
-          <p className={styles.footnote}>The days and hours this service can be booked come from the calendar’s weekly hours. To give a service its own days and hours, put it on its own calendar.</p>
+          <p className={styles.footnote}>Slots belong to this service alone: other services do not use them up. The days and hours this service can be booked come from the calendar’s weekly hours. To give a service its own days and hours, put it on its own calendar.</p>
         </>
       )}
       <div className={styles.rowBetween}>

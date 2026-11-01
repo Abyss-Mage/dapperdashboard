@@ -43,7 +43,7 @@ WHERE c.organization_id=$1 AND ($2='' OR c.location_id=NULLIF($2,'')::uuid) AND 
 		var rule SchedulingRule
 		switch {
 		case e == pgx.ErrNoRows:
-			rule, err = scanRule(tx.QueryRow(ctx, `INSERT INTO service_scheduling_rules(organization_id,location_id,resource_id,service_id,addon_ids,duration_minutes,before_minutes,after_minutes,units,working_time) VALUES($1,$2,$3,$4,'[]'::jsonb,$5,0,0,1,false) RETURNING `+ruleColumns, org, it.location, it.resource, it.service, it.minutes))
+			rule, err = scanRule(tx.QueryRow(ctx, `INSERT INTO service_scheduling_rules(organization_id,location_id,resource_id,service_id,addon_ids,duration_minutes,before_minutes,after_minutes,units,working_time,slots) VALUES($1,$2,$3,$4,'[]'::jsonb,$5,0,0,1,false,(SELECT LEAST(1000,GREATEST(1,capacity)) FROM scheduling_resources WHERE organization_id=$1 AND location_id=$2 AND id=$3)) RETURNING `+ruleColumns, org, it.location, it.resource, it.service, it.minutes))
 		case e != nil:
 			return e
 		case duration == it.minutes:

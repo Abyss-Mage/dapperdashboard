@@ -120,7 +120,7 @@ export default function OpeningHours({ base, franchiseName, canManage }: { base:
     <div className={styles.stack}>
       <div>
         <h2 className={styles.setupTitle} style={{ fontSize: 20, margin: 0 }}>Opening hours</h2>
-        <p className={styles.personSub}>When {franchiseName} is open for bookings, how many bookings can start at once, and which days it is closed.</p>
+        <p className={styles.personSub}>When {franchiseName} is open for bookings and which days it is closed.</p>
       </div>
       {error && <p role="alert" className="field-error">{error}</p>}
       {notice && <p role="status" className={styles.status}>{notice}</p>}
@@ -129,18 +129,24 @@ export default function OpeningHours({ base, franchiseName, canManage }: { base:
       {resources && (
         <section className={styles.card} style={{ padding: 20 }}>
           <h3 style={{ marginTop: 0 }}>Booking slots</h3>
-          <p className={styles.personSub}>A slot is one booking that can run at the same time. With 2 slots, two customers can book the same time; the third is offered another time.</p>
-          <div className={styles.inlineForm} style={{ alignItems: 'flex-end' }}>
-            <label className="form-field">Slots for each time
-              <NumberField inputMode="numeric" min="1" max="1000" step="1" value={slots} onChange={(e) => setSlots(e.target.value)} disabled={busy || !canManage} />
-            </label>
-            {!resources.length && (
-              <label className="form-field" style={{ minWidth: 240 }}>Time zone
-                <Select value={zone} onChange={(e) => setZone(e.target.value)} disabled={busy || !canManage}>{zones.map((z) => <option key={z} value={z}>{z}</option>)}</Select>
-              </label>
-            )}
-            {canManage && <button type="button" className="primary" disabled={busy} onClick={() => void saveSlots()}>{busy ? 'Saving…' : resources.length ? 'Save slots' : 'Create booking calendar'}</button>}
-          </div>
+          {resources.length > 0 ? (
+            <p className={styles.personSub}>Slots are set for each service, so a busy service does not use up the slots of another. Open Services, press Slots on a service, and set how many bookings of it can run at the same time. This page only sets the days and hours below.</p>
+          ) : (
+            <>
+              <p className={styles.personSub}>Create the booking calendar first. The slots here are the starting number given to each service; you can change them for each service later under Services, then Slots.</p>
+              <div className={styles.inlineForm} style={{ alignItems: 'flex-end' }}>
+                <label className="form-field">Slots for each time
+                  <NumberField inputMode="numeric" min="1" max="1000" step="1" value={slots} onChange={(e) => setSlots(e.target.value)} disabled={busy || !canManage} />
+                </label>
+                {!resources.length && (
+                  <label className="form-field" style={{ minWidth: 240 }}>Time zone
+                    <Select value={zone} onChange={(e) => setZone(e.target.value)} disabled={busy || !canManage}>{zones.map((z) => <option key={z} value={z}>{z}</option>)}</Select>
+                  </label>
+                )}
+                {canManage && <button type="button" className="primary" disabled={busy} onClick={() => void saveSlots()}>{busy ? 'Saving…' : resources.length ? 'Save slots' : 'Create booking calendar'}</button>}
+              </div>
+            </>
+          )}
         </section>
       )}
 

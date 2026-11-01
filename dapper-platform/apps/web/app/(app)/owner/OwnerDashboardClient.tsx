@@ -575,7 +575,7 @@ export default function OwnerDashboardClient() {
               <div className={styles.stack}>
                 {/* The central catalogue comes first: every change there applies to all franchises on its own. */}
                 {currentOrg.actions.includes('catalogue.read') && (
-                  <ServicesManager key={'central-' + currentOrg.id} mode="central" listUrl={`/api/v1/organizations/${currentOrg.id}/central-services`} organizationId={currentOrg.id} canManage={currentOrg.actions.includes('catalogue.manage')} title="Central catalogue" intro="Services and prices for every franchise. A change here applies to all franchises automatically, and a new service is switched on everywhere." />
+                  <ServicesManager key={'central-' + currentOrg.id} mode="central" listUrl={`/api/v1/organizations/${currentOrg.id}/central-services`} organizationId={currentOrg.id} canManage={currentOrg.actions.includes('catalogue.manage')} title="Central catalogue" locationBase={base} intro="Services and prices for every franchise. A change here applies to all franchises automatically, and a new service is switched on everywhere." />
                 )}
                 {scope.actions.includes('catalogue.read') && (
                   <ServicesManager key={'extras-' + base} mode="franchise" extrasOnly listUrl={`${base}/services`} organizationId={currentOrg.id} canManage={scope.actions.includes('catalogue.manage')} title={`Extra services only at ${scope.locationName}`} intro="Services this franchise offers on top of the central catalogue." />

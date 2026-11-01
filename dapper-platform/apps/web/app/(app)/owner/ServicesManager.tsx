@@ -28,7 +28,7 @@ const UNITS = { minutes: 1, hours: 60, days: 1440 } as const;
 type Unit = keyof typeof UNITS;
 const bestUnit = (m: number): Unit => (m % 1440 === 0 ? 'days' : m % 60 === 0 ? 'hours' : 'minutes');
 
-export default function ServicesManager({ mode, listUrl, organizationId, canManage, title, intro, extrasOnly = false }: { mode: 'central' | 'franchise'; listUrl: string; organizationId: string; canManage: boolean; title: string; intro: string; extrasOnly?: boolean }) {
+export default function ServicesManager({ mode, listUrl, organizationId, canManage, title, intro, extrasOnly = false, locationBase }: { mode: 'central' | 'franchise'; listUrl: string; organizationId: string; canManage: boolean; title: string; intro: string; extrasOnly?: boolean; locationBase?: string }) {
   const [items, setItems] = useState<Service[] | null>(null);
   const [central, setCentral] = useState<Service[]>([]);
   const [filter, setFilter] = useState<Filter>('active');
@@ -39,6 +39,19 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
   const [parentId, setParentId] = useState('');
   const [parentIds, setParentIds] = useState<string[]>([]);
   const [slotsFor, setSlotsFor] = useState<Service | null>(null);
+  const [slotsBase, setSlotsBase] = useState('');
+  // Slots belong to the franchise copy of a service. In the central catalogue the selected franchise's linked copy is found first.
+  async function openSlots(s: Service) {
+    setError(''); setNotice('');
+    if (mode === 'franchise') { setSlotsBase(listUrl.slice(0, -'/services'.length)); setSlotsFor(s); return; }
+    if (!locationBase) return;
+    try {
+      const list = (await readJson(await fetch(locationBase + '/services', { cache: 'no-store' }))).items as Service[];
+      const local = list.find((x) => x.centralServiceId === s.id && !x.archived);
+      if (!local) { setError('This service is not switched on at the selected franchise, so it has no slots there yet.'); return; }
+      setSlotsBase(locationBase); setSlotsFor(local);
+    } catch (e) { setError(e instanceof Error ? e.message : 'The slot settings could not be opened.'); }
+  }
   const [price, setPrice] = useState('');
   const [duration, setDuration] = useState('');
   const [unit, setUnit] = useState<Unit>('minutes');
@@ -167,7 +180,7 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
       {canManage && !s.archived && (
         <div className={styles.svcActions}>
           {(mode === 'central' || !s.centralServiceId) && <button type="button" className="secondary" disabled={busy || !!editing} onClick={() => open(s)}>Edit</button>}
-          {mode === 'franchise' && s.kind === 'main' && <button type="button" className="secondary" disabled={busy || !!editing} onClick={() => setSlotsFor(s)}>Slots</button>}
+          {(mode === 'franchise' || !!locationBase) && s.kind === 'main' && <button type="button" className="secondary" disabled={busy || !!editing} onClick={() => void openSlots(s)}>Slots</button>}
           {(mode === 'central' || !s.centralServiceId) && <button type="button" className="secondary" disabled={busy || !!editing} onClick={() => void duplicate(s)}>Duplicate</button>}
           <button type="button" className="secondary" disabled={busy} onClick={() => setTarget({ action: 'archive', item: s })}>Archive</button>
           <button type="button" className="secondary" disabled={busy} onClick={() => setTarget({ action: 'delete', item: s })}>Delete</button>
@@ -244,7 +257,7 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
         </form>
       )}
 
-      {slotsFor && <ServiceSlots base={listUrl.slice(0, -'/services'.length)} service={slotsFor} onClose={() => setSlotsFor(null)} />}
+      {slotsFor && <ServiceSlots base={slotsBase} service={slotsFor} onClose={() => setSlotsFor(null)} />}
 
       {mode === 'franchise' && canManage && available.length > 0 && (
         <section className={styles.resource}>
