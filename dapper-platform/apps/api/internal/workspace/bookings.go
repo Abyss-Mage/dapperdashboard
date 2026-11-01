@@ -394,9 +394,9 @@ func registerBookingRoutes(mux *http.ServeMux, store *postgres.Store) {
 				reply(w, 422, map[string]string{"error": "Provide the observed reservationVersion, or0 for an unreserved booking"})
 				return
 			}
-			item, err = store.UpdateBookingStatus(r.Context(), scope, id, input.ToStatus, input.CancellationReason, input.Notes, *input.ReservationVersion)
+			item, err = store.CorrectBookingStatus(r.Context(), scope, id, input.ToStatus, input.CancellationReason, input.Notes, *input.ReservationVersion)
 		} else {
-			item, err = store.UpdateBookingStatus(r.Context(), scope, id, input.ToStatus, input.CancellationReason, input.Notes)
+			item, err = store.CorrectBookingStatus(r.Context(), scope, id, input.ToStatus, input.CancellationReason, input.Notes)
 		}
 		if errors.Is(err, postgres.ErrReservationConflict) {
 			reply(w, 409, map[string]string{"error": "Reservation changed; refresh the booking before cancelling"})

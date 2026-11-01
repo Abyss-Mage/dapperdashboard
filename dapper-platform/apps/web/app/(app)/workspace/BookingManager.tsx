@@ -8,7 +8,7 @@ import t from './bookingTable.module.css';
 
 type Customer = {id: string; name: string; email: string; phone: string};
 type Vehicle = {id: string; customerId: string; description: string; identifier: string};
-type Service = {id: string; name: string; kind: string; archived: boolean; parentId: string | null};
+type Service = {id: string; name: string; kind: string; archived: boolean; parentId: string | null; durationMinutes?: number | null};
 type Reservation = {id: string; start: string; durationMinutes: number; cancelledAt: string | null};
 
 type Booking = {
@@ -69,6 +69,24 @@ export default function BookingManager({
   const [dateTo, setDateTo] = useState('');
   const [customerQ, setCustomerQ] = useState('');
   const [serviceF, setServiceF] = useState('');
+  const [idQ, setIdQ] = useState('');
+  const [textQ, setTextQ] = useState('');
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(20);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  // Service lengths for the Duration column (loaded once; the new-appointment form reloads the full choices).
+  const [lengths, setLengths] = useState<Record<string, number>>({});
+  useEffect(() => {
+    if (!base) return;
+    let live = true;
+    fetch(base + '/services', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).then((b) => {
+      if (!live || !b) return;
+      const map: Record<string, number> = {};
+      for (const s of (b.items ?? []) as Service[]) if (s.durationMinutes) map[s.id] = s.durationMinutes;
+      setLengths(map);
+    }).catch(() => undefined);
+    return () => { live = false; };
+  }, [base]);
   const [open, setOpen] = useState<Set<string>>(new Set());
   // Each booking's invoice (one per booking), so the appointment shows what is still owed or already paid.
   const [invoices, setInvoices] = useState<Record<string, { id: string; version: number; invoiceNumber: string; status: string; totalCents: number; paidCents: number; discountCents?: number; couponCode?: string }>>({});
@@ -443,27 +461,41 @@ export default function BookingManager({
   const serviceChoices = [...new Set(bookings.map((b) => b.serviceName))].sort();
   const shown = bookings.filter((b) => {
     const q = customerQ.trim().toLowerCase();
-    return (!serviceF || b.serviceName === serviceF) && (!q || [b.customerName, b.customerEmail, b.customerPhone].some((v) => (v ?? '').toLowerCase().includes(q)));
+    const idq = idQ.trim().replace(/^#/, '').toLowerCase(), tq = textQ.trim().toLowerCase();
+    return (!serviceF || b.serviceName === serviceF) && (!q || [b.customerName, b.customerEmail, b.customerPhone].some((v) => (v ?? '').toLowerCase().includes(q)))
+      && (!idq || b.id.toLowerCase().startsWith(idq)) && (!tq || [b.customerName, b.customerEmail, b.customerPhone, b.serviceName].some((v) => (v ?? '').toLowerCase().includes(tq)));
   });
+  const pageCount = Math.max(1, Math.ceil(shown.length / perPage));
+  const pageNow = Math.min(page, pageCount);
+  const pageRows = shown.slice((pageNow - 1) * perPage, pageNow * perPage);
+  const lengthText = (m?: number) => (!m ? '—' : m % 1440 === 0 ? m / 1440 + (m === 1440 ? ' Day' : ' Days') : m % 60 === 0 ? m / 60 + (m === 60 ? ' Hour' : ' Hours') : m + ' Mins');
+  const stamp = (iso: string) => new Date(iso).toLocaleString('en-CA', { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  function exportCsv() {
+    const rows = (picked.size ? shown.filter((b) => picked.has(b.id)) : shown);
+    const lead = ['=', '+', '-', '@', String.fromCharCode(9), String.fromCharCode(13)];
+    const cell = (v: string) => { let x = String(v ?? ''); if (lead.includes(x.charAt(0)) && !/^-?\$?[\d,.]+$/.test(x)) x = "'" + x; return '"' + x.replaceAll('"', '""') + '"'; };
+    const lines = [['ID', 'Date', 'Customer', 'Phone', 'Email', 'Service', 'Duration', 'Status', 'Payment', 'Created'], ...rows.map((b) => {
+      const inv = invoices[b.id]; const owed = inv ? inv.totalCents - inv.paidCents : 0;
+      return ['#' + b.id.slice(0, 6).toUpperCase(), stamp(b.bookingTime), b.customerName, b.customerPhone, b.customerEmail, b.serviceName, lengthText(b.serviceId ? lengths[b.serviceId] : undefined), STATUS_LABEL[b.status] ?? b.status, inv ? (owed <= 0 && inv.totalCents > 0 ? money(inv.paidCents) + ' paid' : money(owed) + ' due') : 'No invoice', stamp(b.createdAt)];
+    })].map((r) => r.map(cell).join(','));
+    const blob = new Blob([String.fromCharCode(0xfeff) + lines.join(String.fromCharCode(13, 10))], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'appointments.csv'; a.click(); URL.revokeObjectURL(a.href);
+  }
+  function shareUrl() {
+    const url = window.location.origin + '/booking';
+    navigator.clipboard?.writeText(url).then(() => setNotice('Booking page link copied: ' + url), () => setNotice('Booking page link: ' + url));
+  }
   return (
     <section className="panel detail-card">
-      <div className="section-head">
-        <div>
-          <h2>Bookings & Appointments</h2>
-        </div>
-        <div style={{display: 'flex', gap: '0.5rem', flexWrap: 'wrap'}}>
+      <div className={t.pageHead}>
+        <h2>Manage Appointments</h2>
+        <div className={t.headActions}>
           {canCreate && (
-            <button
-              className="primary"
-              disabled={busy}
-              onClick={() => setShowCreateForm((prev) => !prev)}
-            >
-              {showCreateForm ? 'Cancel new booking' : '+ New appointment'}
+            <button className={t.addNew} disabled={busy} onClick={() => setShowCreateForm((prev) => !prev)}>
+              {showCreateForm ? 'Cancel' : '+ Add New'}
             </button>
           )}
-          <button type="button" className="secondary" disabled={busy} onClick={loadBookings}>
-            Refresh bookings
-          </button>
+          <button type="button" className="secondary" onClick={shareUrl}>Share URL</button>
         </div>
       </div>
 
@@ -603,46 +635,57 @@ export default function BookingManager({
       <div className={t.filters}>
         <label>Appointment date
           <span className={t.dates}>
-            <DatePicker value={dateFrom} max={dateTo || undefined} onChange={(e) => { setBookings([]); setBookingsLoading(true); setDateFrom(e.target.value); }} aria-label="From date" />
-            <DatePicker value={dateTo} min={dateFrom || undefined} onChange={(e) => { setBookings([]); setBookingsLoading(true); setDateTo(e.target.value); }} aria-label="To date" />
+            <DatePicker value={dateFrom} max={dateTo || undefined} onChange={(e) => { setBookings([]); setBookingsLoading(true); setPage(1); setDateFrom(e.target.value); }} aria-label="From date" />
+            <DatePicker value={dateTo} min={dateFrom || undefined} onChange={(e) => { setBookings([]); setBookingsLoading(true); setPage(1); setDateTo(e.target.value); }} aria-label="To date" />
           </span>
         </label>
-        <label>Customer<input type="search" value={customerQ} onChange={(e) => setCustomerQ(e.target.value)} placeholder="Name, phone or email" /></label>
+        <label>Customer name<input type="search" value={customerQ} onChange={(e) => { setPage(1); setCustomerQ(e.target.value); }} placeholder="Start typing to fetch customer" /></label>
         <label>Service
-          <Select value={serviceF} onChange={(e) => setServiceF(e.target.value)} aria-label="Service"><option value="">All services</option>{serviceChoices.map((n) => <option key={n} value={n}>{n}</option>)}</Select>
+          <Select value={serviceF} onChange={(e) => { setPage(1); setServiceF(e.target.value); }} aria-label="Service"><option value="">Select service</option>{serviceChoices.map((n) => <option key={n} value={n}>{n}</option>)}</Select>
         </label>
         <label>Status
-          <Select value={statusFilter} onChange={(e) => { bookingsReqIdRef.current++; setBookings([]); setBookingsLoading(true); setStatusFilter(e.target.value); }} aria-label="Status">
-            <option value="">All statuses</option><option value="confirmed">Approved</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option>
+          <Select value={statusFilter} onChange={(e) => { bookingsReqIdRef.current++; setBookings([]); setBookingsLoading(true); setPage(1); setStatusFilter(e.target.value); }} aria-label="Status">
+            <option value="">Select status</option><option value="confirmed">Approved</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option>
           </Select>
         </label>
-        <button type="button" className="secondary" onClick={() => { setDateFrom(''); setDateTo(''); setCustomerQ(''); setServiceF(''); setStatusFilter(''); }}>Reset</button>
       </div>
-      <p className={t.count}>{bookingsLoading ? 'Loading appointments…' : `${shown.length} appointment${shown.length === 1 ? '' : 's'}`}</p>
+      <div className={t.filters2}>
+        <input type="search" aria-label="Appointment ID" value={idQ} onChange={(e) => { setPage(1); setIdQ(e.target.value); }} placeholder="Appointment ID" />
+        <input type="search" aria-label="Search" value={textQ} onChange={(e) => { setPage(1); setTextQ(e.target.value); }} placeholder="Search for customers, services…" />
+        <button type="button" className="secondary" onClick={() => { setDateFrom(''); setDateTo(''); setCustomerQ(''); setServiceF(''); setStatusFilter(''); setIdQ(''); setTextQ(''); setPage(1); setPicked(new Set()); }}>Reset</button>
+        <button type="button" className={t.apply} disabled={bookingsLoading} onClick={() => void loadBookings()}>Apply</button>
+        <button type="button" className={t.exportBtn} disabled={!shown.length} onClick={exportCsv}>Export{picked.size ? ' (' + picked.size + ')' : ''}</button>
+      </div>
       <div className={t.table} role="table" aria-label="Appointments">
-        <div className={t.head} role="row"><span /><span>ID</span><span>Date</span><span>Customer</span><span>Service</span><span>Status</span><span>Payment</span></div>
-        {shown.map((b) => {
+        <div className={t.head} role="row">
+          <span /><input type="checkbox" aria-label="Select all on this page" checked={pageRows.length > 0 && pageRows.every((b) => picked.has(b.id))} onChange={(e) => setPicked((prev) => { const next = new Set(prev); for (const b of pageRows) { if (e.target.checked) next.add(b.id); else next.delete(b.id); } return next; })} />
+          <span>ID</span><span>Date</span><span>Customer</span><span>Service</span><span>Duration</span><span>Status</span><span>Payment</span><span>Created date</span>
+        </div>
+        {pageRows.map((b) => {
           const inv = invoices[b.id];
           const owed = inv ? inv.totalCents - inv.paidCents : 0;
           const isOpen = open.has(b.id);
-          const final = b.status === 'completed' || b.status === 'cancelled';
+          const final = b.status === 'completed' || b.status === 'cancelled'; // finished or cancelled: actions stay hidden, but the status can still be corrected
           return (
             <div key={b.id} className={t.item}>
               <div className={t.row} role="row">
-                <button type="button" className={t.chev} aria-expanded={isOpen} aria-label={isOpen ? 'Hide details' : 'Show details'} onClick={() => setOpen((prev) => { const next = new Set(prev); if (next.has(b.id)) next.delete(b.id); else next.add(b.id); return next; })}>›</button>
+                <button type="button" className={t.chev} aria-expanded={isOpen} aria-label={isOpen ? 'Hide details' : 'Show details'} onClick={() => setOpen((prev) => { const next = new Set(prev); if (next.has(b.id)) next.delete(b.id); else next.add(b.id); return next; })}>{isOpen ? '−' : '+'}</button>
+                <input type="checkbox" aria-label={`Select appointment ${b.id.slice(0, 6)}`} checked={picked.has(b.id)} onChange={(e) => setPicked((prev) => { const next = new Set(prev); if (e.target.checked) next.add(b.id); else next.delete(b.id); return next; })} />
                 <span className={t.id}>#{b.id.slice(0, 6).toUpperCase()}</span>
                 <span>{formatTime(b.bookingTime)}</span>
                 <span><strong>{b.customerName}</strong><br /><span className={t.muted}>{b.customerPhone || b.customerEmail}</span></span>
                 <span>{b.serviceName}{b.addons?.length > 0 && <span className={t.muted}> + {b.addons.length}</span>}</span>
+                <span>{lengthText(b.serviceId ? lengths[b.serviceId] : undefined)}</span>
                 <span className={t.status}>
-                  {canManage && !final ? (
-                    <Select value={b.status === 'pending' ? 'pending' : 'confirmed'} disabled={busy} aria-label="Change status" onChange={(e) => { const v = e.target.value; if (v === 'completed') { setCompleteError(''); setCompleting(b); } else if (v === 'cancelled') { setCancellationReason(''); setError(''); setCancellingBooking(b); } else if (v === 'confirmed') void updateStatus(b.id, 'confirmed'); }}>
+                  {canManage ? (
+                    <Select value={b.status === 'pending' ? 'pending' : b.status === 'completed' || b.status === 'cancelled' ? b.status : 'confirmed'} disabled={busy} aria-label="Change status" onChange={(e) => { const v = e.target.value; if (v === 'completed') { setCompleteError(''); setCompleting(b); } else if (v === 'cancelled') { setCancellationReason(''); setError(''); setCancellingBooking(b); } else if (v === 'confirmed' && b.status !== 'confirmed') void updateStatus(b.id, 'confirmed'); }}>
                       {b.status === 'pending' && <option value="pending">Pending</option>}
                       <option value="confirmed">Approved</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option>
                     </Select>
                   ) : <span className={`status ${b.status === 'completed' ? 'progress' : b.status === 'cancelled' ? 'quote' : 'scheduled'}`}>{STATUS_LABEL[b.status] ?? b.status}</span>}
                 </span>
                 <span>{inv ? (owed <= 0 && inv.totalCents > 0 ? <><strong>{money(inv.paidCents)}</strong> <span className={t.muted}>paid</span></> : <><strong>{money(owed)}</strong> <span className={t.muted}>due</span></>) : <span className={t.muted}>No invoice</span>}</span>
+                <span className={t.muted}>{stamp(b.createdAt)}</span>
               </div>
               {isOpen && (
                 <div className={t.detail}>
@@ -677,6 +720,17 @@ export default function BookingManager({
           );
         })}
         {!bookingsLoading && shown.length === 0 && <p className={t.empty}>No appointments match these filters.</p>}
+      </div>
+      <div className={t.pager}>
+        <span className={t.muted}>{bookingsLoading ? 'Loading appointments…' : <>Showing <strong>{pageRows.length}</strong> out of <strong>{shown.length}</strong></>}</span>
+        <label className={t.perPage}>Per page
+          <Select value={String(perPage)} onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); }} aria-label="Per page">{[10, 20, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}</Select>
+        </label>
+        <span className={t.pages}>
+          <button type="button" className="secondary" disabled={pageNow <= 1} onClick={() => setPage(pageNow - 1)} aria-label="Previous page">‹</button>
+          <span aria-live="polite">{pageNow} / {pageCount}</span>
+          <button type="button" className="secondary" disabled={pageNow >= pageCount} onClick={() => setPage(pageNow + 1)} aria-label="Next page">›</button>
+        </span>
       </div>
 
       {moving && (

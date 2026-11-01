@@ -41,6 +41,11 @@ func lockBookingAllocation(ctx context.Context, tx pgx.Tx, scope Scope, id strin
 }
 
 func (s *Store) cancelBooking(ctx context.Context, scope Scope, id, reason, notes string, versions []int) (Booking, error) {
+	return s.cancelBookingFrom(ctx, scope, id, reason, notes, versions, false)
+}
+
+// cancelBookingFrom cancels and releases the held time slot. allowCompleted lets staff correct a completed booking.
+func (s *Store) cancelBookingFrom(ctx context.Context, scope Scope, id, reason, notes string, versions []int, allowCompleted bool) (Booking, error) {
 	reason = strings.TrimSpace(reason)
 	notes = strings.TrimSpace(notes)
 	if len(versions) > 1 || len(versions) == 1 && versions[0] < 0 || utf8.RuneCountInString(reason) > 2000 || utf8.RuneCountInString(notes) > 2000 {
@@ -107,7 +112,7 @@ func (s *Store) cancelBooking(ctx context.Context, scope Scope, id, reason, note
 		}
 		return bookingMutationSummary(booking), nil
 	}
-	if booking.Status == "completed" {
+	if booking.Status == "completed" && !allowCompleted {
 		return Booking{}, ErrBookingTransition
 	}
 	if reservationID != nil && (cancelledAt != nil || len(versions) == 1 && versions[0] != version) {
