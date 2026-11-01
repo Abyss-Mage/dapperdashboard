@@ -91,7 +91,7 @@ const TABS: TabDefinition[] = [
   { id: 'quotes', label: 'Quotes', icon: 'finance', description: 'Price quotes for customers', show: (c) => has(c, 'quotes.read') },
   { id: 'dealerships', label: 'Dealerships', icon: 'dealership', description: 'Car dealerships you work with', show: (c) => has(c, 'dealership.read') },
   { id: 'messaging', label: 'Email & SMS', icon: 'marketing', description: 'Outgoing email (SMTP) and text messages (Twilio)', show: (c) => org(c, 'access.manage') },
-  { id: 'employees', label: 'Employees', icon: 'customers', description: 'Everyone on your team', show: (c) => org(c, 'access.manage') },
+  { id: 'employees', label: 'Employees', icon: 'customers', description: 'People with the Employee role (workspace only)', show: (c) => org(c, 'access.manage') },
   { id: 'activity', label: 'Activity log', icon: 'admin', description: 'Who signed in and what they changed', show: (c) => org(c, 'access.manage') },
   { id: 'team', label: 'Team', icon: 'customers', description: 'Your team, invitations and roles', show: (c) => org(c, 'access.manage') },
   { id: 'franchises', label: 'Franchises', icon: 'admin', description: 'Your franchises and their details', show: (c) => org(c, 'structure.read') },
@@ -120,6 +120,10 @@ const isTab = (v: string): v is TabId => TABS.some((t) => t.id === v);
 const ORDER: TabId[] = [...NAV_GROUPS.flatMap((g) => g.ids), 'account'];
 
 export default function OwnerDashboardClient() {
+  // People whose only role is Employee work in the employee workspace; the dashboard sends them there.
+  useEffect(() => {
+    fetch('/api/v1/account/home', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).then((b) => { if (b?.workspaceOnly) window.location.replace('/workspace'); }).catch(() => undefined);
+  }, []);
   const [principal, setPrincipal] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

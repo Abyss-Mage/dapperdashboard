@@ -79,11 +79,42 @@ func TestFirstFranchiseSetup(t *testing.T) {
 		t.Fatal("the franchise has no published website entry", slug, published)
 	}
 	// the new Super Admin can run the roles screen and the content screens
-	if roles, e := s.ListRoles(ctx, owner.PrincipalID, owner.OrganizationID); e != nil || len(roles) != 1 {
+	if roles, e := s.ListRoles(ctx, owner.PrincipalID, owner.OrganizationID); e != nil || len(roles) != 2 {
 		t.Fatal("the Super Admin cannot list roles", e)
 	}
 	scope, err := s.ResolveScope(ctx, owner.PrincipalID, owner.OrganizationID, franchise.ID, "content.manage")
 	if err != nil || scope.LocationID != franchise.ID {
 		t.Fatal("the Super Admin cannot manage the franchise website content", err)
+	}
+	// The built-in Employee role exists and makes someone workspace-only; the owner is not.
+	var employeeCaps int
+	must(pool.QueryRow(ctx, `SELECT count(*) FROM roles r JOIN role_capabilities c ON c.role_id=r.id WHERE r.organization_id=$1 AND r.name=$2`, owner.OrganizationID, EmployeeRoleName).Scan(&employeeCaps))
+	if employeeCaps != len(EmployeeRoleCapabilities) {
+		t.Fatal("the Employee role is missing or incomplete", employeeCaps)
+	}
+	var worker, roleID string
+	must(pool.QueryRow(ctx, `INSERT INTO principals(external_subject) VALUES('synthetic:worker') RETURNING id::text`).Scan(&worker))
+	_, err = pool.Exec(ctx, `INSERT INTO organization_memberships(organization_id,principal_id) VALUES($1,$2)`, owner.OrganizationID, worker)
+	must(err)
+	must(pool.QueryRow(ctx, `SELECT id::text FROM roles WHERE organization_id=$1 AND name=$2`, owner.OrganizationID, EmployeeRoleName).Scan(&roleID))
+	_, err = pool.Exec(ctx, `INSERT INTO member_role_assignments(organization_id,principal_id,role_id,scope_type,scope_id,location_id,version,assigned_by) VALUES($1,$2,$3,'location',$4,$4,1,$5)`, owner.OrganizationID, worker, roleID, franchise.ID, owner.PrincipalID)
+	must(err)
+	if only, e := s.WorkspaceOnly(ctx, worker); e != nil || !only {
+		t.Fatal("an Employee-only person is not workspace-only", only, e)
+	}
+	if only, e := s.WorkspaceOnly(ctx, owner.PrincipalID); e != nil || only {
+		t.Fatal("the Super Admin was treated as workspace-only", only, e)
+	}
+	var manager string
+	must(pool.QueryRow(ctx, `SELECT id::text FROM roles WHERE organization_id=$1 AND name='Super Admin'`, owner.OrganizationID).Scan(&manager))
+	_, err = pool.Exec(ctx, `INSERT INTO member_role_assignments(organization_id,principal_id,role_id,scope_type,scope_id,version,assigned_by) VALUES($1,$2,$3,'organization',$1,1,$4)`, owner.OrganizationID, worker, manager, owner.PrincipalID)
+	must(err)
+	if only, e := s.WorkspaceOnly(ctx, worker); e != nil || only {
+		t.Fatal("someone who is also an administrator was treated as workspace-only", only, e)
+	}
+	var nobody string
+	must(pool.QueryRow(ctx, `INSERT INTO principals(external_subject) VALUES('synthetic:nobody') RETURNING id::text`).Scan(&nobody))
+	if only, e := s.WorkspaceOnly(ctx, nobody); e != nil || only {
+		t.Fatal("someone with no role was treated as workspace-only", only, e)
 	}
 }

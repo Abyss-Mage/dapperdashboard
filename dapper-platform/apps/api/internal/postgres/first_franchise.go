@@ -59,6 +59,9 @@ func (s *Store) ProvisionFirstFranchise(ctx context.Context, admin InitialAdmini
 		admin.OrganizationID, admin.PrincipalID, roleID); err != nil {
 		return Franchise{}, err
 	}
+	if err = ensureEmployeeRole(ctx, tx, admin.OrganizationID); err != nil {
+		return Franchise{}, err
+	}
 	// The franchise's public website entry: published, so portfolio photos added later appear on the website.
 	slug := strings.ToLower(franchise.Code)
 	if _, err = tx.Exec(ctx, `INSERT INTO public_sites(organization_id, location_id, slug, name, published) VALUES($1,$2,$3,$4,true) ON CONFLICT DO NOTHING`,

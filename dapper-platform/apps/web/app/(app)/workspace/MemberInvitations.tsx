@@ -29,7 +29,7 @@ export default function MemberInvitations({organizationId}: {organizationId: str
   // The role and franchise the person gets when they accept, chosen before sending.
   useEffect(() => {
     let live = true;
-    fetch(`/api/v1/organizations/${organizationId}/roles`, {cache: 'no-store'}).then(r => r.ok ? r.json() : []).then((list: Choice[]) => { if (live) setRoles(Array.isArray(list) ? list : []); }).catch(() => undefined);
+    fetch(`/api/v1/organizations/${organizationId}/roles`, {cache: 'no-store'}).then(r => r.ok ? r.json() : []).then((list: Choice[]) => { if (live) { const all = Array.isArray(list) ? list : []; setRoles(all); const emp = all.find(r => r.name.trim().toLowerCase() === 'employee'); if (emp) setRoleId(c => c || emp.id); } }).catch(() => undefined);
     fetch(`/api/v1/organizations/${organizationId}/structure`, {cache: 'no-store'}).then(r => r.ok ? r.json() : null).then(b => { if (live && b?.franchises) { const list = b.franchises.map((f: Choice) => ({id: f.id, name: f.name})); setFranchises(list); if (list.length === 1) setLocationId(list[0].id); } }).catch(() => undefined);
     return () => { live = false; };
   }, [organizationId]);

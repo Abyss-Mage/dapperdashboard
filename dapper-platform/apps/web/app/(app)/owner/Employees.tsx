@@ -25,6 +25,9 @@ const MISSING: Record<string, string> = { details: 'name and phone', documents: 
 
 /* The employees page: everyone in the organization with their roles, franchise and last sign-in; filter by role or status, open a
    person to change their roles, and terminate or reinstate them. Termination blocks sign-in at once and keeps their history. */
+/* Only people whose role is Employee are listed here; owners and managers are managed under Team. */
+const isEmployee = (p: { roles: string[] }) => p.roles.some((r) => r.trim().toLowerCase() === 'employee');
+
 export default function Employees({ organizationId, onChanged }: { organizationId: string; onChanged?: () => void }) {
   const base = `/api/v1/organizations/${organizationId}`;
   const [people, setPeople] = useState<Person[] | null>(null);
@@ -43,7 +46,7 @@ export default function Employees({ organizationId, onChanged }: { organizationI
   const load = useCallback(async () => {
     try {
       const [p, r, a, st] = await Promise.all(['access/people', 'roles', 'role-assignments', 'structure'].map((x) => fetch(`${base}/${x}`, { cache: 'no-store' }).then(readJson)));
-      setPeople(p.people ?? []);
+      setPeople(((p.people ?? []) as Person[]).filter(isEmployee));
       setRoles(r);
       setAssignments(a);
       setFranchises((st.franchises ?? []).filter((f: { franchiseId: string | null }) => !!f.franchiseId).map((f: { franchiseId: string; name: string; code: string }) => ({ id: f.franchiseId, name: f.code ? `${f.code} · ${f.name}` : f.name })));
@@ -98,7 +101,8 @@ export default function Employees({ organizationId, onChanged }: { organizationI
         {(query || roleFilter || status) && <button type="button" className="secondary" onClick={() => { setQuery(''); setRoleFilter(''); setStatus(''); }}>Clear filters</button>}
       </div>
       {!people && !error && <div className={`${styles.card} ${styles.skeleton}`} role="status" aria-label="Loading employees" />}
-      {people && shown.length === 0 && <p className={styles.status}>No one matches these filters.</p>}
+      {people && people.length === 0 && <p className={styles.status}>No employees yet. Invite someone under Team and give them the Employee role. They sign in to the workspace only.</p>}
+      {people && people.length > 0 && shown.length === 0 && <p className={styles.status}>No one matches these filters.</p>}
       <ul className={styles.people}>
         {shown.map((p) => (
           <li key={p.principalId} className={styles.person} style={{ opacity: p.active ? 1 : 0.65 }}>
