@@ -246,3 +246,5 @@ html input[type="file"] { background: transparent !important; border: 0 !importa
 .management-form .form-field { display: grid; gap: 7px; align-content: end; }
 .management-form .form-field > :is(input, textarea) { margin-top: 0; }
 :root :is(input[type=checkbox], input[type=radio]) { width: 20px !important; height: 20px !important; min-width: 20px !important; min-height: 0 !important; padding: 0 !important; flex: none; }
+.detail-card :is(button, a, summary, label, input, select) svg { margin: 0; }
+.detail-card :is(button, a, summary) > svg { flex-shrink: 0; }
