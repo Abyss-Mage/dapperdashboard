@@ -758,7 +758,7 @@ export default function BookingManager({
             <div className="form-actions" style={{ justifyContent: 'flex-start', flexWrap: 'wrap' }}>
               {inv && owed > 0 && <button className="primary" disabled={completeBusy} onClick={() => void finishBooking(completing, 'cash')}>{completeBusy ? 'Saving…' : `Cash received · ${money(owed)}`}</button>}
               {inv && owed > 0 && <button className="primary" disabled={completeBusy} onClick={() => void finishBooking(completing, 'bank_transfer')}>E-transfer received · {money(owed)}</button>}
-              <button className={inv && owed > 0 ? 'secondary' : 'primary'} disabled={completeBusy} onClick={() => void finishBooking(completing, '')}>{owed > 0 ? 'Complete, money still owed' : 'Complete'}</button>
+              {!(inv && owed > 0) && <button className="primary" disabled={completeBusy} onClick={() => void finishBooking(completing, '')}>Complete</button>}
               <button className="secondary" disabled={completeBusy} onClick={() => setCompleting(null)}>Back</button>
             </div>
           </div>

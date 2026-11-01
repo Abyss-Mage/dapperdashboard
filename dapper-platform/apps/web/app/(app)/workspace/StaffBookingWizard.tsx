@@ -36,7 +36,8 @@ export default function StaffBookingWizard(props: StaffBookingWizardProps) {
         const r = await fetch(employee ? '/api/v1/employee/walk-in/taxes' : `${base}/taxes`, { cache: 'no-store' });
         return r.ok ? ((await r.json()) as WizardTaxes) : null;
       }}
-      loadAvailability={async (rule, from, days) => json<WizardAvailability>(await fetch(employee ? `/api/v1/employee/walk-in/availability?${query(rule, from, days)}` : `${base}/bookings/availability?${query(rule, from, days)}`, { cache: 'no-store' }))}
+      allowPast={!employee}
+      loadAvailability={async (rule, from, days) => json<WizardAvailability>(await fetch(employee ? `/api/v1/employee/walk-in/availability?${query(rule, from, days)}` : `${base}/bookings/availability?${query(rule, from, days)}&past=1`, { cache: 'no-store' }))}
       findCustomers={employee ? undefined : async (phone): Promise<WizardCustomer[]> => {
         const list = (await json<{ items: WizardCustomer[] }>(await fetch(`${base}/customers`, { cache: 'no-store' }))).items;
         const d = digits(phone);

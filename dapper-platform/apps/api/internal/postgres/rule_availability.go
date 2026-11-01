@@ -28,7 +28,8 @@ const ruleAvailabilityStep = 30 * time.Minute
 // RuleAvailability answers "which days and times can this service be booked?" for staff screens. It uses the same Evaluate
 // authority as saving a booking, so a time offered here is one the save will accept (unless someone else books it first).
 // The caller has already checked the person may book at this scope.
-func (s *Store) RuleAvailability(ctx context.Context, scope Scope, resourceID, ruleID string, ruleVersion int, firstDay string, days int) (RuleAvailability, error) {
+func (s *Store) RuleAvailability(ctx context.Context, scope Scope, resourceID, ruleID string, ruleVersion int, firstDay string, days int, allowPast ...bool) (RuleAvailability, error) {
+	past := len(allowPast) > 0 && allowPast[0] // administrators entering a booking that already happened
 	out := RuleAvailability{Days: []RuleAvailabilityDay{}}
 	if resourceID == "" || ruleID == "" || ruleVersion < 1 || days < 1 || days > 31 {
 		return out, ErrAvailabilityInput
@@ -94,7 +95,7 @@ func (s *Store) RuleAvailability(ctx context.Context, scope Scope, resourceID, r
 		dayEnd := first.AddDate(0, 0, i+1)
 		item := RuleAvailabilityDay{Date: dayStart.Format("2006-01-02"), Starts: []time.Time{}}
 		from := dayStart
-		if from.Before(now) {
+		if from.Before(now) && !past {
 			from = now.Truncate(ruleAvailabilityStep).Add(ruleAvailabilityStep)
 		}
 		if from.Before(dayEnd) {

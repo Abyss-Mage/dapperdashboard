@@ -44,10 +44,23 @@ export default function BookingRescheduler({base, booking, onClose, onSaved}: {b
   useEffect(() => {const mine = rules.filter(item => item.resourceId === resource); if (resource && !rule && mine.length === 1) setRule(mine[0].id);}, [rules, resource, rule]);
   const selectedRule = rules.find(item => item.id === rule && item.resourceId === resource);
   const zone = resources.find(item => item.id === resource)?.timezone ?? 'America/Toronto';
+  // With no service timing rule to follow, the booking is moved by hand: it gives its calendar slot back and keeps the new time.
+  const detached = !loading && !rules.length;
   async function save(event: React.FormEvent) {
-    event.preventDefault(); if (!selectedRule || !booking.reservationVersion) return;
+    event.preventDefault();
     const startIso = zonedIso(start, zone);
     if (!startIso) {setError('Pick the new date and time.'); return;}
+    if (detached) {
+      setBusy(true); setError('');
+      try {
+        const response = await fetch(`${base}/bookings/${booking.id}/move`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bookingTime:startIso})});
+        const body = await response.json().catch(() => ({})); if (!response.ok) throw new Error(body.error ?? Object.values(body.errors ?? {}).join('. ') ?? 'The booking could not be moved.');
+        await onSaved(); onClose();
+      } catch (failure) {setError(failure instanceof Error ? failure.message : 'The booking could not be moved.');}
+      finally {setBusy(false);}
+      return;
+    }
+    if (!selectedRule || !booking.reservationVersion) return;
     setBusy(true); setError('');
     try {
       const payload = {resourceId:resource, ruleId:rule, ruleVersion:selectedRule.version, reservationVersion:booking.reservationVersion, start:startIso, notes:notes.trim()};
@@ -65,14 +78,14 @@ export default function BookingRescheduler({base, booking, onClose, onSaved}: {b
   <dialog className="booking-reschedule" ref={dialog} aria-labelledby="reschedule-booking-title" style={{position:'fixed',zIndex:1500,top:'50%',left:'50%',transform:'translate(-50%,-50%)',margin:0,width:'min(34rem, calc(100vw - 2rem))',padding:'1.5rem'}}>
     <form onSubmit={save} style={{display:'grid',gap:'.85rem'}}>
       <h3 id="reschedule-booking-title">Move this booking</h3>
-      <p><strong>{booking.customerName}</strong> · {booking.serviceName}</p><p>Now booked for {new Date(booking.bookingTime).toLocaleString('en-CA', {weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: zone})}. If the move cannot be made, the current time stays reserved.</p>
+      <p><strong>{booking.customerName}</strong> · {booking.serviceName}</p><p>Now booked for {new Date(booking.bookingTime).toLocaleString('en-CA', {weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: zone})}. {detached ? '' : ' If the move cannot be made, the current time stays reserved.'}</p>
       {usable.length > 1 && <label>Where<Select autoFocus disabled={loading || busy} required value={resource} onChange={event => {setResource(event.target.value); setRule('');}}><option value="">Choose where</option>{usable.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</Select></label>}
       {rules.filter(item => item.resourceId===resource).length > 1 && <label>Service timing<Select disabled={loading || busy || !resource} required value={rule} onChange={event => setRule(event.target.value)}><option value="">Choose</option>{rules.filter(item => item.resourceId===resource).map(item => <option key={item.id} value={item.id}>{item.durationMinutes} min</option>)}</Select></label>}
       <label>New date and time<DateTimePicker autoFocus={usable.length <= 1} required disabled={busy} value={start} onChange={event => setStart(event.target.value)}/></label>
       <label>Reason or notes (optional)<textarea disabled={busy} maxLength={2000} value={notes} onChange={event => setNotes(event.target.value)}/></label>
-      {loading && <p>Loading current scheduling choices…</p>}{!loading && !rules.length && !error && <p>No matching active service timing rules are configured.</p>}
+      {loading && <p>Loading current scheduling choices…</p>}{detached && !error && <p>This service has no active timing rules, so the booking will be moved by hand to the time you pick. It will no longer hold a calendar slot.</p>}
       {error && <p ref={errorRef} role="alert" tabIndex={-1}>{error}</p>}
-      <div style={{display:'flex',gap:'.75rem',marginTop:'1rem',flexWrap:'wrap'}}><button type="button" className="secondary" disabled={busy} onClick={onClose}>Keep it as is</button><button type="submit" className="primary" disabled={busy || loading || !selectedRule || !booking.reservationVersion}>{busy?'Moving…':'Move booking'}</button></div>
+      <div style={{display:'flex',gap:'.75rem',marginTop:'1rem',flexWrap:'wrap'}}><button type="button" className="secondary" disabled={busy} onClick={onClose}>Keep it as is</button><button type="submit" className="primary" disabled={busy || loading || !start || (!detached && (!selectedRule || !booking.reservationVersion))}>{busy?'Moving…':'Move booking'}</button></div>
     </form>
   </dialog></>;
 }

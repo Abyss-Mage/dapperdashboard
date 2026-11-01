@@ -140,6 +140,15 @@ func verifyBookingCapacity(t *testing.T, ctx context.Context, s *Store, a, b Sco
 	if _, err = s.pool.Exec(ctx, `UPDATE bookings SET booking_time=booking_time+interval '1 minute' WHERE id=$1`, valid.ID); err == nil {
 		t.Fatal("database allowed inconsistent booking time")
 	}
+	// A booking that holds a slot can be moved by hand: it gives the slot back and keeps the new time.
+	newTime := valid.BookingTime.Add(48 * time.Hour)
+	if moved, e := s.MoveUnreservedBooking(ctx, a, valid.ID, newTime); e != nil || moved.ReservationID != nil || !moved.BookingTime.Equal(newTime) || moved.Status != "confirmed" {
+		t.Fatal("reserved booking could not be moved by hand", e, moved.ReservationID)
+	}
+	var released int
+	if e := s.pool.QueryRow(ctx, `SELECT count(*) FROM capacity_reservations WHERE id=$1 AND cancelled_at IS NOT NULL`, reservation.ID).Scan(&released); e != nil || released != 1 {
+		t.Fatal("moving by hand did not release the slot", e)
+	}
 	if _, err = s.UpdateBookingStatus(ctx, a, valid.ID, "cancelled", "Isolated operator cancellation", ""); err != nil {
 		t.Fatal(err)
 	}

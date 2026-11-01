@@ -23,6 +23,9 @@ func (s *Store) MoveUnreservedBooking(ctx context.Context, scope Scope, id strin
 	if err = authorizeTransaction(ctx, tx, scope, "bookings.manage"); err != nil {
 		return Booking{}, err
 	}
+	if _, err = lockBookingAllocation(ctx, tx, scope, id); err != nil {
+		return Booking{}, err
+	}
 	var status string
 	var reservation *string
 	var from time.Time
@@ -33,11 +36,25 @@ func (s *Store) MoveUnreservedBooking(ctx context.Context, scope Scope, id strin
 	if err != nil {
 		return Booking{}, err
 	}
-	if status == "completed" || status == "cancelled" || reservation != nil {
+	if status == "completed" || status == "cancelled" {
 		return Booking{}, ErrBookingTransition
 	}
-	if _, err = tx.Exec(ctx, `UPDATE bookings SET booking_time=$4, updated_at=now() WHERE organization_id=$1 AND location_id=$2 AND id=$3`, scope.OrganizationID, scope.LocationID, id, to); err != nil {
-		return Booking{}, err
+	var resourceID string
+	var resVersion int
+	var resCancelled *time.Time
+	if reservation != nil {
+		if err = tx.QueryRow(ctx, `SELECT resource_id::text,version,cancelled_at FROM capacity_reservations WHERE organization_id=$1 AND location_id=$2 AND id=$3 FOR UPDATE`, scope.OrganizationID, scope.LocationID, *reservation).Scan(&resourceID, &resVersion, &resCancelled); err != nil {
+			return Booking{}, ErrReservationConflict
+		}
+	}
+	// A booking that held a slot lets go of it in the same statement that changes its time, then the slot is released.
+	if _, err = tx.Exec(ctx, `UPDATE bookings SET booking_time=$4, reservation_id=NULL, updated_at=now() WHERE organization_id=$1 AND location_id=$2 AND id=$3`, scope.OrganizationID, scope.LocationID, id, to); err != nil {
+		return Booking{}, bookingWriteError(err)
+	}
+	if reservation != nil && resCancelled == nil {
+		if _, err = s.releaseCapacityInTransaction(ctx, tx, scope, resourceID, *reservation, resVersion); err != nil {
+			return Booking{}, err
+		}
 	}
 	if _, err = tx.Exec(ctx, `INSERT INTO booking_events(booking_id,organization_id,location_id,actor_id,from_status,to_status,notes) VALUES($1,$2,$3,$4,$5,$5,$6)`,
 		id, scope.OrganizationID, scope.LocationID, scope.ActorID, status, "Rescheduled from "+from.UTC().Format("2006-01-02 15:04")+" UTC to "+to.UTC().Format("2006-01-02 15:04")+" UTC"); err != nil {

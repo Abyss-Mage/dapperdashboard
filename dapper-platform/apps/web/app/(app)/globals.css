@@ -245,3 +245,4 @@ html input[type="checkbox"]:checked, html input[type="radio"]:checked { backgrou
 html input[type="file"] { background: transparent !important; border: 0 !important; padding: 0 !important; min-height: 0 !important; box-shadow: none !important; }
 .management-form .form-field { display: grid; gap: 7px; align-content: end; }
 .management-form .form-field > :is(input, textarea) { margin-top: 0; }
+:root :is(input[type=checkbox], input[type=radio]) { width: 20px !important; height: 20px !important; min-width: 20px !important; min-height: 0 !important; padding: 0 !important; flex: none; }

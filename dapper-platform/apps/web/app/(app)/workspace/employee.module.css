@@ -376,3 +376,4 @@
 @media(max-width:720px){.invRow{grid-template-columns:minmax(0,1fr) auto}.invAmount{text-align:left}.invRowActions{grid-column:1/-1}.invLineHead{display:none}.invLine{grid-template-columns:minmax(0,1fr) 64px 100px 40px}}
 .brandText{display:flex!important;flex-direction:column!important;gap:3px!important;min-width:0;margin:0!important;padding:0!important;letter-spacing:normal!important}.brandText strong{display:block;font-size:15.7px;line-height:1.15;white-space:normal;color:var(--text)}.brandText em{display:block;margin:0!important;font-style:normal;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--link)}
 .app .brand{padding-bottom:18px}
+.dayRange .textButton { margin-right: 22px; }

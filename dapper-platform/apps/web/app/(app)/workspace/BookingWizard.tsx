@@ -30,6 +30,8 @@ export type WizardProps = {
   loadServices: () => Promise<WizardService[]>;
   loadTaxes: () => Promise<WizardTaxes>;
   loadAvailability: (rule: WizardRule, fromDay: string, days: number) => Promise<WizardAvailability>;
+  /** Administrators can step back to earlier months to enter a booking that already happened. */
+  allowPast?: boolean;
   submit: (booking: WizardBooking) => Promise<void>;
   findCustomers?: (phone: string) => Promise<WizardCustomer[]>;
   timezone: string;
@@ -359,7 +361,7 @@ export default function BookingWizard(p: WizardProps) {
         {name === 'Day & time' && <>
           <h2 ref={topRef} tabIndex={-1} className={styles.title}>Pick a day and time</h2>
           <div className={styles.calHead}>
-            <button type="button" disabled={isCurrentMonth} onClick={() => { setMonth((c) => (c.m === 0 ? { y: c.y - 1, m: 11 } : { y: c.y, m: c.m - 1 })); setDay(''); setStart(''); }} aria-label="Earlier month">‹</button>
+            <button type="button" disabled={isCurrentMonth && !p.allowPast} onClick={() => { setMonth((c) => (c.m === 0 ? { y: c.y - 1, m: 11 } : { y: c.y, m: c.m - 1 })); setDay(''); setStart(''); }} aria-label="Earlier month">‹</button>
             <strong>{new Date(month.y, month.m, 1).toLocaleDateString('en-CA', { month: 'long', year: 'numeric' })}</strong>
             <button type="button" onClick={() => { setMonth((c) => (c.m === 11 ? { y: c.y + 1, m: 0 } : { y: c.y, m: c.m + 1 })); setDay(''); setStart(''); }} aria-label="Later month">›</button>
           </div>

@@ -21,3 +21,5 @@
 .btn:active:not(:disabled) { transform: scale(.88); }
 .btn:disabled { opacity: .35; cursor: not-allowed; }
 @media (max-width: 640px) { .btn { width: 46px; } }
+.wrap .btn { border: 0 !important; border-radius: 0 !important; background: transparent !important; min-height: 0 !important; height: auto !important; box-shadow: none !important; width: 40px; padding: 0 !important; }
+.wrap .btn:hover:not(:disabled) { background: color-mix(in srgb, var(--brand, #fb1a2b) 14%, transparent) !important; }

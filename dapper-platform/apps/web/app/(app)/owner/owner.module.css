@@ -693,6 +693,8 @@
 .resource > button, .resource > form button { align-self: flex-start; }
 .resourceHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .subHead { margin: 6px 0 0; font-size: 13.6px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
+.tabPanel table :is(th, td) { background: transparent; color: var(--text); padding: 9px 12px; text-align: left; border: 0; border-bottom: 1px solid var(--glass-line); font-variant-numeric: tabular-nums; }
+.tabPanel table th { font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); }
 .reportTable { width: 100%; border-collapse: collapse; font-size: 14px; }
 .reportTable :is(th, td) { padding: 9px 12px; text-align: left; background: transparent; color: var(--text); border-bottom: 1px solid var(--glass-line); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .reportTable th { font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); }
