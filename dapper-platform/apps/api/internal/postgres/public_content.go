@@ -46,6 +46,8 @@ type PortfolioImage struct {
 	Published      bool   `json:"published"`
 	Version        int    `json:"version"`
 	RightsReviewed bool   `json:"rightsReviewed"`
+	Width          int    `json:"width"`
+	Height         int    `json:"height"`
 }
 type PublishedContent struct {
 	Site      PublicSite           `json:"site"`
@@ -217,14 +219,14 @@ func readSiteContent(ctx context.Context, tx pgx.Tx, org, loc string, public boo
 	if err = rows.Err(); err != nil {
 		return out, err
 	}
-	rows, err = tx.Query(ctx, `SELECT id::text,media_id::text,title,alt,category,sort_order,published,version FROM portfolio_images WHERE organization_id=$1 AND location_id=$2 AND (NOT $3::boolean OR published) ORDER BY sort_order,id LIMIT 200`, org, loc, public)
+	rows, err = tx.Query(ctx, `SELECT p.id::text,p.media_id::text,p.title,p.alt,p.category,p.sort_order,p.published,p.version,m.width,m.height FROM portfolio_images p JOIN content_media m ON m.id=p.media_id WHERE p.organization_id=$1 AND p.location_id=$2 AND (NOT $3::boolean OR p.published) ORDER BY p.sort_order,p.id LIMIT 200`, org, loc, public)
 	if err != nil {
 		return out, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var item PortfolioImage
-		if err = rows.Scan(&item.ID, &item.MediaID, &item.Title, &item.Alt, &item.Category, &item.SortOrder, &item.Published, &item.Version); err != nil {
+		if err = rows.Scan(&item.ID, &item.MediaID, &item.Title, &item.Alt, &item.Category, &item.SortOrder, &item.Published, &item.Version, &item.Width, &item.Height); err != nil {
 			return out, err
 		}
 		out.Portfolio = append(out.Portfolio, item)
@@ -274,7 +276,11 @@ func (s *Store) UploadContentImage(ctx context.Context, scope Scope, data []byte
 		return "", err
 	}
 	var id string
-	err = tx.QueryRow(ctx, `INSERT INTO content_media(organization_id,location_id,content_type,data) VALUES($1,$2,$3,$4) RETURNING id::text`, scope.OrganizationID, scope.LocationID, mime, normalized).Scan(&id)
+	var width, height int
+	if config, _, e := image.DecodeConfig(bytes.NewReader(normalized)); e == nil {
+		width, height = config.Width, config.Height
+	}
+	err = tx.QueryRow(ctx, `INSERT INTO content_media(organization_id,location_id,content_type,data,width,height) VALUES($1,$2,$3,$4,$5,$6) RETURNING id::text`, scope.OrganizationID, scope.LocationID, mime, normalized, width, height).Scan(&id)
 	if err != nil {
 		return "", err
 	}

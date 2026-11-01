@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -19,6 +20,8 @@ import (
 
 	"dapper.local/platform/internal/postgres"
 )
+
+var franchiseCode = regexp.MustCompile(`^[A-Z0-9-]{2,12}$`)
 
 //go:embed wizard/index.html
 var wizardPage []byte
@@ -183,6 +186,17 @@ type InstallRequest struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`
 	} `json:"owner"`
+	// The first franchise. The owner is made Super Admin and the franchise gets its public website entry.
+	Franchise struct {
+		Name       string `json:"name"`
+		Code       string `json:"code"`
+		Street     string `json:"street"`
+		City       string `json:"city"`
+		Region     string `json:"region"`
+		PostalCode string `json:"postalCode"`
+		Country    string `json:"country"`
+		Phone      string `json:"phone"`
+	} `json:"franchise"`
 }
 
 func (q InstallRequest) validate() error {
@@ -217,6 +231,16 @@ func (q InstallRequest) validate() error {
 	}
 	if !strings.Contains(q.Owner.Email, "@") || len(q.Owner.Password) < 15 || len(q.Owner.Password) > 1024 {
 		return errors.New("owner needs an email address and a password of at least 15 characters")
+	}
+	f := q.Franchise
+	if n := len([]rune(strings.TrimSpace(f.Name))); n < 2 || n > 120 {
+		return errors.New("the first franchise needs a name of 2 to 120 characters")
+	}
+	if !franchiseCode.MatchString(strings.ToUpper(strings.TrimSpace(f.Code))) {
+		return errors.New("the franchise code is 2 to 12 letters, digits or dashes, for example DDP")
+	}
+	if strings.TrimSpace(f.Street) == "" || strings.TrimSpace(f.City) == "" || strings.TrimSpace(f.Region) == "" || strings.TrimSpace(f.PostalCode) == "" || strings.TrimSpace(f.Country) == "" {
+		return errors.New("enter the franchise street, city, province or state, postal code and country")
 	}
 	return nil
 }
@@ -284,11 +308,19 @@ func (s *Server) install(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	good("Create the tables", "reviewed migrations applied")
-	if _, err = store.InitializeAdministrator(ctx, q.Site.Name, strings.TrimSpace(q.Owner.Email), q.Owner.Password); err != nil {
+	admin, err := store.InitializeAdministrator(ctx, q.Site.Name, strings.TrimSpace(q.Owner.Email), q.Owner.Password)
+	if err != nil {
 		bad("Create the owner account", errors.New("the owner account could not be created (check the email and that the password is at least 15 characters)"))
 		return
 	}
 	good("Create the owner account", strings.TrimSpace(q.Owner.Email))
+	if _, err = store.ProvisionFirstFranchise(ctx, admin, postgres.FirstFranchiseInput{Name: q.Franchise.Name, Code: q.Franchise.Code, Phone: q.Franchise.Phone,
+		Address: postgres.Address{Street: q.Franchise.Street, City: q.Franchise.City, Region: q.Franchise.Region, PostalCode: q.Franchise.PostalCode, Country: q.Franchise.Country}}); err != nil {
+		bad("Create the first franchise", errors.New("the franchise could not be created (check the name, code and address)"))
+		return
+	}
+	good("Create the first franchise", strings.TrimSpace(q.Franchise.Name))
+	good("Make the owner Super Admin", "the Super Admin role holds every permission and is assigned to "+strings.TrimSpace(q.Owner.Email))
 
 	origin, _ := parseOrigin(q.Site.URL)
 	cfg := Config{Site: Site{Name: strings.TrimSpace(q.Site.Name), URL: origin.String(), Timezone: q.Site.Timezone, Listen: q.Site.Listen, TLS: q.Site.TLS},

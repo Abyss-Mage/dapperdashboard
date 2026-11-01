@@ -26,8 +26,29 @@ const channels = [
 const sizes: Record<string, [number, number]> = { '01': [900, 1600], '02': [1600, 900], '08': [1600, 900], '05': [1600, 1200], '06': [1600, 1200], '07': [1600, 1200], '09': [1600, 1200], '10': [1600, 1200], '14': [1600, 1200] };
 const ratio = (src: string) => { const [w, h] = sizes[src.match(/(\d\d)\.jpg$/)![1]] ?? [1200, 1600]; return w + ' / ' + h; };
 
+type Shot = { src: string; caption: string; alt: string; ratio: string };
+
 export default function PortfolioPage() {
   const root = useRef<HTMLDivElement>(null);
+  // Photos added in the dashboard (Settings > Website images) replace the built-in ones as soon as one is published.
+  const [uploaded, setUploaded] = useState<Shot[] | null>(null);
+  useEffect(() => {
+    let live = true;
+    fetch('/api/v1/public/portfolio', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((b: { items?: { mediaId: string; title: string; alt: string; width: number; height: number }[] } | null) => {
+        if (!live || !b || !Array.isArray(b.items) || b.items.length === 0) return;
+        setUploaded(b.items.map((i) => ({ src: '/api/v1/public/media/' + i.mediaId, caption: i.title, alt: i.alt || i.title, ratio: i.width > 0 && i.height > 0 ? i.width + ' / ' + i.height : '3 / 4' })));
+      })
+      .catch(() => undefined);
+    return () => { live = false; };
+  }, []);
+  const photos: Shot[] = uploaded ?? portfolio.map((ph) => ({ src: ph.src, caption: ph.caption, alt: '', ratio: ratio(ph.src) }));
+  const heroTiles = uploaded
+    ? ['a', 'b', 'c', 'd', 'e'].map((cls, i) => ({ cls, src: uploaded[i % uploaded.length].src, alt: uploaded[i % uploaded.length].alt }))
+    : tiles.map((t) => ({ cls: t.cls, src: '/site/assets/portfolio/portfolio-' + t.src + '.jpg', alt: t.alt }));
+  // The strip's length depends on the photos, so the scroll positions are measured again when they change.
+  useEffect(() => { if (uploaded) { const id = setTimeout(() => ScrollTrigger.refresh(), 400); return () => clearTimeout(id); } }, [uploaded]);
   const viewer = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState<number | null>(null);
 
@@ -38,7 +59,7 @@ export default function PortfolioPage() {
     if (open !== null && !d.open) d.showModal();
     if (open === null && d.open) d.close();
   }, [open]);
-  const step = (n: number) => setOpen((i) => (i === null ? i : (i + n + portfolio.length) % portfolio.length));
+  const step = (n: number) => setOpen((i) => (i === null ? i : (i + n + photos.length) % photos.length));
 
   // The films open in the same kind of modal dialog, with sound and controls.
   const filmBox = useRef<HTMLDialogElement>(null);
@@ -128,16 +149,16 @@ export default function PortfolioPage() {
             <h2>Every vehicle tells a story.</h2>
             <p>Every transformation showcases our commitment to excellence.</p>
             <dl className="p-facts">
-              <div><dt>Photos</dt><dd>{portfolio.length} vehicles and details</dd></div>
+              <div><dt>Photos</dt><dd>{photos.length} vehicles and details</dd></div>
               <div><dt>Films</dt><dd>{transformations.clips.length} real transformations</dd></div>
             </dl>
           </div>
         </div>
         <div className="p-hero__media">
           <div className="p-mosaic">
-            {tiles.map((t, i) => (
-              <figure key={t.src} className={'p-tile p-tile--' + t.cls}>
-                <img src={'/site/assets/portfolio/portfolio-' + t.src + '.jpg'} alt={t.alt} fetchPriority={i < 2 ? 'high' : undefined} loading="eager" />
+            {heroTiles.map((t, i) => (
+              <figure key={t.cls} className={'p-tile p-tile--' + t.cls}>
+                <img src={t.src} alt={t.alt} fetchPriority={i < 2 ? 'high' : undefined} loading="eager" />
               </figure>
             ))}
           </div>
@@ -154,9 +175,9 @@ export default function PortfolioPage() {
           </div>
           <div className="p-strip">
             <ul className="p-strip__list">
-              {portfolio.map((ph, i) => (
-                <li key={ph.src}>
-                  <button type="button" className="p-photo" onClick={() => setOpen(i)} aria-label={'Open photo: ' + ph.caption} style={{ aspectRatio: ratio(ph.src) }}>
+              {photos.map((ph, i) => (
+                <li key={ph.src + i}>
+                  <button type="button" className="p-photo" onClick={() => setOpen(i)} aria-label={'Open photo: ' + ph.caption} style={{ aspectRatio: ph.ratio }}>
                     <img src={ph.src} alt="" loading="lazy" decoding="async" />
                   </button>
                   <p>{ph.caption}</p>
@@ -220,13 +241,13 @@ export default function PortfolioPage() {
         </section>
       </div>
 
-      <dialog ref={viewer} className="p-viewer" aria-label={open !== null ? portfolio[open].caption : 'Photo'} onClose={() => setOpen(null)}
+      <dialog ref={viewer} className="p-viewer" aria-label={open !== null ? photos[open].caption : 'Photo'} onClose={() => setOpen(null)}
         onClick={(e) => { if (e.target === e.currentTarget) setOpen(null); }}
         onKeyDown={(e) => { if (e.key === 'ArrowRight') step(1); if (e.key === 'ArrowLeft') step(-1); }}>
         {open !== null && (
           <>
-            <img src={portfolio[open].src} alt={portfolio[open].caption} />
-            <p className="p-viewer__cap">{portfolio[open].caption}<span>{open + 1} / {portfolio.length}</span></p>
+            <img src={photos[open].src} alt={photos[open].alt || photos[open].caption} />
+            <p className="p-viewer__cap">{photos[open].caption}<span>{open + 1} / {photos.length}</span></p>
             <button type="button" className="p-viewer__btn p-viewer__close" onClick={() => setOpen(null)} aria-label="Close"><X size={22} aria-hidden="true" /></button>
             <button type="button" className="p-viewer__btn p-viewer__prev" onClick={() => step(-1)} aria-label="Previous photo"><ArrowLeft size={22} aria-hidden="true" /></button>
             <button type="button" className="p-viewer__btn p-viewer__next" onClick={() => step(1)} aria-label="Next photo"><ArrowRight size={22} aria-hidden="true" /></button>

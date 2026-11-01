@@ -29,6 +29,15 @@ func registerPublicContentRoutes(mux *http.ServeMux, store *postgres.Store) {
 		w.Header().Set("Cache-Control", "no-store")
 		reply(w, 200, data)
 	})
+	mux.HandleFunc("GET /api/v1/public/portfolio", func(w http.ResponseWriter, r *http.Request) {
+		items, err := store.PublicPortfolio(r.Context())
+		if err != nil {
+			contentFailure(w, err)
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		reply(w, 200, map[string]any{"items": items})
+	})
 	mux.HandleFunc("GET /api/v1/public/media/{media}", func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("media")
 		if !uuid(id) {
@@ -205,5 +214,44 @@ func registerPublicContentRoutes(mux *http.ServeMux, store *postgres.Store) {
 			return
 		}
 		reply(w, 200, data)
+	})
+	mux.HandleFunc("DELETE "+base+"/portfolio/{image}", func(w http.ResponseWriter, r *http.Request) {
+		scope, ok := scopeFor(w, r, "content.manage")
+		if !ok {
+			return
+		}
+		id := r.PathValue("image")
+		if !uuid(id) {
+			reply(w, 400, map[string]string{"error": "Select a valid photo"})
+			return
+		}
+		if err := store.DeletePortfolioImage(r.Context(), scope, id); err != nil {
+			contentFailure(w, err)
+			return
+		}
+		reply(w, 200, map[string]bool{"removed": true})
+	})
+	mux.HandleFunc("PUT "+base+"/portfolio-order", func(w http.ResponseWriter, r *http.Request) {
+		scope, ok := scopeFor(w, r, "content.manage")
+		if !ok {
+			return
+		}
+		var input struct {
+			IDs []string `json:"ids"`
+		}
+		if !decode(w, r, &input) {
+			return
+		}
+		for _, id := range input.IDs {
+			if !uuid(id) {
+				reply(w, 400, map[string]string{"error": "Select valid photos"})
+				return
+			}
+		}
+		if err := store.OrderPortfolio(r.Context(), scope, input.IDs); err != nil {
+			contentFailure(w, err)
+			return
+		}
+		reply(w, 200, map[string]bool{"ordered": true})
 	})
 }
