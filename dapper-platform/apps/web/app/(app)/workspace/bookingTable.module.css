@@ -52,3 +52,7 @@
   .detail { padding-left: 18px; }
   .detailCols { grid-template-columns: 1fr; }
 }
+/* The row expander is a small filled circle with a plus (a minus when open), like the WordPress list. */
+:global(:root) .row .chev, :global(:root) .head .chev { width: 22px !important; height: 22px !important; min-width: 22px !important; min-height: 0 !important; padding: 0 !important; border: 0 !important; border-radius: 50% !important; background: rgba(255, 255, 255, .18) !important; color: #fff !important; font-size: 15px; font-weight: 700; line-height: 1; display: grid; place-items: center; box-shadow: none !important; transform: none; }
+:global(:root) .row .chev:hover { background: rgba(255, 255, 255, .3) !important; }
+:global(:root) .row .chev[aria-expanded='true'] { background: #34d399 !important; color: #06281a !important; }
