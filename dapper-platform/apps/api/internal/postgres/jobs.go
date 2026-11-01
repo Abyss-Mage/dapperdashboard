@@ -177,9 +177,9 @@ func (s *Store) CreateJob(ctx context.Context, scope Scope, input Job) (Job, err
 			return Job{}, ErrJobAddons
 		}
 		var addon JobAddon
-		err = tx.QueryRow(ctx, `SELECT id::text,name FROM catalog_services WHERE organization_id=$1 AND location_id=$2 AND id=$3 AND kind='addon' AND parent_id=$4 AND NOT archived FOR SHARE`, scope.OrganizationID, scope.LocationID, id, *input.ServiceID).Scan(&addon.ServiceID, &addon.Name)
+		err = tx.QueryRow(ctx, `SELECT id::text,name FROM catalog_services WHERE organization_id=$1 AND location_id=$2 AND id=$3 AND kind='addon' AND catalog_addon_offered_with(id,$4) AND NOT archived FOR SHARE`, scope.OrganizationID, scope.LocationID, id, *input.ServiceID).Scan(&addon.ServiceID, &addon.Name)
 		if errors.Is(err, pgx.ErrNoRows) {
-			err = tx.QueryRow(ctx, `SELECT id::text,name FROM central_catalog_services WHERE organization_id=$1 AND id=$2 AND kind='addon' AND parent_id=$3 AND NOT archived FOR SHARE`, scope.OrganizationID, id, *input.ServiceID).Scan(&addon.ServiceID, &addon.Name)
+			err = tx.QueryRow(ctx, `SELECT id::text,name FROM central_catalog_services WHERE organization_id=$1 AND id=$2 AND kind='addon' AND central_addon_offered_with(id,$3) AND NOT archived FOR SHARE`, scope.OrganizationID, id, *input.ServiceID).Scan(&addon.ServiceID, &addon.Name)
 		}
 		if errors.Is(err, pgx.ErrNoRows) {
 			return Job{}, ErrJobAddons

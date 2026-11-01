@@ -69,8 +69,9 @@ func registerServiceRoutes(mux *http.ServeMux, store *postgres.Store) {
 			var input struct {
 				Name     string  `json:"name"`
 				Kind     string  `json:"kind"`
-				ParentID *string `json:"parentId"`
-				Version  int     `json:"version"`
+				ParentID  *string  `json:"parentId"`
+				ParentIDs []string `json:"parentIds"`
+				Version   int      `json:"version"`
 				// Time to complete, in minutes (null or absent = not set).
 				DurationMinutes *int `json:"durationMinutes"`
 			}
@@ -87,8 +88,14 @@ func registerServiceRoutes(mux *http.ServeMux, store *postgres.Store) {
 			if input.Kind != "main" && input.Kind != "addon" {
 				fields["kind"] = "Choose main or addon"
 			}
-			if input.ParentID != nil && !uuid(*input.ParentID) || input.Kind == "addon" && input.ParentID == nil || input.Kind == "main" && input.ParentID != nil {
-				fields["parentId"] = "Add-ons require a valid main-service parent; main services have no parent"
+			parentsOK := input.ParentID == nil || uuid(*input.ParentID)
+			for _, p := range input.ParentIDs {
+				if !uuid(p) {
+					parentsOK = false
+				}
+			}
+			if !parentsOK || input.Kind == "addon" && input.ParentID == nil && len(input.ParentIDs) == 0 || input.Kind == "main" && (input.ParentID != nil || len(input.ParentIDs) > 0) {
+				fields["parentId"] = "Add-ons require at least one valid main service; main services have none"
 			}
 			if id != "" && input.Version < 1 {
 				fields["version"] = "Refresh to obtain the current service version"
@@ -97,7 +104,7 @@ func registerServiceRoutes(mux *http.ServeMux, store *postgres.Store) {
 				reply(w, 422, map[string]any{"errors": fields})
 				return
 			}
-			service, err := store.SaveService(r.Context(), scope, postgres.CatalogService{ID: id, Name: input.Name, Kind: input.Kind, ParentID: input.ParentID, Version: input.Version, DurationMinutes: input.DurationMinutes})
+			service, err := store.SaveService(r.Context(), scope, postgres.CatalogService{ID: id, Name: input.Name, Kind: input.Kind, ParentID: input.ParentID, ParentIDs: input.ParentIDs, Version: input.Version, DurationMinutes: input.DurationMinutes})
 			if err != nil {
 				serviceFailure(w, err)
 				return

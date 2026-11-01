@@ -48,7 +48,7 @@ func resolveReservationRule(ctx context.Context, tx pgx.Tx, scope Scope, resourc
 	}
 	for _, id := range rule.AddonIDs {
 		var child string
-		err = tx.QueryRow(ctx, `SELECT id::text FROM catalog_services WHERE organization_id=$1 AND location_id=$2 AND id=$3 AND kind='addon' AND parent_id=$4 AND NOT archived FOR SHARE`, scope.OrganizationID, scope.LocationID, id, rule.ServiceID).Scan(&child)
+		err = tx.QueryRow(ctx, `SELECT id::text FROM catalog_services WHERE organization_id=$1 AND location_id=$2 AND id=$3 AND kind='addon' AND catalog_addon_offered_with(id,$4) AND NOT archived FOR SHARE`, scope.OrganizationID, scope.LocationID, id, rule.ServiceID).Scan(&child)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return SchedulingRule{}, ErrSchedulingRule
 		}

@@ -9,7 +9,7 @@ import Collapse from '../motion/Collapse';
 import NumberField from '../NumberField';
 import ServiceSlots from './ServiceSlots';
 
-type Service = { id: string; name: string; kind: string; parentId: string | null; version: number; archived: boolean; centralServiceId?: string | null; priceCents?: number | null; durationMinutes?: number | null };
+type Service = { id: string; name: string; kind: string; parentId: string | null; parentIds?: string[]; version: number; archived: boolean; centralServiceId?: string | null; priceCents?: number | null; durationMinutes?: number | null };
 const money = (c: number) => `$${(c / 100).toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 type Filter = 'active' | 'main' | 'addon' | 'archived';
 type Target = { action: 'delete' | 'archive'; item: Service };
@@ -107,12 +107,11 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
     return all.filter((s) => inFilter(s) && match(s) && (!extrasOnly || !s.centralServiceId));
   }, [all, filter, query, extrasOnly]);
   const mains = visible.filter((s) => s.kind === 'main');
-  const addonsOf = (id: string) => visible.filter((s) => s.kind === 'addon' && s.parentId === id);
-  const orphans = visible.filter((s) => s.kind === 'addon' && !mains.some((m) => m.id === s.parentId));
+  // An add-on is one record offered with several main services: it is listed under each of them.
+  const parentsOf = (s: Service) => s.parentIds && s.parentIds.length ? s.parentIds : s.parentId ? [s.parentId] : [];
+  const addonsOf = (id: string) => visible.filter((s) => s.kind === 'addon' && parentsOf(s).includes(id));
+  const orphans = visible.filter((s) => s.kind === 'addon' && !parentsOf(s).some((p) => mains.some((m) => m.id === p)));
   const nameOf = (id: string | null) => all.find((s) => s.id === id)?.name ?? 'a main service';
-
-  // An add-on can belong to several main services: each one is its own row (same name, price) and edits are applied to all of them.
-  const siblingsOf = (s: Service) => all.filter((x) => x.kind === 'addon' && !x.archived && x.name.trim().toLowerCase() === s.name.trim().toLowerCase());
 
   function open(next: Service | 'new') {
     setEditing(next);
@@ -121,7 +120,7 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
     setName(next === 'new' ? '' : next.name);
     setKind(next === 'new' ? 'main' : next.kind);
     setParentId(next === 'new' ? '' : next.parentId ?? '');
-    setParentIds(next === 'new' || next.kind !== 'addon' ? [] : siblingsOf(next).map((x) => x.parentId).filter((x): x is string => !!x));
+    setParentIds(next === 'new' || next.kind !== 'addon' ? [] : parentsOf(next));
     setPrice(next === 'new' || next.priceCents == null ? '' : (next.priceCents / 100).toFixed(2));
     const u = next === 'new' || next.durationMinutes == null ? 'minutes' : bestUnit(next.durationMinutes);
     setUnit(u);
@@ -147,10 +146,7 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
     const fields = { name: name.trim(), kind, ...(mode === 'central' ? { priceCents: price.trim() === '' ? null : Math.round(Number(price) * 100) } : {}), durationMinutes };
     void run(async () => {
       if (kind === 'addon') {
-        const sibs = was && was !== 'new' ? siblingsOf(was) : [];
-        for (const sb of sibs) await readJson(await fetch(`${listUrl}/${sb.id}`, send('PUT', { ...fields, parentId: sb.parentId, version: sb.version })));
-        const have = new Set(sibs.map((x) => x.parentId));
-        for (const pid of parentIds) if (!have.has(pid)) await readJson(await fetch(listUrl, send('POST', { ...fields, parentId: pid })));
+        await readJson(await fetch(was === 'new' || !was ? listUrl : `${listUrl}/${was.id}`, send(was === 'new' || !was ? 'POST' : 'PUT', { ...fields, parentIds, ...(was && was !== 'new' ? { version: was.version } : {}) })));
       } else {
         await readJson(await fetch(was === 'new' || !was ? listUrl : `${listUrl}/${was.id}`, send(was === 'new' || !was ? 'POST' : 'PUT', { ...fields, parentId: null, ...(was && was !== 'new' ? { version: was.version } : {}) })));
       }
@@ -165,7 +161,7 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
     void run(async () => {
       let changed = 0;
       for (const sv of chosen) {
-        const next: Record<string, unknown> = { name: sv.name, kind: sv.kind, parentId: sv.parentId, version: sv.version, durationMinutes: sv.durationMinutes ?? null };
+        const next: Record<string, unknown> = { name: sv.name, kind: sv.kind, parentId: sv.kind === 'addon' ? null : sv.parentId, parentIds: sv.kind === 'addon' ? parentsOf(sv) : undefined, version: sv.version, durationMinutes: sv.durationMinutes ?? null };
         if (mode === 'central') {
           let cents = sv.priceCents ?? null;
           const v = Number(bulk.price);
@@ -194,7 +190,7 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
   const del = (s: Service) => run(async () => { const b = await readJson(await fetch(`${listUrl}/${s.id}?version=${s.version}`, send('DELETE'))); return b.message ?? `“${s.name}” removed.`; });
   const duplicate = (s: Service) => run(async () => {
     const copy = `${s.name} (copy)`.slice(0, 120);
-    await readJson(await fetch(listUrl, send('POST', { name: copy, kind: s.kind, parentId: s.kind === 'addon' ? s.parentId : null, ...(mode === 'central' ? { priceCents: s.priceCents ?? null } : {}), durationMinutes: s.durationMinutes ?? null })));
+    await readJson(await fetch(listUrl, send('POST', { name: copy, kind: s.kind, parentIds: s.kind === 'addon' ? parentsOf(s) : undefined, ...(mode === 'central' ? { priceCents: s.priceCents ?? null } : {}), durationMinutes: s.durationMinutes ?? null })));
     return `“${copy}” created. Rename it and adjust the price.`;
   });
   const enable = (c: Service) => run(async () => { await readJson(await fetch(`${listUrl}/from-central`, send('POST', { centralServiceId: c.id, version: c.version }))); return `Central service “${c.name}” is now available here.`; });
@@ -317,9 +313,9 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
             )}
             {kind === 'addon' && (
               <fieldset className={styles.parentPick}>
-                <legend>Offered with these main services</legend>
+                <legend>Offered with these main services (one add-on, any number of main services)</legend>
                 {all.filter((x) => !x.archived && x.kind === 'main').map((m) => {
-                  const locked = editing !== 'new' && editing !== null && siblingsOf(editing).some((x) => x.parentId === m.id);
+                  const locked = false;
                   return (
                     <label key={m.id} className={styles.parentOpt}>
                       <input type="checkbox" checked={parentIds.includes(m.id)} disabled={busy || locked} title={locked ? 'Already offered. Archive its row to remove it.' : undefined} onChange={(e) => setParentIds(e.target.checked ? [...parentIds, m.id] : parentIds.filter((x) => x !== m.id))} />
@@ -345,10 +341,10 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
           <h3>Available from the central catalogue</h3>
           <ul className={styles.svcList}>
             {available.map((c) => {
-              const parentLinked = c.kind !== 'addon' || all.some((s) => s.centralServiceId === c.parentId);
+              const parentLinked = c.kind !== 'addon' || (c.parentIds ?? (c.parentId ? [c.parentId] : [])).some((p) => all.some((s) => s.centralServiceId === p));
               return (
                 <li key={c.id} className={styles.svc}>
-                  <div className={styles.svcMain}><strong>{c.name}</strong><span className={styles.personSub}>{c.kind === 'addon' ? `Add-on to ${central.find((x) => x.id === c.parentId)?.name ?? 'a main service'}` : 'Main service'}</span></div>
+                  <div className={styles.svcMain}><strong>{c.name}</strong><span className={styles.personSub}>{c.kind === 'addon' ? `Add-on to ${(c.parentIds ?? (c.parentId ? [c.parentId] : [])).map((p) => central.find((x) => x.id === p)?.name ?? 'a main service').join(', ')}` : 'Main service'}</span></div>
                   <div className={styles.svcActions}><button type="button" className="secondary" disabled={busy || !parentLinked} title={parentLinked ? undefined : 'Enable its main service first'} onClick={() => void enable(c)}>Enable here</button></div>
                 </li>
               );

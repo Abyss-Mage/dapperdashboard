@@ -219,7 +219,7 @@ func (s *Store) PublicBook(ctx context.Context, slug string, in PublicBookingInp
 	for _, id := range in.AddonIDs {
 		var name string
 		var price *int64
-		err = s.pool.QueryRow(ctx, `SELECT name,price_cents FROM catalog_services WHERE organization_id=$1 AND location_id=$2 AND id::text=$3 AND kind='addon' AND parent_id::text=$4 AND NOT archived`, scope.OrganizationID, scope.LocationID, id, serviceID).Scan(&name, &price)
+		err = s.pool.QueryRow(ctx, `SELECT name,price_cents FROM catalog_services WHERE organization_id=$1 AND location_id=$2 AND id::text=$3 AND kind='addon' AND catalog_addon_offered_with(id,$4::uuid) AND NOT archived`, scope.OrganizationID, scope.LocationID, id, serviceID).Scan(&name, &price)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return out, ErrPublicBookingInput
 		}

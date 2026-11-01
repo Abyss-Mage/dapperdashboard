@@ -17,6 +17,8 @@ type CatalogService struct {
 	Name             string  `json:"name"`
 	Kind             string  `json:"kind"`
 	ParentID         *string `json:"parentId"`
+	// ParentIDs are every main service an add-on is offered with (ParentID is the primary one). Empty for a main service.
+	ParentIDs []string `json:"parentIds"`
 	Archived         bool    `json:"archived"`
 	Version          int     `json:"version"`
 	CentralServiceID *string `json:"centralServiceId"`
@@ -41,7 +43,7 @@ func (s *Store) Services(ctx context.Context, scope Scope) ([]CatalogService, er
 	if err = authorizeTransaction(ctx, tx, scope, "catalogue.read"); err != nil {
 		return nil, err
 	}
-	rows, err := tx.Query(ctx, `SELECT `+serviceColumns+` FROM catalog_services WHERE organization_id=$1 AND location_id=$2 ORDER BY name,id LIMIT 1000`, scope.OrganizationID, scope.LocationID)
+	rows, err := tx.Query(ctx, `SELECT `+serviceColumns+` FROM catalog_services WHERE organization_id=$1 AND location_id=$2 AND merged_into IS NULL ORDER BY name,id LIMIT 1000`, scope.OrganizationID, scope.LocationID)
 	if err != nil {
 		return nil, err
 	}
@@ -57,6 +59,18 @@ func (s *Store) Services(ctx context.Context, scope Scope) ([]CatalogService, er
 	rows.Close()
 	if err = rows.Err(); err != nil {
 		return nil, err
+	}
+	links, err := localAddonLinks(ctx, tx, scope.OrganizationID, scope.LocationID)
+	if err != nil {
+		return nil, err
+	}
+	for i := range result {
+		if result[i].Kind == "addon" {
+			result[i].ParentIDs = links[result[i].ID]
+			if len(result[i].ParentIDs) == 0 && result[i].ParentID != nil {
+				result[i].ParentIDs = []string{*result[i].ParentID}
+			}
+		}
 	}
 	if err = tx.Commit(ctx); err != nil {
 		return nil, err
@@ -74,8 +88,19 @@ func (s *Store) SaveService(ctx context.Context, scope Scope, input CatalogServi
 	if input.DurationMinutes != nil && (*input.DurationMinutes < 1 || *input.DurationMinutes > 10080) {
 		return CatalogService{}, ErrServiceInput
 	}
-	if input.Kind != "main" && input.Kind != "addon" || input.Kind == "main" && input.ParentID != nil || input.Kind == "addon" && (input.ParentID == nil || *input.ParentID == input.ID) {
+	if input.Kind != "main" && input.Kind != "addon" || input.Kind == "main" && (input.ParentID != nil || len(input.ParentIDs) > 0) {
 		return CatalogService{}, ErrServiceInput
+	}
+	if input.Kind == "addon" {
+		ids := input.ParentIDs
+		if len(ids) == 0 && input.ParentID != nil {
+			ids = []string{*input.ParentID}
+		}
+		set, ok := uniqueParents(ids, input.ID)
+		if !ok {
+			return CatalogService{}, ErrServiceInput
+		}
+		input.ParentIDs = set
 	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -85,9 +110,10 @@ func (s *Store) SaveService(ctx context.Context, scope Scope, input CatalogServi
 	if err = authorizeTransaction(ctx, tx, scope, "catalogue.manage"); err != nil {
 		return CatalogService{}, err
 	}
+	var currentParent *string
 	if input.ID != "" {
 		var version int
-		err = tx.QueryRow(ctx, `SELECT version FROM catalog_services WHERE organization_id=$1 AND location_id=$2 AND id=$3 AND NOT archived FOR UPDATE`, scope.OrganizationID, scope.LocationID, input.ID).Scan(&version)
+		err = tx.QueryRow(ctx, `SELECT version,parent_id::text FROM catalog_services WHERE organization_id=$1 AND location_id=$2 AND id=$3 AND NOT archived FOR UPDATE`, scope.OrganizationID, scope.LocationID, input.ID).Scan(&version, &currentParent)
 		if errors.Is(err, pgx.ErrNoRows) || err == nil && version != input.Version {
 			return CatalogService{}, ErrServiceConflict
 		}
@@ -112,6 +138,11 @@ func (s *Store) SaveService(ctx context.Context, scope Scope, input CatalogServi
 			}
 		}
 	}
+	input.ParentID = nil
+	if input.Kind == "addon" {
+		primary := primaryParent(currentParent, input.ParentIDs)
+		input.ParentID = &primary
+	}
 	if input.ParentID != nil {
 		var parent string
 		err = tx.QueryRow(ctx, `SELECT id::text FROM catalog_services WHERE organization_id=$1 AND location_id=$2 AND id=$3 AND kind='main' AND NOT archived FOR SHARE`, scope.OrganizationID, scope.LocationID, *input.ParentID).Scan(&parent)
@@ -129,6 +160,14 @@ func (s *Store) SaveService(ctx context.Context, scope Scope, input CatalogServi
 		service, err = scanService(tx.QueryRow(ctx, `UPDATE catalog_services SET name=$4,kind=$5,parent_id=$6,duration_minutes=$7,version=version+1 WHERE organization_id=$1 AND location_id=$2 AND id=$3 RETURNING `+serviceColumns, scope.OrganizationID, scope.LocationID, input.ID, input.Name, input.Kind, input.ParentID, input.DurationMinutes))
 	}
 	if err != nil {
+		return CatalogService{}, err
+	}
+	if service.Kind == "addon" {
+		if err = setLocalAddonLinks(ctx, tx, scope, service.ID, input.ParentIDs); err != nil {
+			return CatalogService{}, err
+		}
+		service.ParentIDs = input.ParentIDs
+	} else if _, err = tx.Exec(ctx, `DELETE FROM catalog_addon_parents WHERE addon_id=$1`, service.ID); err != nil {
 		return CatalogService{}, err
 	}
 	if err = serviceRevision(ctx, tx, scope, service); err != nil {
@@ -169,6 +208,9 @@ func (s *Store) ArchiveService(ctx context.Context, scope Scope, id string, vers
 	if err != nil {
 		return CatalogService{}, err
 	}
+	if err = releaseLocalMain(ctx, tx, scope, id); err != nil {
+		return CatalogService{}, err
+	}
 	var children bool
 	err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM catalog_services WHERE parent_id=$1 AND NOT archived)`, id).Scan(&children)
 	if err != nil {
@@ -204,6 +246,9 @@ func (s *Store) DeleteService(ctx context.Context, scope Scope, id string, versi
 		return DeleteResult{}, ErrServiceConflict
 	}
 	if err != nil {
+		return DeleteResult{}, err
+	}
+	if err = releaseLocalMain(ctx, tx, scope, id); err != nil {
 		return DeleteResult{}, err
 	}
 	var children bool

@@ -8,7 +8,7 @@ import t from './bookingTable.module.css';
 
 type Customer = {id: string; name: string; email: string; phone: string};
 type Vehicle = {id: string; customerId: string; description: string; identifier: string};
-type Service = {id: string; name: string; kind: string; archived: boolean; parentId: string | null; durationMinutes?: number | null};
+type Service = {id: string; name: string; kind: string; archived: boolean; parentId: string | null; parentIds?: string[]; durationMinutes?: number | null};
 type Reservation = {id: string; start: string; durationMinutes: number; cancelledAt: string | null};
 
 type Booking = {
@@ -586,11 +586,11 @@ export default function BookingManager({
             )}
           </div>
 
-          {serviceId && services.some((s) => s.kind === 'addon' && s.parentId === serviceId) && (
+          {serviceId && services.some((s) => s.kind === 'addon' && (s.parentIds?.includes(serviceId) ?? s.parentId === serviceId)) && (
             <fieldset disabled={busy} style={{margin: '1rem 0'}}>
               <legend>Select add-ons</legend>
               {services
-                .filter((s) => s.kind === 'addon' && s.parentId === serviceId)
+                .filter((s) => s.kind === 'addon' && (s.parentIds?.includes(serviceId) ?? s.parentId === serviceId))
                 .map((addon) => (
                   <label key={addon.id} className="form-field">
                     <span>

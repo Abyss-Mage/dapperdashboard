@@ -154,3 +154,12 @@ Source: the tester's 29-point list. Evidence level: **source present, TypeScript
 - **Slots screen** explains what a calendar is when a franchise has more than one.
 - Not done, needs a decision: add-ons as one record shared by several main services (today one row per main service, kept in step by name); and the Staff hours "font fix" (no specific fault could be identified).
 - Evidence: full Go suite and web build pass on real PostgreSQL; deployed 2026-11-02 with backup `dapper-before-fixes-2026-11-01-1939.dump`. Not yet checked on screen: the browser window used for checks was closed and its replacement stops at the certificate warning for the server address.
+
+## One add-on, offered with many main services (seventh round, part 2)
+
+- **Model:** an add-on is now ONE record. Link tables `central_addon_parents` and `catalog_addon_parents` (migration 82) say which main services it is offered with; `parent_id` stays as its primary main service and is always one of its links. SQL functions `catalog_addon_offered_with` and `central_addon_offered_with` are used by every check that an add-on belongs to the chosen service (bookings, jobs, walk-ins, public booking, scheduling rules, capacity options).
+- **Central to franchise:** triggers copy central links to each franchise copy, make links for copies created later, and move a franchise copy's primary when the central one changes.
+- **Data fold on the live server (2026-11-02):** 228 central add-on rows with 23 distinct names became 23 add-ons with 228 links; same at the franchise. The 205 duplicates are archived and marked `merged_into` so they stay out of lists but old records still resolve; the one booking that referenced a duplicate was pointed at the surviving add-on. Checked first inside a rolled-back transaction on the live data.
+- **API:** services carry `parentIds` (every main service) next to `parentId` (primary); saving an add-on takes `parentIds`. Archiving or deleting a main service only unlinks add-ons that are also offered with another active main; an add-on whose only main service it is still blocks it.
+- **Screen:** Services lists each add-on once, under every main service it is offered with; Edit shows tick boxes for the main services; Bulk edit and Duplicate keep the links.
+- Evidence: TestSharedAddons (links, franchise follow, primary moves, archive unlinks, sole parent blocks, merged hidden) and the full suite pass; web build passes; deployed with backup `dapper-before-addons-2026-11-01-1953.dump`. Not yet looked at on screen.

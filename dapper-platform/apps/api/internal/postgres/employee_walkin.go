@@ -202,7 +202,7 @@ func (s *Store) CreateEmployeeWalkIn(ctx context.Context, actor string, input Em
 		seen := map[string]bool{}
 		for _, id := range input.AddonIDs {
 			var ok bool
-			if seen[id] || tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM catalog_services WHERE organization_id=$1 AND location_id=$2 AND id::text=$3 AND kind='addon' AND parent_id::text=$4 AND NOT archived)`, a.OrganizationID, a.LocationID, id, rule.ServiceID).Scan(&ok) != nil || !ok {
+			if seen[id] || tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM catalog_services WHERE organization_id=$1 AND location_id=$2 AND id::text=$3 AND kind='addon' AND catalog_addon_offered_with(id,$4::uuid) AND NOT archived)`, a.OrganizationID, a.LocationID, id, rule.ServiceID).Scan(&ok) != nil || !ok {
 				return Booking{}, ErrBookingInput
 			}
 			seen[id] = true

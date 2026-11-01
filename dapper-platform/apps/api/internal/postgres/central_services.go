@@ -18,6 +18,8 @@ type CentralService struct {
 	Name       string  `json:"name"`
 	Kind       string  `json:"kind"`
 	ParentID   *string `json:"parentId"`
+	// ParentIDs are every main service an add-on is offered with (ParentID is the primary one). Empty for a main service.
+	ParentIDs  []string `json:"parentIds"`
 	Archived   bool    `json:"archived"`
 	Version    int     `json:"version"`
 	CreatedAt  string  `json:"createdAt"`
@@ -31,6 +33,8 @@ type CentralServiceInput struct {
 	Name     string
 	Kind     string
 	ParentID *string
+	// ParentIDs are the main services an add-on is offered with; it replaces ParentID when given.
+	ParentIDs []string
 	Version  int
 	// PriceSet says whether PriceCents is part of this save. When false an edit leaves the stored price alone.
 	PriceSet   bool
@@ -94,7 +98,7 @@ func (s *Store) ListCentralServices(ctx context.Context, actor, org string) ([]C
 	if err = centralCatalogueGrant(ctx, tx, actor, org, "catalogue.read"); err != nil {
 		return nil, err
 	}
-	rows, err := tx.Query(ctx, `SELECT `+centralServiceColumns+` FROM central_catalog_services WHERE organization_id=$1 ORDER BY name,id LIMIT 1000`, org)
+	rows, err := tx.Query(ctx, `SELECT `+centralServiceColumns+` FROM central_catalog_services WHERE organization_id=$1 AND merged_into IS NULL ORDER BY name,id LIMIT 1000`, org)
 	if err != nil {
 		return nil, err
 	}
@@ -106,6 +110,19 @@ func (s *Store) ListCentralServices(ctx context.Context, actor, org string) ([]C
 			return nil, scanErr
 		}
 		list = append(list, svc)
+	}
+	rows.Close()
+	links, err := centralAddonLinks(ctx, tx, org)
+	if err != nil {
+		return nil, err
+	}
+	for i := range list {
+		if list[i].Kind == "addon" {
+			list[i].ParentIDs = links[list[i].ID]
+			if len(list[i].ParentIDs) == 0 && list[i].ParentID != nil {
+				list[i].ParentIDs = []string{*list[i].ParentID}
+			}
+		}
 	}
 	if list == nil {
 		list = []CentralService{}
@@ -127,11 +144,19 @@ func (s *Store) SaveCentralService(ctx context.Context, actor, org string, input
 	if input.DurationSet && input.DurationMinutes != nil && (*input.DurationMinutes < 1 || *input.DurationMinutes > 10080) {
 		return CentralService{}, ErrCentralServiceInput
 	}
-	if input.Kind == "main" && input.ParentID != nil {
+	if input.Kind == "main" && (input.ParentID != nil || len(input.ParentIDs) > 0) {
 		return CentralService{}, ErrCentralServiceInput
 	}
-	if input.Kind == "addon" && (input.ParentID == nil || *input.ParentID == "" || *input.ParentID == input.ID) {
-		return CentralService{}, ErrCentralServiceInput
+	if input.Kind == "addon" {
+		ids := input.ParentIDs
+		if len(ids) == 0 && input.ParentID != nil {
+			ids = []string{*input.ParentID}
+		}
+		set, ok := uniqueParents(ids, input.ID)
+		if !ok {
+			return CentralService{}, ErrCentralServiceInput
+		}
+		input.ParentIDs = set
 	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -141,9 +166,10 @@ func (s *Store) SaveCentralService(ctx context.Context, actor, org string, input
 	if err = centralCatalogueGrant(ctx, tx, actor, org, "catalogue.manage"); err != nil {
 		return CentralService{}, err
 	}
+	var currentParent *string
 	if input.ID != "" {
 		var version int
-		err = tx.QueryRow(ctx, `SELECT version FROM central_catalog_services WHERE organization_id=$1 AND id=$2 AND NOT archived FOR UPDATE`, org, input.ID).Scan(&version)
+		err = tx.QueryRow(ctx, `SELECT version,parent_id::text FROM central_catalog_services WHERE organization_id=$1 AND id=$2 AND NOT archived FOR UPDATE`, org, input.ID).Scan(&version, &currentParent)
 		if errors.Is(err, pgx.ErrNoRows) || version != input.Version {
 			return CentralService{}, ErrCentralServiceConflict
 		}
@@ -160,6 +186,11 @@ func (s *Store) SaveCentralService(ctx context.Context, actor, org string, input
 				return CentralService{}, ErrCentralServiceInput
 			}
 		}
+	}
+	input.ParentID = nil
+	if input.Kind == "addon" {
+		primary := primaryParent(currentParent, input.ParentIDs)
+		input.ParentID = &primary
 	}
 	if input.ParentID != nil {
 		var parent string
@@ -181,6 +212,14 @@ func (s *Store) SaveCentralService(ctx context.Context, actor, org string, input
 		svc, err = scanCentralService(tx.QueryRow(ctx, `UPDATE central_catalog_services SET name=$3,kind=$4,parent_id=$5,price_cents=CASE WHEN $6 THEN $7 ELSE price_cents END,duration_minutes=CASE WHEN $8 THEN $9 ELSE duration_minutes END,version=version+1 WHERE organization_id=$1 AND id=$2 RETURNING `+centralServiceColumns, org, input.ID, input.Name, input.Kind, input.ParentID, input.PriceSet, input.PriceCents, input.DurationSet, input.DurationMinutes))
 	}
 	if err != nil {
+		return CentralService{}, err
+	}
+	if svc.Kind == "addon" {
+		if err = setCentralAddonLinks(ctx, tx, org, svc.ID, input.ParentIDs); err != nil {
+			return CentralService{}, err
+		}
+		svc.ParentIDs = input.ParentIDs
+	} else if _, err = tx.Exec(ctx, `DELETE FROM central_addon_parents WHERE addon_id=$1`, svc.ID); err != nil {
 		return CentralService{}, err
 	}
 	snapshot, _ := json.Marshal(svc)
@@ -216,6 +255,9 @@ func (s *Store) ArchiveCentralService(ctx context.Context, actor, org, id string
 		return CentralService{}, ErrCentralServiceConflict
 	}
 	if err != nil {
+		return CentralService{}, err
+	}
+	if err = releaseCentralMain(ctx, tx, org, id); err != nil {
 		return CentralService{}, err
 	}
 	var children bool
@@ -260,6 +302,9 @@ func (s *Store) DeleteCentralService(ctx context.Context, actor, org, id string,
 		return DeleteResult{}, ErrCentralServiceConflict
 	}
 	if err != nil {
+		return DeleteResult{}, err
+	}
+	if err = releaseCentralMain(ctx, tx, org, id); err != nil {
 		return DeleteResult{}, err
 	}
 	var children bool

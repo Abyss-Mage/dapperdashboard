@@ -203,7 +203,7 @@ func readSiteContent(ctx context.Context, tx pgx.Tx, org, loc string, public boo
 	if err != nil {
 		return out, err
 	}
-	rows, err := tx.Query(ctx, `SELECT s.id::text,s.name,s.kind,s.parent_id::text,s.version,coalesce(p.category,''),coalesce(p.summary,''),coalesce(p.published,false),coalesce(p.version,0) FROM catalog_services s LEFT JOIN service_publications p ON (p.organization_id,p.location_id,p.service_id)=(s.organization_id,s.location_id,s.id) WHERE s.organization_id=$1 AND s.location_id=$2 AND NOT s.archived AND (NOT $3::boolean OR p.published) AND (NOT $3::boolean OR s.kind='main' OR EXISTS(SELECT 1 FROM catalog_services parent JOIN service_publications pub ON pub.service_id=parent.id WHERE parent.id=s.parent_id AND NOT parent.archived AND pub.published)) ORDER BY s.name,s.id LIMIT 200`, org, loc, public)
+	rows, err := tx.Query(ctx, `SELECT s.id::text,s.name,s.kind,s.parent_id::text,s.version,coalesce(p.category,''),coalesce(p.summary,''),coalesce(p.published,false),coalesce(p.version,0) FROM catalog_services s LEFT JOIN service_publications p ON (p.organization_id,p.location_id,p.service_id)=(s.organization_id,s.location_id,s.id) WHERE s.organization_id=$1 AND s.location_id=$2 AND NOT s.archived AND (NOT $3::boolean OR p.published) AND (NOT $3::boolean OR s.kind='main' OR EXISTS(SELECT 1 FROM catalog_addon_parents l JOIN catalog_services parent ON parent.id=l.main_id JOIN service_publications pub ON pub.service_id=parent.id WHERE l.addon_id=s.id AND NOT parent.archived AND pub.published)) ORDER BY s.name,s.id LIMIT 200`, org, loc, public)
 	if err != nil {
 		return out, err
 	}

@@ -3,7 +3,7 @@ import {useCallback,useEffect,useState} from 'react';
 import Select from '../GlassSelect';
 
 type Customer = {id: string; name: string};
-type Service = {id: string; name: string; kind: string; archived: boolean; parentId: string | null};
+type Service = {id: string; name: string; kind: string; archived: boolean; parentId: string | null; parentIds?: string[]};
 type Reservation = {id: string; start: string; durationMinutes: number; cancelledAt: string | null};
 
 export default function WorkOrderForm({base, onSaved, customerRevision = 0}: {base: string; onSaved: () => Promise<void>; customerRevision?: number}) {
@@ -207,7 +207,7 @@ export default function WorkOrderForm({base, onSaved, customerRevision = 0}: {ba
             <legend>Add-on services (optional)</legend>
             <p>Each selected add-on is included once in this work order. Prices and booking capacity are not calculated.</p>
             {services
-              .filter((service) => service.kind === 'addon' && service.parentId === serviceId)
+              .filter((service) => service.kind === 'addon' && (service.parentIds?.includes(serviceId) ?? service.parentId === serviceId))
               .map((service) => (
                 <label className="form-field" key={service.id}>
                   <span>
@@ -226,7 +226,7 @@ export default function WorkOrderForm({base, onSaved, customerRevision = 0}: {ba
               ))}
             {!serviceId && <p>Choose a main service to see its add-ons.</p>}
             {serviceId &&
-              !services.some((service) => service.kind === 'addon' && service.parentId === serviceId) && (
+              !services.some((service) => service.kind === 'addon' && (service.parentIds?.includes(serviceId) ?? service.parentId === serviceId)) && (
                 <p>No active add-ons linked to this main service.</p>
               )}
             {fields.addonIds && (
