@@ -57,7 +57,7 @@ export default function CalendarFeeds({ endpoint, title, hint }: { endpoint: str
             <button type="button" className="primary" onClick={() => { void navigator.clipboard?.writeText(made.url).then(() => setCopied(true)); }}>{copied ? 'Copied' : 'Copy link'}</button>
             <a className="secondary" href={made.webcalUrl} style={{ padding: '10px 16px', borderRadius: 12 }}>Open in Calendar</a>
           </div>
-          <p className={glass.lede}>Apple Calendar: File &gt; New Calendar Subscription, paste the link. Google Calendar: Other calendars &gt; From URL. It refreshes by itself; Apple and Google decide how often, usually within a few hours.</p>
+          <p className={glass.lede}>Apple Calendar: File &gt; New Calendar Subscription, paste the link. Google Calendar: Other calendars &gt; From URL. The link asks calendars to refresh every 5 minutes, but Google decides its own pace (often several hours). Apple Calendar on an iPhone or Mac will only subscribe once the website has a proper domain with a trusted certificate; it refuses the temporary address certificate.</p>
         </div>
       )}
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'end' }}>

@@ -223,8 +223,8 @@ func (s *Store) CalendarFeedICS(ctx context.Context, token string) (string, erro
 	line("CALSCALE:GREGORIAN")
 	line("METHOD:PUBLISH")
 	line("X-WR-CALNAME:" + icsEscape(name))
-	line("REFRESH-INTERVAL;VALUE=DURATION:PT15M")
-	line("X-PUBLISHED-TTL:PT15M")
+	line("REFRESH-INTERVAL;VALUE=DURATION:PT5M")
+	line("X-PUBLISHED-TTL:PT5M")
 	stamp := time.Now().UTC().Format("20060102T150405Z")
 	for rows.Next() {
 		var id, service, status, customer, address string
