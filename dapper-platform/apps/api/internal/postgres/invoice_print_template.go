@@ -34,6 +34,9 @@ type InvoicePrintTemplate struct {
 	// invoice when printing, and it is shown in a sandbox where scripts never run.
 	CustomHTML string `json:"customHtml"`
 	CustomCSS  string `json:"customCss"`
+	// Quotations use the same look. These two are their own wording: the document title and the terms printed under the total.
+	QuotationTitle string `json:"quotationTitle"`
+	QuotationNote  string `json:"quotationNote"`
 }
 
 // InvoicePrintTemplateState is what the API returns: the template plus its revision (0 = built-in default, never saved).
@@ -69,6 +72,13 @@ func (t *InvoicePrintTemplate) normalize() error {
 		return ErrInvoiceTemplateInput
 	}
 	if !templateColor.MatchString(t.AccentColor) || t.PaperSize != "letter" && t.PaperSize != "a4" {
+		return ErrInvoiceTemplateInput
+	}
+	t.QuotationTitle, t.QuotationNote = strings.TrimSpace(t.QuotationTitle), strings.TrimSpace(t.QuotationNote)
+	if t.QuotationTitle == "" {
+		t.QuotationTitle = "Quotation"
+	}
+	if utf8.RuneCountInString(t.QuotationTitle) > 40 || utf8.RuneCountInString(t.QuotationNote) > 1000 {
 		return ErrInvoiceTemplateInput
 	}
 	t.CustomHTML, t.CustomCSS = strings.TrimSpace(t.CustomHTML), strings.TrimSpace(t.CustomCSS)

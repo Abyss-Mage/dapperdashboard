@@ -410,10 +410,9 @@ func (s *Store) UpdateBookingStatus(ctx context.Context, scope Scope, id string,
 
 	_, err = tx.Exec(ctx, `UPDATE bookings
 SET status=$1, cancellation_reason=CASE WHEN $1='cancelled' THEN $2 ELSE cancellation_reason END,
-    notes=CASE WHEN $3='' THEN notes WHEN notes='' THEN $3 ELSE notes || ' | ' || $3 END,
     updated_at=now()
-WHERE organization_id=$4 AND location_id=$5 AND id=$6`,
-		toStatus, cancellationReason, notes, scope.OrganizationID, scope.LocationID, id)
+WHERE organization_id=$3 AND location_id=$4 AND id=$5`,
+		toStatus, cancellationReason, scope.OrganizationID, scope.LocationID, id)
 	if err != nil {
 		return Booking{}, err
 	}

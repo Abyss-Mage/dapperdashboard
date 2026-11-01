@@ -118,9 +118,11 @@ func (s *Store) writeReservationInTransaction(ctx context.Context, tx pgx.Tx, sc
 	}
 	var plan scheduling.Plan
 	var capacity int
+	var weekly []HourWindow
+	var zone string
 	// Every cooperating create/move locks the resource BEFORE reading allocations.
 	// READ COMMITTED's subsequent query sees prior lock-holder commits.
-	err = tx.QueryRow(ctx, `SELECT capacity,rules FROM scheduling_resources WHERE organization_id=$1 AND location_id=$2 AND id=$3 FOR UPDATE`, scope.OrganizationID, scope.LocationID, resourceID).Scan(&capacity, &plan)
+	err = tx.QueryRow(ctx, `SELECT capacity,rules,timezone,weekly_hours FROM scheduling_resources WHERE organization_id=$1 AND location_id=$2 AND id=$3 FOR UPDATE`, scope.OrganizationID, scope.LocationID, resourceID).Scan(&capacity, &plan, &zone, &weekly)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return CapacityReservation{}, ErrReservationConflict
 	}
@@ -129,6 +131,13 @@ func (s *Store) writeReservationInTransaction(ctx context.Context, tx pgx.Tx, sc
 	}
 	plan.Capacity = capacity
 	plan.Existing = nil
+	// A time that has already passed can only be entered by someone who manages bookings (to record work that already happened).
+	if !request.Start.IsZero() && request.Start.Before(time.Now()) && !insideOpenWindow(plan, request.Start) {
+		if err = authorizeTransaction(ctx, tx, scope, "bookings.manage"); err != nil {
+			return CapacityReservation{}, err
+		}
+		addPastWindows(&plan, zone, weekly, request.Start.Add(-24*time.Hour), request.Start.Add(48*time.Hour))
+	}
 	var resolvedRule *SchedulingRule
 	if choice != nil {
 		rule, resolveErr := resolveReservationRule(ctx, tx, scope, resourceID, *choice)

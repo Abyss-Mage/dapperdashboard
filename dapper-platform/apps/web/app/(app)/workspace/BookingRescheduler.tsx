@@ -1,7 +1,7 @@
 'use client';
 import {useEffect, useRef, useState} from 'react';
 import Select from '../GlassSelect';
-import { DateTimePicker } from '../Pickers';
+import { DatePicker, DateTimePicker } from '../Pickers';
 
 type Booking = {id: string; customerName: string; serviceName: string; serviceId?: string | null; addons: {serviceId: string}[]; bookingTime: string; reservationVersion?: number | null};
 type Rule = {id: string; resourceId: string; serviceId: string; addonIds: string[]; version: number; durationMinutes: number; beforeMinutes: number; afterMinutes: number};
@@ -46,10 +46,24 @@ export default function BookingRescheduler({base, booking, onClose, onSaved}: {b
   const zone = resources.find(item => item.id === resource)?.timezone ?? 'America/Toronto';
   // With no service timing rule to follow, the booking is moved by hand: it gives its calendar slot back and keeps the new time.
   const detached = !loading && !rules.length;
+  // With a service timing rule the new time is chosen from the times the calendar can actually offer that day, so a time outside
+  // opening hours or on a full slot cannot be picked.
+  const [day, setDay] = useState(''), [slots, setSlots] = useState<string[] | null>(null), [picked, setPicked] = useState('');
+  useEffect(() => {
+    setPicked(''); setSlots(null);
+    if (detached || !selectedRule || !day) return;
+    let live = true;
+    const q = new URLSearchParams({resourceId: resource, ruleId: rule, version: String(selectedRule.version), from: day, days: '1', past: '1'});
+    fetch(`${base}/bookings/availability?${q}`, {cache: 'no-store'}).then(async r => { const b = await r.json().catch(() => ({})); if (!r.ok) throw new Error(b.error ?? 'The available times could not be loaded.'); return b; })
+      .then(b => { if (live) setSlots((b.days?.[0]?.starts ?? []) as string[]); })
+      .catch(e => { if (live) { setSlots([]); setError(e instanceof Error ? e.message : 'The available times could not be loaded.'); } });
+    return () => { live = false; };
+  }, [day, resource, rule, selectedRule?.version, detached]); // eslint-disable-line react-hooks/exhaustive-deps
+  const slotLabel = (iso: string) => new Date(iso).toLocaleTimeString('en-CA', {hour: 'numeric', minute: '2-digit', timeZone: zone});
   async function save(event: React.FormEvent) {
     event.preventDefault();
-    const startIso = zonedIso(start, zone);
-    if (!startIso) {setError('Pick the new date and time.'); return;}
+    const startIso = detached ? zonedIso(start, zone) : picked;
+    if (!startIso) {setError(detached ? 'Pick the new date and time.' : 'Pick a day, then one of the times offered.'); return;}
     if (detached) {
       setBusy(true); setError('');
       try {
@@ -69,7 +83,7 @@ export default function BookingRescheduler({base, booking, onClose, onSaved}: {b
       const storageKey = `dapper-booking-reschedule:${base}:${booking.id}:${fingerprint}`;
       let requestKey = sessionStorage.getItem(storageKey); if (!requestKey) {requestKey = crypto.randomUUID(); sessionStorage.setItem(storageKey,requestKey);}
       const response = await fetch(`${base}/bookings/${booking.id}/reschedule`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...payload,requestKey})});
-      const body = await response.json(); if (!response.ok) throw new Error(body.error ?? body.errors?.booking ?? 'The booking could not be moved. Your details are preserved.');
+      const body = await response.json().catch(() => ({})); if (!response.ok) throw new Error(response.status === 409 ? 'That time is no longer available, or the booking changed while you were choosing. Pick a time from the list again.' : (body.error ?? body.errors?.booking ?? 'The booking could not be moved. Your details are preserved.'));
       await onSaved(); onClose();
     } catch (failure) {setError(failure instanceof Error ? failure.message : 'The booking could not be moved. Your details are preserved.');}
     finally {setBusy(false);}
@@ -81,11 +95,20 @@ export default function BookingRescheduler({base, booking, onClose, onSaved}: {b
       <p><strong>{booking.customerName}</strong> · {booking.serviceName}</p><p>Now booked for {new Date(booking.bookingTime).toLocaleString('en-CA', {weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: zone})}. {detached ? '' : ' If the move cannot be made, the current time stays reserved.'}</p>
       {usable.length > 1 && <label>Where<Select autoFocus disabled={loading || busy} required value={resource} onChange={event => {setResource(event.target.value); setRule('');}}><option value="">Choose where</option>{usable.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</Select></label>}
       {rules.filter(item => item.resourceId===resource).length > 1 && <label>Service timing<Select disabled={loading || busy || !resource} required value={rule} onChange={event => setRule(event.target.value)}><option value="">Choose</option>{rules.filter(item => item.resourceId===resource).map(item => <option key={item.id} value={item.id}>{item.durationMinutes} min</option>)}</Select></label>}
-      <label>New date and time<DateTimePicker autoFocus={usable.length <= 1} required disabled={busy} value={start} onChange={event => setStart(event.target.value)}/></label>
+      {detached
+        ? <label>New date and time<DateTimePicker autoFocus={usable.length <= 1} required disabled={busy} value={start} onChange={event => setStart(event.target.value)}/></label>
+        : <>
+            <label>New day<DatePicker value={day} disabled={busy || !selectedRule} onChange={event => setDay(event.target.value)} aria-label="New day"/></label>
+            {day && slots === null && <p>Loading the times for that day…</p>}
+            {day && slots !== null && slots.length === 0 && <p>No times are open on that day. Pick another day.</p>}
+            {slots !== null && slots.length > 0 && <div role="group" aria-label="Available times" style={{display:'flex',flexWrap:'wrap',gap:'.4rem'}}>
+              {slots.map(t => <button key={t} type="button" className={picked === t ? 'primary' : 'secondary'} aria-pressed={picked === t} disabled={busy} onClick={() => setPicked(t)} style={{minHeight:40,padding:'.35rem .8rem'}}>{slotLabel(t)}</button>)}
+            </div>}
+          </>}
       <label>Reason or notes (optional)<textarea disabled={busy} maxLength={2000} value={notes} onChange={event => setNotes(event.target.value)}/></label>
       {loading && <p>Loading current scheduling choices…</p>}{detached && !error && <p>This service has no active timing rules, so the booking will be moved by hand to the time you pick. It will no longer hold a calendar slot.</p>}
       {error && <p ref={errorRef} role="alert" tabIndex={-1}>{error}</p>}
-      <div style={{display:'flex',gap:'.75rem',marginTop:'1rem',flexWrap:'wrap'}}><button type="button" className="secondary" disabled={busy} onClick={onClose}>Keep it as is</button><button type="submit" className="primary" disabled={busy || loading || !start || (!detached && (!selectedRule || !booking.reservationVersion))}>{busy?'Moving…':'Move booking'}</button></div>
+      <div style={{display:'flex',gap:'.75rem',marginTop:'1rem',flexWrap:'wrap'}}><button type="button" className="secondary" disabled={busy} onClick={onClose}>Keep it as is</button><button type="submit" className="primary" disabled={busy || loading || (detached ? !start : (!picked || !selectedRule || !booking.reservationVersion))}>{busy?'Moving…':'Move booking'}</button></div>
     </form>
   </dialog></>;
 }

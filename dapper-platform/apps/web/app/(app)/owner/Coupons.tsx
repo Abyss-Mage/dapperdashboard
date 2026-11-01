@@ -5,6 +5,7 @@ import styles from './owner.module.css';
 import ConfirmDialog from '../workspace/ConfirmDialog';
 import Select from '../GlassSelect';
 import NumberField from '../NumberField';
+import ServicePicker from './ServicePicker';
 import { DatePicker } from '../Pickers';
 
 type Coupon = {
@@ -126,15 +127,7 @@ export default function Coupons({ base, canManage }: { base: string; canManage: 
               <NumberField min="0" step="1" inputMode="numeric" value={form.maxUses} onChange={(e) => set('maxUses', e.target.value)} disabled={busy} />
             </label>
           </div>
-          <fieldset className={styles.parentPick}>
-            <legend>Only for these services (leave all unticked for every service)</legend>
-            {services.map((s) => (
-              <label key={s.id} className={styles.parentOpt}>
-                <input type="checkbox" checked={form.serviceIds.includes(s.id)} disabled={busy} onChange={(e) => set('serviceIds', e.target.checked ? [...form.serviceIds, s.id] : form.serviceIds.filter((x) => x !== s.id))} />
-                <span>{s.name}</span>
-              </label>
-            ))}
-          </fieldset>
+          <ServicePicker label="Only for these services" services={services} value={form.serviceIds} onChange={(ids) => set('serviceIds', ids)} disabled={busy} />
           <label style={{ display: 'flex', gap: 8, alignItems: 'center', margin: '12px 0' }}><input type="checkbox" checked={form.active} onChange={(e) => set('active', e.target.checked)} disabled={busy} />Coupon is switched on</label>
           <div className={styles.rowBetween}>
             <button className="primary" disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>

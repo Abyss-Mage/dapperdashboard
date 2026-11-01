@@ -154,6 +154,10 @@ export default function InvoiceTemplateEditor({ organizationId, revision, locati
         <label className="form-field">Note above the items (optional)<textarea maxLength={500} value={form.headerNote} disabled={busy || !loaded} onChange={(e) => set('headerNote', e.target.value)} /></label>
         <label className="form-field">Payment instructions (optional)<textarea maxLength={1000} value={form.paymentInstructions} disabled={busy || !loaded} onChange={(e) => set('paymentInstructions', e.target.value)} placeholder="How customers can pay, only if approved by the business" /></label>
         <label className="form-field">Footer (optional)<textarea maxLength={1000} value={form.footerNote} disabled={busy || !loaded} onChange={(e) => set('footerNote', e.target.value)} placeholder="Thank-you message, terms, return policy" /></label>
+        <h3>Quotations</h3>
+        <p>Quotations are printed in this same look. These two are their own wording.</p>
+        <label className="form-field">Quotation title<input maxLength={40} value={form.quotationTitle ?? ''} disabled={busy || !loaded} onChange={(e) => set('quotationTitle', e.target.value)} placeholder="Quotation" /></label>
+        <label className="form-field">Terms under the quotation total (optional)<textarea maxLength={1000} value={form.quotationNote ?? ''} disabled={busy || !loaded} onChange={(e) => set('quotationNote', e.target.value)} placeholder="For example how long the price is held and what is not included" /></label>
         <h3>Your own layout (HTML and CSS)</h3>
         <p>Optional. Write the invoice in HTML and style it with CSS; when there is HTML here it replaces the layout above. Put <code>{'{{placeholders}}'}</code> where the invoice details go. Scripts are not allowed and never run.</p>
         <details>

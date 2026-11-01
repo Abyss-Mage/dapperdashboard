@@ -6,6 +6,7 @@ import { DateTimePicker } from '../Pickers';
 import { askConfirm } from '../confirm';
 import NumberField from '../NumberField';
 import form from './quote.module.css';
+import { fillInvoiceWindow, openInvoiceWindow, usePrintTemplate, type PrintInvoice } from './InvoicePrint';
 
 type Req = { id: string; customerId: string; vehicleId: string; customerName: string; status: string; requestedStart: string; customerNote: string; vehicle?: { description?: string; identifier?: string }; offer?: { title?: string } };
 
@@ -47,6 +48,7 @@ type Quote = {
   totalCents: number;
   internalNotes?: string;
   customerNote?: string;
+  customerName?: string;
   expiresAt?: string;
   issuedAt?: string;
   issuedBy?: string;
@@ -83,6 +85,27 @@ export default function QuoteManager({
   canIssue: boolean;
 }) {
   const [quotes, setQuotes] = useState<Quote[]>([]);
+  const locationBase = `/api/v1/organizations/${organizationId}/locations/${locationId}`;
+  const printTemplate = usePrintTemplate(locationBase + '/invoice-template');
+  // The quotation opens as its own page in a new window with a Print or save as PDF button, in the same look as invoices.
+  function printQuote(q: Quote) {
+    const w = openInvoiceWindow();
+    if (!w) { setError('Allow pop-ups for this site to open the quotation in a new window.'); return; }
+    fetch(locationBase + '/quote-issuer', { cache: 'no-store' })
+      .then(async (r) => (r.ok ? r.json() : null))
+      .then((issuer) => {
+        const doc: PrintInvoice = {
+          kind: 'quotation', invoiceNumber: q.referenceNumber, status: q.status, currency: q.currency, issuedAt: q.issuedAt ?? null, createdAt: q.createdAt, validUntil: q.expiresAt ?? null,
+          subtotalCents: q.subtotalCents, taxCents: q.taxCents, totalCents: q.totalCents, paidCents: 0, dueCents: q.totalCents, customerName: q.customerName,
+          issuerSnapshot: issuer && issuer.legalName ? issuer : null,
+          customerSnapshot: { name: q.customerName || 'Client', email: '', phone: '' },
+          items: q.items.map((it) => ({ description: it.description, quantity: it.quantity, unitPriceCents: it.unitPriceCents, totalPriceCents: it.lineTotalCents })),
+          note: q.customerNote ?? '',
+        };
+        fillInvoiceWindow(w, doc, printTemplate);
+      })
+      .catch(() => { w.close(); setError('The quotation could not be opened.'); });
+  }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -100,7 +123,7 @@ export default function QuoteManager({
   const [formVehicleId, setFormVehicleId] = useState('');
   const [formInternalNotes, setFormInternalNotes] = useState('');
   const [formCustomerNote, setFormCustomerNote] = useState('');
-  const [formTaxDollars, setFormTaxDollars] = useState('0.00');
+  const [formTaxRate, setFormTaxRate] = useState('13');
   const [formDepositDollars, setFormDepositDollars] = useState('0.00');
   const [formExpiresAt, setFormExpiresAt] = useState('');
   const [lines, setLines] = useState<LineDraft[]>([
@@ -161,7 +184,7 @@ export default function QuoteManager({
   const pickedRequest = (requests ?? []).find((x) => x.id === formRequestId);
   const lineCents = (l: LineDraft) => Math.round((Number(l.unitPriceDollars) || 0) * 100) * (Number(l.quantity) || 0);
   const subtotalCents = lines.reduce((n, l) => n + lineCents(l), 0);
-  const taxCents = Math.round((Number(formTaxDollars) || 0) * 100), depositCents = Math.round((Number(formDepositDollars) || 0) * 100);
+  const taxCents = Math.round(subtotalCents * (Number(formTaxRate) || 0) / 100), depositCents = Math.round((Number(formDepositDollars) || 0) * 100);
 
   function resetForm() {
     setIsFormOpen(false);
@@ -173,7 +196,7 @@ export default function QuoteManager({
     setClientName(''); setClientPhone(''); setClientEmail('');
     setFormInternalNotes('');
     setFormCustomerNote('');
-    setFormTaxDollars('0.00');
+    setFormTaxRate('13');
     setFormDepositDollars('0.00');
     setFormExpiresAt('');
     setLines([{ description: '', quantity: 1, unitPriceDollars: '' }]);
@@ -187,7 +210,7 @@ export default function QuoteManager({
     setFormVehicleId(q.vehicleId);
     setFormInternalNotes(q.internalNotes || '');
     setFormCustomerNote(q.customerNote || '');
-    setFormTaxDollars((q.taxCents / 100).toFixed(2));
+    setFormTaxRate(q.subtotalCents > 0 ? String(Math.round((q.taxCents / q.subtotalCents) * 10000) / 100) : '13');
     setFormDepositDollars((q.depositCents / 100).toFixed(2));
     setFormExpiresAt(q.expiresAt ? q.expiresAt.substring(0, 16) : '');
     setLines(
@@ -207,7 +230,7 @@ export default function QuoteManager({
     setNotice('');
 
     try {
-      const taxCents = Math.round(parseFloat(formTaxDollars || '0') * 100);
+      const taxCents = Math.round(subtotalCents * (parseFloat(formTaxRate || '0') || 0) / 100);
       const depositCents = Math.round(parseFloat(formDepositDollars || '0') * 100);
       const items = lines.map((l) => ({
         description: l.description.trim(),
@@ -424,10 +447,10 @@ export default function QuoteManager({
           </div>
 
           <div className={form.summary}>
-            <label className={`${form.field} ${form.taxField}`} htmlFor="q-tax">Tax ($)<NumberField id="q-tax" step="0.01" min="0" inputMode="decimal" value={formTaxDollars} onChange={(e) => setFormTaxDollars(e.target.value)} /></label>
+            <label className={`${form.field} ${form.taxField}`} htmlFor="q-tax">Tax (%)<NumberField id="q-tax" step="0.01" min="0" max="100" inputMode="decimal" value={formTaxRate} onChange={(e) => setFormTaxRate(e.target.value)} /></label>
             <div className={form.totals} aria-live="polite">
               <div><span>Subtotal</span><span>{formatMoney(subtotalCents)}</span></div>
-              <div><span>Tax</span><span>{formatMoney(taxCents)}</span></div>
+              <div><span>Tax ({Number(formTaxRate) || 0}%)</span><span>{formatMoney(taxCents)}</span></div>
               <div className={form.grand}><span>Total</span><span>{formatMoney(subtotalCents + taxCents)}</span></div>
             </div>
           </div>
@@ -540,7 +563,7 @@ export default function QuoteManager({
               </div>
 
               <div style={{ fontSize: '0.85rem', color: 'var(--muted, #6b5558)', margin: '0.4rem 0' }}>
-                Request: <code>{q.requestId}</code> · Customer: <code>{q.customerId}</code> · Created: {new Date(q.createdAt).toLocaleString()}
+                Client: <strong>{q.customerName || 'Not named'}</strong> · Created: {new Date(q.createdAt).toLocaleString()}
                 {q.issuedAt && ` · Issued: ${new Date(q.issuedAt).toLocaleString()}`}
                 {q.expiresAt && ` · Expires: ${new Date(q.expiresAt).toLocaleString()}`}
               </div>
@@ -588,7 +611,8 @@ export default function QuoteManager({
               )}
 
               {/* Actions */}
-              <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem' }}>
+              <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <button type="button" className="secondary" onClick={() => printQuote(q)}>Download PDF</button>
                 {q.status === 'draft' && canManage && (
                   <button type="button" className="secondary" onClick={() => startEdit(q)}>
                     Edit Draft

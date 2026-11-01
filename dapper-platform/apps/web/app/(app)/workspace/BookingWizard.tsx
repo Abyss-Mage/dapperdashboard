@@ -362,7 +362,12 @@ export default function BookingWizard(p: WizardProps) {
           <h2 ref={topRef} tabIndex={-1} className={styles.title}>Pick a day and time</h2>
           <div className={styles.calHead}>
             <button type="button" disabled={isCurrentMonth && !p.allowPast} onClick={() => { setMonth((c) => (c.m === 0 ? { y: c.y - 1, m: 11 } : { y: c.y, m: c.m - 1 })); setDay(''); setStart(''); }} aria-label="Earlier month">‹</button>
-            <strong>{new Date(month.y, month.m, 1).toLocaleDateString('en-CA', { month: 'long', year: 'numeric' })}</strong>
+            {p.allowPast
+              ? <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <select aria-label="Month" value={month.m} onChange={(e) => { setMonth((c) => ({ y: c.y, m: Number(e.target.value) })); setDay(''); setStart(''); }}>{Array.from({ length: 12 }, (_, m) => <option key={m} value={m}>{new Date(2000, m, 1).toLocaleDateString('en-CA', { month: 'long' })}</option>)}</select>
+                  <select aria-label="Year" value={month.y} onChange={(e) => { setMonth((c) => ({ y: Number(e.target.value), m: c.m })); setDay(''); setStart(''); }}>{Array.from({ length: today.getFullYear() + 2 - 2015 + 1 }, (_, i) => 2015 + i).map((y) => <option key={y} value={y}>{y}</option>)}</select>
+                </span>
+              : <strong>{new Date(month.y, month.m, 1).toLocaleDateString('en-CA', { month: 'long', year: 'numeric' })}</strong>}
             <button type="button" onClick={() => { setMonth((c) => (c.m === 11 ? { y: c.y + 1, m: 0 } : { y: c.y, m: c.m + 1 })); setDay(''); setStart(''); }} aria-label="Later month">›</button>
           </div>
           {availError && <p role="alert" className={styles.err}>{availError}</p>}

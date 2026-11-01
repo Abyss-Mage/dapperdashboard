@@ -15,8 +15,12 @@ export type PrintTemplate = {
   customHtml: string; customCss: string;
   /** The franchise's own logo, when it has one; otherwise the default logo is used. */
   logoUrl?: string;
+  /** Quotations use the same look with their own title and terms. */
+  quotationTitle?: string; quotationNote?: string;
 };
 export type PrintInvoice = {
+  /** 'quotation' prints a quotation: no paid or pending lines, a valid-until date and the quotation terms. */
+  kind?: 'invoice' | 'quotation'; validUntil?: string | null; note?: string;
   invoiceNumber: string; status: string; currency: string; issuedAt?: string | null; createdAt?: string;
   subtotalCents: number; taxCents: number; totalCents: number; paidCents: number; dueCents: number;
   discountCents?: number; couponCode?: string;
@@ -29,7 +33,7 @@ export type PrintInvoice = {
 export const DEFAULT_PRINT_TEMPLATE: PrintTemplate = {
   title: 'Invoice', accentColor: '#d22b2b', showLogo: true, headerNote: '', billToLabel: 'Bill to', itemLabel: 'Item', quantityLabel: 'Qty',
   unitPriceLabel: 'Unit price', amountLabel: 'Amount', showTaxRegistration: true, showCustomerContact: true, paymentInstructions: '', footerNote: '', paperSize: 'letter',
-  customHtml: '', customCss: '',
+  customHtml: '', customCss: '', quotationTitle: 'Quotation', quotationNote: '',
 };
 
 const money = (cents: number, currency = 'CAD') => `${(cents / 100).toLocaleString('en-CA', { style: 'currency', currency })}`;
@@ -150,7 +154,8 @@ export function InvoiceDocument({ invoice, template }: { invoice: PrintInvoice; 
   const t = template;
   if (t.customHtml?.trim()) return <iframe title="Invoice preview" sandbox={FRAME_SANDBOX} srcDoc={customInvoicePage(invoice, t)} style={{ width: '100%', minHeight: 900, border: 0, background: '#fff' }} />;
   const customer = invoice.customerSnapshot ?? (invoice.customerName ? { name: invoice.customerName, email: '', phone: '' } : null);
-  const paidInFull = invoice.totalCents > 0 && invoice.dueCents <= 0;
+  const quote = invoice.kind === 'quotation';
+  const paidInFull = !quote && invoice.totalCents > 0 && invoice.dueCents <= 0;
   return (
     <div className="ddInv">
       <style>{css(t)}</style>
@@ -166,12 +171,13 @@ export function InvoiceDocument({ invoice, template }: { invoice: PrintInvoice; 
           </div>
         </div>
         <div className="ddMeta">
-          <h1>{t.title}</h1>
+          <h1>{quote ? (t.quotationTitle || 'Quotation') : t.title}</h1>
           <dl>
             <dt>Number</dt><dd>{invoice.invoiceNumber}</dd>
             {(invoice.issuedAt || invoice.createdAt) && <><dt>{invoice.issuedAt ? 'Issued' : 'Created'}</dt><dd>{day(invoice.issuedAt ?? invoice.createdAt)}</dd></>}
+            {quote && invoice.validUntil && <><dt>Valid until</dt><dd>{day(invoice.validUntil)}</dd></>}
           </dl>
-          <span className={'ddStatus' + (paidInFull ? ' paid' : '')}>{paidInFull ? 'Paid' : invoice.status.replaceAll('_', ' ')}</span>
+          {!quote && <span className={'ddStatus' + (paidInFull ? ' paid' : '')}>{paidInFull ? 'Paid' : invoice.status.replaceAll('_', ' ')}</span>}
         </div>
       </div>
       <div className="ddParties">
@@ -188,10 +194,10 @@ export function InvoiceDocument({ invoice, template }: { invoice: PrintInvoice; 
           <p>{invoice.currency}</p>
         </div>
       </div>
-      <div className={'ddBanner' + (paidInFull ? ' paid' : '')}>
+      {!quote && <div className={'ddBanner' + (paidInFull ? ' paid' : '')}>
         <div><b>{paidInFull ? 'Paid in full' : 'Dues pending'}</b>{paidInFull && <small>Thank you. Nothing further is owed.</small>}</div>
         <strong>{paidInFull ? money(invoice.paidCents, invoice.currency) : money(invoice.dueCents, invoice.currency)}</strong>
-      </div>
+      </div>}
       {t.headerNote && <p className="ddNote">{t.headerNote}</p>}
       <table>
         <thead><tr><th>{t.itemLabel}</th><th className="r">{t.quantityLabel}</th><th className="r">{t.unitPriceLabel}</th><th className="r">{t.amountLabel}</th></tr></thead>
@@ -211,10 +217,12 @@ export function InvoiceDocument({ invoice, template }: { invoice: PrintInvoice; 
         {(invoice.discountCents ?? 0) > 0 && <div><span>Discount{invoice.couponCode ? ` (${invoice.couponCode})` : ''}</span><span>−{money(invoice.discountCents ?? 0, invoice.currency)}</span></div>}
         <div><span>Tax</span><span>{money(invoice.taxCents, invoice.currency)}</span></div>
         <div className="ddTot"><span>Total</span><span>{money(invoice.totalCents, invoice.currency)}</span></div>
-        <div><span>Paid</span><span>{money(invoice.paidCents, invoice.currency)}</span></div>
-        <div className="ddDue"><span>Pending</span><span>{money(invoice.dueCents, invoice.currency)}</span></div>
+        {!quote && <div><span>Paid</span><span>{money(invoice.paidCents, invoice.currency)}</span></div>}
+        {!quote && <div className="ddDue"><span>Pending</span><span>{money(invoice.dueCents, invoice.currency)}</span></div>}
       </div>
-      {t.paymentInstructions && <div className="ddPay"><h2>Payment</h2><p>{t.paymentInstructions}</p></div>}
+      {quote && invoice.note && <div className="ddPay"><h2>Note</h2><p>{invoice.note}</p></div>}
+      {quote && t.quotationNote && <div className="ddPay"><h2>Terms</h2><p>{t.quotationNote}</p></div>}
+      {!quote && t.paymentInstructions && <div className="ddPay"><h2>Payment</h2><p>{t.paymentInstructions}</p></div>}
       {t.footerNote && <div className="ddFoot"><p>{t.footerNote}</p></div>}
     </div>
   );
@@ -281,7 +289,7 @@ export function fillInvoiceWindow(w: Window, invoice: PrintInvoice, template: Pr
   w.document.open();
   w.document.write(html);
   w.document.close();
-  w.document.title = 'Invoice ' + invoice.invoiceNumber;
+  w.document.title = (invoice.kind === 'quotation' ? (template.quotationTitle || 'Quotation') : 'Invoice') + ' ' + invoice.invoiceNumber;
 }
 
 /* Loads the organization's template once; falls back to the built-in layout if it cannot be read. */

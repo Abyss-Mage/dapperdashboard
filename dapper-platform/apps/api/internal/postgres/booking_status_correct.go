@@ -78,8 +78,7 @@ func (s *Store) setBookingStatusDirect(ctx context.Context, scope Scope, id, toS
 		if _, err = tx.Exec(ctx, `UPDATE bookings SET status=$1,
 reservation_id=CASE WHEN status='cancelled' THEN NULL ELSE reservation_id END,
 cancellation_reason=CASE WHEN status='cancelled' THEN '' ELSE cancellation_reason END,
-notes=CASE WHEN $2='' THEN notes WHEN notes='' THEN $2 ELSE notes||' | '||$2 END,
-updated_at=now() WHERE organization_id=$3 AND location_id=$4 AND id=$5`, toStatus, notes, scope.OrganizationID, scope.LocationID, id); err != nil {
+updated_at=now() WHERE organization_id=$2 AND location_id=$3 AND id=$4`, toStatus, scope.OrganizationID, scope.LocationID, id); err != nil {
 			return Booking{}, bookingWriteError(err)
 		}
 		if _, err = tx.Exec(ctx, `INSERT INTO booking_events(booking_id,organization_id,location_id,actor_id,from_status,to_status,notes) VALUES($1,$2,$3,$4,$5,$6,$7)`,

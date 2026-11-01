@@ -77,6 +77,8 @@ func TestReports(t *testing.T) {
 	_, err = pool.Exec(ctx, `INSERT INTO payments(organization_id,location_id,invoice_id,customer_id,actor_id,amount_cents,method,status,recorded_at) VALUES($1,$2,$3,$4,$5,15000,'cash','completed',now())`, org, loc, inv.ID, ann, staff)
 	must(err)
 
+	// the same moment is a different calendar day in India near midnight
+	indiaDay := time.Now().UTC().Add(5*time.Hour + 30*time.Minute).Format("2006-01-02")
 	f := ReportFilter{From: day, To: day, TZ: "UTC"}
 	if _, err = s.RunReport(ctx, Scope{ActorID: stranger, OrganizationID: org, LocationID: loc}, "appointments", f); !errors.Is(err, ErrForbidden) {
 		t.Fatal("a member without access ran a report", err)
@@ -99,7 +101,7 @@ func TestReports(t *testing.T) {
 	if only, e := s.RunReport(ctx, scope, "appointments", ReportFilter{From: day, To: day, TZ: "UTC", Service: "Synthetic Detail", Status: "completed"}); e != nil || len(only.Rows) != 1 || only.Rows[0][6] != "$200.00" {
 		t.Fatal("service and status filters wrong", only.Rows, e)
 	}
-	if approved, e := s.RunReport(ctx, scope, "appointments", ReportFilter{From: day, To: day, TZ: "Asia/Calcutta", Status: "confirmed"}); e != nil || len(approved.Rows) != 1 {
+	if approved, e := s.RunReport(ctx, scope, "appointments", ReportFilter{From: indiaDay, To: indiaDay, TZ: "Asia/Calcutta", Status: "confirmed"}); e != nil || len(approved.Rows) != 1 {
 		t.Fatal("approved filter or a legacy time zone name failed", approved.Rows, e)
 	}
 	money, err := s.RunReport(ctx, scope, "revenue", f)

@@ -39,6 +39,10 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
   const [parentId, setParentId] = useState('');
   const [parentIds, setParentIds] = useState<string[]>([]);
   const [slotsFor, setSlotsFor] = useState<Service | null>(null);
+  // Bulk edit: tick several services, then change their price or time together, or archive them.
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [bulk, setBulk] = useState<null | { priceMode: 'keep' | 'set' | 'up' | 'down'; price: string; timeMode: 'keep' | 'set'; time: string; unit: Unit }>(null);
+  const togglePick = (id: string) => setPicked((prev) => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   const [slotsBase, setSlotsBase] = useState('');
   // Slots belong to the franchise copy of a service. In the central catalogue the selected franchise's linked copy is found first.
   async function openSlots(s: Service) {
@@ -154,6 +158,38 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
       return `Service “${name.trim()}” saved.`;
     });
   };
+  const pickedItems = (): Service[] => (items ?? []).filter((x) => picked.has(x.id) && !x.archived);
+  const applyBulk = () => {
+    if (!bulk) return;
+    const chosen = pickedItems();
+    void run(async () => {
+      let changed = 0;
+      for (const sv of chosen) {
+        const next: Record<string, unknown> = { name: sv.name, kind: sv.kind, parentId: sv.parentId, version: sv.version, durationMinutes: sv.durationMinutes ?? null };
+        if (mode === 'central') {
+          let cents = sv.priceCents ?? null;
+          const v = Number(bulk.price);
+          if (bulk.priceMode === 'set') cents = Math.round(v * 100);
+          else if (bulk.priceMode === 'up' && cents != null) cents = Math.round(cents * (1 + v / 100));
+          else if (bulk.priceMode === 'down' && cents != null) cents = Math.max(0, Math.round(cents * (1 - v / 100)));
+          next.priceCents = cents;
+        }
+        if (bulk.timeMode === 'set' && sv.kind === 'main') next.durationMinutes = Math.round(Number(bulk.time) * UNITS[bulk.unit]);
+        await readJson(await fetch(`${listUrl}/${sv.id}`, send('PUT', next)));
+        changed += 1;
+      }
+      setBulk(null); setPicked(new Set());
+      return `${changed} service${changed === 1 ? '' : 's'} updated.`;
+    });
+  };
+  const archiveBulk = () => {
+    const chosen = pickedItems();
+    void run(async () => {
+      for (const sv of chosen) await readJson(await fetch(`${listUrl}/${sv.id}/archive`, send('POST', { version: sv.version })));
+      setPicked(new Set());
+      return `${chosen.length} service${chosen.length === 1 ? '' : 's'} archived.`;
+    });
+  };
   const archive = (s: Service) => run(async () => { await readJson(await fetch(`${listUrl}/${s.id}/archive`, send('POST', { version: s.version }))); return `“${s.name}” archived.`; });
   const del = (s: Service) => run(async () => { const b = await readJson(await fetch(`${listUrl}/${s.id}?version=${s.version}`, send('DELETE'))); return b.message ?? `“${s.name}” removed.`; });
   const duplicate = (s: Service) => run(async () => {
@@ -173,7 +209,7 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6 3.5L10.5 8 6 12.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </button>
       )}
-      <strong className={styles.svcName} title={s.name}>{s.name}</strong>
+      <strong className={styles.svcName} title={s.name}>{canManage && !s.archived && <input type="checkbox" aria-label={`Select ${s.name}`} checked={picked.has(s.id)} onChange={() => togglePick(s.id)} style={{ marginRight: 10, verticalAlign: 'middle' }} />}{s.name}</strong>
       <span className={styles.svcCell}>{s.archived ? 'Archived' : s.kind === 'addon' ? 'Add-on' : 'Main'}</span>
       <span className={styles.svcCell}>{s.priceCents != null ? money(s.priceCents) : 'No price'}</span>
       <span className={styles.svcCell}>{s.durationMinutes != null ? minutesText(s.durationMinutes) : 'No time'}</span>
@@ -207,6 +243,51 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
 
       {error && <p role="alert" className="field-error">{error}</p>}
       {notice && <p role="status" className={styles.status}>{notice}</p>}
+
+      {canManage && picked.size > 0 && !editing && (
+        <div className={styles.resource} role="region" aria-label="Selected services">
+          <div className={styles.rowBetween}>
+            <strong>{picked.size} selected</strong>
+            <span className={styles.svcActions}>
+              <button type="button" className="primary" disabled={busy} onClick={() => setBulk({ priceMode: 'keep', price: '', timeMode: 'keep', time: '', unit: 'minutes' })}>Bulk edit</button>
+              <button type="button" className="secondary" disabled={busy} onClick={archiveBulk}>Archive selected</button>
+              <button type="button" className="secondary" disabled={busy} onClick={() => setPicked(new Set())}>Clear</button>
+            </span>
+          </div>
+          {bulk && (
+            <div style={{ display: 'grid', gap: 12, marginTop: 12 }}>
+              {mode === 'central' && (
+                <div className={styles.inlineForm} style={{ alignItems: 'flex-end' }}>
+                  <label className="form-field">Price
+                    <Select value={bulk.priceMode} onChange={(e) => setBulk({ ...bulk, priceMode: e.target.value as 'keep' | 'set' | 'up' | 'down' })} disabled={busy}>
+                      <option value="keep">Leave as it is</option><option value="set">Set to an amount (CAD)</option><option value="up">Raise by a percent</option><option value="down">Lower by a percent</option>
+                    </Select>
+                  </label>
+                  {bulk.priceMode !== 'keep' && <label className="form-field" style={{ maxWidth: 200 }}>{bulk.priceMode === 'set' ? 'Amount before tax' : 'Percent'}<NumberField inputMode="decimal" min="0" step="0.01" value={bulk.price} onChange={(e) => setBulk({ ...bulk, price: e.target.value })} disabled={busy} /></label>}
+                </div>
+              )}
+              <div className={styles.inlineForm} style={{ alignItems: 'flex-end' }}>
+                <label className="form-field">Time to complete (main services)
+                  <Select value={bulk.timeMode} onChange={(e) => setBulk({ ...bulk, timeMode: e.target.value as 'keep' | 'set' })} disabled={busy}>
+                    <option value="keep">Leave as it is</option><option value="set">Set to</option>
+                  </Select>
+                </label>
+                {bulk.timeMode === 'set' && (
+                  <span className={styles.durationRow}>
+                    <NumberField inputMode="decimal" min="0.5" step="0.5" value={bulk.time} onChange={(e) => setBulk({ ...bulk, time: e.target.value })} disabled={busy} />
+                    <Select value={bulk.unit} onChange={(e) => setBulk({ ...bulk, unit: e.target.value as Unit })} disabled={busy} aria-label="Time unit"><option value="minutes">Minutes</option><option value="hours">Hours</option><option value="days">Days</option></Select>
+                  </span>
+                )}
+              </div>
+              <div className={styles.svcActions}>
+                <button type="button" className="primary" disabled={busy || (bulk.priceMode === 'keep' && bulk.timeMode === 'keep') || (bulk.priceMode !== 'keep' && !(Number(bulk.price) >= 0 && bulk.price.trim() !== '')) || (bulk.timeMode === 'set' && !(Number(bulk.time) > 0))} onClick={applyBulk}>{busy ? 'Saving…' : `Apply to ${picked.size}`}</button>
+                <button type="button" className="secondary" disabled={busy} onClick={() => setBulk(null)}>Cancel</button>
+              </div>
+              <p className={styles.footnote}>Each service keeps a revision, so the earlier price or time stays on record. Add-ons keep their own time.</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {editing && (
         <form onSubmit={save} className={styles.resource}>

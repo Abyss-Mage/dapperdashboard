@@ -50,6 +50,25 @@ func quoteFailure(w http.ResponseWriter, err error) {
 func registerQuoteRoutes(mux *http.ServeMux, store *postgres.Store, sqClient square.Client) {
 	base := "/api/v1/organizations/{organization}/locations/{location}/quotes"
 
+	// The business details printed on a quotation (the same ones invoices use).
+	mux.HandleFunc("GET /api/v1/organizations/{organization}/locations/{location}/quote-issuer", func(w http.ResponseWriter, r *http.Request) {
+		organization, location := r.PathValue("organization"), r.PathValue("location")
+		if !uuid(organization) || !uuid(location) {
+			reply(w, 400, map[string]string{"error": "Valid selectors required"})
+			return
+		}
+		scope, err := store.ResolveScope(r.Context(), requestSession(r).principalID, organization, location, "quotes.read")
+		if err != nil {
+			failure(w, err)
+			return
+		}
+		issuer, err := store.QuoteIssuerFor(r.Context(), scope)
+		if err != nil {
+			failure(w, err)
+			return
+		}
+		reply(w, 200, issuer)
+	})
 	// GET list quotes
 	mux.HandleFunc("GET "+base, func(w http.ResponseWriter, r *http.Request) {
 		organization, location := r.PathValue("organization"), r.PathValue("location")

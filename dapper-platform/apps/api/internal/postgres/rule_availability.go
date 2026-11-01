@@ -41,7 +41,8 @@ func (s *Store) RuleAvailability(ctx context.Context, scope Scope, resourceID, r
 	defer tx.Rollback(ctx)
 	var plan scheduling.Plan
 	var capacity int
-	err = tx.QueryRow(ctx, `SELECT capacity,rules,timezone FROM scheduling_resources WHERE organization_id=$1 AND location_id=$2 AND id=$3 FOR SHARE`, scope.OrganizationID, scope.LocationID, resourceID).Scan(&capacity, &plan, &out.Timezone)
+	var weekly []HourWindow
+	err = tx.QueryRow(ctx, `SELECT capacity,rules,timezone,weekly_hours FROM scheduling_resources WHERE organization_id=$1 AND location_id=$2 AND id=$3 FOR SHARE`, scope.OrganizationID, scope.LocationID, resourceID).Scan(&capacity, &plan, &out.Timezone, &weekly)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return out, ErrAvailabilityInput
 	}
@@ -66,6 +67,9 @@ func (s *Store) RuleAvailability(ctx context.Context, scope Scope, resourceID, r
 	request := scheduling.Request{Duration: time.Duration(rule.DurationMinutes) * time.Minute, Before: time.Duration(rule.BeforeMinutes) * time.Minute, After: time.Duration(rule.AfterMinutes) * time.Minute, Units: 1, WorkingTime: rule.WorkingTime}
 	plan.Capacity = rule.Slots // each service has its own number of slots
 	end := first.AddDate(0, 0, days)
+	if past && first.Before(time.Now()) {
+		addPastWindows(&plan, out.Timezone, weekly, first, end)
+	}
 	reach := request.Duration + request.After
 	if request.WorkingTime {
 		reach = 30 * 24 * time.Hour // a working-time job can run across many days

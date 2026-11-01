@@ -69,7 +69,7 @@ export default function ServiceSlots({ base, service, onClose }: { base: string;
       {resources && resources.length > 0 && (
         <>
           <div className={styles.slotGrid}>
-            <label className="form-field">Calendar
+            <label className="form-field">Calendar (the schedule this service is booked on)
               <Select value={resource} onChange={(e) => setResource(e.target.value)} disabled={busy}>
                 {resources.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
               </Select>
@@ -87,7 +87,7 @@ export default function ServiceSlots({ base, service, onClose }: { base: string;
               <NumberField inputMode="numeric" min="1" max="1000" step="1" value={units} onChange={(e) => setUnits(e.target.value)} disabled={busy} />
             </label>
           </div>
-          <p className={styles.footnote}>Slots belong to this service alone: other services do not use them up. The days and hours this service can be booked come from the calendar’s weekly hours. To give a service its own days and hours, put it on its own calendar.</p>
+          <p className={styles.footnote}>{resources.length > 1 ? "A calendar is a separate booking schedule with its own opening hours. This franchise has " + resources.length + ", for example one for everyday jobs and one for large jobs. Pick the one this service belongs on. " : ""}Slots belong to this service alone: other services do not use them up. The days and hours this service can be booked come from the calendar’s weekly hours. To give a service its own days and hours, put it on its own calendar.</p>
         </>
       )}
       <div className={styles.rowBetween}>

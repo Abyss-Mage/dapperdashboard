@@ -119,7 +119,7 @@ func (s *Store) cancelBookingFrom(ctx context.Context, scope Scope, id, reason, 
 		return Booking{}, ErrReservationConflict
 	}
 	oldStatus := booking.Status
-	if _, err = tx.Exec(ctx, `UPDATE bookings SET status='cancelled',cancellation_reason=$4,notes=CASE WHEN $5='' THEN notes WHEN notes='' THEN $5 ELSE notes||' | '||$5 END,updated_at=now() WHERE organization_id=$1 AND location_id=$2 AND id=$3`, scope.OrganizationID, scope.LocationID, id, reason, notes); err != nil {
+	if _, err = tx.Exec(ctx, `UPDATE bookings SET status='cancelled',cancellation_reason=$4,updated_at=now() WHERE organization_id=$1 AND location_id=$2 AND id=$3`, scope.OrganizationID, scope.LocationID, id, reason); err != nil {
 		return Booking{}, err
 	}
 	if _, err = tx.Exec(ctx, `INSERT INTO booking_events(organization_id,location_id,booking_id,actor_id,from_status,to_status,notes) VALUES($1,$2,$3,$4,$5,'cancelled',$6)`, scope.OrganizationID, scope.LocationID, id, scope.ActorID, oldStatus, notes); err != nil {

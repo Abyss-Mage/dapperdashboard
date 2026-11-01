@@ -53,13 +53,17 @@ type InvoiceConfiguration struct {
 	Bindings  []InvoiceIssuerBinding `json:"bindings"`
 }
 
+// financeConfigurationGrant: invoice business details need invoices.configure, held directly or through an organization-wide role such
+// as Super Admin or Owner.
 func financeConfigurationGrant(ctx context.Context, tx pgx.Tx, actor, org string) error {
-	var id string
-	err := tx.QueryRow(ctx, `SELECT p.id::text FROM principals p JOIN organization_memberships m ON m.principal_id=p.id AND m.organization_id=$2 JOIN organization_grants g ON g.principal_id=p.id AND g.organization_id=m.organization_id AND g.action='invoices.configure' WHERE p.id=$1 AND p.active FOR SHARE OF p,m,g`, actor, org).Scan(&id)
-	if errors.Is(err, pgx.ErrNoRows) {
+	ok, err := actorHasOrgCapability(ctx, tx, actor, org, "invoices.configure")
+	if err != nil {
+		return err
+	}
+	if !ok {
 		return ErrForbidden
 	}
-	return err
+	return nil
 }
 
 const invoiceIssuerColumns = `id::text,legal_name,address,tax_registration,currency,number_prefix,version,next_number`
