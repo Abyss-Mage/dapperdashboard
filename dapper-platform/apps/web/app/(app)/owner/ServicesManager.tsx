@@ -42,6 +42,8 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
   // Bulk edit: tick several services, then change their price or time together, or archive them.
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [bulk, setBulk] = useState<null | { priceMode: 'keep' | 'set' | 'up' | 'down'; price: string; timeMode: 'keep' | 'set'; time: string; unit: Unit }>(null);
+  // Edit as text: the chosen services (or every service shown) as plain lines, one per service, changed in one go.
+  const [textEdit, setTextEdit] = useState<null | { rows: Service[]; text: string; problems: string[] }>(null);
   const togglePick = (id: string) => setPicked((prev) => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   const [slotsBase, setSlotsBase] = useState('');
   // Slots belong to the franchise copy of a service. In the central catalogue the selected franchise's linked copy is found first.
@@ -178,6 +180,42 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
       return `${changed} service${changed === 1 ? '' : 's'} updated.`;
     });
   };
+  const lineOf = (sv: Service) => [sv.name, ...(mode === 'central' ? [sv.priceCents == null ? '' : (sv.priceCents / 100).toFixed(2)] : []), sv.kind === 'main' && sv.durationMinutes != null ? String(sv.durationMinutes) : ''].join(' | ');
+  const openText = () => {
+    const rows = (picked.size ? pickedItems() : visible.filter((x) => !x.archived));
+    setTextEdit({ rows, text: rows.map(lineOf).join('\n'), problems: [] });
+  };
+  const applyText = () => {
+    if (!textEdit) return;
+    const lines = textEdit.text.split('\n').map((l) => l.trim()).filter(Boolean);
+    const problems: string[] = [];
+    if (lines.length !== textEdit.rows.length) problems.push(`There are ${lines.length} lines but ${textEdit.rows.length} services. Keep one line per service, in the same order.`);
+    const changes: { sv: Service; name: string; cents: number | null; minutes: number | null }[] = [];
+    if (!problems.length) lines.forEach((line, i) => {
+      const sv = textEdit.rows[i];
+      const parts = line.split('|').map((x) => x.trim());
+      const name = parts[0] ?? '';
+      const priceTxt = mode === 'central' ? (parts[1] ?? '') : '';
+      const minTxt = (mode === 'central' ? parts[2] : parts[1]) ?? '';
+      if (name.length < 2 || name.length > 120) problems.push(`Line ${i + 1}: the name needs 2 to 120 characters.`);
+      const cents = mode === 'central' ? (priceTxt === '' ? null : Math.round(Number(priceTxt.replace(/[$,\s]/g, '')) * 100)) : sv.priceCents ?? null;
+      if (mode === 'central' && priceTxt !== '' && !(cents != null && cents >= 0)) problems.push(`Line ${i + 1}: the price is not a number.`);
+      const minutes = sv.kind === 'main' ? (minTxt === '' ? null : Math.round(Number(minTxt))) : sv.durationMinutes ?? null;
+      if (sv.kind === 'main' && minTxt !== '' && !(minutes != null && minutes > 0)) problems.push(`Line ${i + 1}: the minutes are not a number.`);
+      if (name !== sv.name || cents !== (sv.priceCents ?? null) || minutes !== (sv.durationMinutes ?? null)) changes.push({ sv, name, cents, minutes });
+    });
+    if (problems.length) { setTextEdit({ ...textEdit, problems }); return; }
+    if (!changes.length) { setTextEdit({ ...textEdit, problems: ['Nothing was changed.'] }); return; }
+    void run(async () => {
+      for (const { sv, name, cents, minutes } of changes) {
+        const next: Record<string, unknown> = { name, kind: sv.kind, parentId: sv.kind === 'addon' ? null : sv.parentId, parentIds: sv.kind === 'addon' ? parentsOf(sv) : undefined, version: sv.version, durationMinutes: minutes };
+        if (mode === 'central') next.priceCents = cents;
+        await readJson(await fetch(`${listUrl}/${sv.id}`, send('PUT', next)));
+      }
+      setTextEdit(null); setPicked(new Set());
+      return `${changes.length} service${changes.length === 1 ? '' : 's'} updated.`;
+    });
+  };
   const archiveBulk = () => {
     const chosen = pickedItems();
     void run(async () => {
@@ -245,7 +283,8 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
           <div className={styles.rowBetween}>
             <strong>{picked.size} selected</strong>
             <span className={styles.svcActions}>
-              <button type="button" className="primary" disabled={busy} onClick={() => setBulk({ priceMode: 'keep', price: '', timeMode: 'keep', time: '', unit: 'minutes' })}>Bulk edit</button>
+              <button type="button" className="primary" disabled={busy} onClick={openText}>Edit as text</button>
+              <button type="button" className="secondary" disabled={busy} onClick={() => setBulk({ priceMode: 'keep', price: '', timeMode: 'keep', time: '', unit: 'minutes' })}>Set price or time for all</button>
               <button type="button" className="secondary" disabled={busy} onClick={archiveBulk}>Archive selected</button>
               <button type="button" className="secondary" disabled={busy} onClick={() => setPicked(new Set())}>Clear</button>
             </span>
@@ -282,6 +321,20 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
               <p className={styles.footnote}>Each service keeps a revision, so the earlier price or time stays on record. Add-ons keep their own time.</p>
             </div>
           )}
+        </div>
+      )}
+
+      {canManage && textEdit && !editing && (
+        <div className={styles.resource} role="region" aria-label="Edit services as text">
+          <h3>Edit {textEdit.rows.length} service{textEdit.rows.length === 1 ? '' : 's'} as text</h3>
+          <p className={styles.footnote}>One service per line: {mode === 'central' ? 'Name | Price in CAD before tax | Minutes' : 'Name | Minutes'}. Change any words or numbers, keep the same lines in the same order, then apply. Add-ons have no minutes.</p>
+          <textarea className={styles.textBulk} value={textEdit.text} rows={Math.min(24, textEdit.rows.length + 2)} spellCheck={false} aria-label="Services as text" disabled={busy} onChange={(e) => setTextEdit({ ...textEdit, text: e.target.value, problems: [] })} />
+          {textEdit.problems.map((m) => <p key={m} role="alert" className="field-error">{m}</p>)}
+          <div className={styles.svcActions}>
+            <button type="button" className="primary" disabled={busy} onClick={applyText}>{busy ? 'Saving…' : 'Apply changes'}</button>
+            <button type="button" className="secondary" disabled={busy} onClick={() => setTextEdit(null)}>Cancel</button>
+          </div>
+          <p className={styles.footnote}>Each service keeps a revision, so the earlier name, price or time stays on record.</p>
         </div>
       )}
 
@@ -360,6 +413,7 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
           ))}
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          {canManage && !editing && <button type="button" className="secondary" disabled={busy || !visible.some((x) => !x.archived)} onClick={openText}>{picked.size ? `Edit ${picked.size} as text` : 'Edit as text'}</button>}
           {counts.addon > 0 && <button type="button" className="secondary" onClick={() => setGroups(closed.size ? new Set() : new Set(all.filter((x) => x.kind === 'main').map((x) => x.id)))}>{closed.size ? 'Show all add-ons' : 'Hide all add-ons'}</button>}
           <input type="search" className={styles.searchBox} placeholder="Search services" aria-label="Search services" value={query} onChange={(e) => setQuery(e.target.value)} />
         </div>

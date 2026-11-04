@@ -40,7 +40,9 @@ export const dollarsCompact = (cents: number) => '$' + compact.format(cents / 10
 
 export function shortDate(iso: string) {
   const d = new Date(iso + 'T00:00:00Z');
-  return d.toLocaleDateString('en-CA', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  // The year shows when the date is not in the current year, so a long range reads "Jan 1, 2022 – Nov 4, 2027".
+  const year = d.getUTCFullYear() !== new Date().getFullYear();
+  return d.toLocaleDateString('en-CA', { month: 'short', day: 'numeric', ...(year ? { year: 'numeric' } : {}), timeZone: 'UTC' });
 }
 
 /* Long ranges (such as "All time") would be thousands of thin bars, so daily figures are added up into weeks, then months. */

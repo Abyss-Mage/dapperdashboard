@@ -1,0 +1,19 @@
+/* The Book now page: the website's black strip and headline band over the booking steps. */
+.page{min-height:100svh;display:flex;flex-direction:column;background:var(--bg);color:var(--text)}
+.bar{display:flex;align-items:center;gap:clamp(16px,3vw,48px);padding:0 clamp(16px,3.6vw,56px);min-height:64px;background:#0b0b0c;color:#efede8}
+.brand{font:500 clamp(18px,1.4vw,22px)/1 'Unbounded Variable','Arial Narrow',sans-serif;letter-spacing:.04em;text-transform:uppercase;color:#efede8;text-decoration:none}
+.bar nav{display:flex;gap:clamp(14px,2vw,32px);margin-left:auto;font:500 13px/1 'Unbounded Variable','Arial Narrow',sans-serif;letter-spacing:.1em;text-transform:uppercase}
+.bar nav a{color:#a8a59e;text-decoration:none;transition:color .2s}
+@media(hover:hover) and (pointer:fine){.bar nav a:hover{color:#efede8}}
+.theme{background:transparent!important;border:0!important;color:#efede8!important;padding:6px!important;min-width:0!important}
+@media(max-width:720px){.bar nav{display:none}.theme{margin-left:auto}}
+.hero{background:#0b0b0c;color:#efede8;padding:clamp(40px,6vw,96px) clamp(16px,3.6vw,56px) clamp(40px,5vw,72px)}
+.kicker{margin:0 0 18px;font:500 13px/1 'Unbounded Variable','Arial Narrow',sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#a8a59e}
+.hero h1{margin:0;font:500 clamp(34px,6.2vw,100px)/.94 'Unbounded Variable','Arial Narrow',sans-serif;letter-spacing:-.03em;text-transform:uppercase;text-wrap:balance;color:#efede8}
+.hero h1 em{font-style:normal;color:#e3172b}
+.lede{max-width:52ch;margin:clamp(16px,2vw,28px) 0 0;font-size:clamp(16px,1.35vw,20px);line-height:1.55;color:#d6d3cc}
+.lede a{color:#fff;text-decoration:underline;text-underline-offset:.2em;text-decoration-thickness:1px}
+.sheet{flex:1;width:100%;max-width:880px;margin:0 auto;padding:clamp(24px,4vw,56px) clamp(16px,3vw,32px) clamp(48px,6vw,96px)}
+.foot{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px 24px;padding:20px clamp(16px,3.6vw,56px);background:#0b0b0c;color:#a8a59e;font-size:13px}
+.foot span:last-child{display:flex;gap:18px;flex-wrap:wrap}
+.foot a{color:#a8a59e}

@@ -27,3 +27,13 @@
 .f-foot__legal span:last-child{display:flex;gap:18px;flex-wrap:wrap}
 .f-foot__legal a{color:var(--mute)}
 @media(max-width:800px){.f-foot__cols{grid-template-columns:minmax(0,1fr)}.f-foot{padding-bottom:96px}}
+
+/* One button across the whole site: red, square, the bottom-left corner cut, capitals in Unbounded, an arrow that nudges on hover. */
+body .c-btn,body .d-btn,body .s-btn,body .f-btn{display:inline-flex;align-items:center;justify-content:center;gap:14px;min-height:56px;padding:0 28px;border:0;border-radius:0;box-shadow:none;
+  font:600 15px/1 'Unbounded Variable','Arial Narrow',sans-serif;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;
+  clip-path:polygon(0 0,100% 0,100% 100%,14px 100%,0 calc(100% - 14px))}
+body .d-btn--sm{min-height:46px;padding:0 22px;font-size:13px}
+body .d-nav--paper .d-btn,body .d-nav--dark .d-btn{min-height:46px;padding:0 22px;font-size:13px;letter-spacing:.06em}
+body .f-btn{font-size:16px;min-height:60px;padding:0 32px}
+body .c-btn:focus-visible,body .d-btn:focus-visible,body .s-btn:focus-visible,body .f-btn:focus-visible{outline-offset:-5px;outline-color:#fff}
+@media(max-width:560px){body .c-btn,body .d-btn,body .s-btn,body .f-btn{white-space:normal;text-align:center;font-size:14px}}

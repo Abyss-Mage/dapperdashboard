@@ -89,8 +89,7 @@ export default function PortfolioPage() {
         .to('.p-gallery__bar i', { scaleX: 1 }, 0);
       return () => el.classList.remove('is-gallery');
     });
-    // Films play only while they are on screen (and not at all with reduced motion, where each shows its first frame); on a
-    // desktop screen the five columns drift at different speeds as the section scrolls past.
+    // Films play only while they are on screen (and not at all with reduced motion, where each shows its first frame).
     gsap.utils.toArray<HTMLVideoElement>('.p-reel video').forEach((v) => {
       // With reduced motion a film stays paused, so nudge it to paint its first frame instead of an empty box.
       const still = () => { if (matchMedia('(prefers-reduced-motion: reduce)').matches) { v.preload = 'auto'; v.currentTime = .1; } };
@@ -99,10 +98,6 @@ export default function PortfolioPage() {
         if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
         if (self.isActive) void v.play().catch(() => {}); else v.pause();
       } });
-    });
-    mm.add('(prefers-reduced-motion: no-preference) and (min-width: 1024px)', () => {
-      const drift = [0, -70, -20, -90, -40];
-      gsap.utils.toArray<HTMLElement>('.p-reel').forEach((el, i) => gsap.to(el, { y: drift[i % drift.length], ease: 'none', scrollTrigger: { trigger: '.p-films__reels', start: 'top bottom', end: 'bottom top', scrub: true } }));
     });
 
     // Pinned panel with overscroll (as on Contact and About): the hero stays put and settles back as the gallery slides over it.
@@ -177,6 +172,7 @@ export default function PortfolioPage() {
               <li key={c}>
                 <button type="button" className="p-reel" onClick={() => setFilm(i)} aria-label={'Watch transformation ' + (i + 1) + ' of ' + clips.length}>
                   <video src={c + '#t=0.1'} muted loop playsInline preload="metadata" aria-hidden="true" tabIndex={-1} />
+                  <span className="p-reel__tag" aria-hidden="true">Film {i + 1}</span>
                   <span className="p-reel__play" aria-hidden="true"><Play size={18} fill="currentColor" /></span>
                 </button>
               </li>

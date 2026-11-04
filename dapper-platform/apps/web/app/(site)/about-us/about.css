@@ -37,15 +37,15 @@
 .af{padding:clamp(72px,9vw,140px) var(--cg)}
 .af h2{font-size:clamp(30px,4.2vw,68px);line-height:1}
 .af-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(20px,3vw,48px);margin-top:clamp(36px,5vw,72px)}
-.af-card{display:grid;grid-template-rows:auto 1fr;gap:clamp(18px,2vw,28px)}
-.af-frame{aspect-ratio:5/4;background:var(--ink);overflow:hidden;display:grid;place-items:center}
+.af-card{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:end;gap:clamp(18px,2.2vw,32px)}
+.af-frame{width:clamp(130px,15vw,240px);aspect-ratio:3/4;background:var(--ink);overflow:hidden;display:grid;place-items:center;clip-path:polygon(0 0,100% 0,100% 100%,14px 100%,0 calc(100% - 14px))}
 .af-frame img{width:100%;height:100%;object-fit:cover}
-.af-mono{font:500 clamp(80px,12vw,200px)/1 var(--ch);letter-spacing:-.04em;color:var(--red)}
+.af-mono{font:500 clamp(44px,6vw,96px)/1 var(--ch);letter-spacing:-.04em;color:var(--red)}
 .af-role{margin:0;font:500 clamp(40px,5.4vw,88px)/.9 var(--ch);letter-spacing:-.03em;color:var(--ink)}
 .af-role span{display:inline-block}
 .af-text h3{margin-top:clamp(12px,1.4vw,20px);font-size:clamp(20px,2.2vw,34px);line-height:1.05}
 .af-text .c-muted{margin-top:10px;font-size:clamp(17px,1.4vw,21px)}
-@media(max-width:720px){.af-grid{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:720px){.af-grid{grid-template-columns:minmax(0,1fr)}.af-frame{width:clamp(110px,34vw,170px)}}
 
 /* A4 Core values: ink band */
 .a-values{background:var(--ink);color:#f3f2ee;padding:clamp(72px,9vw,140px) var(--cg)}

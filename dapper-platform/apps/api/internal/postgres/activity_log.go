@@ -114,6 +114,7 @@ var activityRules = []activityRule{
 	rule("POST", `/scheduling/`, "Changed scheduling"),
 	rule("PUT", `/invoice-template`, "Changed the invoice template"),
 	rule("DELETE", `/invoice-template`, "Removed a franchise invoice template"),
+	rule("PUT", `/outlet-type`, "Changed whether an outlet is brand-owned or a franchise"),
 	rule("PUT", `/quote-template`, "Changed the quotation template"),
 	rule("DELETE", `/quote-template`, "Removed a franchise quotation template"),
 	rule("PUT", `/logo$`, "Changed a franchise logo"),

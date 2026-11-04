@@ -65,11 +65,17 @@
 .p-reel video{width:100%;height:100%;object-fit:cover;display:block}
 .p-reel__play{position:absolute;right:14px;bottom:14px;display:grid;place-items:center;width:44px;height:44px;background:var(--red);transition:transform .3s var(--ease)}
 @media(hover:hover) and (pointer:fine){.p-reel:hover .p-reel__play{transform:scale(1.1)}}
+/* On a wide screen the five films stand as slanted slabs, overlapping a little, edge to edge; the one under the pointer lifts. */
 @media(min-width:1024px){
-  .p-films__reels{overflow:visible;display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}
-  .p-films__reels li{width:auto}
-  .p-films__reels li:nth-child(even){margin-top:clamp(28px,4vw,64px)}
+  .p-films__reels{overflow:visible;display:flex;height:min(80svh,780px);padding-inline:calc(var(--cg) + 2.4%)}
+  .p-films__reels li{flex:1 1 0;width:auto;margin-inline:-2.4%;transition:transform .45s var(--ease)}
+  .p-films__reels .p-reel{height:100%;aspect-ratio:auto;clip-path:polygon(11% 0,100% 0,89% 100%,0 100%)}
+  .p-reel__tag{position:absolute;left:18%;bottom:16px;font:500 13px/1 var(--ch);letter-spacing:.08em;text-transform:uppercase;color:#fff}
+  .p-reel__play{right:16%}
 }
+@media(hover:hover) and (pointer:fine) and (min-width:1024px){.p-films__reels li:hover{transform:translateY(-14px);z-index:2}.p-films__reels li:hover .p-reel video{transform:scale(1.06)}}
+.p-reel video{transition:transform .6s var(--ease)}
+@media(max-width:1023px){.p-reel__tag{display:none}.p-reel{clip-path:polygon(0 0,100% 0,100% 100%,14px 100%,0 calc(100% - 14px))}}
 @media(max-width:1023px){.p-films__head{grid-template-columns:minmax(0,1fr)}}
 .p-viewer--film video{aspect-ratio:9/16;height:calc(100svh - clamp(140px,16vw,200px));max-width:100%;width:auto;background:#000}
 

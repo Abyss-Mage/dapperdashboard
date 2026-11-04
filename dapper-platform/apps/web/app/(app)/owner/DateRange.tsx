@@ -13,7 +13,8 @@ export const RANGE_CHOICES: Record<string, string> = {
 export type Custom = { from: string; to: string };
 
 const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-const ALL_TIME_START = '2018-01-01';
+// Dapper began in 2022. "All time" also runs a year ahead, so bookings already made for future dates are counted.
+const ALL_TIME_START = '2022-01-01';
 const MAX_DAYS = 3660;
 
 export function resolveRange(id: RangePresetId, custom: Custom) {
@@ -26,7 +27,7 @@ export function resolveRange(id: RangePresetId, custom: Custom) {
     case 'next30': return { from: ymd(today), to: ymd(add(29)) };
     case 'month': return { from: ymd(new Date(today.getFullYear(), today.getMonth(), 1)), to: ymd(new Date(today.getFullYear(), today.getMonth() + 1, 0)) };
     case 'year': return { from: ymd(new Date(today.getFullYear(), 0, 1)), to: ymd(today) };
-    case 'all': return { from: ALL_TIME_START, to: ymd(today) };
+    case 'all': return { from: ALL_TIME_START, to: ymd(add(365)) };
     case 'custom': return custom;
     default: return { from: ymd(add(-29)), to: ymd(today) };
   }

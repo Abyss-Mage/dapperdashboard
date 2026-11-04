@@ -30,7 +30,7 @@ export function Nav3() {
   const pathname = usePathname();
   // The vehicle pages (/sedan-detailing and the rest) belong to Services; every redesigned page wears the paper header.
   const onVehicle = categories.some((c) => '/' + c.slug === pathname);
-  const paper = onVehicle || ['/', '/services', '/contact-us', '/about-us', '/portfolio'].includes(pathname);
+  const paper = onVehicle || ['/', '/services', '/contact-us', '/about-us', '/portfolio', '/privacy-policy', '/terms-conditions', '/refund-and-cancellation'].includes(pathname);
   useEffect(() => setOpen(false), [pathname]);
   useEffect(() => {
     const on = () => setSolid(scrollY > 30);

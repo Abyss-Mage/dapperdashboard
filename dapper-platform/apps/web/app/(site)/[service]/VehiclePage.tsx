@@ -3,14 +3,13 @@ import Link from 'next/link';
 import { useRef } from 'react';
 import { ArrowRight, Star } from 'lucide-react';
 import { categories } from '../content';
-import { contact, cta, processSteps, proof, testimonials } from '../dapper';
+import { contact, cta, processSteps, proof, testimonials, why } from '../dapper';
 import { usePublished } from '../_components/usePublished';
 import { gsap, ScrollTrigger, SplitText, useGSAP } from '../_components/gsapContact';
 
 /* One template for every service page, in the same darker "hard" direction as Services.
    V1 hero with the vehicle, price and a switcher for the other nine. V2 packages published by the team. V3 what to expect. V4 reviews. V5 closing band. */
 
-const pad = (n: number) => String(n + 1).padStart(2, '0');
 const kind = (key: string) => (key === 'ceramic' ? 'Coating' : key === 'ppf' ? 'Paint protection film' : 'Detailing');
 
 function Packages({ category, name }: { category: string; name: string }) {
@@ -26,12 +25,11 @@ function Packages({ category, name }: { category: string; name: string }) {
   );
   return (
     <ul className="v-pkgs" aria-live="polite">
-      {items.map((s, i) => (
-        <li key={s.name} className="v-pkg">
-          <span className="v-pkg__n">{pad(i)}</span>
+      {items.map((s) => (
+        <li key={s.name} className="v-row">
           <h3>{s.name}</h3>
           <p>{s.summary}</p>
-          <a className="v-pkg__go" href="/account">View options<ArrowRight size={18} aria-hidden="true" /></a>
+          <a className="v-row__go" href="/account">View options<ArrowRight size={18} aria-hidden="true" /></a>
         </li>
       ))}
     </ul>
@@ -41,7 +39,6 @@ function Packages({ category, name }: { category: string; name: string }) {
 export default function VehiclePage({ slug }: { slug: string }) {
   const root = useRef<HTMLDivElement>(null);
   const c = categories.find((x) => x.slug === slug)!;
-  const idx = categories.indexOf(c);
   const words = c.title.split(' ');
   const last = words.pop();
 
@@ -51,11 +48,10 @@ export default function VehiclePage({ slug }: { slug: string }) {
       SplitText.create('.v-h1', { type: 'lines,words', mask: 'lines', linesClass: 'c-line', autoSplit: true,
         onSplit: (self) => gsap.from(self.words, { yPercent: 110, duration: .6, stagger: .05, ease: 'expo.out' }) });
       gsap.timeline({ defaults: { ease: 'expo.out' } })
+        .from('.v-hero__img', { scale: 1.14, duration: 1.4, ease: 'power3.out' }, 0)
         .from('.v-crumb', { y: 14, opacity: 0, duration: .8 }, .15)
-        .from('.v-lede, .v-buy > *', { y: 22, opacity: 0, duration: .9, stagger: .08 }, .5)
-        .fromTo('.v-hero__mask', { xPercent: 100 }, { xPercent: 0, duration: 1.3, ease: 'expo.inOut' }, .1)
-        .fromTo('.v-hero__mask img', { xPercent: -100, scale: 1.15 }, { xPercent: 0, scale: 1, duration: 1.3, ease: 'expo.inOut' }, .1)
-        .from('.v-rides li', { y: 24, opacity: 0, duration: .7, stagger: .035 }, .7);
+        .from('.v-lede', { y: 22, opacity: 0, duration: .9 }, .45)
+        .from('.v-buy > *', { y: 24, opacity: 0, duration: .8, stagger: .08 }, .6);
       // The price counts up to itself.
       const price = document.querySelector<HTMLElement>('.v-price b');
       if (price && c.from) {
@@ -64,46 +60,36 @@ export default function VehiclePage({ slug }: { slug: string }) {
       }
       gsap.utils.toArray<HTMLElement>('[data-head]').forEach((el) => SplitText.create(el, { type: 'lines,words', mask: 'lines', linesClass: 'c-line', autoSplit: true,
         onSplit: (self) => gsap.from(self.words, { yPercent: 110, duration: .6, stagger: .04, ease: 'expo.out', scrollTrigger: { trigger: el, start: 'top 88%', once: true } }) }));
-      ScrollTrigger.batch('.v-pkg, .v-step', { start: 'top 90%', once: true,
-        onEnter: (els) => gsap.from(els, { y: 48, opacity: 0, duration: .9, stagger: .09, ease: 'expo.out', overwrite: true }) });
-      gsap.timeline({ defaults: { ease: 'none' }, scrollTrigger: { trigger: '.s-close__media', start: 'top 88%', end: 'top 30%', scrub: true } })
-        .fromTo('.s-close__mask', { xPercent: 100 }, { xPercent: 0 })
-        .fromTo('.s-close__mask img', { xPercent: -100 }, { xPercent: 0 }, 0);
+      ScrollTrigger.batch('.v-row, .v-step, .v-inc li, .v-more li', { start: 'top 92%', once: true,
+        onEnter: (els) => gsap.from(els, { y: 36, opacity: 0, duration: .8, stagger: .07, ease: 'expo.out', overwrite: true }) });
+      gsap.fromTo('.v-hero__img', { yPercent: 0 }, { yPercent: 12, ease: 'none', scrollTrigger: { trigger: '.v-hero', start: 'top top', end: 'bottom top', scrub: true } });
     });
     document.fonts?.ready.then(() => ScrollTrigger.refresh());
     return () => mm.revert();
   }, { scope: root });
 
+  const other = categories.filter((x) => x.slug !== c.slug);
+  const noun = c.short.toLowerCase().replace(/s$/, '');
   return (
     <div ref={root} className="s-page v-page">
-      {/* V1 Hero: the vehicle, what it costs, how to book it */}
+      {/* V1 Hero: the vehicle edge to edge, the title over it, the price and the booking call on a bar along the bottom */}
       <section className="v-hero" aria-labelledby="v-title">
-        <div className="v-hero__text">
+        <img className="v-hero__img" src={c.image} alt={c.photo ? c.title + ' at Dapper' : 'Vehicle detailed by Dapper'} fetchPriority="high" />
+        <div className="v-hero__scrim" aria-hidden="true" />
+        <div className="v-hero__copy">
           <p className="v-crumb"><Link href="/services">Services</Link><span aria-hidden="true">/</span>{c.short}</p>
           <h1 id="v-title" className="v-h1">{words.join(' ')} <em>{last}.</em></h1>
           <p className="v-lede">{c.summary}</p>
-          <div className="v-buy">
-            {c.from
-              ? <p className="v-price"><small>Starting from</small><b aria-label={'$' + c.from}>${c.from}</b></p>
-              : <p className="v-price v-price--ask"><small>Pricing</small><b>Ask the team</b></p>}
-            <a className="s-btn" href="/booking"><span className="s-roll"><span>Book now</span><span aria-hidden="true">Book now</span></span><ArrowRight size={22} aria-hidden="true" /></a>
-            <a className="s-close__call" href={'tel:' + contact.tel}>or call <span>+1 {contact.phone}</span></a>
-          </div>
         </div>
-        <div className="v-hero__media">
-          <div className="v-hero__mask"><img src={c.image} alt={c.photo ? c.title + ' at Dapper' : 'Vehicle detailed by Dapper'} fetchPriority="high" /></div>
-          {c.photo ? null : <span className="s-tile__tag">Studio photo</span>}
+        {c.photo ? null : <span className="s-tile__tag">Studio photo</span>}
+        <div className="v-buy">
+          {c.from
+            ? <p className="v-price"><small>Starting from</small><b aria-label={'$' + c.from}>${c.from}</b></p>
+            : <p className="v-price v-price--ask"><small>Pricing</small><b>Ask the team</b></p>}
+          <a className="s-btn" href="/booking"><span className="s-roll"><span>Book now</span><span aria-hidden="true">Book now</span></span><ArrowRight size={22} aria-hidden="true" /></a>
+          <a className="s-close__call" href={'tel:' + contact.tel}>or call <span>+1 {contact.phone}</span></a>
         </div>
       </section>
-
-      {/* The other nine rides, one tap away */}
-      <nav className="v-rides" aria-label="Service categories">
-        <ul>
-          {categories.map((x, i) => (
-            <li key={x.slug}><Link href={'/' + x.slug} aria-current={x.slug === c.slug ? 'page' : undefined}><span>{pad(i)}</span>{x.short}</Link></li>
-          ))}
-        </ul>
-      </nav>
 
       {/* V2 Packages: exactly what the team has published for this category */}
       <section className="v-sec" aria-labelledby="v-pk-title">
@@ -114,25 +100,34 @@ export default function VehiclePage({ slug }: { slug: string }) {
         <Packages category={c.key} name={c.short} />
       </section>
 
-      {/* V3 What to expect: the same four steps, laid out as a row */}
+      {/* V3 What is in every job, in the studio's own words */}
+      <section className="v-sec v-inc" aria-labelledby="v-in-title">
+        <div className="v-sec__head">
+          <h2 id="v-in-title" className="s-h2" data-head>Done the <em>Dapper way.</em></h2>
+          <p>{kind(c.key)} for your {noun} always comes with the same standard.</p>
+        </div>
+        <ul>
+          {why.map((w) => <li key={w.title}><h3>{w.title}</h3><p>{w.text}</p></li>)}
+        </ul>
+      </section>
+
+      {/* V4 What to expect: four tall photographs, one per step */}
       <section className="v-sec v-sec--alt" aria-labelledby="v-st-title">
         <div className="v-sec__head">
           <h2 id="v-st-title" className="s-h2" data-head>What to <em>expect.</em></h2>
-          <p>{kind(c.key)} for your {c.short.toLowerCase().replace(/s$/, '')}, from the first tap to the last wipe.</p>
+          <p>From the first tap to the last wipe.</p>
         </div>
         <ol className="v-steps">
-          {processSteps.map((p, i) => (
+          {processSteps.map((p) => (
             <li key={p.title} className="v-step">
               <span className="v-step__img" style={{ backgroundImage: 'url(' + p.image + ')' }} aria-hidden="true" />
-              <span className="v-step__n" aria-hidden="true">{pad(i)}</span>
-              <h3>{p.title}</h3>
-              <p>{p.text}</p>
+              <div className="v-step__txt"><h3>{p.title}</h3><p>{p.text}</p></div>
             </li>
           ))}
         </ol>
       </section>
 
-      {/* V4 Reviews: what clients say, in their own words */}
+      {/* V5 Reviews: what clients say, in their own words */}
       <section className="v-sec v-rev" aria-labelledby="v-rv-title">
         <div className="v-sec__head">
           <h2 id="v-rv-title" className="s-h2" data-head>Straight from <em>the owners.</em></h2>
@@ -152,18 +147,23 @@ export default function VehiclePage({ slug }: { slug: string }) {
         ))}
       </section>
 
-      {/* V5 Closing band */}
-      <section className="s-close" aria-labelledby="v-close-title">
-        <div className="s-close__text">
-          <h2 id="v-close-title" className="s-h2" data-head>Ready to give your {c.short.toLowerCase().replace(/s$/, '')} <em>the care it deserves?</em></h2>
-          <p className="s-close__lede">{cta.text}</p>
-          <div className="s-close__actions">
-            <a className="s-btn" href="/booking"><span className="s-roll"><span>Book now</span><span aria-hidden="true">Book now</span></span><ArrowRight size={22} aria-hidden="true" /></a>
-            <a className="s-close__call" href={'tel:' + contact.tel}>or call <span>+1 {contact.phone}</span></a>
-          </div>
+      {/* V6 Another ride? The other nine, as a list in type */}
+      <section className="v-sec v-more" aria-labelledby="v-mo-title">
+        <div className="v-sec__head">
+          <h2 id="v-mo-title" className="s-h2" data-head>Something else <em>in the garage?</em></h2>
         </div>
-        <div className="s-close__media">
-          <div className="s-close__mask"><img src={categories[(idx + 3) % categories.length].photo ? categories[(idx + 3) % categories.length].image : '/site/assets/portfolio/portfolio-07.jpg'} alt="" loading="lazy" /></div>
+        <ul>
+          {other.map((x) => <li key={x.slug}><Link href={'/' + x.slug}>{x.short}<ArrowRight size={22} aria-hidden="true" /></Link></li>)}
+        </ul>
+      </section>
+
+      {/* V7 Closing band: type only */}
+      <section className="s-close" aria-labelledby="v-close-title">
+        <h2 id="v-close-title" className="s-h2" data-head>Ready to give your {noun} <em>the care it deserves?</em></h2>
+        <p className="s-close__lede">{cta.text}</p>
+        <div className="s-close__actions">
+          <a className="s-btn" href="/booking"><span className="s-roll"><span>Book now</span><span aria-hidden="true">Book now</span></span><ArrowRight size={22} aria-hidden="true" /></a>
+          <a className="s-close__call" href={'tel:' + contact.tel}>or call <span>+1 {contact.phone}</span></a>
         </div>
       </section>
     </div>

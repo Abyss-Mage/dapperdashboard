@@ -112,14 +112,19 @@ html:has(.c-page){background:#faf9f6}
 .c-week tr[data-today] td{color:var(--red-ink)}
 
 /* Mobile service */
-.c-mobile{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);margin-top:clamp(72px,9vw,140px);border-block:1px solid var(--rule);margin-inline:var(--cg)}
-.c-mobile__media{position:relative;overflow:hidden;margin-block:clamp(20px,2.4vw,36px);margin-left:calc(var(--cg) * -1);min-height:clamp(320px,46vw,680px);background:#ddd9d2}
-.c-mobile__mask{position:absolute;inset:0;overflow:hidden}
-.c-mobile__mask img{width:100%;height:100%;object-fit:cover;object-position:35% 50%}
-.c-mobile__text{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:clamp(18px,1.8vw,28px);padding:clamp(28px,3vw,48px) 0 clamp(28px,3vw,48px) clamp(24px,4vw,64px)}
-.c-mobile__lede{font-size:clamp(17px,1.5vw,22px);line-height:1.5}
-.c-mobile__call{font-size:clamp(18px,1.6vw,24px)}
-.c-mobile__call a{color:var(--red-ink);text-decoration:underline;text-underline-offset:.22em;text-decoration-thickness:1px;font-variant-numeric:tabular-nums}
+.c-mobile{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:clamp(24px,4vw,72px);align-items:start;margin:clamp(72px,9vw,140px) var(--cg) 0;padding:clamp(36px,5vw,80px) clamp(24px,4vw,72px);background:var(--ink);color:#fff}
+.c-mobile h2{color:#fff}
+.c-mobile__text{display:flex;flex-direction:column;gap:clamp(18px,1.8vw,28px)}
+.c-mobile__lede{font-size:clamp(16px,1.4vw,20px);line-height:1.55;color:#d6d3cc;max-width:52ch}
+.c-mobile__act{display:flex;align-items:center;gap:clamp(16px,2vw,32px);flex-wrap:wrap}
+.c-mobile__call{font-size:clamp(15px,1.3vw,19px);color:#d6d3cc}
+.c-mobile__call a{color:#fff;border-bottom:2px solid var(--red);font-variant-numeric:tabular-nums}
+.c-mobile__facts{list-style:none;margin:0;padding:0;display:grid}
+.c-mobile__facts li{display:grid;gap:4px;padding:20px 0;border-top:1px solid #ffffff26}
+.c-mobile__facts li:last-child{border-bottom:1px solid #ffffff26}
+.c-mobile__facts b{font:500 clamp(16px,1.4vw,20px)/1.2 var(--ch)}
+.c-mobile__facts span{color:#b9b5ad;font-size:15px}
+.c-mobile__fine{grid-column:1/-1;margin:0;color:#b9b5ad}
 
 /* FAQ */
 .c-faq{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:clamp(28px,5vw,88px);padding-bottom:clamp(80px,10vw,150px)}
@@ -166,8 +171,6 @@ html:has(.c-page){background:#faf9f6}
   .d-nav--paper nav,.d-nav--paper .d-btn{display:none}
   .c-sec__head,.c-visit,.c-hours,.c-faq{grid-template-columns:minmax(0,1fr)}
   .c-mobile{grid-template-columns:minmax(0,1fr)}
-  .c-mobile__media{margin-left:calc(var(--cg) * -1);margin-right:calc(var(--cg) * -1);margin-block:0 0;min-height:clamp(260px,62vw,480px)}
-  .c-mobile__text{padding:32px 0}
   .c-map{min-height:clamp(300px,70vw,520px)}
   .c-faq__ask{padding-top:24px}
 }

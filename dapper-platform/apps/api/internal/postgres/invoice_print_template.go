@@ -47,6 +47,8 @@ type InvoicePrintTemplateState struct {
 	Version  int                  `json:"version"`
 	// Scope says which template this is: "organization" (shared) or "franchise" (one location's own).
 	Scope string `json:"scope,omitempty"`
+	// Outlet is, for one location, whether it is "brand" owned or a "franchise" (which invoice template it prints with).
+	Outlet string `json:"outlet,omitempty"`
 	// LogoURL is the franchise's own logo (empty when it has none and the default logo applies).
 	LogoURL string `json:"logoUrl,omitempty"`
 	// For one franchise: the business details its invoices and quotations print (so drafts and quotes show them too) and its

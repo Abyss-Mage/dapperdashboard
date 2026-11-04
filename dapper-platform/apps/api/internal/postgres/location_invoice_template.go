@@ -18,6 +18,15 @@ func loadEffectivePrintTemplate(ctx context.Context, q rowQuerier, kind printKin
 	var raw []byte
 	err := q.QueryRow(ctx, `SELECT config,version FROM `+kind.locTable+` WHERE organization_id=$1 AND location_id=$2`, org, loc).Scan(&raw, &out.Version)
 	if errors.Is(err, pgx.ErrNoRows) {
+		// A franchisee outlet prints with the franchisee invoice template once one is saved; until then, the brand-owned one.
+		if kind == invoicePrint {
+			if o, e := outletOf(ctx, q, org, loc); e == nil && o == "franchise" {
+				if f, e := loadOrgPrintTemplate(ctx, q, franchisePrint, org); e == nil && f.Version > 0 {
+					f.Scope = "organization"
+					return f, nil
+				}
+			}
+		}
 		base, e := loadOrgPrintTemplate(ctx, q, kind, org)
 		base.Scope = "organization"
 		return base, e
@@ -49,6 +58,9 @@ func (s *Store) locationPrintTemplate(ctx context.Context, kind printKind, actor
 		return InvoicePrintTemplateState{}, err
 	}
 	out, err := kind.effective(ctx, s.pool, org, loc)
+	if err == nil {
+		out.Outlet, err = outletOf(ctx, s.pool, org, loc)
+	}
 	if d := logoDigest(ctx, s.pool, org, loc); err == nil && d != "" {
 		out.LogoURL = "/api/v1/organizations/" + org + "/locations/" + loc + "/logo?v=" + d
 	}

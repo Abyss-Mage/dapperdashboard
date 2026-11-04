@@ -61,7 +61,7 @@ export default function ServicesPage() {
     if (shot) {
       shot.style.zIndex = String(++z.current);
       gsap.fromTo(shot, { clipPath: 'inset(0 0 100% 0)' }, { clipPath: 'inset(0 0 0% 0)', duration: quick ? 0 : .55, ease: 'expo.out', overwrite: true });
-      gsap.fromTo(shot.querySelector('.s-shot__win'), { y: 24, opacity: 0 }, { y: 0, opacity: 1, duration: quick ? 0 : .5, delay: quick ? 0 : .12, ease: 'expo.out', overwrite: true });
+      gsap.fromTo(shot.querySelector('.s-shot__img'), { scale: 1.12 }, { scale: 1, duration: quick ? 0 : .9, ease: 'expo.out', overwrite: true });
     }
     gsap.fromTo('.s-how__copy', { y: 14, opacity: 0 }, { y: 0, opacity: 1, duration: quick ? 0 : .45, ease: 'expo.out', overwrite: true });
     prev.current = cur;
@@ -113,10 +113,7 @@ export default function ServicesPage() {
           {processSteps.map((p, i) => (
             <div key={p.title} className="s-shot" style={{ zIndex: i === 0 ? 2 : 1 }} data-on={i === cur || undefined}>
               <span className="s-shot__img" style={{ backgroundImage: 'url(' + p.image + ')' }} />
-              <div className="s-shot__win" data-empty={p.shot ? undefined : 'true'}>
-                {p.shot && <img src={p.shot} alt="" loading="lazy" />}
-                <span className="s-shot__view">{p.view}</span>
-              </div>
+              {p.shot && <img className="s-shot__real" src={p.shot} alt="" loading="lazy" />}
             </div>
           ))}
         </div>

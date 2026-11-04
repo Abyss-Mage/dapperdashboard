@@ -83,13 +83,17 @@ export default function Dealerships({ organizationId, locationId, canManage }: {
 
   return (
     <div className={styles.stack}>
-      <div className={styles.rowBetween}>
-        <div>
-          <h2 className={styles.setupTitle} style={{ fontSize: 20, margin: 0 }}>Dealerships</h2>
-          <p className={styles.personSub}>Car dealerships you work with, each with an agreed price per car and the people to contact. Each one is also a customer, so its bookings and invoices stay together.</p>
-        </div>
+      <div className={styles.dealTop}>
+        <p className={styles.dealIntro}>Car dealerships you work with, each with an agreed price per car and the people to contact. Each one is also a customer, so its bookings and invoices stay together.</p>
         {canManage && !editing && <button type="button" className="primary" onClick={() => { setForm(blank); setEditing(true); setError(''); }}>Add a dealership</button>}
       </div>
+      {items && (
+        <div className={styles.dealStats} aria-label="Dealerships at a glance">
+          <div><b>{items.length}</b><span>Dealerships</span></div>
+          <div><b>{items.filter((d) => d.active).length}</b><span>Switched on</span></div>
+          <div><b>{items.filter((d) => d.perCarRateCents != null).length}</b><span>With a per-car rate</span></div>
+        </div>
+      )}
       {error && <p role="alert" className="field-error">{error}</p>}
       {notice && <p role="status" className={styles.status}>{notice}</p>}
 
@@ -123,21 +127,33 @@ export default function Dealerships({ organizationId, locationId, canManage }: {
         </form>
       )}
 
-      <div className={styles.rowBetween}>
-        <span className={styles.badge}>{items ? `${items.length} dealership${items.length === 1 ? '' : 's'}` : 'Loading'}</span>
+      <div className={styles.dealBar}>
         <input type="search" className={styles.searchBox} placeholder="Search name, code or contact" aria-label="Search dealerships" value={query} onChange={(e) => setQuery(e.target.value)} />
       </div>
       {!items && !error && <div className={`${styles.card} ${styles.skeleton}`} role="status" aria-label="Loading dealerships" />}
       {items && visible.length === 0 && <p className={styles.status}>{items.length ? 'Nothing matches your search.' : 'No dealerships yet.'}</p>}
-      <ul className={styles.people}>
+      <ul className={styles.dealGrid}>
         {visible.map((d) => (
-          <li key={d.id} className={styles.person} style={{ gridTemplateColumns: 'minmax(0,1fr) auto', alignItems: 'center' }}>
-            <div className={styles.personMain}>
-              <strong className={styles.personName}>{d.accountName} <span className={styles.personSub}>({d.accountCode})</span>{!d.active && <span className={styles.personSub}> · switched off</span>}</strong>
-              <span className={styles.personSub}>{d.perCarRateCents != null ? `${money(d.perCarRateCents)} per car before tax` : 'No per-car rate set'}</span>
-              <span className={styles.personSub}>{d.contacts.length ? d.contacts.map((c) => [c.name, c.email, c.phone].filter(Boolean).join(' · ')).join('  |  ') : `${d.contactName} · ${d.contactEmail}`}</span>
+          <li key={d.id} className={styles.dealCard} data-off={d.active ? undefined : 'true'}>
+            <div className={styles.dealHead}>
+              <span className={styles.dealMark} aria-hidden="true">{d.accountName.trim().charAt(0).toUpperCase()}</span>
+              <div>
+                <strong>{d.accountName}</strong>
+                <span className={styles.dealCode}>{d.accountCode}</span>
+              </div>
+              <span className={styles.dealState} data-on={d.active ? 'true' : undefined}>{d.active ? 'On' : 'Off'}</span>
             </div>
-            {canManage && <div className={styles.svcActions}>
+            <p className={styles.dealRate}>{d.perCarRateCents != null ? <><b>{money(d.perCarRateCents)}</b><span>per car, before tax</span></> : <span>No per-car rate set</span>}</p>
+            <ul className={styles.dealPeople}>
+              {(d.contacts.length ? d.contacts : [{ name: d.contactName, email: d.contactEmail, phone: d.contactPhone }]).filter((c) => c.name || c.email || c.phone).map((c, i) => (
+                <li key={i}>
+                  <span>{c.name}</span>
+                  {c.email && <a href={'mailto:' + c.email}>{c.email}</a>}
+                  {c.phone && <a href={'tel:' + c.phone}>{c.phone}</a>}
+                </li>
+              ))}
+            </ul>
+            {canManage && <div className={styles.dealActions}>
               <button type="button" className="secondary" disabled={busy || editing} onClick={() => edit(d)}>Edit</button>
               <button type="button" className="secondary" disabled={busy || editing} onClick={() => void toggle(d)}>{d.active ? 'Switch off' : 'Switch on'}</button>
             </div>}

@@ -920,3 +920,32 @@
 .inlineForm :global(.form-field) { margin: 0; }
 /* The dashboard already sits each page on its own background, so the glass stage some panels bring is a second, redundant background. */
 .tabPanel [class*='glass_stage'] { padding: 0; background: none; border-radius: 0; }
+
+
+/* Dealerships: figures at the top, then a card per dealership with its rate and its people */
+.dealTop{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.dealIntro{margin:0;max-width:62ch;color:var(--text-muted);line-height:1.5}
+.dealStats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.dealStats>div{display:grid;gap:4px;padding:14px 16px;border:1px solid var(--border);border-radius:14px;background:var(--surface)}
+.dealStats b{font-size:26px;line-height:1;font-variant-numeric:tabular-nums}
+.dealStats span{font-size:13px;color:var(--text-muted)}
+.dealBar{display:flex;justify-content:flex-end}
+.dealGrid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr));gap:14px}
+.dealCard{display:flex;flex-direction:column;gap:12px;padding:16px;border:1px solid var(--border);border-radius:16px;background:var(--surface)}
+.dealCard[data-off]{opacity:.7}
+.dealHead{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center}
+.dealHead strong{display:block;font-size:16px;overflow-wrap:anywhere}
+.dealMark{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:var(--red-tint);color:var(--on-red-tint);font-weight:800}
+.dealCode{font-size:12px;letter-spacing:.06em;color:var(--text-muted)}
+.dealState{padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;background:var(--surface-alt);color:var(--text-muted)}
+.dealState[data-on]{background:var(--gold-tint);color:var(--on-gold-tint)}
+.dealRate{margin:0;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;color:var(--text-muted)}
+.dealRate b{font-size:22px;color:var(--text);font-variant-numeric:tabular-nums}
+.dealPeople{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.dealPeople li{display:grid;gap:2px;padding:10px 12px;border-radius:12px;background:var(--surface-alt);font-size:13px;overflow-wrap:anywhere}
+.dealPeople li span{font-weight:700;font-size:14px}
+.dealPeople a{color:var(--link)}
+.dealActions{display:flex;gap:8px;margin-top:auto}
+@media(max-width:640px){.dealStats{grid-template-columns:minmax(0,1fr)}}
+
+.textBulk{width:100%;min-height:160px;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);font:13px/1.7 ui-monospace,SFMono-Regular,Consolas,monospace;resize:vertical;white-space:pre;overflow:auto}

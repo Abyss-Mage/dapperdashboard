@@ -25,7 +25,7 @@ func registerInvoiceTemplateRoutes(mux *http.ServeMux, store *postgres.Store) {
 			reply(w, 400, map[string]string{"error": "Valid organization selector required"})
 			return
 		}
-		out, err := store.InvoicePrintTemplate(r.Context(), requestSession(r).principalID, org)
+		out, err := store.OutletInvoicePrintTemplate(r.Context(), requestSession(r).principalID, org, r.URL.Query().Get("outlets"))
 		if err != nil {
 			templateFailure(w, err)
 			return
@@ -45,12 +45,35 @@ func registerInvoiceTemplateRoutes(mux *http.ServeMux, store *postgres.Store) {
 		if !decode(w, r, &input) {
 			return
 		}
-		out, err := store.SaveInvoicePrintTemplate(r.Context(), requestSession(r).principalID, org, input.Template, input.Version)
+		out, err := store.SaveOutletInvoicePrintTemplate(r.Context(), requestSession(r).principalID, org, r.URL.Query().Get("outlets"), input.Template, input.Version)
 		if err != nil {
 			templateFailure(w, err)
 			return
 		}
 		reply(w, 200, out)
+	})
+	// Whether one outlet is brand-owned or a franchise decides which shared invoice template it prints with.
+	mux.HandleFunc("PUT /api/v1/organizations/{organization}/locations/{location}/outlet-type", func(w http.ResponseWriter, r *http.Request) {
+		org, loc := r.PathValue("organization"), r.PathValue("location")
+		if !uuid(org) || !uuid(loc) {
+			reply(w, 400, map[string]string{"error": "Valid organization and location selectors required"})
+			return
+		}
+		var input struct {
+			Outlet string `json:"outlet"`
+		}
+		if !decode(w, r, &input) {
+			return
+		}
+		if err := store.SetOutletType(r.Context(), requestSession(r).principalID, org, loc, input.Outlet); err != nil {
+			if errors.Is(err, postgres.ErrOutletType) {
+				reply(w, 422, map[string]string{"error": "An outlet is either brand-owned or a franchise."})
+				return
+			}
+			templateFailure(w, err)
+			return
+		}
+		reply(w, 200, map[string]string{"outlet": input.Outlet})
 	})
 	locBase := "/api/v1/organizations/{organization}/locations/{location}/invoice-template"
 	mux.HandleFunc("GET "+locBase, func(w http.ResponseWriter, r *http.Request) {

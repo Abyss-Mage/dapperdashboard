@@ -19,7 +19,7 @@ const topics = [
   { key: 'quote', label: 'Request a quote', Icon: Tag },
   { key: 'other', label: 'Something else', Icon: Ellipsis },
 ] as const;
-const serviceOptions = ['Detailing', 'Ceramic coating', 'Paint protection film', 'Window tint', 'Mobile detailing'];
+const serviceOptions = ['Detailing', 'Paint correction', 'Ceramic coating', 'Paint protection film', 'Window tint', 'Mobile detailing'];
 const placeholders: Record<Topic, string> = {
   quote: 'Tell us about your vehicle and what you would like quoted.',
   other: 'Tell us how we can help.',
@@ -224,7 +224,7 @@ export default function ContactPage() {
             <div className="c-col">
               <label className="c-field"><span>Name <i aria-hidden="true">*</i></span><input name="name" required autoComplete="name" /></label>
               <label className="c-field"><span>Email <i aria-hidden="true">*</i></span><input name="email" type="email" required autoComplete="email" /></label>
-              <label className="c-field"><span>Phone <small>(optional)</small></span><input name="phone" type="tel" autoComplete="tel" inputMode="tel" /></label>
+              <label className="c-field"><span>Phone <i aria-hidden="true">*</i></span><input name="phone" type="tel" required autoComplete="tel" inputMode="tel" /></label>
               <label className="c-field"><span>Vehicle <small>(optional)</small></span><input name="vehicle" placeholder="Year, make and model" /></label>
             </div>
             <div className="c-col c-col--grow">
@@ -292,18 +292,22 @@ export default function ContactPage() {
           </div>
         </section>
 
-        {/* Mobile service */}
+        {/* Mobile service: type only, an ink band with what we need to know and the way in */}
         <section className="c-mobile" aria-labelledby="c-mobile-title">
-          <div className="c-mobile__media">
-            <div className="c-mobile__mask"><img src="/site/assets/portfolio/portfolio-08.jpg" alt="A Dapper detailer washing a GMC Hummer EV in a customer’s driveway" loading="lazy" /></div>
-          </div>
           <div className="c-mobile__text">
             <h2 id="c-mobile-title" data-head>Can we come <em>to you?</em></h2>
-            <p className="c-muted c-mobile__lede" data-in>Based in Peterborough. Tell us your location, vehicle and the service you have in mind. Our team will confirm whether mobile service can be arranged.</p>
-            <button type="button" className="c-btn c-btn--red" onClick={askMobile} data-in><Roll>Ask about mobile service</Roll><ArrowRight size={20} aria-hidden="true" /></button>
-            <p className="c-mobile__call" data-in>Call <a href={'tel:' + contact.tel}>{phone}</a></p>
-            <p className="c-fine" data-in>Service area and appointment availability are confirmed by the team.</p>
+            <p className="c-mobile__lede" data-in>Based in Peterborough. Tell us your location, vehicle and the service you have in mind. Our team will confirm whether mobile service can be arranged.</p>
+            <div className="c-mobile__act" data-in>
+              <button type="button" className="c-btn c-btn--red" onClick={askMobile}><Roll>Ask about mobile service</Roll><ArrowRight size={20} aria-hidden="true" /></button>
+              <p className="c-mobile__call">or call <a href={'tel:' + contact.tel}>{phone}</a></p>
+            </div>
           </div>
+          <ul className="c-mobile__facts" data-in>
+            <li><b>Where you are</b><span>Your address or the nearest intersection.</span></li>
+            <li><b>What you drive</b><span>Year, make and model.</span></li>
+            <li><b>What you need</b><span>A detail, a coating, a film. We will confirm the rest.</span></li>
+          </ul>
+          <p className="c-fine c-mobile__fine" data-in>Service area and appointment availability are confirmed by the team.</p>
         </section>
 
         {/* FAQ */}

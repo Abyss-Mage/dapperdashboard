@@ -24,12 +24,15 @@ const SAMPLE_QUOTE: PrintInvoice = { ...SAMPLE, kind: 'quotation', invoiceNumber
 export default function InvoiceTemplateEditor({ organizationId, revision, locationId, locationName }: { organizationId: string; revision: number; locationId?: string; locationName?: string }) {
   // The template is shared by the whole organization unless this franchise is given its own.
   const [target, setTarget] = useState<'organization' | 'franchise'>('organization');
-  const [doc, setDoc] = useState<'invoice' | 'quote'>('invoice');
+  // Three documents, each with its own template: invoices for brand-owned outlets, invoices for franchisee outlets, and quotations.
+  const [doc, setDoc] = useState<'brand' | 'franchise' | 'quote'>('brand');
   const quote = doc === 'quote';
   const file = quote ? 'quote-template' : 'invoice-template';
+  const sharedQuery = doc === 'franchise' ? '?outlets=franchise' : '';
+  const [outlet, setOutlet] = useState<'brand' | 'franchise'>('brand');
   const [hasOwn, setHasOwn] = useState(false);
   const [logoUrl, setLogoUrl] = useState('');
-  const url = target === 'franchise' && locationId ? `/api/v1/organizations/${organizationId}/locations/${locationId}/${file}` : `/api/v1/organizations/${organizationId}/${file}`;
+  const url = target === 'franchise' && locationId ? `/api/v1/organizations/${organizationId}/locations/${locationId}/${file}` : `/api/v1/organizations/${organizationId}/${file}${sharedQuery}`;
   const [form, setForm] = useState<PrintTemplate>(DEFAULT_PRINT_TEMPLATE);
   const [version, setVersion] = useState(0);
   const [loaded, setLoaded] = useState(false);
@@ -43,6 +46,7 @@ export default function InvoiceTemplateEditor({ organizationId, revision, locati
     const b = await r.json();
     setForm({ ...DEFAULT_PRINT_TEMPLATE, ...b.template });
     setLogoUrl(b.logoUrl ?? '');
+    if (b.outlet === 'brand' || b.outlet === 'franchise') setOutlet(b.outlet);
     const own = target === 'franchise' && b.scope === 'franchise';
     setHasOwn(own);
     setVersion(target === 'franchise' && !own ? 0 : b.version);
@@ -50,6 +54,20 @@ export default function InvoiceTemplateEditor({ organizationId, revision, locati
   }, [url, target]);
   useEffect(() => { load().catch((e) => setError(e.message)); }, [load, revision]);
   useEffect(() => { setTarget('organization'); }, [locationId]);
+
+  async function changeOutlet(next: 'brand' | 'franchise') {
+    if (!locationId) return;
+    setBusy(true); setError(''); setNotice('');
+    try {
+      const r = await fetch(`/api/v1/organizations/${organizationId}/locations/${locationId}/outlet-type`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ outlet: next }) });
+      const b = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(b.error ?? 'The outlet type could not be changed.');
+      setOutlet(next);
+      setNotice(next === 'franchise' ? 'This outlet now prints with the franchisee invoice template.' : 'This outlet now prints with the brand-owned invoice template.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'The outlet type could not be changed.');
+    } finally { setBusy(false); }
+  }
 
   const set = <K extends keyof PrintTemplate>(key: K, value: PrintTemplate[K]) => { setForm((f) => ({ ...f, [key]: value })); setNotice(''); };
 
@@ -108,18 +126,25 @@ export default function InvoiceTemplateEditor({ organizationId, revision, locati
 
   return (
     <section className="panel detail-card">
-      <h2>{quote ? 'Quotation template' : 'Invoice template'}{target === 'franchise' && locationName ? ` · ${locationName}` : ''}</h2>
-      <div role="group" aria-label="Which document" style={{ display: 'flex', gap: 8, margin: '0 0 12px' }}>
-        <button type="button" className={quote ? 'secondary' : 'primary'} aria-pressed={!quote} disabled={busy} onClick={() => { if (quote) { setLoaded(false); setNotice(''); setError(''); setDoc('invoice'); } }}>Invoices</button>
-        <button type="button" className={quote ? 'primary' : 'secondary'} aria-pressed={quote} disabled={busy} onClick={() => { if (!quote) { setLoaded(false); setNotice(''); setError(''); setDoc('quote'); } }}>Quotations</button>
+      <h2>{quote ? 'Quotation template' : doc === 'franchise' ? 'Invoice template · franchisee outlets' : 'Invoice template · brand-owned outlets'}{target === 'franchise' && locationName ? ` · ${locationName}` : ''}</h2>
+      <div role="group" aria-label="Which template" style={{ display: 'flex', gap: 8, margin: '0 0 12px', flexWrap: 'wrap' }}>
+        {([['brand', 'Invoice · brand-owned outlets'], ['franchise', 'Invoice · franchisee outlets'], ['quote', 'Quotation']] as const).map(([id, label]) => (
+          <button key={id} type="button" className={doc === id ? 'primary' : 'secondary'} aria-pressed={doc === id} disabled={busy} onClick={() => { if (doc !== id) { setLoaded(false); setNotice(''); setError(''); setDoc(id); } }}>{label}</button>
+        ))}
       </div>
-      <p>{quote ? 'How printed quotations look, separately from invoices. Until you save one, quotations use the invoice look with the title "Quotation".' : 'How printed invoices look.'} Change the title, labels, colour, notes and paper size, or write your own layout in HTML and CSS. Every amount, customer detail and number always comes from the document.</p>
+      <p>{quote ? 'How printed quotations look, separately from invoices. Until you save one, quotations use the invoice look with the title "Quotation".' : doc === 'franchise' ? 'How invoices look at franchisee outlets. Until you save one, franchisee outlets print with the brand-owned template.' : 'How invoices look at brand-owned outlets (the outlets Dapper itself owns).'} Change the title, labels, colour, notes and paper size, or write your own layout in HTML and CSS. Every amount, customer detail and number always comes from the document.</p>
       {locationId && (
         <div className="management-form" style={{ alignItems: 'end' }}>
           <label className="form-field">Which template are you editing?
             <Select value={target} disabled={busy} onChange={(e) => { setLoaded(false); setNotice(''); setError(''); setTarget(e.target.value as 'organization' | 'franchise'); }}>
-              <option value="organization">The organization template (every franchise without its own)</option>
+              <option value="organization">{quote ? 'The shared quotation template (every outlet without its own)' : doc === 'franchise' ? 'The franchisee template (every franchisee outlet without its own)' : 'The brand-owned template (every brand-owned outlet without its own)'}</option>
               <option value="franchise">{locationName ? `${locationName} only` : 'This franchise only'}</option>
+            </Select>
+          </label>
+          <label className="form-field">{locationName ?? 'This outlet'} is
+            <Select value={outlet} disabled={busy} onChange={(e) => void changeOutlet(e.target.value as 'brand' | 'franchise')}>
+              <option value="brand">Brand-owned (prints with the brand-owned invoice template)</option>
+              <option value="franchise">A franchisee outlet (prints with the franchisee invoice template)</option>
             </Select>
           </label>
           {target === 'franchise' && <p className="help">{hasOwn ? 'This franchise has its own template.' : 'This franchise uses the organization template. Saving here gives it its own copy, started from the one below.'}</p>}
