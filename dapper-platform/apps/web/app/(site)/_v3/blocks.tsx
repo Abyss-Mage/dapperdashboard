@@ -95,7 +95,7 @@ export function PartnersStrip() {
   return (
     <section className="d-section d-section--tight">
       <SectionHead chip="Our partners" title="Our trusted commercial partners" center />
-      <ul className="d-partners">{partners.map((p) => <li key={p.name} data-d-in><img src={p.src} alt={p.name} /></li>)}</ul>
+      <ul className="d-partners">{partners.map((p) => <li key={p.name} data-d-in>{p.src ? <img src={p.src} alt={p.name} /> : <span className="d-partners__name">{p.name}</span>}</li>)}</ul>
     </section>
   );
 }

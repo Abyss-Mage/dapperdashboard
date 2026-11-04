@@ -106,7 +106,7 @@ export default function Home3() {
           <p className="d-chip d-chip--light"><span className="d-dot" />Our partners</p>
           <h2 id="d-partners-title" data-d-head>Our trusted commercial partners</h2>
         </div>
-        <ul className="d-partners">{partners.map((p) => <li key={p.name} data-d-in><img src={p.src} alt={p.name} /></li>)}</ul>
+        <ul className="d-partners">{partners.map((p) => <li key={p.name} data-d-in>{p.src ? <img src={p.src} alt={p.name} /> : <span className="d-partners__name">{p.name}</span>}</li>)}</ul>
       </section>
 
       {/* Transformations */}

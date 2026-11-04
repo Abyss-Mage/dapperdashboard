@@ -1,4 +1,4 @@
-import '@fontsource-variable/archivo/index.css';
+import '@fontsource-variable/unbounded/index.css';
 import '../paper.css';
 import './portfolio.css';
 import PortfolioPage from './PortfolioPage';

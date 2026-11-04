@@ -28,7 +28,7 @@ func (s *Store) OwnerOverview(ctx context.Context, scope Scope) (OwnerOverview, 
 	result.WindowEnd = result.GeneratedAt.Add(7 * 24 * time.Hour)
 	allowed := false
 	for _, item := range []struct{ key, grant, query string }{
-		{"customers", "customers.read", `SELECT count(*) FROM customers WHERE organization_id=$1 AND location_id=$2 AND removed_at IS NULL`},
+		{"customers", "customers.read", `SELECT count(*) FROM customers WHERE organization_id=$1 AND location_id=$2 AND removed_at IS NULL AND NOT EXISTS(SELECT 1 FROM dealership_accounts d WHERE d.organization_id=customers.organization_id AND d.location_id=customers.location_id AND d.customer_id=customers.id)`},
 		{"upcomingBookings", "bookings.read", `SELECT count(*) FROM bookings WHERE organization_id=$1 AND location_id=$2 AND booking_time>=now() AND booking_time<now()+interval '7 days' AND status NOT IN ('completed','cancelled')`},
 		{"openJobs", "jobs.read", `SELECT count(*) FROM jobs WHERE organization_id=$1 AND location_id=$2 AND status='available'`},
 		{"outstandingCents", "invoices.read", `SELECT COALESCE(sum(due_cents),0) FROM invoices WHERE organization_id=$1 AND location_id=$2 AND status IN ('issued','partially_paid')`},

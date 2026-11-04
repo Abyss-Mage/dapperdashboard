@@ -9,7 +9,7 @@ import Select from '../GlassSelect';
 /* Staff hours for the owner: where clocked-in staff are right now, and how long each person worked per day, week or month
    in the chosen dates. Clocking in and out happens in the staff app, not here. */
 
-type Day = { date: string; minutes: number; shifts: number };
+type Day = { date: string; minutes: number; shifts: number; clockIn?: string | null; clockOut?: string | null; open?: boolean };
 type Staff = { principalId: string; name: string; email: string; totalMinutes: number; clockedIn: boolean; days: Day[] };
 type Entry = { attendanceId: string; employee: string; shiftStatus: string; stale: boolean; latitude?: number | null; longitude?: number | null };
 type By = 'day' | 'week' | 'month';
@@ -22,6 +22,8 @@ const label = (key: string, by: By) => {
   if (by === 'week') return `Week of ${d.toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' })}`;
   return d.toLocaleDateString('en-CA', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
 };
+
+const clock = (iso: string, zone: string) => new Date(iso).toLocaleTimeString('en-CA', { hour: 'numeric', minute: '2-digit', timeZone: zone });
 
 export default function StaffHours({ base, timezone }: { base: string; timezone: string }) {
   const [preset, setPreset] = useState<RangePresetId>('last7');
@@ -95,7 +97,7 @@ export default function StaffHours({ base, timezone }: { base: string; timezone:
               <caption className={styles.personSub} style={{ textAlign: 'left', marginBottom: 6 }}>Shift time minus breaks, counted on the day the shift started · {hours(total)} in total</caption>
               <thead><tr><th scope="col">{by === 'day' ? 'Day' : by === 'week' ? 'Week' : 'Month'}</th>{shown.map((s) => <th key={s.principalId} scope="col">{s.name}{s.clockedIn ? ' ●' : ''}</th>)}</tr></thead>
               <tbody>
-                {periods.map((k) => <tr key={k}><th scope="row">{label(k, by)}</th>{shown.map((s) => { const m = cell(s, k); return <td key={s.principalId}>{m ? hours(m) : '—'}</td>; })}</tr>)}
+                {periods.map((k) => <tr key={k}><th scope="row">{label(k, by)}</th>{shown.map((s) => { const m = cell(s, k); const d = by === 'day' ? s.days.find((x) => x.date === k) : undefined; return <td key={s.principalId}>{m ? <>{hours(m)}{d?.clockIn && <small className={styles.personSub} style={{ display: 'block' }}>In {clock(d.clockIn, timezone)} · {d.clockOut ? `Out ${clock(d.clockOut, timezone)}` : 'still on shift'}{d.shifts > 1 ? ` · ${d.shifts} shifts` : ''}</small>}</> : '—'}</td>; })}</tr>)}
               </tbody>
               <tfoot><tr><th scope="row">Total</th>{shown.map((s) => <td key={s.principalId}><strong>{hours(s.totalMinutes)}</strong></td>)}</tr></tfoot>
             </table>

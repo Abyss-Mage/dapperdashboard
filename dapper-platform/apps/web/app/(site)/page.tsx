@@ -1,6 +1,3 @@
-import '@fontsource/barlow-condensed/600.css';
-import '@fontsource/barlow-condensed/700.css';
-import '@fontsource/barlow-condensed/800.css';
 import './paper.css';
 import './services/services.css';
 import './[service]/vehicle.css';

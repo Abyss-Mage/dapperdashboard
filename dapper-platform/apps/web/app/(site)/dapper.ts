@@ -25,11 +25,17 @@ export const services: Service[] = [
   { slug: 'aircraft-detailing', key: 'aircraft', name: 'Aircraft detailing', from: 249, image: '/site/assets/services/aircraft.png', text: 'Our aircraft detailing services help maintain a clean, polished appearance while protecting exterior surfaces and enhancing the overall presentation of your aircraft.' },
 ];
 
-export const partners = [
+// The dealerships Dapper works with. Four have logo files; the rest are shown as plain names until their logos are supplied.
+export const partners: { name: string; src?: string }[] = [
   { src: '/site/assets/partners/partner-1.png', name: 'Angevaare Mazda' },
   { src: '/site/assets/partners/partner-2.png', name: 'Jack McGee Peterborough' },
   { src: '/site/assets/partners/partner-3.png', name: 'Subaru' },
   { src: '/site/assets/partners/partner-4.png', name: 'Hyundai' },
+  { name: 'Holiday Ford' },
+  { name: 'Mitsubishi' },
+  { name: 'Peterborough Chrysler' },
+  { name: 'Kawartha Chrysler' },
+  { name: 'Kia Lindsay' },
 ];
 
 export const transformations = {
@@ -48,10 +54,10 @@ export const why = [
 ];
 
 export const processSteps = [
-  { title: 'Schedule your booking', text: 'An easy online booking system on our website; choose mobile service or at-shop detailing, pick your date and time in seconds.', image: '/site/assets/portfolio/portfolio-06.jpg' },
-  { title: 'Confirmed & covered', text: 'You get instant confirmation, and our pros show up on time at your location (or welcome you at the shop), fully equipped and ready to go.', image: '/site/assets/portfolio/portfolio-08.jpg' },
-  { title: 'The Dapper treatment', text: 'We treat your vehicle like it’s our own, using premium products and proven techniques to deliver a flawless, head-turning finish.', image: '/site/assets/portfolio/portfolio-07.jpg' },
-  { title: 'Looking Dapper', text: 'We walk you through the results, make sure you’re thrilled, and send you off riding clean — rebook anytime to keep that fresh look.', image: '/site/assets/portfolio/portfolio-01.jpg' },
+  { title: 'Schedule your booking', text: 'An easy online booking system on our website; choose mobile service or at-shop detailing, pick your date and time in seconds.', image: '/site/assets/portfolio/portfolio-06.jpg', view: 'Online booking', shot: '/site/assets/process/step-1.jpg' },
+  { title: 'Confirmed & covered', text: 'You get instant confirmation, and our pros show up on time at your location (or welcome you at the shop), fully equipped and ready to go.', image: '/site/assets/portfolio/portfolio-08.jpg', view: 'Appointments dashboard', shot: '/site/assets/process/step-2.jpg' },
+  { title: 'The Dapper treatment', text: 'We treat your vehicle like it’s our own, using premium products and proven techniques to deliver a flawless, head-turning finish.', image: '/site/assets/portfolio/portfolio-07.jpg', view: 'Job in the workspace', shot: '/site/assets/process/step-3.jpg' },
+  { title: 'Looking Dapper', text: 'We walk you through the results, make sure you’re thrilled, and send you off riding clean — rebook anytime to keep that fresh look.', image: '/site/assets/portfolio/portfolio-01.jpg', view: 'Invoice and payment', shot: '/site/assets/process/step-4.jpg' },
 ];
 
 export const testimonials = [
@@ -88,3 +94,6 @@ export const portfolio = [
   ['13', 'Black Cadillac Escalade'], ['14', 'Grey Mazda SUV'], ['15', 'Black Ford F-150, front view'], ['16', 'Grey Genesis SUV'],
   ['17', 'Harley-Davidson motorcycle'], ['18', 'Classic blue Dodge pickup'],
 ].map(([n, caption]) => ({ src: '/site/assets/portfolio/portfolio-' + n + '.jpg', caption }));
+
+// Portraits of the founders, by name. Add a file under public/site/assets/team and list it here to show it on the About page.
+export const founderPhotos: Record<string, string> = {};

@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
-import { ArrowRight, Car, Ellipsis, Tag } from 'lucide-react';
+import { ArrowRight, Ellipsis, Tag } from 'lucide-react';
 import { weekHours } from '../content';
 import { contact } from '../dapper';
 import { gsap, ScrollTrigger, SplitText, useGSAP } from '../_components/gsapContact';
@@ -12,17 +12,15 @@ import { gsap, ScrollTrigger, SplitText, useGSAP } from '../_components/gsapCont
    a pinned hero the next section overlaps, scrambled city tag, button text that diffs between states, and a small physics
    burst once an enquiry is sent. Everything animated is gated behind prefers-reduced-motion. */
 
-type Topic = 'service' | 'quote' | 'other';
+type Topic = 'quote' | 'other';
 type Send = 'idle' | 'sending' | 'saved' | 'mail';
 
 const topics = [
-  { key: 'service', label: 'Choose a service', Icon: Car },
   { key: 'quote', label: 'Request a quote', Icon: Tag },
   { key: 'other', label: 'Something else', Icon: Ellipsis },
 ] as const;
 const serviceOptions = ['Detailing', 'Ceramic coating', 'Paint protection film', 'Window tint', 'Mobile detailing'];
 const placeholders: Record<Topic, string> = {
-  service: 'Tell us what you have in mind.',
   quote: 'Tell us about your vehicle and what you would like quoted.',
   other: 'Tell us how we can help.',
 };
@@ -44,7 +42,7 @@ export default function ContactPage() {
   const labelRef = useRef<HTMLSpanElement>(null);
   const sendRef = useRef<HTMLButtonElement>(null);
   const placed = useRef(false);
-  const [topic, setTopic] = useState<Topic>('service');
+  const [topic, setTopic] = useState<Topic>('quote');
   const [service, setService] = useState('');
   const [state, setState] = useState<Send>('idle');
   const [error, setError] = useState('');
@@ -58,18 +56,18 @@ export default function ContactPage() {
     mm.add('(prefers-reduced-motion: no-preference)', () => {
       // Arrival: the headline rises out of its mask, the photo opens from the top, the tag slides in and scrambles to its word.
       SplitText.create('.c-h1', { type: 'lines,words', mask: 'lines', linesClass: 'c-line', autoSplit: true,
-        onSplit: (self) => gsap.from(self.words, { yPercent: 110, duration: 1.1, stagger: .07, ease: 'expo.out' }) });
+        onSplit: (self) => gsap.from(self.words, { yPercent: 110, duration: .6, stagger: .04, ease: 'expo.out' }) });
       gsap.timeline({ defaults: { ease: 'expo.out' } })
         .fromTo('.c-hero__photo', { clipPath: 'inset(0 0 100% 0)' }, { clipPath: 'inset(0 0 0% 0)', duration: 1.2 }, .15)
         .from('.c-hero__photo img', { scale: 1.12, duration: 1.8, ease: 'power3.out' }, .15)
         .from('.c-tag', { xPercent: 100, duration: .9 }, .45)
-        .from('.c-hero__info > *', { y: 20, opacity: 0, duration: .9, stagger: .08 }, .6)
+        .from('.c-hero__info > *', { y: 20, opacity: 0, duration: .55, stagger: .05 }, .35)
         .to('.c-tag span', { duration: 1.1, ease: 'none', scrambleText: { text: 'PETERBOROUGH', chars: 'upperCase', speed: .6 } }, .6);
 
       // Section titles rise out of masks as they arrive; everything else fades up in one batch.
       gsap.utils.toArray<HTMLElement>('[data-head]').forEach((el) => SplitText.create(el, { type: 'lines,words', mask: 'lines', linesClass: 'c-line', autoSplit: true,
-        onSplit: (self) => gsap.from(self.lines, { yPercent: 110, duration: 1.05, stagger: .08, ease: 'expo.out', scrollTrigger: { trigger: el, start: 'top 88%', once: true } }) }));
-      ScrollTrigger.batch('[data-in]', { start: 'top 92%', once: true, onEnter: (els) => gsap.from(els, { y: 24, opacity: 0, duration: .9, stagger: .07, ease: 'expo.out', overwrite: true }) });
+        onSplit: (self) => gsap.from(self.lines, { yPercent: 110, duration: .6, stagger: .045, ease: 'expo.out', scrollTrigger: { trigger: el, start: 'top 88%', once: true } }) }));
+      ScrollTrigger.batch('[data-in]', { start: 'top 92%', once: true, onEnter: (els) => gsap.from(els, { y: 24, opacity: 0, duration: .55, stagger: .05, ease: 'expo.out', overwrite: true }) });
 
       // Image mask on scroll: the frame slides in one way while the photo slides the other, so the picture holds still.
       gsap.timeline({ defaults: { ease: 'none' }, scrollTrigger: { trigger: '.c-mobile__media', start: 'top 85%', end: 'top 25%', scrub: true } })
@@ -140,7 +138,7 @@ export default function ContactPage() {
     const form = e.currentTarget;
     const f = new FormData(form);
     const field = (k: string) => String(f.get(k) ?? '').trim();
-    const what = topic === 'other' ? 'Something else' : topic === 'quote' ? 'Quote: ' + field('service') : field('service');
+    const what = topic === 'other' ? 'Something else' : 'Quote: ' + field('service');
     setState('sending'); setError('');
     try {
       const r = await fetch('/api/v1/public/enquiries', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: field('name'), email: field('email'), phone: field('phone'), vehicle: field('vehicle'), service: what, message: field('message'), website: field('website') }) });
@@ -168,7 +166,7 @@ export default function ContactPage() {
   };
 
   const askMobile = () => {
-    setTopic('service');
+    setTopic('quote');
     setService('Mobile detailing');
     document.getElementById('enquiry')?.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' });
     setTimeout(() => formRef.current?.querySelector<HTMLInputElement>('[name=name]')?.focus({ preventScroll: true }), 650);
@@ -231,7 +229,7 @@ export default function ContactPage() {
             </div>
             <div className="c-col c-col--grow">
               {topic !== 'other' && (
-                <label className="c-field"><span>{topic === 'quote' ? 'Service to quote' : 'Service'} <i aria-hidden="true">*</i></span>
+                <label className="c-field"><span>Service to quote <i aria-hidden="true">*</i></span>
                   <select name="service" required value={service} onChange={(e) => setService(e.target.value)}>
                     <option value="" disabled>Choose a service</option>
                     {serviceOptions.map((o) => <option key={o}>{o}</option>)}

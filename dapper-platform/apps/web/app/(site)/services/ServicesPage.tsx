@@ -3,75 +3,70 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { categories } from '../content';
-import { contact, cta, processSteps } from '../dapper';
+import { contact, cta, partners, processSteps, testimonials, why } from '../dapper';
 import { gsap, ScrollTrigger, SplitText, useGSAP } from '../_components/gsapContact';
 
-/* Services, built section by section with the owner's approval of each, in the darker "hard" direction the owner chose for it:
-   black ground, heavy condensed capitals, blunt words. S1: pick your ride, the ten vehicle types. S2: how we do it, a card stack. S3: the closing booking band. */
+/* Services, built section by section with the owner's approval of each, in the darker "hard" direction the owner chose for it.
+   S1: pick your ride, the ten vehicle types. S2: how we do it, pinned: scrolling moves through the four steps, each with the
+   screen of the real system it happens in. S3: the Dapper standard. S4: what customers say. S5: the dealerships. S6: the booking call. */
 
-// Where the cards sit in the stack: slot 0 is the card on top; each one behind is smaller, higher and further right.
-const slot = (s: number) => ({ x: s * 30, y: -s * 24, scale: 1 - s * .05, opacity: 1 - s * .14, zIndex: 10 - s });
 const pad = (n: number) => String(n + 1).padStart(2, '0');
+const Roll = ({ children }: { children: string }) => <span className="s-roll"><span>{children}</span><span aria-hidden="true">{children}</span></span>;
 
 export default function ServicesPage() {
   const root = useRef<HTMLDivElement>(null);
   const [cur, setCur] = useState(0);
   const prev = useRef(0);
+  const pin = useRef<ScrollTrigger | null>(null);
+  const z = useRef(2);
   const n = processSteps.length;
-  const go = (to: number) => setCur(((to % n) + n) % n);
+  const go = (to: number) => {
+    const next = ((to % n) + n) % n;
+    const st = pin.current;
+    // While the section is pinned, a step is reached by scrolling to its share of the pin; otherwise the step simply changes.
+    if (st && st.isActive) window.scrollTo({ top: st.start + ((next + 0.5) / n) * (st.end - st.start), behavior: 'smooth' });
+    else setCur(next);
+  };
 
   useGSAP(() => {
-    // The stack is laid out first, so the entrance below ends exactly where the stack sits.
-    gsap.utils.toArray<HTMLElement>('.s-card').forEach((el, i) => gsap.set(el, slot(i)));
     const mm = gsap.matchMedia();
     mm.add('(prefers-reduced-motion: no-preference)', () => {
       SplitText.create('.s-h1', { type: 'lines,words', mask: 'lines', linesClass: 'c-line', autoSplit: true,
-        onSplit: (self) => gsap.from(self.words, { yPercent: 110, duration: 1.1, stagger: .09, ease: 'expo.out' }) });
+        onSplit: (self) => gsap.from(self.words, { yPercent: 110, duration: .6, stagger: .05, ease: 'expo.out' }) });
       gsap.timeline({ defaults: { ease: 'expo.out' } })
-        .from('.s-hero__note', { y: 20, opacity: 0, duration: .9 }, .45)
-        .fromTo('.s-tile', { clipPath: 'inset(100% 0 0 0)' }, { clipPath: 'inset(0% 0 0 0)', duration: 1, stagger: .06 }, .3)
-        .from('.s-tile__img', { scale: 1.2, duration: 1.5, stagger: .06, ease: 'power3.out' }, .3);
+        .from('.s-hero__note', { y: 20, opacity: 0, duration: .55 }, .3)
+        .fromTo('.s-tile', { clipPath: 'inset(100% 0 0 0)' }, { clipPath: 'inset(0% 0 0 0)', duration: .8, stagger: .05 }, .2)
+        .from('.s-tile__img', { scale: 1.2, duration: 1.2, stagger: .05, ease: 'power3.out' }, .2);
       gsap.utils.toArray<HTMLElement>('[data-head]').forEach((el) => SplitText.create(el, { type: 'lines,words', mask: 'lines', linesClass: 'c-line', autoSplit: true,
-        onSplit: (self) => gsap.from(self.words, { yPercent: 110, duration: 1.05, stagger: .07, ease: 'expo.out', scrollTrigger: { trigger: el, start: 'top 88%', once: true } }) }));
-      // Image mask on scroll: the frame slides in from the right while the photo slides the other way, so the picture holds still.
-      gsap.timeline({ defaults: { ease: 'none' }, scrollTrigger: { trigger: '.s-close__media', start: 'top 88%', end: 'top 30%', scrub: true } })
-        .fromTo('.s-close__mask', { xPercent: 100 }, { xPercent: 0 })
-        .fromTo('.s-close__mask img', { xPercent: -100 }, { xPercent: 0 }, 0);
-      gsap.from('.s-card', { y: 60, opacity: 0, duration: 1, stagger: .1, ease: 'expo.out', scrollTrigger: { trigger: '.s-how__stack', start: 'top 85%', once: true } });
+        onSplit: (self) => gsap.from(self.words, { yPercent: 110, duration: .6, stagger: .04, ease: 'expo.out', scrollTrigger: { trigger: el, start: 'top 88%', once: true } }) }));
+      ScrollTrigger.batch('[data-in]', { start: 'top 92%', once: true, onEnter: (els) => gsap.from(els, { y: 24, opacity: 0, duration: .55, stagger: .06, ease: 'expo.out', overwrite: true }) });
+    });
+    // How we do it: on a desktop screen the section pins and each quarter of the scroll is one step.
+    mm.add('(prefers-reduced-motion: no-preference) and (min-width: 1024px)', () => {
+      const sec = root.current!.querySelector<HTMLElement>('.s-how')!;
+      root.current!.classList.add('is-how-pinned');
+      pin.current = ScrollTrigger.create({ trigger: sec, start: 'top top', end: () => '+=' + n * 60 + '%', pin: true, invalidateOnRefresh: true, refreshPriority: 1,
+        onUpdate: (self) => setCur(Math.min(n - 1, Math.floor(self.progress * n))) });
+      return () => { pin.current = null; root.current?.classList.remove('is-how-pinned'); };
     });
     document.fonts?.ready.then(() => ScrollTrigger.refresh());
     return () => mm.revert();
   }, { scope: root });
 
-  // Card stack (demo 8): the card on top slides out to the left and drops to the back; the rest step forward. Going back reverses it.
+  // The step's screen opens over the last one from the top; the copy beside it fades up.
   useEffect(() => {
     const el = root.current;
     if (!el || prev.current === cur) { prev.current = cur; return; }
-    const cards = gsap.utils.toArray<HTMLElement>('.s-card', el);
     const quick = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const forward = ((cur - prev.current + n) % n) <= n / 2;
-    const tl = gsap.timeline({ defaults: { duration: quick ? 0 : .6, ease: 'power3.inOut' } });
-    cards.forEach((card, i) => {
-      const from = (i - prev.current + n) % n;
-      const to = (i - cur + n) % n;
-      if (from === to) return;
-      if (forward && from === 0) {
-        // the old top card leaves, then settles at the back
-        tl.to(card, { x: -(card.offsetWidth * 1.05), rotation: -7, duration: quick ? 0 : .38, ease: 'power2.in' }, 0)
-          .set(card, { zIndex: 1 }, quick ? 0 : .38)
-          .to(card, { ...slot(to), rotation: 0, duration: quick ? 0 : .55 }, quick ? 0 : .38);
-      } else if (!forward && to === 0) {
-        // going back: the card from the back flies in over the top
-        tl.set(card, { zIndex: 20 }, 0).to(card, { x: -(card.offsetWidth * 1.05), rotation: -7, duration: quick ? 0 : .01 }, 0)
-          .to(card, { ...slot(0), rotation: 0, duration: quick ? 0 : .6, ease: 'power3.out' }, quick ? 0 : .02);
-      } else {
-        tl.to(card, slot(to), 0);
-      }
-    });
-    gsap.fromTo('.s-how__copy', { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: quick ? 0 : .6, ease: 'expo.out', overwrite: true });
+    const shot = el.querySelectorAll<HTMLElement>('.s-shot')[cur];
+    if (shot) {
+      shot.style.zIndex = String(++z.current);
+      gsap.fromTo(shot, { clipPath: 'inset(0 0 100% 0)' }, { clipPath: 'inset(0 0 0% 0)', duration: quick ? 0 : .55, ease: 'expo.out', overwrite: true });
+      gsap.fromTo(shot.querySelector('.s-shot__win'), { y: 24, opacity: 0 }, { y: 0, opacity: 1, duration: quick ? 0 : .5, delay: quick ? 0 : .12, ease: 'expo.out', overwrite: true });
+    }
+    gsap.fromTo('.s-how__copy', { y: 14, opacity: 0 }, { y: 0, opacity: 1, duration: quick ? 0 : .45, ease: 'expo.out', overwrite: true });
     prev.current = cur;
-    return () => { tl.progress(1); };
-  }, [cur, n]);
+  }, [cur]);
 
   return (
     <div ref={root} className="s-page">
@@ -96,7 +91,7 @@ export default function ServicesPage() {
         </ul>
       </section>
 
-      {/* S2 How we do it: four steps as a stack of cards; the top card is the current step */}
+      {/* S2 How we do it: scroll (or press a step) and the screen beside it changes to the one that step happens in */}
       <section className="s-how" aria-labelledby="s-how-title">
         <div className="s-how__text">
           <h2 id="s-how-title" className="s-h2" data-head>How we <em>do it.</em></h2>
@@ -115,29 +110,62 @@ export default function ServicesPage() {
             <span aria-hidden="true">{pad(cur)} / {pad(n - 1)}</span>
           </div>
         </div>
-        <div className="s-how__stack" aria-hidden="true">
+        <div className="s-how__stage" aria-hidden="true">
           {processSteps.map((p, i) => (
-            <div key={p.title} className="s-card" onClick={() => { if (i === cur) go(cur + 1); }}>
-              <span className="s-card__img" style={{ backgroundImage: 'url(' + p.image + ')' }} />
-              <span className="s-card__n">{pad(i)}</span>
-              <span className="s-card__t">{p.title}</span>
+            <div key={p.title} className="s-shot" style={{ zIndex: i === 0 ? 2 : 1 }} data-on={i === cur || undefined}>
+              <span className="s-shot__img" style={{ backgroundImage: 'url(' + p.image + ')' }} />
+              <div className="s-shot__win">
+                <img src={p.shot} alt="" loading="lazy" onError={(e) => { (e.currentTarget.parentElement as HTMLElement).dataset.empty = 'true'; }} />
+                <span className="s-shot__view">{p.view}</span>
+              </div>
             </div>
           ))}
         </div>
       </section>
 
-      {/* S3 Closing band: the booking call beside a photo that slides into its frame */}
+      {/* S3 The Dapper standard: six reasons, set as a list beside the heading */}
+      <section className="s-std" aria-labelledby="s-std-title">
+        <h2 id="s-std-title" className="s-h2" data-head>The Dapper <em>standard.</em></h2>
+        <ul className="s-std__list">
+          {why.map((w) => (
+            <li key={w.title} data-in>
+              <h3>{w.title}</h3>
+              <p>{w.text}</p>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      {/* S4 What customers say: a row to swipe or scroll */}
+      <section className="s-rev" aria-labelledby="s-rev-title">
+        <h2 id="s-rev-title" className="s-h2" data-head>What our customers <em>say.</em></h2>
+        <ul className="s-rev__row" data-in tabIndex={0} aria-label="Customer reviews">
+          {testimonials.map((t) => (
+            <li key={t.name}>
+              <blockquote>{t.quote}</blockquote>
+              <p>{t.name}</p>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      {/* S5 The dealerships Dapper works with */}
+      <section className="s-par" aria-labelledby="s-par-title">
+        <h2 id="s-par-title" className="s-h2" data-head>Dealerships that <em>trust us.</em></h2>
+        <ul className="s-par__grid">
+          {partners.map((p) => (
+            <li key={p.name} data-in>{p.src ? <img className={p.name.includes('McGee') ? 'is-crop' : undefined} src={p.src} alt={p.name} loading="lazy" /> : <span>{p.name}</span>}</li>
+          ))}
+        </ul>
+      </section>
+
+      {/* S6 Closing band: the booking call, in type */}
       <section className="s-close" aria-labelledby="s-close-title">
-        <div className="s-close__text">
-          <h2 id="s-close-title" className="s-h2" data-head>Ready to give your car <em>the care it deserves?</em></h2>
-          <p className="s-close__lede">{cta.text}</p>
-          <div className="s-close__actions">
-            <a className="s-btn" href="/booking"><span className="s-roll"><span>Book now</span><span aria-hidden="true">Book now</span></span><ArrowRight size={22} aria-hidden="true" /></a>
-            <a className="s-close__call" href={'tel:' + contact.tel}>or call <span>+1 {contact.phone}</span></a>
-          </div>
-        </div>
-        <div className="s-close__media">
-          <div className="s-close__mask"><img src="/site/assets/portfolio/portfolio-03.jpg" alt="A black Ford F-150 pickup parked beside a house" loading="lazy" /></div>
+        <h2 id="s-close-title" className="s-h2" data-head>Ready to give your car <em>the care it deserves?</em></h2>
+        <p className="s-close__lede" data-in>{cta.text}</p>
+        <div className="s-close__actions" data-in>
+          <a className="s-btn" href="/booking"><Roll>Book now</Roll><ArrowRight size={22} aria-hidden="true" /></a>
+          <a className="s-close__call" href={'tel:' + contact.tel}>or call <span>+1 {contact.phone}</span></a>
         </div>
       </section>
     </div>

@@ -89,7 +89,7 @@ export default function BookingManager({
   }, [base]);
   const [open, setOpen] = useState<Set<string>>(new Set());
   // Each booking's invoice (one per booking), so the appointment shows what is still owed or already paid.
-  const [invoices, setInvoices] = useState<Record<string, { id: string; version: number; invoiceNumber: string; status: string; totalCents: number; paidCents: number; discountCents?: number; couponCode?: string }>>({});
+  const [invoices, setInvoices] = useState<Record<string, { id: string; version: number; invoiceNumber: string; status: string; totalCents: number; paidCents: number; discountCents?: number; taxCents?: number; subtotalCents?: number; couponCode?: string }>>({});
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [events, setEvents] = useState<BookingEvent[]>([]);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -140,8 +140,8 @@ export default function BookingManager({
     try {
       const r = await fetch(base + '/invoices', { cache: 'no-store' });
       if (!r.ok) return;
-      const map: Record<string, { id: string; version: number; invoiceNumber: string; status: string; totalCents: number; paidCents: number; discountCents?: number; couponCode?: string }> = {};
-      for (const i of ((await r.json()).items ?? []) as { id: string; version: number; bookingId?: string; invoiceNumber: string; status: string; totalCents: number; paidCents: number; discountCents?: number; couponCode?: string }[]) if (i.bookingId && i.status !== 'void') map[i.bookingId] = i;
+      const map: Record<string, { id: string; version: number; invoiceNumber: string; status: string; totalCents: number; paidCents: number; discountCents?: number; taxCents?: number; subtotalCents?: number; couponCode?: string }> = {};
+      for (const i of ((await r.json()).items ?? []) as { id: string; version: number; bookingId?: string; invoiceNumber: string; status: string; totalCents: number; paidCents: number; discountCents?: number; taxCents?: number; subtotalCents?: number; couponCode?: string }[]) if (i.bookingId && i.status !== 'void') map[i.bookingId] = i;
       setInvoices(map);
     } catch { /* invoices are optional here */ }
   }, [base]);
@@ -704,7 +704,7 @@ export default function BookingManager({
                   <div className={t.detailCols}>
                     <div><h4>Booking</h4><dl className={t.kv}><dt>Date</dt><dd>{formatTime(b.bookingTime)}</dd><dt>Booked</dt><dd>{b.channel === 'online' ? 'Online' : b.channel === 'walk_in' ? 'Walk-in' : b.channel === 'phone' ? 'Phone' : 'By staff'}</dd>{b.addons?.length > 0 && <><dt>Add-ons</dt><dd>{b.addons.map((a) => a.name).join(', ')}</dd></>}{b.notes && <><dt>Notes</dt><dd>{b.notes}</dd></>}{b.cancellationReason && <><dt>Cancelled</dt><dd>{b.cancellationReason}</dd></>}</dl></div>
                     <div><h4>Customer</h4><dl className={t.kv}><dt>Name</dt><dd>{b.customerName}</dd>{b.customerEmail && <><dt>Email</dt><dd>{b.customerEmail}</dd></>}{b.customerPhone && <><dt>Phone</dt><dd>{b.customerPhone}</dd></>}<dt>Service location</dt><dd>{b.serviceAddress ? b.serviceAddress : 'At the shop'}</dd></dl></div>
-                    <div><h4>Payment</h4><dl className={t.kv}>{inv ? <><dt>Invoice</dt><dd>{inv.invoiceNumber}{inv.status === 'draft' ? ' (draft)' : ''}</dd>{(inv.discountCents ?? 0) > 0 && <><dt>Discount</dt><dd>−{money(inv.discountCents ?? 0)} ({inv.couponCode})</dd></>}<dt>Total</dt><dd>{money(inv.totalCents)}</dd><dt>Paid</dt><dd>{money(inv.paidCents)}</dd><dt>Pending</dt><dd>{money(Math.max(0, owed))}</dd></> : <><dt>Invoice</dt><dd>None yet</dd></>}</dl>
+                    <div><h4>Payment</h4><dl className={t.kv}>{inv ? <><dt>Invoice</dt><dd>{inv.invoiceNumber}{inv.status === 'draft' ? ' (draft)' : ''}</dd>{(inv.discountCents ?? 0) > 0 && <><dt>Discount</dt><dd>−{money(inv.discountCents ?? 0)} ({inv.couponCode})</dd></>}{(inv.taxCents ?? 0) > 0 && <><dt>Subtotal</dt><dd>{money(inv.totalCents - (inv.taxCents ?? 0))}</dd><dt>Tax</dt><dd>{money(inv.taxCents ?? 0)}</dd></>}<dt>Total</dt><dd>{money(inv.totalCents)}</dd><dt>Paid</dt><dd>{money(inv.paidCents)}</dd><dt>Pending</dt><dd>{money(Math.max(0, owed))}</dd></> : <><dt>Invoice</dt><dd>None yet</dd></>}</dl>
                       {inv && inv.status === 'draft' && canManage && (
                         <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
                           {(inv.discountCents ?? 0) > 0

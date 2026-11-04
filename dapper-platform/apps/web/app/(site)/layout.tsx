@@ -1,13 +1,10 @@
 import type { Metadata, Viewport } from 'next';
 import '@fontsource/sora/700.css';
-import '@fontsource/sora/800.css';
+import '@fontsource-variable/unbounded/index.css';
 import '@fontsource/manrope/400.css';
 import '@fontsource/manrope/500.css';
 import '@fontsource/manrope/600.css';
 import '@fontsource/manrope/700.css';
-import '@fontsource/barlow-condensed/600.css';
-import '@fontsource/barlow-condensed/700.css';
-import '@fontsource/barlow-condensed/800.css';
 import './_v3/v3.css';
 import './footer.css';
 import { Nav3, Footer3 } from './_v3/Chrome3';

@@ -163,3 +163,11 @@ Source: the tester's 29-point list. Evidence level: **source present, TypeScript
 - **API:** services carry `parentIds` (every main service) next to `parentId` (primary); saving an add-on takes `parentIds`. Archiving or deleting a main service only unlinks add-ons that are also offered with another active main; an add-on whose only main service it is still blocks it.
 - **Screen:** Services lists each add-on once, under every main service it is offered with; Edit shows tick boxes for the main services; Bulk edit and Duplicate keep the links.
 - Evidence: TestSharedAddons (links, franchise follow, primary moves, archive unlinks, sole parent blocks, merged hidden) and the full suite pass; web build passes; deployed with backup `dapper-before-addons-2026-11-01-1953.dump`. Not yet looked at on screen.
+
+## 2026-11-04 round
+- Quotation "+ New Quotation" button: removed the inline overflow:visible that let the hover shine show beside it.
+- Overview customer count and the insights customer total now exclude dealership-linked customers, matching the Customers page.
+- Booking detail Payment block shows Subtotal and Tax when the invoice has tax.
+- Staff hours "Time worked" (by day) shows first clock-in and last clock-out for each day (API: attendance totals now return clockIn, clockOut, open).
+- Website: Unbounded replaces Sora/Barlow/Archivo (stand-in for Termina; no 800 weights), faster headline/text-change animations, contact form loses the "Choose a service" tab, portfolio captions removed, About and Portfolio heroes rebuilt, founders portraits (monogram until photos supplied), six-panel "why trust" section, nine dealerships, type-only closing bands, Services gets a pinned How-we-do-it, standard, reviews and dealership sections.
+- Not done: dashboard screenshots for How-we-do-it, founder photos, DDP/franchise invoice split, quotation/invoice template fixes (need detail), location-sharing diagnosis (production read blocked).

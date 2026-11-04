@@ -46,7 +46,7 @@ export default function HomePage() {
       // The photo drifts slower than the page as it leaves.
       gsap.to('.h-hero__img', { yPercent: 12, ease: 'none', scrollTrigger: { trigger: '.h-hero', start: 'top top', end: 'bottom top', scrub: true } });
       gsap.utils.toArray<HTMLElement>('[data-head]').forEach((el) => SplitText.create(el, { type: 'lines,words', mask: 'lines', linesClass: 'c-line', autoSplit: true,
-        onSplit: (self) => gsap.from(self.words, { yPercent: 110, duration: 1.05, stagger: .07, ease: 'expo.out', scrollTrigger: { trigger: el, start: 'top 88%', once: true } }) }));
+        onSplit: (self) => gsap.from(self.words, { yPercent: 110, duration: .6, stagger: .04, ease: 'expo.out', scrollTrigger: { trigger: el, start: 'top 88%', once: true } }) }));
       gsap.from('.h-val__text > p, .h-val__text > a', { y: 24, opacity: 0, duration: .9, stagger: .1, ease: 'expo.out', scrollTrigger: { trigger: '.h-val', start: 'top 70%', once: true } });
       gsap.from('.h-svc__panel', { y: 60, opacity: 0, duration: 1, stagger: .09, ease: 'expo.out', scrollTrigger: { trigger: '.h-svc__row', start: 'top 85%', once: true } });
       gsap.from('.h-par__grid li', { y: 36, opacity: 0, duration: .9, stagger: .09, ease: 'expo.out', scrollTrigger: { trigger: '.h-par__grid', start: 'top 88%', once: true } });
@@ -144,7 +144,7 @@ export default function HomePage() {
         </div>
         <ul className="h-par__grid">
           {partners.map((p) => (
-            <li key={p.name}><img className={p.name.includes('McGee') ? 'is-crop' : undefined} src={p.src} alt={p.name} loading="lazy" /></li>
+            <li key={p.name}>{p.src ? <img className={p.name.includes('McGee') ? 'is-crop' : undefined} src={p.src} alt={p.name} loading="lazy" /> : <span className="h-par__name">{p.name}</span>}</li>
           ))}
         </ul>
       </section>

@@ -49,7 +49,7 @@ export default function VehiclePage({ slug }: { slug: string }) {
     const mm = gsap.matchMedia();
     mm.add('(prefers-reduced-motion: no-preference)', () => {
       SplitText.create('.v-h1', { type: 'lines,words', mask: 'lines', linesClass: 'c-line', autoSplit: true,
-        onSplit: (self) => gsap.from(self.words, { yPercent: 110, duration: 1.1, stagger: .09, ease: 'expo.out' }) });
+        onSplit: (self) => gsap.from(self.words, { yPercent: 110, duration: .6, stagger: .05, ease: 'expo.out' }) });
       gsap.timeline({ defaults: { ease: 'expo.out' } })
         .from('.v-crumb', { y: 14, opacity: 0, duration: .8 }, .15)
         .from('.v-lede, .v-buy > *', { y: 22, opacity: 0, duration: .9, stagger: .08 }, .5)
@@ -63,7 +63,7 @@ export default function VehiclePage({ slug }: { slug: string }) {
         gsap.to(o, { n: c.from, duration: 1.4, ease: 'power3.out', delay: .6, onUpdate: () => { price.textContent = '$' + Math.round(o.n); } });
       }
       gsap.utils.toArray<HTMLElement>('[data-head]').forEach((el) => SplitText.create(el, { type: 'lines,words', mask: 'lines', linesClass: 'c-line', autoSplit: true,
-        onSplit: (self) => gsap.from(self.words, { yPercent: 110, duration: 1.05, stagger: .07, ease: 'expo.out', scrollTrigger: { trigger: el, start: 'top 88%', once: true } }) }));
+        onSplit: (self) => gsap.from(self.words, { yPercent: 110, duration: .6, stagger: .04, ease: 'expo.out', scrollTrigger: { trigger: el, start: 'top 88%', once: true } }) }));
       ScrollTrigger.batch('.v-pkg, .v-step', { start: 'top 90%', once: true,
         onEnter: (els) => gsap.from(els, { y: 48, opacity: 0, duration: .9, stagger: .09, ease: 'expo.out', overwrite: true }) });
       gsap.timeline({ defaults: { ease: 'none' }, scrollTrigger: { trigger: '.s-close__media', start: 'top 88%', end: 'top 30%', scrub: true } })

@@ -5,15 +5,7 @@ import { contact, cta, portfolio, transformations } from '../dapper';
 import { gsap, ScrollTrigger, SplitText, useGSAP } from '../_components/gsapContact';
 
 /* Portfolio, built section by section with the owner's approval of each. Same paper system as Contact and About (../paper.css).
-   Section P1: the hero, a photo mosaic beside the headline. Section P2: the gallery. */
-
-const tiles = [
-  { cls: 'a', src: '17', alt: 'A Harley-Davidson motorcycle with a tan and chrome finish' },
-  { cls: 'b', src: '09', alt: 'A black classic Chevrolet Nova parked on gravel' },
-  { cls: 'c', src: '05', alt: 'A white Dodge RAM pickup under a blue sky' },
-  { cls: 'd', src: '14', alt: 'A grey Mazda SUV in a driveway' },
-  { cls: 'e', src: '06', alt: 'A white Porsche 911 outside the Dapper studio' },
-];
+   Section P1: the hero, two rows of photographs drifting behind the headline. Section P2: the gallery. */
 
 // The studio's channels; each handle is read from the address in the project's contact details.
 const channels = [
@@ -44,9 +36,8 @@ export default function PortfolioPage() {
     return () => { live = false; };
   }, []);
   const photos: Shot[] = uploaded ?? portfolio.map((ph) => ({ src: ph.src, caption: ph.caption, alt: '', ratio: ratio(ph.src) }));
-  const heroTiles = uploaded
-    ? ['a', 'b', 'c', 'd', 'e'].map((cls, i) => ({ cls, src: uploaded[i % uploaded.length].src, alt: uploaded[i % uploaded.length].alt }))
-    : tiles.map((t) => ({ cls: t.cls, src: '/site/assets/portfolio/portfolio-' + t.src + '.jpg', alt: t.alt }));
+  // Two rows of photographs drift in opposite directions behind the hero headline (each row is listed twice so the loop has no seam).
+  const rowOf = (r: number) => photos.filter((_, i) => i % 2 === r).slice(0, 9);
   // The strip's length depends on the photos, so the scroll positions are measured again when they change.
   useEffect(() => { if (uploaded) { const id = setTimeout(() => ScrollTrigger.refresh(), 400); return () => clearTimeout(id); } }, [uploaded]);
   const viewer = useRef<HTMLDialogElement>(null);
@@ -77,15 +68,12 @@ export default function PortfolioPage() {
     const mm = gsap.matchMedia();
     mm.add('(prefers-reduced-motion: no-preference)', () => {
       SplitText.create('.p-h1', { type: 'lines,words', mask: 'lines', linesClass: 'c-line', autoSplit: true,
-        onSplit: (self) => gsap.from(self.words, { yPercent: 110, duration: 1.1, stagger: .07, ease: 'expo.out' }) });
+        onSplit: (self) => gsap.from(self.words, { yPercent: 110, duration: .6, stagger: .04, ease: 'expo.out' }) });
       gsap.timeline({ defaults: { ease: 'expo.out' } })
-        .fromTo('.p-tile', { clipPath: 'inset(100% 0 0 0)' }, { clipPath: 'inset(0% 0 0 0)', duration: 1.1, stagger: .09 }, .1)
-        .from('.p-tile img', { scale: 1.18, duration: 1.7, stagger: .09, ease: 'power3.out' }, .1)
-        .from('.c-tag', { xPercent: 100, duration: .9 }, .5)
-        .from('.p-hero__info > *', { y: 20, opacity: 0, duration: .9, stagger: .08 }, .6)
-        .to('.c-tag span', { duration: 1.1, ease: 'none', scrambleText: { text: 'REAL WORK', chars: 'upperCase', speed: .6 } }, .6);
+        .from('.ph__rows', { opacity: 0, scale: 1.06, duration: 1.2, ease: 'power3.out' }, 0)
+        .from('.ph__aside > *', { y: 20, opacity: 0, duration: .55, stagger: .06 }, .3);
       gsap.utils.toArray<HTMLElement>('[data-head]').forEach((el) => SplitText.create(el, { type: 'lines,words', mask: 'lines', linesClass: 'c-line', autoSplit: true,
-        onSplit: (self) => gsap.from(self.lines, { yPercent: 110, duration: 1.05, stagger: .08, ease: 'expo.out', scrollTrigger: { trigger: el, start: 'top 88%', once: true } }) }));
+        onSplit: (self) => gsap.from(self.lines, { yPercent: 110, duration: .6, stagger: .045, ease: 'expo.out', scrollTrigger: { trigger: el, start: 'top 88%', once: true } }) }));
     });
 
     // Horizontal gallery: the section pins and the strip of photos slides left, a red line filling along the bottom. On a phone
@@ -121,15 +109,8 @@ export default function PortfolioPage() {
     mm.add('(prefers-reduced-motion: no-preference) and (min-width: 1024px)', () => {
       const hero = root.current!.querySelector<HTMLElement>('.p-hero')!;
       gsap.timeline({ scrollTrigger: { trigger: hero, start: () => (hero.offsetHeight > innerHeight ? 'bottom bottom' : 'top top'), end: () => '+=' + innerHeight, pin: true, pinSpacing: false, scrub: true, invalidateOnRefresh: true, refreshPriority: 2 } })
-        .fromTo('.p-hero__copy, .p-hero__media', { scale: 1, opacity: 1, transformOrigin: '50% 30%' }, { scale: .9, opacity: .35, duration: .9, ease: 'none' })
-        .to('.p-hero__copy, .p-hero__media', { opacity: 0, duration: .1, ease: 'none' });
-    });
-
-    // Image mask on scroll: the frame slides in from the left while the photo slides the other way, so the picture holds still.
-    mm.add('(prefers-reduced-motion: no-preference)', () => {
-      gsap.timeline({ defaults: { ease: 'none' }, scrollTrigger: { trigger: '.p-close__media', start: 'top 88%', end: 'top 30%', scrub: true } })
-        .fromTo('.p-close__mask', { xPercent: -100 }, { xPercent: 0 })
-        .fromTo('.p-close__mask img', { xPercent: 100 }, { xPercent: 0 }, 0);
+        .fromTo('.ph__stage', { scale: 1, opacity: 1, transformOrigin: '50% 30%' }, { scale: .92, opacity: .35, duration: .9, ease: 'none' })
+        .to('.ph__stage', { opacity: 0, duration: .1, ease: 'none' });
     });
 
     // The strip's photos are lazy, but once the gallery is about to arrive they all start loading, so none is still blank when the
@@ -141,34 +122,32 @@ export default function PortfolioPage() {
 
   return (
     <div ref={root} className="c-page">
-      {/* P1 Hero: headline and facts on the left, five photos tiled on the right */}
-      <section className="p-hero" aria-labelledby="p-title">
-        <div className="p-hero__copy">
-          <h1 id="p-title" className="p-h1">Real results.<br /><em>Real vehicles.</em></h1>
-          <div className="p-hero__info">
-            <h2>Every vehicle tells a story.</h2>
-            <p>Every transformation showcases our commitment to excellence.</p>
-            <dl className="p-facts">
-              <div><dt>Photos</dt><dd>{photos.length} vehicles and details</dd></div>
-              <div><dt>Films</dt><dd>{transformations.clips.length} real transformations</dd></div>
-            </dl>
-          </div>
-        </div>
-        <div className="p-hero__media">
-          <div className="p-mosaic">
-            {heroTiles.map((t, i) => (
-              <figure key={t.cls} className={'p-tile p-tile--' + t.cls}>
-                <img src={t.src} alt={t.alt} fetchPriority={i < 2 ? 'high' : undefined} loading="eager" />
-              </figure>
+      {/* P1 Hero: two rows of photographs drift behind the headline */}
+      <section className="p-hero ph" aria-labelledby="p-title">
+        <div className="ph__stage">
+          <div className="ph__rows" aria-hidden="true">
+            {[0, 1].map((r) => (
+              <div key={r} className={'ph__row' + (r ? ' ph__row--rev' : '')}>
+                <div className="ph__track">
+                  {[...rowOf(r), ...rowOf(r)].map((ph, i) => <img key={ph.src + i} src={ph.src} alt="" style={{ aspectRatio: ph.ratio }} loading="eager" decoding="async" />)}
+                </div>
+              </div>
             ))}
           </div>
-          <div className="c-tag" aria-hidden="true"><span>REAL WORK</span></div>
+          <div className="ph__scrim" aria-hidden="true" />
+          <div className="ph__copy">
+            <h1 id="p-title" className="p-h1">Real results.<br /><em>Real vehicles.</em></h1>
+            <div className="ph__aside">
+              <p>Every transformation shows our commitment to excellence: {photos.length} vehicles and details, and {transformations.clips.length} films from the Dapper studio.</p>
+              <a className="c-btn c-btn--red" href="#p-gallery-title"><span className="c-roll"><span>See the work</span><span aria-hidden="true">See the work</span></span><ArrowRight size={20} aria-hidden="true" /></a>
+            </div>
+          </div>
         </div>
       </section>
 
       {/* P2 Gallery: every photo on one strip; select one to see it full size */}
       <div className="p-after">
-        <section className="p-gallery" aria-labelledby="p-gallery-title">
+        <section className="p-gallery" id="gallery" aria-labelledby="p-gallery-title">
           <div className="p-gallery__head">
             <h2 id="p-gallery-title" data-head>Work worth a <em>closer look.</em></h2>
             <p>Cars, trucks, classics and motorcycles cared for by the Dapper team. Select a photo to see it full size.</p>
@@ -177,10 +156,9 @@ export default function PortfolioPage() {
             <ul className="p-strip__list">
               {photos.map((ph, i) => (
                 <li key={ph.src + i}>
-                  <button type="button" className="p-photo" onClick={() => setOpen(i)} aria-label={'Open photo: ' + ph.caption} style={{ aspectRatio: ph.ratio }}>
+                  <button type="button" className="p-photo" onClick={() => setOpen(i)} aria-label={'Open photo ' + (i + 1) + ' of ' + photos.length} style={{ aspectRatio: ph.ratio }}>
                     <img src={ph.src} alt="" loading="lazy" decoding="async" />
                   </button>
-                  <p>{ph.caption}</p>
                 </li>
               ))}
             </ul>
@@ -225,29 +203,24 @@ export default function PortfolioPage() {
           </ul>
         </section>
 
-        {/* P5 Closing band: the booking call, beside a photo that slides into its frame */}
+        {/* P5 Closing band: the booking call, in type */}
         <section className="p-close" aria-labelledby="p-close-title">
-          <div className="p-close__media">
-            <div className="p-close__mask"><img src="/site/assets/portfolio/portfolio-07.jpg" alt="A classic Mercedes with its bonnet open, showing the engine bay" loading="lazy" /></div>
-          </div>
-          <div className="p-close__text">
-            <h2 id="p-close-title" data-head>Ready to give your car <em>the care it deserves?</em></h2>
-            <p className="c-muted p-close__lede" data-in>{cta.text}</p>
-            <div className="p-close__actions" data-in>
-              <a className="c-btn c-btn--red" href="/booking"><span className="c-roll"><span>Book now</span><span aria-hidden="true">Book now</span></span><ArrowRight size={20} aria-hidden="true" /></a>
-              <a className="p-close__call" href={'tel:' + contact.tel}>or call <span>+1 {contact.phone}</span></a>
-            </div>
+          <h2 id="p-close-title" data-head>Ready to give your car <em>the care it deserves?</em></h2>
+          <p className="c-muted p-close__lede" data-in>{cta.text}</p>
+          <div className="p-close__actions" data-in>
+            <a className="c-btn c-btn--red" href="/booking"><span className="c-roll"><span>Book now</span><span aria-hidden="true">Book now</span></span><ArrowRight size={20} aria-hidden="true" /></a>
+            <a className="p-close__call" href={'tel:' + contact.tel}>or call <span>+1 {contact.phone}</span></a>
           </div>
         </section>
       </div>
 
-      <dialog ref={viewer} className="p-viewer" aria-label={open !== null ? photos[open].caption : 'Photo'} onClose={() => setOpen(null)}
+      <dialog ref={viewer} className="p-viewer" aria-label={open !== null ? 'Photo ' + (open + 1) + ' of ' + photos.length : 'Photo'} onClose={() => setOpen(null)}
         onClick={(e) => { if (e.target === e.currentTarget) setOpen(null); }}
         onKeyDown={(e) => { if (e.key === 'ArrowRight') step(1); if (e.key === 'ArrowLeft') step(-1); }}>
         {open !== null && (
           <>
-            <img src={photos[open].src} alt={photos[open].alt || photos[open].caption} />
-            <p className="p-viewer__cap">{photos[open].caption}<span>{open + 1} / {photos.length}</span></p>
+            <img src={photos[open].src} alt={photos[open].alt} />
+            <p className="p-viewer__cap"><span>{open + 1} / {photos.length}</span></p>
             <button type="button" className="p-viewer__btn p-viewer__close" onClick={() => setOpen(null)} aria-label="Close"><X size={22} aria-hidden="true" /></button>
             <button type="button" className="p-viewer__btn p-viewer__prev" onClick={() => step(-1)} aria-label="Previous photo"><ArrowLeft size={22} aria-hidden="true" /></button>
             <button type="button" className="p-viewer__btn p-viewer__next" onClick={() => step(1)} aria-label="Next photo"><ArrowRight size={22} aria-hidden="true" /></button>
