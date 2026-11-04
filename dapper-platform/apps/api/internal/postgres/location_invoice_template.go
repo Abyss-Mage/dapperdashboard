@@ -10,11 +10,15 @@ import (
 
 // loadEffectiveInvoiceTemplate is what a franchise prints with: its own template if it has one, else the organization's.
 func loadEffectiveInvoiceTemplate(ctx context.Context, q rowQuerier, org, loc string) (InvoicePrintTemplateState, error) {
+	return loadEffectivePrintTemplate(ctx, q, invoicePrint, org, loc)
+}
+
+func loadEffectivePrintTemplate(ctx context.Context, q rowQuerier, kind printKind, org, loc string) (InvoicePrintTemplateState, error) {
 	out := InvoicePrintTemplateState{Template: DefaultInvoicePrintTemplate(), Scope: "franchise"}
 	var raw []byte
-	err := q.QueryRow(ctx, `SELECT config,version FROM location_invoice_templates WHERE organization_id=$1 AND location_id=$2`, org, loc).Scan(&raw, &out.Version)
+	err := q.QueryRow(ctx, `SELECT config,version FROM `+kind.locTable+` WHERE organization_id=$1 AND location_id=$2`, org, loc).Scan(&raw, &out.Version)
 	if errors.Is(err, pgx.ErrNoRows) {
-		base, e := loadInvoiceTemplate(ctx, q, org)
+		base, e := loadOrgPrintTemplate(ctx, q, kind, org)
 		base.Scope = "organization"
 		return base, e
 	}
@@ -37,12 +41,19 @@ func (s *Store) memberOf(ctx context.Context, actor, org string) error {
 
 // LocationInvoicePrintTemplate returns the template a franchise prints with, to any member of the organization.
 func (s *Store) LocationInvoicePrintTemplate(ctx context.Context, actor, org, loc string) (InvoicePrintTemplateState, error) {
+	return s.locationPrintTemplate(ctx, invoicePrint, actor, org, loc)
+}
+
+func (s *Store) locationPrintTemplate(ctx context.Context, kind printKind, actor, org, loc string) (InvoicePrintTemplateState, error) {
 	if err := s.memberOf(ctx, actor, org); err != nil {
 		return InvoicePrintTemplateState{}, err
 	}
-	out, err := loadEffectiveInvoiceTemplate(ctx, s.pool, org, loc)
+	out, err := kind.effective(ctx, s.pool, org, loc)
 	if d := logoDigest(ctx, s.pool, org, loc); err == nil && d != "" {
 		out.LogoURL = "/api/v1/organizations/" + org + "/locations/" + loc + "/logo?v=" + d
+	}
+	if err == nil {
+		err = printParties(ctx, s.pool, org, loc, &out)
 	}
 	return out, err
 }
@@ -50,6 +61,10 @@ func (s *Store) LocationInvoicePrintTemplate(ctx context.Context, actor, org, lo
 // SaveLocationInvoicePrintTemplate creates or replaces a franchise's own template. It needs invoices.configure, like the
 // organization template. version is the franchise template revision the editor loaded (0 when it had none).
 func (s *Store) SaveLocationInvoicePrintTemplate(ctx context.Context, actor, org, loc string, t InvoicePrintTemplate, version int) (InvoicePrintTemplateState, error) {
+	return s.saveLocationPrintTemplate(ctx, invoicePrint, actor, org, loc, t, version)
+}
+
+func (s *Store) saveLocationPrintTemplate(ctx context.Context, kind printKind, actor, org, loc string, t InvoicePrintTemplate, version int) (InvoicePrintTemplateState, error) {
 	if err := t.normalize(); err != nil {
 		return InvoicePrintTemplateState{}, err
 	}
@@ -74,9 +89,9 @@ func (s *Store) SaveLocationInvoicePrintTemplate(ctx context.Context, actor, org
 	}
 	out := InvoicePrintTemplateState{Template: t, Scope: "franchise"}
 	if version == 0 {
-		err = tx.QueryRow(ctx, `INSERT INTO location_invoice_templates(organization_id,location_id,config,updated_by) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING RETURNING version`, org, loc, raw, actor).Scan(&out.Version)
+		err = tx.QueryRow(ctx, `INSERT INTO `+kind.locTable+`(organization_id,location_id,config,updated_by) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING RETURNING version`, org, loc, raw, actor).Scan(&out.Version)
 	} else {
-		err = tx.QueryRow(ctx, `UPDATE location_invoice_templates SET config=$3,version=version+1,updated_by=$4,updated_at=now() WHERE organization_id=$1 AND location_id=$2 AND version=$5 RETURNING version`, org, loc, raw, actor, version).Scan(&out.Version)
+		err = tx.QueryRow(ctx, `UPDATE `+kind.locTable+` SET config=$3,version=version+1,updated_by=$4,updated_at=now() WHERE organization_id=$1 AND location_id=$2 AND version=$5 RETURNING version`, org, loc, raw, actor, version).Scan(&out.Version)
 	}
 	if errors.Is(err, pgx.ErrNoRows) {
 		return InvoicePrintTemplateState{}, ErrInvoiceTemplateConflict
@@ -89,6 +104,10 @@ func (s *Store) SaveLocationInvoicePrintTemplate(ctx context.Context, actor, org
 
 // DeleteLocationInvoicePrintTemplate removes a franchise's own template so it goes back to the organization's.
 func (s *Store) DeleteLocationInvoicePrintTemplate(ctx context.Context, actor, org, loc string) error {
+	return s.deleteLocationPrintTemplate(ctx, invoicePrint, actor, org, loc)
+}
+
+func (s *Store) deleteLocationPrintTemplate(ctx context.Context, kind printKind, actor, org, loc string) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -97,7 +116,7 @@ func (s *Store) DeleteLocationInvoicePrintTemplate(ctx context.Context, actor, o
 	if err = financeConfigurationGrant(ctx, tx, actor, org); err != nil {
 		return err
 	}
-	if _, err = tx.Exec(ctx, `DELETE FROM location_invoice_templates WHERE organization_id=$1 AND location_id=$2`, org, loc); err != nil {
+	if _, err = tx.Exec(ctx, `DELETE FROM `+kind.locTable+` WHERE organization_id=$1 AND location_id=$2`, org, loc); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)

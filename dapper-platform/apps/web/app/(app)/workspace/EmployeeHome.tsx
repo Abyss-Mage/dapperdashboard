@@ -1,7 +1,6 @@
 'use client';
 import { ArrowUpRight, Coffee, MapPin, Square } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import GpsTracker from './GpsTracker';
 import styles from './employee.module.css';
 
 export type HomeShift = { id: string; status: 'clocked_in' | 'on_break' | 'clocked_out'; clockInAt: string; clockOutAt?: string; currentBreakStart?: string; totalBreakMinutes?: number; totalWorkMinutes: number };
@@ -32,7 +31,7 @@ export function ShiftHero({ shift, siteName, canRecord, busy, onPunch }: { shift
         <button className={styles.heroSecondary} disabled={busy} onClick={() => onPunch(shift.status === 'on_break' ? 'end-break' : 'start-break')}><Coffee size={17} aria-hidden="true" />{shift.status === 'on_break' ? 'End break' : 'Take a break'}</button>
       </>}
     </div> : <p className={styles.help}>Clock access has not been granted. Contact your administrator.</p>}
-    <GpsTracker shiftStatus={shift?.status} />
+    <div id="gps-slot" />
   </section>;
 }
 

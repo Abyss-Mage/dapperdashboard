@@ -37,6 +37,8 @@ type InvoicePrintTemplate struct {
 	// Quotations use the same look. These two are their own wording: the document title and the terms printed under the total.
 	QuotationTitle string `json:"quotationTitle"`
 	QuotationNote  string `json:"quotationNote"`
+	// ValidDays is the quotation template's default "valid until" (days after the quote is made); 0 leaves it empty.
+	ValidDays int `json:"validDays"`
 }
 
 // InvoicePrintTemplateState is what the API returns: the template plus its revision (0 = built-in default, never saved).
@@ -47,6 +49,11 @@ type InvoicePrintTemplateState struct {
 	Scope string `json:"scope,omitempty"`
 	// LogoURL is the franchise's own logo (empty when it has none and the default logo applies).
 	LogoURL string `json:"logoUrl,omitempty"`
+	// For one franchise: the business details its invoices and quotations print (so drafts and quotes show them too) and its
+	// active tax, e.g. "HST" at 13 per cent, so the tax line can name the rate.
+	Issuer         *QuoteIssuer `json:"issuer,omitempty"`
+	TaxName        string       `json:"taxName,omitempty"`
+	TaxRatePercent float64      `json:"taxRatePercent,omitempty"`
 }
 
 func DefaultInvoicePrintTemplate() InvoicePrintTemplate {
@@ -78,7 +85,7 @@ func (t *InvoicePrintTemplate) normalize() error {
 	if t.QuotationTitle == "" {
 		t.QuotationTitle = "Quotation"
 	}
-	if utf8.RuneCountInString(t.QuotationTitle) > 40 || utf8.RuneCountInString(t.QuotationNote) > 1000 {
+	if utf8.RuneCountInString(t.QuotationTitle) > 40 || utf8.RuneCountInString(t.QuotationNote) > 1000 || t.ValidDays < 0 || t.ValidDays > 365 {
 		return ErrInvoiceTemplateInput
 	}
 	t.CustomHTML, t.CustomCSS = strings.TrimSpace(t.CustomHTML), strings.TrimSpace(t.CustomCSS)
@@ -100,9 +107,13 @@ type rowQuerier interface {
 }
 
 func loadInvoiceTemplate(ctx context.Context, q rowQuerier, org string) (InvoicePrintTemplateState, error) {
+	return loadOrgPrintTemplate(ctx, q, invoicePrint, org)
+}
+
+func loadOrgPrintTemplate(ctx context.Context, q rowQuerier, kind printKind, org string) (InvoicePrintTemplateState, error) {
 	out := InvoicePrintTemplateState{Template: DefaultInvoicePrintTemplate()}
 	var raw []byte
-	err := q.QueryRow(ctx, `SELECT config,version FROM invoice_print_templates WHERE organization_id=$1`, org).Scan(&raw, &out.Version)
+	err := q.QueryRow(ctx, `SELECT config,version FROM `+kind.orgTable+` WHERE organization_id=$1`, org).Scan(&raw, &out.Version)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return out, nil
 	}
@@ -140,11 +151,18 @@ func (s *Store) EmployeeInvoicePrintTemplate(ctx context.Context, actor string) 
 	if d := logoDigest(ctx, tx, a.OrganizationID, a.LocationID); err == nil && d != "" {
 		out.LogoURL = "/api/v1/employee/logo?v=" + d
 	}
+	if err == nil {
+		err = printParties(ctx, tx, a.OrganizationID, a.LocationID, &out)
+	}
 	return out, err
 }
 
 // SaveInvoicePrintTemplate needs invoices.configure. version is the revision the editor loaded (0 when it was the unsaved default).
 func (s *Store) SaveInvoicePrintTemplate(ctx context.Context, actor, org string, t InvoicePrintTemplate, version int) (InvoicePrintTemplateState, error) {
+	return s.saveOrgPrintTemplate(ctx, invoicePrint, actor, org, t, version)
+}
+
+func (s *Store) saveOrgPrintTemplate(ctx context.Context, kind printKind, actor, org string, t InvoicePrintTemplate, version int) (InvoicePrintTemplateState, error) {
 	if err := t.normalize(); err != nil {
 		return InvoicePrintTemplateState{}, err
 	}
@@ -162,9 +180,9 @@ func (s *Store) SaveInvoicePrintTemplate(ctx context.Context, actor, org string,
 	}
 	out := InvoicePrintTemplateState{Template: t}
 	if version == 0 {
-		err = tx.QueryRow(ctx, `INSERT INTO invoice_print_templates(organization_id,config,updated_by) VALUES($1,$2,$3) ON CONFLICT DO NOTHING RETURNING version`, org, raw, actor).Scan(&out.Version)
+		err = tx.QueryRow(ctx, `INSERT INTO `+kind.orgTable+`(organization_id,config,updated_by) VALUES($1,$2,$3) ON CONFLICT DO NOTHING RETURNING version`, org, raw, actor).Scan(&out.Version)
 	} else {
-		err = tx.QueryRow(ctx, `UPDATE invoice_print_templates SET config=$2,version=version+1,updated_by=$3,updated_at=now() WHERE organization_id=$1 AND version=$4 RETURNING version`, org, raw, actor, version).Scan(&out.Version)
+		err = tx.QueryRow(ctx, `UPDATE `+kind.orgTable+` SET config=$2,version=version+1,updated_by=$3,updated_at=now() WHERE organization_id=$1 AND version=$4 RETURNING version`, org, raw, actor, version).Scan(&out.Version)
 	}
 	if errors.Is(err, pgx.ErrNoRows) {
 		return InvoicePrintTemplateState{}, ErrInvoiceTemplateConflict

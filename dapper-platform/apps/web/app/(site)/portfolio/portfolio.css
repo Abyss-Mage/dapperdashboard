@@ -89,9 +89,10 @@
 @media(max-width:720px){.p-social__list a{grid-template-columns:minmax(0,1fr) auto}.p-social__handle{grid-column:1;grid-row:2;text-align:left}.p-social__list a svg{grid-row:1 / span 2;grid-column:2}}
 
 /* P5 Closing band: type only */
-.p-close{text-align:center;padding:clamp(88px,11vw,170px) var(--cg);border-top:1px solid var(--rule)}
+.p-close{text-align:center;padding:clamp(88px,11vw,170px) var(--cg)}
 .p-close h2{font-size:clamp(30px,4.6vw,76px);line-height:1;max-width:18ch;margin-inline:auto}
 .p-close__lede{margin:clamp(18px,2vw,28px) auto 0;font-size:clamp(17px,1.5vw,22px);line-height:1.5}
 .p-close__actions{display:flex;align-items:center;justify-content:center;gap:clamp(16px,2vw,32px);flex-wrap:wrap;margin-top:clamp(24px,3vw,40px)}
 .p-close__call{font-size:clamp(17px,1.4vw,21px);color:var(--ink-2)}
 .p-close__call span{color:var(--red-ink);text-decoration:underline;text-underline-offset:.22em;text-decoration-thickness:1px;font-variant-numeric:tabular-nums}
+@media(max-width:720px){.p-close h2{font-size:clamp(22px,6.2vw,28px)}}

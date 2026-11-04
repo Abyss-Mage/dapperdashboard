@@ -98,6 +98,87 @@ func registerInvoiceTemplateRoutes(mux *http.ServeMux, store *postgres.Store) {
 		}
 		reply(w, 200, map[string]bool{"removed": true})
 	})
+	// The quotation template: the same shape and the same rules, stored apart so quotes have their own look and terms.
+	quoteBase := "/api/v1/organizations/{organization}/quote-template"
+	mux.HandleFunc("GET "+quoteBase, func(w http.ResponseWriter, r *http.Request) {
+		org := r.PathValue("organization")
+		if !uuid(org) {
+			reply(w, 400, map[string]string{"error": "Valid organization selector required"})
+			return
+		}
+		out, err := store.QuotePrintTemplate(r.Context(), requestSession(r).principalID, org)
+		if err != nil {
+			templateFailure(w, err)
+			return
+		}
+		reply(w, 200, out)
+	})
+	mux.HandleFunc("PUT "+quoteBase, func(w http.ResponseWriter, r *http.Request) {
+		org := r.PathValue("organization")
+		if !uuid(org) {
+			reply(w, 400, map[string]string{"error": "Valid organization selector required"})
+			return
+		}
+		var input struct {
+			Template postgres.InvoicePrintTemplate `json:"template"`
+			Version  int                           `json:"version"`
+		}
+		if !decode(w, r, &input) {
+			return
+		}
+		out, err := store.SaveQuotePrintTemplate(r.Context(), requestSession(r).principalID, org, input.Template, input.Version)
+		if err != nil {
+			templateFailure(w, err)
+			return
+		}
+		reply(w, 200, out)
+	})
+	quoteLoc := "/api/v1/organizations/{organization}/locations/{location}/quote-template"
+	mux.HandleFunc("GET "+quoteLoc, func(w http.ResponseWriter, r *http.Request) {
+		org, loc := r.PathValue("organization"), r.PathValue("location")
+		if !uuid(org) || !uuid(loc) {
+			reply(w, 400, map[string]string{"error": "Valid organization and location selectors required"})
+			return
+		}
+		out, err := store.LocationQuotePrintTemplate(r.Context(), requestSession(r).principalID, org, loc)
+		if err != nil {
+			templateFailure(w, err)
+			return
+		}
+		reply(w, 200, out)
+	})
+	mux.HandleFunc("PUT "+quoteLoc, func(w http.ResponseWriter, r *http.Request) {
+		org, loc := r.PathValue("organization"), r.PathValue("location")
+		if !uuid(org) || !uuid(loc) {
+			reply(w, 400, map[string]string{"error": "Valid organization and location selectors required"})
+			return
+		}
+		var input struct {
+			Template postgres.InvoicePrintTemplate `json:"template"`
+			Version  int                           `json:"version"`
+		}
+		if !decode(w, r, &input) {
+			return
+		}
+		out, err := store.SaveLocationQuotePrintTemplate(r.Context(), requestSession(r).principalID, org, loc, input.Template, input.Version)
+		if err != nil {
+			templateFailure(w, err)
+			return
+		}
+		reply(w, 200, out)
+	})
+	mux.HandleFunc("DELETE "+quoteLoc, func(w http.ResponseWriter, r *http.Request) {
+		org, loc := r.PathValue("organization"), r.PathValue("location")
+		if !uuid(org) || !uuid(loc) {
+			reply(w, 400, map[string]string{"error": "Valid organization and location selectors required"})
+			return
+		}
+		if err := store.DeleteLocationQuotePrintTemplate(r.Context(), requestSession(r).principalID, org, loc); err != nil {
+			templateFailure(w, err)
+			return
+		}
+		reply(w, 200, map[string]bool{"removed": true})
+	})
 	logoBase := "/api/v1/organizations/{organization}/locations/{location}/logo"
 	sendLogo := func(w http.ResponseWriter, contentType string, data []byte, digest string, found bool) {
 		if !found {

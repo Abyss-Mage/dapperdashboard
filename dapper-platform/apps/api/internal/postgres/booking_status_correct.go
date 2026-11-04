@@ -86,6 +86,18 @@ updated_at=now() WHERE organization_id=$2 AND location_id=$3 AND id=$4`, toStatu
 			return Booking{}, err
 		}
 	}
+	notice := ""
+	if current == "completed" && toStatus != "completed" {
+		if notice, err = reverseCompletionPayments(ctx, tx, scope, id); err != nil {
+			return Booking{}, err
+		}
+		if notice != "" {
+			if _, err = tx.Exec(ctx, `INSERT INTO booking_events(booking_id,organization_id,location_id,actor_id,from_status,to_status,notes) VALUES($1,$2,$3,$4,$5,$6,$7)`,
+				id, scope.OrganizationID, scope.LocationID, scope.ActorID, toStatus, toStatus, notice); err != nil {
+				return Booking{}, err
+			}
+		}
+	}
 	updated, err := scanBooking(tx.QueryRow(ctx, `SELECT `+bookingColumns+` FROM bookings b JOIN customers c ON (c.organization_id,c.location_id,c.id)=(b.organization_id,b.location_id,b.customer_id) WHERE b.id=$1`, id))
 	if err != nil {
 		return Booking{}, err
@@ -93,5 +105,6 @@ updated_at=now() WHERE organization_id=$2 AND location_id=$3 AND id=$4`, toStatu
 	if err = tx.Commit(ctx); err != nil {
 		return Booking{}, bookingWriteError(err)
 	}
+	updated.PaymentNotice = notice
 	return updated, nil
 }

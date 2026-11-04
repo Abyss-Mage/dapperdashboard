@@ -12,6 +12,7 @@ import { availabilityError, dateOffset, readableDay, worksiteDate, contactFormat
 import styles from './employee.module.css';
 import EmployeeCalendar from './EmployeeCalendar';
 import { RecentPunches, ShiftHero, StatCards } from './EmployeeHome';
+import GpsTracker from './GpsTracker';
 import DocumentsCard from './EmployeeDocuments';
 import EmployeeAccount from './EmployeeAccount';
 import OnboardingGate, { type Onboarding } from './OnboardingGate';
@@ -165,6 +166,7 @@ export default function EmployeeWorkspace() {
             </section>
           </div><RecentPunches shifts={desk!.attendance} timezone={site.timezone} /></>}
         </>}
+        {signedIn && site && <GpsTracker shiftStatus={shift?.status} slotKey={tab + (checkout ? '-checkout' : '') + (loading ? '-loading' : '')} />}
       </main>
       <footer className={styles.footer}>Dapper Detailing Pros<span>Personal workspace · secure session</span></footer>
     </div>

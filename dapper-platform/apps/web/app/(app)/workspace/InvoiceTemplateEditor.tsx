@@ -5,7 +5,8 @@ import { DEFAULT_PRINT_TEMPLATE, InvoiceDocument, printInvoiceDocument, STARTER_
 import Select from '../GlassSelect';
 import { ColorPicker } from '../Pickers';
 
-/* Owner / Super Admin editor for the printed invoice layout. Wording and look only; amounts and parties always come from the invoice. */
+/* Owner / Super Admin editor for the printed invoice and quotation layouts (two templates, kept apart). Wording and look only;
+   amounts and parties always come from the document. */
 
 // Clearly fictional, only used for the preview and the test print.
 const SAMPLE: PrintInvoice = {
@@ -18,13 +19,17 @@ const SAMPLE: PrintInvoice = {
     { description: 'Sample add-on', quantity: 1, unitPriceCents: 6500, totalPriceCents: 6500 },
   ],
 };
+const SAMPLE_QUOTE: PrintInvoice = { ...SAMPLE, kind: 'quotation', invoiceNumber: 'QTE-SAMPLE', validUntil: new Date(Date.now() + 30 * 864e5).toISOString(), note: 'Sample note written on this quotation.' };
 
 export default function InvoiceTemplateEditor({ organizationId, revision, locationId, locationName }: { organizationId: string; revision: number; locationId?: string; locationName?: string }) {
   // The template is shared by the whole organization unless this franchise is given its own.
   const [target, setTarget] = useState<'organization' | 'franchise'>('organization');
+  const [doc, setDoc] = useState<'invoice' | 'quote'>('invoice');
+  const quote = doc === 'quote';
+  const file = quote ? 'quote-template' : 'invoice-template';
   const [hasOwn, setHasOwn] = useState(false);
   const [logoUrl, setLogoUrl] = useState('');
-  const url = target === 'franchise' && locationId ? `/api/v1/organizations/${organizationId}/locations/${locationId}/invoice-template` : `/api/v1/organizations/${organizationId}/invoice-template`;
+  const url = target === 'franchise' && locationId ? `/api/v1/organizations/${organizationId}/locations/${locationId}/${file}` : `/api/v1/organizations/${organizationId}/${file}`;
   const [form, setForm] = useState<PrintTemplate>(DEFAULT_PRINT_TEMPLATE);
   const [version, setVersion] = useState(0);
   const [loaded, setLoaded] = useState(false);
@@ -34,7 +39,7 @@ export default function InvoiceTemplateEditor({ organizationId, revision, locati
 
   const load = useCallback(async () => {
     const r = await fetch(url, { cache: 'no-store' });
-    if (!r.ok) throw new Error('The invoice template is unavailable or access has changed.');
+    if (!r.ok) throw new Error('The template is unavailable or access has changed.');
     const b = await r.json();
     setForm({ ...DEFAULT_PRINT_TEMPLATE, ...b.template });
     setLogoUrl(b.logoUrl ?? '');
@@ -103,8 +108,12 @@ export default function InvoiceTemplateEditor({ organizationId, revision, locati
 
   return (
     <section className="panel detail-card">
-      <h2>Invoice template{target === 'franchise' && locationName ? ` · ${locationName}` : ''}</h2>
-      <p>How printed invoices look. Change the title, labels, colour, notes and paper size, or write your own layout in HTML and CSS. The invoice always supplies every amount, customer detail and number.</p>
+      <h2>{quote ? 'Quotation template' : 'Invoice template'}{target === 'franchise' && locationName ? ` · ${locationName}` : ''}</h2>
+      <div role="group" aria-label="Which document" style={{ display: 'flex', gap: 8, margin: '0 0 12px' }}>
+        <button type="button" className={quote ? 'secondary' : 'primary'} aria-pressed={!quote} disabled={busy} onClick={() => { if (quote) { setLoaded(false); setNotice(''); setError(''); setDoc('invoice'); } }}>Invoices</button>
+        <button type="button" className={quote ? 'primary' : 'secondary'} aria-pressed={quote} disabled={busy} onClick={() => { if (!quote) { setLoaded(false); setNotice(''); setError(''); setDoc('quote'); } }}>Quotations</button>
+      </div>
+      <p>{quote ? 'How printed quotations look, separately from invoices. Until you save one, quotations use the invoice look with the title "Quotation".' : 'How printed invoices look.'} Change the title, labels, colour, notes and paper size, or write your own layout in HTML and CSS. Every amount, customer detail and number always comes from the document.</p>
       {locationId && (
         <div className="management-form" style={{ alignItems: 'end' }}>
           <label className="form-field">Which template are you editing?
@@ -152,12 +161,10 @@ export default function InvoiceTemplateEditor({ organizationId, revision, locati
         <label style={{ display: 'flex', gap: 8, alignItems: 'center', margin: '.5rem 0' }}><input type="checkbox" checked={form.showTaxRegistration} disabled={busy || !loaded} onChange={(e) => set('showTaxRegistration', e.target.checked)} /><span>Show the tax registration number</span></label>
         <label style={{ display: 'flex', gap: 8, alignItems: 'center', margin: '.5rem 0' }}><input type="checkbox" checked={form.showCustomerContact} disabled={busy || !loaded} onChange={(e) => set('showCustomerContact', e.target.checked)} /><span>Show the customer&rsquo;s email and phone</span></label>
         <label className="form-field">Note above the items (optional)<textarea maxLength={500} value={form.headerNote} disabled={busy || !loaded} onChange={(e) => set('headerNote', e.target.value)} /></label>
-        <label className="form-field">Payment instructions (optional)<textarea maxLength={1000} value={form.paymentInstructions} disabled={busy || !loaded} onChange={(e) => set('paymentInstructions', e.target.value)} placeholder="How customers can pay, only if approved by the business" /></label>
+        {!quote && <label className="form-field">Payment instructions (optional)<textarea maxLength={1000} value={form.paymentInstructions} disabled={busy || !loaded} onChange={(e) => set('paymentInstructions', e.target.value)} placeholder="How customers can pay, only if approved by the business" /></label>}
+        {quote && <label className="form-field">Terms under the quotation total (optional)<textarea maxLength={1000} value={form.quotationNote ?? ''} disabled={busy || !loaded} onChange={(e) => set('quotationNote', e.target.value)} placeholder="For example how long the price is held and what is not included" /></label>}
+        {quote && <label className="form-field" style={{ maxWidth: 320 }}>A new quotation is valid for (days, 0 = no date)<input type="number" min={0} max={365} step={1} value={form.validDays ?? 0} disabled={busy || !loaded} onChange={(e) => set('validDays', Math.max(0, Math.min(365, Math.round(Number(e.target.value) || 0))))} /></label>}
         <label className="form-field">Footer (optional)<textarea maxLength={1000} value={form.footerNote} disabled={busy || !loaded} onChange={(e) => set('footerNote', e.target.value)} placeholder="Thank-you message, terms, return policy" /></label>
-        <h3>Quotations</h3>
-        <p>Quotations are printed in this same look. These two are their own wording.</p>
-        <label className="form-field">Quotation title<input maxLength={40} value={form.quotationTitle ?? ''} disabled={busy || !loaded} onChange={(e) => set('quotationTitle', e.target.value)} placeholder="Quotation" /></label>
-        <label className="form-field">Terms under the quotation total (optional)<textarea maxLength={1000} value={form.quotationNote ?? ''} disabled={busy || !loaded} onChange={(e) => set('quotationNote', e.target.value)} placeholder="For example how long the price is held and what is not included" /></label>
         <h3>Your own layout (HTML and CSS)</h3>
         <p>Optional. Write the invoice in HTML and style it with CSS; when there is HTML here it replaces the layout above. Put <code>{'{{placeholders}}'}</code> where the invoice details go. Scripts are not allowed and never run.</p>
         <details>
@@ -172,12 +179,12 @@ export default function InvoiceTemplateEditor({ organizationId, revision, locati
         </div>
         <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
           <button className="primary" disabled={busy || !loaded}>{busy ? 'Saving…' : 'Save template'}</button>
-          <button type="button" className="secondary" disabled={busy || !loaded} onClick={() => printInvoiceDocument(SAMPLE, form)}>Print a sample</button>
-          <button type="button" className="secondary" disabled={busy || !loaded} onClick={() => { setForm(DEFAULT_PRINT_TEMPLATE); setNotice('Built-in layout restored here. Save to keep it.'); }}>Restore built-in layout</button>
+          <button type="button" className="secondary" disabled={busy || !loaded} onClick={() => printInvoiceDocument(quote ? SAMPLE_QUOTE : SAMPLE, form)}>Print a sample</button>
+          <button type="button" className="secondary" disabled={busy || !loaded} onClick={() => { setForm(quote ? { ...DEFAULT_PRINT_TEMPLATE, title: 'Quotation', validDays: 30 } : DEFAULT_PRINT_TEMPLATE); setNotice('Built-in layout restored here. Save to keep it.'); }}>Restore built-in layout</button>
         </div>
       </form>
       <h3>Preview (sample data)</h3>
-      <div style={{ background: '#fff', borderRadius: 12, padding: 24, overflowX: 'auto' }}><InvoiceDocument invoice={SAMPLE} template={{ ...form, logoUrl: target === 'franchise' ? logoUrl || undefined : undefined }} /></div>
+      <div style={{ background: '#fff', borderRadius: 12, padding: 24, overflowX: 'auto' }}><InvoiceDocument invoice={quote ? SAMPLE_QUOTE : SAMPLE} template={{ ...form, logoUrl: target === 'franchise' ? logoUrl || undefined : undefined }} /></div>
     </section>
   );
 }

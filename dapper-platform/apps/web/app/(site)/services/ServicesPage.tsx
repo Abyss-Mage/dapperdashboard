@@ -10,7 +10,6 @@ import { gsap, ScrollTrigger, SplitText, useGSAP } from '../_components/gsapCont
    S1: pick your ride, the ten vehicle types. S2: how we do it, pinned: scrolling moves through the four steps, each with the
    screen of the real system it happens in. S3: the Dapper standard. S4: what customers say. S5: the dealerships. S6: the booking call. */
 
-const pad = (n: number) => String(n + 1).padStart(2, '0');
 const Roll = ({ children }: { children: string }) => <span className="s-roll"><span>{children}</span><span aria-hidden="true">{children}</span></span>;
 
 export default function ServicesPage() {
@@ -97,7 +96,7 @@ export default function ServicesPage() {
           <h2 id="s-how-title" className="s-h2" data-head>How we <em>do it.</em></h2>
           <ol className="s-how__steps" aria-label="Steps">
             {processSteps.map((p, i) => (
-              <li key={p.title}><button type="button" className={i === cur ? 'is-on' : undefined} aria-current={i === cur ? 'step' : undefined} onClick={() => go(i)}><span>{pad(i)}</span>{p.title}</button></li>
+              <li key={p.title}><button type="button" className={i === cur ? 'is-on' : undefined} aria-current={i === cur ? 'step' : undefined} onClick={() => go(i)}>{p.title}</button></li>
             ))}
           </ol>
           <div className="s-how__copy" aria-live="polite">
@@ -107,15 +106,15 @@ export default function ServicesPage() {
           <div className="s-how__ctrl">
             <button type="button" onClick={() => go(cur - 1)} aria-label="Previous step"><ArrowLeft size={22} aria-hidden="true" /></button>
             <button type="button" onClick={() => go(cur + 1)} aria-label="Next step"><ArrowRight size={22} aria-hidden="true" /></button>
-            <span aria-hidden="true">{pad(cur)} / {pad(n - 1)}</span>
+            <span aria-hidden="true">Step {cur + 1} of {n}</span>
           </div>
         </div>
         <div className="s-how__stage" aria-hidden="true">
           {processSteps.map((p, i) => (
             <div key={p.title} className="s-shot" style={{ zIndex: i === 0 ? 2 : 1 }} data-on={i === cur || undefined}>
               <span className="s-shot__img" style={{ backgroundImage: 'url(' + p.image + ')' }} />
-              <div className="s-shot__win">
-                <img src={p.shot} alt="" loading="lazy" onError={(e) => { (e.currentTarget.parentElement as HTMLElement).dataset.empty = 'true'; }} />
+              <div className="s-shot__win" data-empty={p.shot ? undefined : 'true'}>
+                {p.shot && <img src={p.shot} alt="" loading="lazy" />}
                 <span className="s-shot__view">{p.view}</span>
               </div>
             </div>

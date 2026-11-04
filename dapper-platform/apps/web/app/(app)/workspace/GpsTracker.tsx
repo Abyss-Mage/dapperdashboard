@@ -1,6 +1,7 @@
 'use client';
 import { MapPin } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import glass from '../glass.module.css';
 
 type Status = { onShift: boolean; shiftStatus?: string; settings: { enabled: boolean; sampleIntervalSeconds: number; retentionDays: number }; state?: string; lastSampleAt?: string; trackingActive: boolean };
@@ -12,7 +13,11 @@ const json = { 'Content-Type': 'application/json' };
 /* Device sharing is explicit (a button press) and only runs in this open page. Browsers can pause
    location when the screen locks, so supervisors see a "stale" state rather than a promise of
    background tracking. Break, clock-out, disabled settings and permission loss all stop sampling. */
-export default function GpsTracker({ shiftStatus }: { shiftStatus?: 'clocked_in' | 'on_break' | 'clocked_out' }) {
+// It is mounted once for the whole workspace so sharing keeps running on every tab; its card is drawn into the #gps-slot the home
+// tab's shift panel leaves for it (slotKey changes whenever the visible tab does).
+export default function GpsTracker({ shiftStatus, slotKey }: { shiftStatus?: 'clocked_in' | 'on_break' | 'clocked_out'; slotKey?: string }) {
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
+  useEffect(() => { setSlot(document.getElementById('gps-slot')); }, [slotKey]);
   const [status, setStatus] = useState<Status | null>(null), [mode, setMode] = useState<Mode>('idle'), [error, setError] = useState(''), [lastSent, setLastSent] = useState<Date | null>(null);
   const watch = useRef<number | null>(null), fix = useRef<Fix | null>(null), timer = useRef<number | null>(null), first = useRef(false), autoTried = useRef(false);
 
@@ -93,8 +98,9 @@ export default function GpsTracker({ shiftStatus }: { shiftStatus?: 'clocked_in'
       {mode === 'sharing' || mode === 'starting' ? null : <div className={glass.actions}><button className={glass.button} onClick={() => { autoTried.current = true; start(); }}>{mode === 'denied' || mode === 'unsupported' ? 'Try again' : 'Share location now'}</button></div>}
     </>;
   }
-  return <section className={`${glass.stage} ${glass.flatStage}`} aria-labelledby="gps-title"><div className={`${glass.card} ${glass.flatCard}`}>
+  if (!slot) return null;
+  return createPortal(<section className={`${glass.stage} ${glass.flatStage}`} aria-labelledby="gps-title"><div className={`${glass.card} ${glass.flatCard}`}>
     <div className={glass.head}><h3 id="gps-title" className={glass.title}><MapPin size={17} aria-hidden="true" style={{ verticalAlign: '-3px', marginRight: 6 }} />Location on shift</h3>{pill}</div>
     {body}{error && <p className={glass.alert} role="alert">{error}</p>}
-  </div></section>;
+  </div></section>, slot);
 }

@@ -50,7 +50,7 @@ func verifyOwnerOverviewHTTP(t *testing.T, ctx context.Context, store *postgres.
 		t.Fatal(err)
 	}
 	var expected int64
-	if err = setup.QueryRow(ctx, `SELECT count(*) FROM customers WHERE organization_id=$1 AND location_id=$2`, org, loc).Scan(&expected); err != nil {
+	if err = setup.QueryRow(ctx, `SELECT count(*) FROM customers c WHERE organization_id=$1 AND location_id=$2 AND removed_at IS NULL AND NOT EXISTS(SELECT 1 FROM dealership_accounts d WHERE d.organization_id=c.organization_id AND d.location_id=c.location_id AND d.customer_id=c.id)`, org, loc).Scan(&expected); err != nil {
 		t.Fatal(err)
 	}
 	if result.Metrics["customers"] == nil || *result.Metrics["customers"] != expected {

@@ -58,11 +58,11 @@ body:has(.s-page),html:has(.s-page){background:#0b0b0c}
 .s-h2{font-size:clamp(26px,3.6vw,58px)}
 .s-how{overflow-x:clip;display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:clamp(32px,6vw,96px);align-items:center;padding:clamp(72px,9vw,140px) var(--cg);background:var(--bk2)}
 .is-how-pinned .s-how{min-height:100svh;padding-top:calc(72px + 24px);padding-bottom:24px}
-.s-how__steps{margin:clamp(24px,3vw,40px) 0 0;padding:0;list-style:none;display:grid;border-top:1px solid var(--line)}
-.s-how__steps li{border-bottom:1px solid var(--line)}
-.s-how__steps button{display:flex;align-items:baseline;gap:18px;width:100%;padding:14px 0;border:0;background:none;text-align:left;cursor:pointer;color:#8b8882;font:500 clamp(12px,1.05vw,16px)/1.2 var(--cd);letter-spacing:.02em;text-transform:uppercase;transition:color .25s}
+.s-how__steps{margin:clamp(24px,3vw,40px) 0 0;padding:0;list-style:none;display:grid;gap:4px}
+.s-how__steps li{background:#ffffff08}
+.s-how__steps button{display:flex;align-items:baseline;gap:18px;width:100%;padding:14px 16px;border:0;background:none;text-align:left;cursor:pointer;color:#8b8882;font:500 clamp(12px,1.05vw,16px)/1.2 var(--cd);letter-spacing:.02em;text-transform:uppercase;transition:color .25s}
 .s-how__steps button span{font-size:.8em;color:inherit}
-.s-how__steps button.is-on{color:var(--bone)}
+.s-how__steps button.is-on{color:var(--bone);background:#ffffff14;box-shadow:inset 3px 0 0 var(--red)}
 .s-how__steps button.is-on span{color:var(--red)}
 @media(hover:hover) and (pointer:fine){.s-how__steps button:hover{color:var(--bone)}}
 .s-how__copy{margin-top:clamp(22px,3vw,36px);min-height:clamp(150px,14vw,190px)}
@@ -121,3 +121,4 @@ body:has(.s-page),html:has(.s-page){background:#0b0b0c}
 .s-close__actions{display:flex;align-items:center;justify-content:center;gap:clamp(16px,2.4vw,36px);flex-wrap:wrap;margin-top:clamp(24px,3vw,40px)}
 .s-close__call{font:500 clamp(16px,1.4vw,21px)/1 var(--cd);letter-spacing:.04em;text-transform:uppercase;color:var(--mute)}
 .s-close__call span{color:var(--bone);border-bottom:2px solid var(--red);padding-bottom:2px;font-variant-numeric:tabular-nums}
+@media(max-width:720px){.s-close .s-h2{font-size:clamp(18px,5vw,22px)}.s-tile__sub,.s-tile__tag{font-size:13px}}

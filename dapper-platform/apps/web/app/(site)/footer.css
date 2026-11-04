@@ -5,7 +5,7 @@
 @media(hover:hover) and (pointer:fine){.f-foot a:not(.f-btn):hover{color:var(--red)}}
 .f-foot :focus-visible{outline:2px solid var(--red);outline-offset:3px;border-radius:0}
 .f-foot__cta{display:flex;align-items:flex-end;justify-content:space-between;gap:clamp(24px,4vw,64px);flex-wrap:wrap;padding-bottom:clamp(36px,5vw,72px);border-bottom:1px solid var(--line)}
-.f-foot__lead{margin:0;font:500 clamp(31.2px,4.4vw,74.4px)/.86 var(--cd);text-transform:uppercase;max-width:12ch;text-wrap:balance}
+.f-foot__lead{margin:0;font:500 clamp(24px,3.6vw,60px)/.92 var(--cd);text-transform:uppercase;max-width:20ch;text-wrap:balance}
 .f-foot__lead em{font-style:normal;color:var(--red)}
 .f-foot__act{display:flex;align-items:center;gap:clamp(16px,2.4vw,36px);flex-wrap:wrap}
 .f-btn{display:inline-flex;align-items:center;gap:14px;background:var(--red);color:#fff!important;min-height:60px;padding:0 32px;font:500 22px/1 var(--cd);letter-spacing:.14em;text-transform:uppercase;clip-path:polygon(0 0,100% 0,100% 100%,14px 100%,0 calc(100% - 14px));transition:background-color .2s,transform .16s var(--ease)}

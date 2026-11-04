@@ -19,6 +19,8 @@ var (
 )
 
 type Booking struct {
+	// PaymentNotice says what happened to money when the booking was moved back out of Completed (set on that response only).
+	PaymentNotice      string     `json:"paymentNotice,omitempty"`
 	ReservationVersion *int       `json:"reservationVersion,omitempty"`
 	ID                 string     `json:"id"`
 	OrganizationID     string     `json:"organizationId"`

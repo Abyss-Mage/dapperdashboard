@@ -86,7 +86,17 @@ export default function QuoteManager({
 }) {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const locationBase = `/api/v1/organizations/${organizationId}/locations/${locationId}`;
-  const printTemplate = usePrintTemplate(locationBase + '/invoice-template');
+  const printTemplate = usePrintTemplate(locationBase + '/quote-template');
+  // A new quotation starts with the franchise's tax rate and the template's validity, both editable.
+  function openNewQuote() {
+    if (printTemplate.taxRatePercent) setFormTaxRate(String(printTemplate.taxRatePercent));
+    if (printTemplate.validDays) {
+      const d = new Date(Date.now() + printTemplate.validDays * 864e5);
+      d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+      setFormExpiresAt(d.toISOString().slice(0, 16));
+    }
+    setIsFormOpen(true);
+  }
   // The quotation opens as its own page in a new window with a Print or save as PDF button, in the same look as invoices.
   function printQuote(q: Quote) {
     const w = openInvoiceWindow();
@@ -384,7 +394,7 @@ export default function QuoteManager({
             <option value="expired">Expired</option>
           </Select>
           {canCreate && !isFormOpen && (
-            <button type="button" className="primary" style={{ whiteSpace: 'nowrap', flexShrink: 0, width: 'auto', minWidth: 'max-content' }} onClick={() => setIsFormOpen(true)}>
+            <button type="button" className="primary" style={{ whiteSpace: 'nowrap', flexShrink: 0, width: 'auto', minWidth: 'max-content' }} onClick={openNewQuote}>
               + New Quotation
             </button>
           )}

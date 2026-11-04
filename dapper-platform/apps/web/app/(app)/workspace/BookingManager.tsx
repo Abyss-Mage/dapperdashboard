@@ -265,7 +265,7 @@ export default function BookingManager({
         setError(body.error ?? 'Status update failed');
         return false;
       }
-      setNotice(`Booking marked ${STATUS_LABEL[toStatus] ?? toStatus}.`);
+      setNotice(`Booking marked ${STATUS_LABEL[toStatus] ?? toStatus}.${body.paymentNotice ? ' ' + body.paymentNotice : ''}`);
       void loadInvoices();
       if (toStatus === 'cancelled') closeCancellation();
       if (selectedBooking?.id === bookingId) {

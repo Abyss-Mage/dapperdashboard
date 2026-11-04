@@ -13,6 +13,7 @@ type Day = { date: string; minutes: number; shifts: number; clockIn?: string | n
 type Staff = { principalId: string; name: string; email: string; totalMinutes: number; clockedIn: boolean; days: Day[] };
 type Entry = { attendanceId: string; employee: string; shiftStatus: string; stale: boolean; latitude?: number | null; longitude?: number | null };
 type By = 'day' | 'week' | 'month';
+type GpsSettings = { enabled: boolean; sampleIntervalSeconds: number; retentionDays: number; version: number };
 
 const hours = (m: number) => (m < 60 ? `${m} min` : `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''}`);
 const weekOf = (date: string) => { const d = new Date(`${date}T12:00:00`); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.toISOString().slice(0, 10); };
@@ -32,6 +33,9 @@ export default function StaffHours({ base, timezone }: { base: string; timezone:
   const [who, setWho] = useState('');
   const [staff, setStaff] = useState<Staff[] | null>(null);
   const [live, setLive] = useState<Entry[]>([]);
+  const [gps, setGps] = useState<GpsSettings | null>(null);
+  const [gpsBusy, setGpsBusy] = useState(false);
+  const [gpsNote, setGpsNote] = useState('');
   const [error, setError] = useState('');
   const range = resolveRange(preset, custom);
 
@@ -43,7 +47,7 @@ export default function StaffHours({ base, timezone }: { base: string; timezone:
   }, [base, range.from, range.to, timezone]);
   const loadLive = useCallback(async () => {
     const r = await fetch(`${base}/gps/live`, { cache: 'no-store' });
-    if (r.ok) setLive((await r.json()).entries ?? []);
+    if (r.ok) { const b = await r.json(); setLive(b.entries ?? []); setGps(b.settings ?? null); }
   }, [base]);
   useEffect(() => { setStaff(null); setError(''); load().catch((e) => setError(e.message)); }, [load]);
   useEffect(() => {
@@ -51,6 +55,20 @@ export default function StaffHours({ base, timezone }: { base: string; timezone:
     const id = window.setInterval(() => { void loadLive(); void load().catch(() => undefined); }, 60_000);
     return () => window.clearInterval(id);
   }, [loadLive, load]);
+
+  // Location sharing is off until someone with attendance.manage turns it on for this franchise.
+  async function switchGps(enabled: boolean) {
+    if (!gps) return;
+    setGpsBusy(true); setGpsNote('');
+    try {
+      const r = await fetch(`${base}/gps/settings`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled, sampleIntervalSeconds: gps.sampleIntervalSeconds || 300, retentionDays: gps.retentionDays || 30, version: gps.version ?? 0 }) });
+      const b = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(r.status === 403 ? 'You do not have permission to change location sharing.' : b.error ?? 'Location sharing could not be changed.');
+      setGps(b); setGpsNote(enabled ? 'Location sharing is on. Staff are asked to share their location when they clock in.' : 'Location sharing is off. Nothing new is recorded.');
+      void loadLive();
+    } catch (e) { setGpsNote(e instanceof Error ? e.message : 'Location sharing could not be changed.'); }
+    finally { setGpsBusy(false); }
+  }
 
   const points: MapPoint[] = live.filter((e) => e.latitude != null && e.longitude != null).map((e) => ({ id: e.attendanceId, label: e.employee, lat: e.latitude as number, lon: e.longitude as number, stale: e.stale }));
   const shown = (staff ?? []).filter((s) => !who || s.principalId === who);
@@ -71,7 +89,12 @@ export default function StaffHours({ base, timezone }: { base: string; timezone:
             <p className={styles.personSub}>{live.filter((e) => e.shiftStatus === 'clocked_in').length} on shift · updates every minute while this page is open</p>
           </div>
         </div>
-        <StaffMap points={points} />
+        {gps && !gps.enabled ? <div className={styles.stack} style={{ gap: 8, margin: '12px 0' }}>
+          <p className={styles.status}>Location sharing is off for this franchise, so staff are never asked to share where they are.</p>
+          <div><button type="button" className="primary" disabled={gpsBusy} onClick={() => void switchGps(true)}>{gpsBusy ? 'Turning on…' : 'Turn on location sharing'}</button></div>
+        </div> : <StaffMap points={points} />}
+        {gps?.enabled && <p className={styles.personSub} style={{ marginTop: 8 }}>Sharing is on while staff are clocked in, about every {Math.max(1, Math.round((gps.sampleIntervalSeconds || 300) / 60))} min; locations are kept {gps.retentionDays || 30} days. <button type="button" className="secondary" disabled={gpsBusy} onClick={() => void switchGps(false)}>Turn off</button></p>}
+        {gpsNote && <p role="status" className={styles.personSub}>{gpsNote}</p>}
         {live.length > 0 && <ul className={styles.svcTags} style={{ marginTop: 10 }}>{live.map((e) => <li key={e.attendanceId} className={styles.chip}>{e.employee} · {e.shiftStatus === 'on_break' ? 'On break' : e.latitude == null ? 'No location shared' : e.stale ? 'Location not updated recently' : 'Sharing location'}</li>)}</ul>}
       </section>
 

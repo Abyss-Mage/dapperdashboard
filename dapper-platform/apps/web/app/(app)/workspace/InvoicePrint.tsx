@@ -15,14 +15,17 @@ export type PrintTemplate = {
   customHtml: string; customCss: string;
   /** The franchise's own logo, when it has one; otherwise the default logo is used. */
   logoUrl?: string;
-  /** Quotations use the same look with their own title and terms. */
-  quotationTitle?: string; quotationNote?: string;
+  /** Quotation wording: the terms under the total and how many days a new quote is valid for (0 = no date). */
+  quotationTitle?: string; quotationNote?: string; validDays?: number;
+  /** Filled from the franchise when the template is loaded: the business details it prints (so drafts and quotes show them)
+      and its active tax name and rate, e.g. HST at 13. */
+  issuer?: { legalName: string; address: string; taxRegistration: string } | null; taxName?: string; taxRatePercent?: number;
 };
 export type PrintInvoice = {
   /** 'quotation' prints a quotation: no paid or pending lines, a valid-until date and the quotation terms. */
   kind?: 'invoice' | 'quotation'; validUntil?: string | null; note?: string;
   invoiceNumber: string; status: string; currency: string; issuedAt?: string | null; createdAt?: string;
-  subtotalCents: number; taxCents: number; totalCents: number; paidCents: number; dueCents: number;
+  subtotalCents: number; taxCents: number; totalCents: number; paidCents: number; dueCents: number; taxRatePercent?: number;
   discountCents?: number; couponCode?: string;
   customerName?: string;
   issuerSnapshot?: { legalName: string; address: string; taxRegistration: string } | null;
@@ -31,10 +34,24 @@ export type PrintInvoice = {
 };
 
 export const DEFAULT_PRINT_TEMPLATE: PrintTemplate = {
-  title: 'Invoice', accentColor: '#d22b2b', showLogo: true, headerNote: '', billToLabel: 'Bill to', itemLabel: 'Item', quantityLabel: 'Qty',
+  title: 'Invoice', accentColor: '#111111', showLogo: true, headerNote: '', billToLabel: 'Bill to', itemLabel: 'Item', quantityLabel: 'Qty',
   unitPriceLabel: 'Unit price', amountLabel: 'Amount', showTaxRegistration: true, showCustomerContact: true, paymentInstructions: '', footerNote: '', paperSize: 'letter',
-  customHtml: '', customCss: '', quotationTitle: 'Quotation', quotationNote: '',
+  customHtml: '', customCss: '', quotationTitle: 'Quotation', quotationNote: '', validDays: 0,
 };
+
+const STATUS_WORDS: Record<string, string> = { draft: 'Draft', issued: 'Issued', partially_paid: 'Partially paid', paid: 'Paid', void: 'Void', refunded: 'Refunded' };
+const statusWord = (s: string) => STATUS_WORDS[s] ?? s.replaceAll('_', ' ');
+
+/* The tax line names its rate: the franchise's tax name and rate when known, otherwise the rate worked out from the amounts. */
+export function taxLabel(invoice: PrintInvoice, t: PrintTemplate): string {
+  const base = invoice.subtotalCents - (invoice.discountCents ?? 0);
+  const derived = base > 0 && invoice.taxCents > 0 ? Math.round((invoice.taxCents / base) * 10000) / 100 : 0;
+  const rate = invoice.taxRatePercent ?? (derived || t.taxRatePercent || 0);
+  if (!rate) return 'Tax';
+  const pct = (Math.round(rate * 100) / 100).toString() + '%';
+  return t.taxName ? `Tax (${t.taxName} ${pct})` : `Tax (${pct})`;
+}
+const issuerOf = (invoice: PrintInvoice, t: PrintTemplate) => (invoice.issuerSnapshot?.legalName ? invoice.issuerSnapshot : t.issuer?.legalName ? t.issuer : null);
 
 const money = (cents: number, currency = 'CAD') => `${(cents / 100).toLocaleString('en-CA', { style: 'currency', currency })}`;
 const day = (iso?: string | null) => (iso ? new Date(iso).toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' }) : '');
@@ -87,8 +104,9 @@ export const TEMPLATE_PLACEHOLDERS: [string, string][] = [
   ['logo_url', 'Address of the logo image'], ['business_name', 'Your legal business name'], ['business_address', 'Your address'], ['tax_registration', 'Tax registration number'],
   ['customer_name', 'Customer name'], ['customer_email', 'Customer email'], ['customer_phone', 'Customer phone'],
   ['items', 'The item rows (<tr> with description, quantity, unit price and amount)'],
-  ['subtotal', 'Subtotal'], ['discount', 'Discount (a coupon), 0.00 when none'], ['tax', 'Tax'], ['total', 'Total'], ['paid', 'Paid'], ['balance_due', 'Balance due'], ['currency', 'Currency'],
-  ['header_note', 'Note above the items'], ['payment_instructions', 'Payment instructions'], ['footer_note', 'Footer'],
+  ['subtotal', 'Subtotal'], ['discount', 'Discount (a coupon), 0.00 when none'], ['tax', 'Tax'], ['tax_label', 'The tax line\'s name with its rate, e.g. Tax (HST 13%)'], ['total', 'Total'], ['paid', 'Paid (invoices)'], ['balance_due', 'Balance due (invoices)'], ['currency', 'Currency'],
+  ['header_note', 'Note above the items'], ['payment_instructions', 'Payment instructions (invoices)'], ['footer_note', 'Footer'],
+  ['valid_until', 'Valid until (quotations)'], ['terms', 'Quotation terms'], ['note', 'The note written on this quotation'],
 ];
 export const STARTER_HTML = [
   '<div class="invoice">',
@@ -105,7 +123,7 @@ export const STARTER_HTML = [
   '    <tbody>{{items}}</tbody>',
   '  </table>',
   '  <div class="totals">',
-  '    <p>Subtotal <span>{{subtotal}}</span></p><p>Tax <span>{{tax}}</span></p>',
+  '    <p>Subtotal <span>{{subtotal}}</span></p><p>{{tax_label}} <span>{{tax}}</span></p>',
   '    <p>Total <span>{{total}}</span></p><p class="due">Balance due <span>{{balance_due}}</span></p>',
   '  </div>',
   '  <footer>{{footer_note}}</footer>',
@@ -134,14 +152,18 @@ const esc = (v: string) => v.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 export function customInvoicePage(invoice: PrintInvoice, t: PrintTemplate): string {
   const customer = invoice.customerSnapshot ?? (invoice.customerName ? { name: invoice.customerName, email: '', phone: '' } : null);
   const m = (c: number) => esc(money(c, invoice.currency));
+  const quote = invoice.kind === 'quotation';
+  const issuer = issuerOf(invoice, t);
   const values: Record<string, string> = {
-    title: esc(t.title), invoice_number: esc(invoice.invoiceNumber), date: esc(day(invoice.issuedAt ?? invoice.createdAt)), status: esc(invoice.status.replaceAll('_', ' ')),
+    title: esc(t.title), invoice_number: esc(invoice.invoiceNumber), date: esc(day(invoice.issuedAt ?? invoice.createdAt)), status: esc(statusWord(invoice.status)),
     logo_url: `${typeof window === 'undefined' ? '' : window.location.origin}${t.logoUrl || '/site/assets/logo.webp'}`,
-    business_name: esc(invoice.issuerSnapshot?.legalName ?? ''), business_address: esc(invoice.issuerSnapshot?.address ?? ''), tax_registration: esc(invoice.issuerSnapshot?.taxRegistration ?? ''),
+    business_name: esc(issuer?.legalName ?? ''), business_address: esc(issuer?.address ?? ''), tax_registration: esc(issuer?.taxRegistration ?? ''),
     customer_name: esc(customer?.name ?? ''), customer_email: esc(customer?.email ?? ''), customer_phone: esc(customer?.phone ?? ''),
     items: (invoice.items ?? []).map((it) => `<tr><td>${esc(it.description)}</td><td>${it.quantity}</td><td>${m(it.unitPriceCents ?? Math.round(it.totalPriceCents / Math.max(1, it.quantity)))}</td><td>${m(it.totalPriceCents)}</td></tr>`).join(''),
-    subtotal: m(invoice.subtotalCents), discount: m(invoice.discountCents ?? 0), tax: m(invoice.taxCents), total: m(invoice.totalCents), paid: m(invoice.paidCents), balance_due: m(invoice.dueCents), currency: esc(invoice.currency),
-    header_note: esc(t.headerNote), payment_instructions: esc(t.paymentInstructions), footer_note: esc(t.footerNote),
+    subtotal: m(invoice.subtotalCents), discount: m(invoice.discountCents ?? 0), tax: m(invoice.taxCents), tax_label: esc(taxLabel(invoice, t)), total: m(invoice.totalCents),
+    paid: quote ? '' : m(invoice.paidCents), balance_due: quote ? '' : m(invoice.dueCents), currency: esc(invoice.currency),
+    header_note: esc(t.headerNote), payment_instructions: quote ? '' : esc(t.paymentInstructions), footer_note: esc(t.footerNote),
+    valid_until: esc(day(invoice.validUntil)), terms: quote ? esc(t.quotationNote ?? '') : '', note: esc(invoice.note ?? ''),
   };
   const body = t.customHtml.replace(/\{\{\s*([a-z_]+)\s*\}\}/g, (_all, key: string) => (key in values ? values[key] : ''));
   return `<!doctype html><html><head><meta charset="utf-8"><style>@page{size:${t.paperSize === 'a4' ? 'A4' : 'letter'};margin:16mm}\n${t.customCss.replace(/<\/style/gi, '')}</style></head><body>${body}</body></html>`;
@@ -156,6 +178,7 @@ export function InvoiceDocument({ invoice, template }: { invoice: PrintInvoice; 
   const customer = invoice.customerSnapshot ?? (invoice.customerName ? { name: invoice.customerName, email: '', phone: '' } : null);
   const quote = invoice.kind === 'quotation';
   const paidInFull = !quote && invoice.totalCents > 0 && invoice.dueCents <= 0;
+  const issuer = issuerOf(invoice, t);
   return (
     <div className="ddInv">
       <style>{css(t)}</style>
@@ -163,21 +186,18 @@ export function InvoiceDocument({ invoice, template }: { invoice: PrintInvoice; 
         <div className="ddBrand">
           {t.showLogo && <img src={t.logoUrl || '/site/assets/logo.webp'} alt="" />}
           <div className="ddIssuer">
-            {invoice.issuerSnapshot && <>
-              <p className="ddName">{invoice.issuerSnapshot.legalName}</p>
-              <p>{invoice.issuerSnapshot.address}</p>
-              {t.showTaxRegistration && invoice.issuerSnapshot.taxRegistration && <p>Tax registration: {invoice.issuerSnapshot.taxRegistration}</p>}
-            </>}
+            {issuer && <p className="ddName">{issuer.legalName}</p>}
           </div>
         </div>
         <div className="ddMeta">
-          <h1>{quote ? (t.quotationTitle || 'Quotation') : t.title}</h1>
+          <h1>{t.title}</h1>
           <dl>
             <dt>Number</dt><dd>{invoice.invoiceNumber}</dd>
+            <dt>Currency</dt><dd>{invoice.currency}</dd>
             {(invoice.issuedAt || invoice.createdAt) && <><dt>{invoice.issuedAt ? 'Issued' : 'Created'}</dt><dd>{day(invoice.issuedAt ?? invoice.createdAt)}</dd></>}
             {quote && invoice.validUntil && <><dt>Valid until</dt><dd>{day(invoice.validUntil)}</dd></>}
           </dl>
-          {!quote && <span className={'ddStatus' + (paidInFull ? ' paid' : '')}>{paidInFull ? 'Paid' : invoice.status.replaceAll('_', ' ')}</span>}
+          {!quote && <span className={'ddStatus' + (paidInFull ? ' paid' : '')}>{paidInFull ? 'Paid' : statusWord(invoice.status)}</span>}
         </div>
       </div>
       <div className="ddParties">
@@ -189,13 +209,17 @@ export function InvoiceDocument({ invoice, template }: { invoice: PrintInvoice; 
             {t.showCustomerContact && customer.phone && <p>{customer.phone}</p>}
           </>}
         </div>
-        <div className="r">
-          <h2>Currency</h2>
-          <p>{invoice.currency}</p>
+        <div>
+          {issuer && <>
+            <h2>From</h2>
+            <p><strong>{issuer.legalName}</strong></p>
+            {issuer.address && <p>{issuer.address}</p>}
+            {t.showTaxRegistration && issuer.taxRegistration && <p>GST/HST: {issuer.taxRegistration}</p>}
+          </>}
         </div>
       </div>
       {!quote && <div className={'ddBanner' + (paidInFull ? ' paid' : '')}>
-        <div><b>{paidInFull ? 'Paid in full' : 'Dues pending'}</b>{paidInFull && <small>Thank you. Nothing further is owed.</small>}</div>
+        <div><b>{paidInFull ? 'Paid in full' : 'Balance due'}</b><small>{paidInFull ? 'Thank you. Nothing further is owed.' : invoice.paidCents > 0 ? `${money(invoice.paidCents, invoice.currency)} received so far.` : 'Nothing has been paid yet.'}</small></div>
         <strong>{paidInFull ? money(invoice.paidCents, invoice.currency) : money(invoice.dueCents, invoice.currency)}</strong>
       </div>}
       {t.headerNote && <p className="ddNote">{t.headerNote}</p>}
@@ -215,10 +239,11 @@ export function InvoiceDocument({ invoice, template }: { invoice: PrintInvoice; 
       <div className="ddTotals">
         <div><span>Subtotal</span><span>{money(invoice.subtotalCents, invoice.currency)}</span></div>
         {(invoice.discountCents ?? 0) > 0 && <div><span>Discount{invoice.couponCode ? ` (${invoice.couponCode})` : ''}</span><span>−{money(invoice.discountCents ?? 0, invoice.currency)}</span></div>}
-        <div><span>Tax</span><span>{money(invoice.taxCents, invoice.currency)}</span></div>
+        <div><span>{taxLabel(invoice, t)}</span><span>{money(invoice.taxCents, invoice.currency)}</span></div>
         <div className="ddTot"><span>Total</span><span>{money(invoice.totalCents, invoice.currency)}</span></div>
-        {!quote && <div><span>Paid</span><span>{money(invoice.paidCents, invoice.currency)}</span></div>}
-        {!quote && <div className="ddDue"><span>Pending</span><span>{money(invoice.dueCents, invoice.currency)}</span></div>}
+        {!quote && invoice.paidCents > 0 && <div><span>Paid</span><span>−{money(invoice.paidCents, invoice.currency)}</span></div>}
+        {!quote && !paidInFull && <div className="ddDue"><span>Balance due</span><span>{money(invoice.dueCents, invoice.currency)}</span></div>}
+        {quote && <div className="ddDue"><span>Quoted total</span><span>{money(invoice.totalCents, invoice.currency)}</span></div>}
       </div>
       {quote && invoice.note && <div className="ddPay"><h2>Note</h2><p>{invoice.note}</p></div>}
       {quote && t.quotationNote && <div className="ddPay"><h2>Terms</h2><p>{t.quotationNote}</p></div>}
@@ -289,7 +314,7 @@ export function fillInvoiceWindow(w: Window, invoice: PrintInvoice, template: Pr
   w.document.open();
   w.document.write(html);
   w.document.close();
-  w.document.title = (invoice.kind === 'quotation' ? (template.quotationTitle || 'Quotation') : 'Invoice') + ' ' + invoice.invoiceNumber;
+  w.document.title = template.title + ' ' + invoice.invoiceNumber;
 }
 
 /* Loads the organization's template once; falls back to the built-in layout if it cannot be read. */
@@ -297,7 +322,7 @@ export function usePrintTemplate(url: string): PrintTemplate {
   const [template, setTemplate] = useState<PrintTemplate>(DEFAULT_PRINT_TEMPLATE);
   useEffect(() => {
     let live = true;
-    fetch(url, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).then((b) => { if (live && b?.template) setTemplate({ ...DEFAULT_PRINT_TEMPLATE, ...b.template, logoUrl: b.logoUrl || undefined }); }).catch(() => undefined);
+    fetch(url, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).then((b) => { if (live && b?.template) setTemplate({ ...DEFAULT_PRINT_TEMPLATE, ...b.template, logoUrl: b.logoUrl || undefined, issuer: b.issuer ?? null, taxName: b.taxName || undefined, taxRatePercent: b.taxRatePercent || undefined }); }).catch(() => undefined);
     return () => { live = false; };
   }, [url]);
   return template;
