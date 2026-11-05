@@ -13,6 +13,8 @@ type Reservation = {id: string; start: string; durationMinutes: number; cancelle
 
 type Booking = {
   id: string;
+  /** The short booking number (one sequence per organization; imported bookings keep the old site's ID). */
+  number?: number;
   organizationId: string;
   locationId: string;
   customerId: string;
@@ -33,6 +35,10 @@ type Booking = {
   customerEmail: string;
   customerPhone: string;
 };
+
+/** What staff and customers call a booking: its number, or the start of its id when it has none. */
+const bookingRef = (b: { id: string; number?: number }) => '#' + (b.number ?? b.id.slice(0, 6).toUpperCase());
+type SortKey = 'id' | 'date' | 'customer' | 'service' | 'status' | 'payment' | 'created';
 
 type BookingEvent = {
   id: string;
@@ -70,6 +76,8 @@ export default function BookingManager({
   const [customerQ, setCustomerQ] = useState('');
   const [serviceF, setServiceF] = useState('');
   const [idQ, setIdQ] = useState('');
+  const [sortKey, setSortKey] = useState<SortKey | ''>('');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [textQ, setTextQ] = useState('');
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(20);
@@ -89,7 +97,7 @@ export default function BookingManager({
   }, [base]);
   const [open, setOpen] = useState<Set<string>>(new Set());
   // Each booking's invoice (one per booking), so the appointment shows what is still owed or already paid.
-  const [invoices, setInvoices] = useState<Record<string, { id: string; version: number; invoiceNumber: string; status: string; totalCents: number; paidCents: number; discountCents?: number; taxCents?: number; subtotalCents?: number; couponCode?: string }>>({});
+  const [invoices, setInvoices] = useState<Record<string, { id: string; version: number; invoiceNumber: string; status: string; totalCents: number; paidCents: number; discountCents?: number; taxCents?: number; subtotalCents?: number; couponCode?: string; legacy?: boolean }>>({});
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [events, setEvents] = useState<BookingEvent[]>([]);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -140,8 +148,13 @@ export default function BookingManager({
     try {
       const r = await fetch(base + '/invoices', { cache: 'no-store' });
       if (!r.ok) return;
-      const map: Record<string, { id: string; version: number; invoiceNumber: string; status: string; totalCents: number; paidCents: number; discountCents?: number; taxCents?: number; subtotalCents?: number; couponCode?: string }> = {};
-      for (const i of ((await r.json()).items ?? []) as { id: string; version: number; bookingId?: string; invoiceNumber: string; status: string; totalCents: number; paidCents: number; discountCents?: number; taxCents?: number; subtotalCents?: number; couponCode?: string }[]) if (i.bookingId && i.status !== 'void') map[i.bookingId] = i;
+      const map: Record<string, { id: string; version: number; invoiceNumber: string; status: string; totalCents: number; paidCents: number; discountCents?: number; taxCents?: number; subtotalCents?: number; couponCode?: string; legacy?: boolean }> = {};
+      for (const i of ((await r.json()).items ?? []) as { id: string; version: number; bookingId?: string; invoiceNumber: string; status: string; totalCents: number; paidCents: number; discountCents?: number; taxCents?: number; subtotalCents?: number; couponCode?: string; legacy?: boolean }[]) if (i.bookingId && i.status !== 'void') map[i.bookingId] = i;
+      // Bookings imported from the old site have no stored invoice: their billing comes as a summary and the document is built when opened.
+      try {
+        const lr = await fetch(base + '/legacy-billing', { cache: 'no-store' });
+        if (lr.ok) for (const l of ((await lr.json()).items ?? []) as { bookingId: string; invoiceNumber: string; status: string; totalCents: number; paidCents: number; discountCents?: number; taxCents?: number; subtotalCents?: number; couponCode?: string }[]) if (!map[l.bookingId]) map[l.bookingId] = { ...l, id: 'legacy-' + l.bookingId, version: 1, legacy: true };
+      } catch { /* imported-booking billing is optional here */ }
       setInvoices(map);
     } catch { /* invoices are optional here */ }
   }, [base]);
@@ -292,7 +305,7 @@ export default function BookingManager({
     if (!inv) return;
     const w = openInvoiceWindow();
     if (!w) { setError('Allow pop-ups for this site to open the invoice in a new window.'); return; }
-    fetch(base + '/invoices/' + inv.id, { cache: 'no-store' })
+    fetch(inv.legacy ? base + '/legacy-invoices/' + b.id : base + '/invoices/' + inv.id, { cache: 'no-store' })
       .then(async (r) => { const body = await r.json().catch(() => ({})); if (!r.ok) throw new Error(body.error ?? 'The invoice could not be loaded.'); return body; })
       .then((body) => fillInvoiceWindow(w, body, printTemplate))
       .catch((e) => { w.close(); setError(e instanceof Error ? e.message : 'The invoice could not be loaded.'); });
@@ -384,7 +397,7 @@ export default function BookingManager({
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
           requestKey,
-          description: `Job from booking #${booking.id.slice(0, 8)}`,
+          description: `Job from booking ${bookingRef(booking)}`,
         }),
       });
       if (!r.ok) {
@@ -393,7 +406,7 @@ export default function BookingManager({
         return;
       }
       const created = await r.json();
-      setNotice(`Job #${created.id.slice(0, 8)} is linked to booking #${booking.id.slice(0, 8)}.`);
+      setNotice(`Job #${created.id.slice(0, 8)} is linked to booking ${bookingRef(booking)}.`);
       if (onJobSpawned) await onJobSpawned();
     } catch {
       setError('Could not start the job.');
@@ -431,7 +444,7 @@ export default function BookingManager({
         return;
       }
       setShowCreateForm(false);
-      setNotice(`Booking #${body.id.slice(0, 8)} created successfully.`);
+      setNotice(`Booking ${bookingRef(body)} created successfully.`);
       setCustomerId('');
       setVehicleId('');
       setServiceId('');
@@ -459,12 +472,32 @@ export default function BookingManager({
   }
 
   const serviceChoices = [...new Set(bookings.map((b) => b.serviceName))].sort();
-  const shown = bookings.filter((b) => {
+  const filtered = bookings.filter((b) => {
     const q = customerQ.trim().toLowerCase();
     const idq = idQ.trim().replace(/^#/, '').toLowerCase(), tq = textQ.trim().toLowerCase();
     return (!serviceF || b.serviceName === serviceF) && (!q || [b.customerName, b.customerEmail, b.customerPhone].some((v) => (v ?? '').toLowerCase().includes(q)))
-      && (!idq || b.id.toLowerCase().startsWith(idq)) && (!tq || [b.customerName, b.customerEmail, b.customerPhone, b.serviceName].some((v) => (v ?? '').toLowerCase().includes(tq)));
+      && (!idq || String(b.number ?? '').startsWith(idq) || b.id.toLowerCase().startsWith(idq)) && (!tq || [b.customerName, b.customerEmail, b.customerPhone, b.serviceName].some((v) => (v ?? '').toLowerCase().includes(tq)));
   });
+  // Ascending or descending by any column; with no column chosen the list keeps the order it arrived in.
+  const owedOf = (id: string) => { const i = invoices[id]; return i && i.status !== 'void' ? i.totalCents - i.paidCents : -1; };
+  const shown = !sortKey ? filtered : [...filtered].sort((x, y) => {
+    let c = 0;
+    if (sortKey === 'id') c = (x.number ?? 0) - (y.number ?? 0);
+    else if (sortKey === 'date') c = x.bookingTime.localeCompare(y.bookingTime);
+    else if (sortKey === 'created') c = x.createdAt.localeCompare(y.createdAt);
+    else if (sortKey === 'customer') c = x.customerName.localeCompare(y.customerName, undefined, { sensitivity: 'base' });
+    else if (sortKey === 'service') c = x.serviceName.localeCompare(y.serviceName, undefined, { sensitivity: 'base' });
+    else if (sortKey === 'status') c = (STATUS_LABEL[x.status] ?? x.status).localeCompare(STATUS_LABEL[y.status] ?? y.status);
+    else if (sortKey === 'payment') c = owedOf(x.id) - owedOf(y.id);
+    return (c || (x.number ?? 0) - (y.number ?? 0)) * (sortDir === 'asc' ? 1 : -1);
+  });
+  function cycleSort(k: SortKey) {
+    setPage(1);
+    if (sortKey !== k) { setSortKey(k); setSortDir('asc'); } else if (sortDir === 'asc') setSortDir('desc'); else setSortKey('');
+  }
+  const sortHead = (k: SortKey, label: string) => (
+    <button type="button" className={t.sortBtn} aria-label={'Sort by ' + label} aria-sort={sortKey === k ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'} onClick={() => cycleSort(k)}>{label}<span aria-hidden="true">{sortKey === k ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}</span></button>
+  );
   const pageCount = Math.max(1, Math.ceil(shown.length / perPage));
   const pageNow = Math.min(page, pageCount);
   const pageRows = shown.slice((pageNow - 1) * perPage, pageNow * perPage);
@@ -475,8 +508,8 @@ export default function BookingManager({
     const lead = ['=', '+', '-', '@', String.fromCharCode(9), String.fromCharCode(13)];
     const cell = (v: string) => { let x = String(v ?? ''); if (lead.includes(x.charAt(0)) && !/^-?\$?[\d,.]+$/.test(x)) x = "'" + x; return '"' + x.replaceAll('"', '""') + '"'; };
     const lines = [['ID', 'Date', 'Customer', 'Phone', 'Email', 'Service', 'Duration', 'Status', 'Payment', 'Created'], ...rows.map((b) => {
-      const inv = invoices[b.id]; const owed = inv ? inv.totalCents - inv.paidCents : 0;
-      return ['#' + b.id.slice(0, 6).toUpperCase(), stamp(b.bookingTime), b.customerName, b.customerPhone, b.customerEmail, b.serviceName, lengthText(b.serviceId ? lengths[b.serviceId] : undefined), STATUS_LABEL[b.status] ?? b.status, inv ? (owed <= 0 && inv.totalCents > 0 ? money(inv.paidCents) + ' paid' : money(owed) + ' due') : 'No invoice', stamp(b.createdAt)];
+      const inv = invoices[b.id]; const owed = inv && inv.status !== 'void' ? inv.totalCents - inv.paidCents : 0;
+      return [bookingRef(b), stamp(b.bookingTime), b.customerName, b.customerPhone, b.customerEmail, b.serviceName, lengthText(b.serviceId ? lengths[b.serviceId] : undefined), STATUS_LABEL[b.status] ?? b.status, inv ? (inv.status === 'void' ? 'Void' : owed <= 0 && inv.totalCents > 0 ? money(inv.paidCents) + ' paid' : money(owed) + ' due') : 'No invoice', stamp(b.createdAt)];
     })].map((r) => r.map(cell).join(','));
     const blob = new Blob([String.fromCharCode(0xfeff) + lines.join(String.fromCharCode(13, 10))], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'appointments.csv'; a.click(); URL.revokeObjectURL(a.href);
@@ -652,26 +685,26 @@ export default function BookingManager({
       <div className={t.filters2}>
         <input type="search" aria-label="Appointment ID" value={idQ} onChange={(e) => { setPage(1); setIdQ(e.target.value); }} placeholder="Appointment ID" />
         <input type="search" aria-label="Search" value={textQ} onChange={(e) => { setPage(1); setTextQ(e.target.value); }} placeholder="Search for customers, services…" />
-        <button type="button" className="secondary" onClick={() => { setDateFrom(''); setDateTo(''); setCustomerQ(''); setServiceF(''); setStatusFilter(''); setIdQ(''); setTextQ(''); setPage(1); setPicked(new Set()); }}>Reset</button>
+        <button type="button" className="secondary" onClick={() => { setDateFrom(''); setDateTo(''); setCustomerQ(''); setServiceF(''); setStatusFilter(''); setIdQ(''); setTextQ(''); setSortKey(''); setPage(1); setPicked(new Set()); }}>Reset</button>
         <button type="button" className={`primary ${t.apply}`} disabled={bookingsLoading} onClick={() => void loadBookings()}>Apply</button>
         <button type="button" className={`primary ${t.exportBtn}`} disabled={!shown.length} onClick={exportCsv}>Export{picked.size ? ' (' + picked.size + ')' : ''}</button>
       </div>
       <div className={t.table} role="table" aria-label="Appointments">
         <div className={t.head} role="row">
           <span /><input type="checkbox" aria-label="Select all on this page" checked={pageRows.length > 0 && pageRows.every((b) => picked.has(b.id))} onChange={(e) => setPicked((prev) => { const next = new Set(prev); for (const b of pageRows) { if (e.target.checked) next.add(b.id); else next.delete(b.id); } return next; })} />
-          <span>ID</span><span>Date</span><span>Customer</span><span>Service</span><span>Duration</span><span>Status</span><span>Payment</span><span>Created date</span>
+          {sortHead('id', 'ID')}{sortHead('date', 'Date')}{sortHead('customer', 'Customer')}{sortHead('service', 'Service')}<span>Duration</span>{sortHead('status', 'Status')}{sortHead('payment', 'Payment')}{sortHead('created', 'Created date')}
         </div>
         {pageRows.map((b) => {
           const inv = invoices[b.id];
-          const owed = inv ? inv.totalCents - inv.paidCents : 0;
+          const owed = inv && inv.status !== 'void' ? inv.totalCents - inv.paidCents : 0;
           const isOpen = open.has(b.id);
           const final = b.status === 'completed' || b.status === 'cancelled'; // finished or cancelled: actions stay hidden, but the status can still be corrected
           return (
             <div key={b.id} className={t.item}>
               <div className={t.row} role="row">
                 <button type="button" className={t.chev} aria-expanded={isOpen} aria-label={isOpen ? 'Hide details' : 'Show details'} onClick={() => setOpen((prev) => { const next = new Set(prev); if (next.has(b.id)) next.delete(b.id); else next.add(b.id); return next; })}>{isOpen ? '−' : '+'}</button>
-                <input type="checkbox" aria-label={`Select appointment ${b.id.slice(0, 6)}`} checked={picked.has(b.id)} onChange={(e) => setPicked((prev) => { const next = new Set(prev); if (e.target.checked) next.add(b.id); else next.delete(b.id); return next; })} />
-                <span className={t.id}>#{b.id.slice(0, 6).toUpperCase()}</span>
+                <input type="checkbox" aria-label={`Select appointment ${bookingRef(b)}`} checked={picked.has(b.id)} onChange={(e) => setPicked((prev) => { const next = new Set(prev); if (e.target.checked) next.add(b.id); else next.delete(b.id); return next; })} />
+                <span className={t.id}>{bookingRef(b)}</span>
                 <span>{formatTime(b.bookingTime)}</span>
                 <span><strong>{b.customerName}</strong><br /><span className={t.muted}>{b.customerPhone || b.customerEmail}</span></span>
                 <span>{b.serviceName}{b.addons?.length > 0 && <span className={t.muted} style={{ whiteSpace: 'nowrap' }}> + {b.addons.length}</span>}</span>
@@ -684,7 +717,7 @@ export default function BookingManager({
                     </Select>
                   ) : <span className={`status ${b.status === 'completed' ? 'progress' : b.status === 'cancelled' ? 'quote' : 'scheduled'}`}>{STATUS_LABEL[b.status] ?? b.status}</span>}
                 </span>
-                <span>{inv ? (owed <= 0 && inv.totalCents > 0 ? <><strong>{money(inv.paidCents)}</strong> <span className={t.muted}>paid</span></> : <><strong>{money(owed)}</strong> <span className={t.muted}>due</span></>) : <span className={t.muted}>No invoice</span>}</span>
+                <span>{inv ? (inv.status === 'void' ? <span className={t.muted}>Void</span> : owed <= 0 && inv.totalCents > 0 ? <><strong>{money(inv.paidCents)}</strong> <span className={t.muted}>paid</span></> : <><strong>{money(owed)}</strong> <span className={t.muted}>due</span></>) : <span className={t.muted}>No invoice</span>}</span>
                 <span className={t.muted}>{stamp(b.createdAt)}</span>
               </div>
               {isOpen && (
@@ -806,7 +839,7 @@ export default function BookingManager({
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3>Booking Audit Trail · #{selectedBooking.id.slice(0, 8)}</h3>
+            <h3>Booking Audit Trail · {bookingRef(selectedBooking)}</h3>
             <p style={{fontSize: '0.85rem', color: 'var(--muted)'}}>
               Customer: {selectedBooking.customerName} · Service: {selectedBooking.serviceName}
             </p>

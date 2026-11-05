@@ -41,49 +41,79 @@
 @media(hover:hover) and (pointer:fine){.v-ghost:hover{background:var(--red);border-color:var(--red)}}
 
 /* V3 What is in every job */
-.v-inc ul{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(28px,3.4vw,56px) clamp(24px,3vw,56px)}
-.v-inc li{display:grid;gap:12px;align-content:start}
-.v-inc li::before{content:"";width:34px;height:4px;background:var(--red)}
-.v-inc h3{font-size:clamp(17px,1.6vw,24px);line-height:1.05}
-.v-inc p{margin:0;color:var(--mute);font-size:clamp(15px,1.15vw,17px);text-wrap:pretty}
-@media(max-width:1000px){.v-inc ul{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:600px){.v-inc ul{grid-template-columns:minmax(0,1fr)}}
+/* The standard: the line fills and each point is ticked as the scroll reaches it; the heading holds on the left from 1024px */
+.v-inc{display:grid;grid-template-columns:minmax(0,1fr);gap:clamp(28px,4vw,56px)}
+.v-steps{position:relative;margin:0;padding:0 0 0 clamp(52px,5vw,76px);list-style:none;display:grid;gap:clamp(32px,5vh,64px)}
+.v-steps__line{position:absolute;left:17px;top:18px;bottom:18px;width:3px;background:#efece426;border-radius:2px;overflow:hidden}
+.v-steps__line i{display:block;width:100%;height:100%;background:var(--red);transform:scaleY(0);transform-origin:top}
+.v-step{position:relative}
+.v-step__dot{position:absolute;left:calc(clamp(52px,5vw,76px) * -1);top:.1em;display:grid;place-items:center;width:38px;height:38px;border-radius:50%;background:var(--bk);color:var(--mute);border:2px solid #efece440;transition:background-color .35s var(--ease),color .35s,border-color .35s,transform .5s var(--ease)}
+.v-step.is-done .v-step__dot{background:var(--red);border-color:var(--red);color:#fff;transform:scale(1.08)}
+.v-step h3{margin:0 0 8px;font:500 clamp(20px,2vw,32px)/1 var(--cd);text-transform:uppercase;letter-spacing:-.02em}
+.v-step p{margin:0;max-width:52ch;color:var(--mute);font-size:clamp(15px,1.15vw,17px);text-wrap:pretty}
+@media(min-width:1024px){.v-inc{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}.v-inc .v-sec__head{position:sticky;top:calc(72px + 40px)}}
+@media(prefers-reduced-motion:reduce){.v-step__dot{background:var(--red);border-color:var(--red);color:#fff}.v-steps__line i{transform:none}}
 
-/* V4 What to expect: four tall photographs with the step written over the foot of each */
-.v-steps{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:clamp(10px,1.2vw,18px)}
-.v-step{position:relative;aspect-ratio:3/4.3;overflow:hidden;clip-path:polygon(0 0,100% 0,100% 100%,18px 100%,0 calc(100% - 18px));background:var(--bk)}
-.v-step__img{position:absolute;inset:0;background-size:cover;background-position:center;filter:brightness(.75);transition:transform .8s var(--ease)}
-.v-step::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,11,12,0) 35%,rgba(11,11,12,.92) 100%)}
-.v-step__txt{position:absolute;z-index:1;left:0;right:0;bottom:0;display:grid;gap:8px;padding:clamp(16px,1.8vw,26px)}
-.v-step h3{font-size:clamp(17px,1.5vw,23px);line-height:1}
-.v-step p{margin:0;color:#d6d3cc;font-size:14px;line-height:1.45;text-wrap:pretty}
-@media(hover:hover) and (pointer:fine){.v-step:hover .v-step__img{transform:scale(1.06)}}
-@media(max-width:1100px){.v-steps{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:560px){.v-steps{grid-template-columns:minmax(0,1fr)}.v-step{aspect-ratio:4/5}}
+/* Closing call: the finished car from the film behind the headline and the booking call */
+.v-end{position:relative;isolation:isolate;overflow:hidden;min-height:min(80vh,700px);display:grid;align-items:end;padding:clamp(72px,9vw,140px) var(--cg) clamp(40px,5vw,72px);background:var(--bk);color:var(--bone)}
+.v-end__img{position:absolute;inset:-6% 0;z-index:-2;width:100%;height:112%;object-fit:cover;object-position:60% 50%}
+.v-end::after{content:'';position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(11,11,12,.25),rgba(11,11,12,.88))}
+.v-end__in{display:grid;gap:clamp(20px,2.6vw,36px);max-width:1100px}
+.v-end .s-h2{font-size:clamp(32px,5.4vw,92px);line-height:.98;max-width:17ch;color:var(--bone)}
+.v-end__lede{margin:0;max-width:52ch;color:#d4d1ca;font-size:clamp(16px,1.3vw,19px);text-wrap:pretty}
+.v-end__act{display:flex;align-items:center;gap:clamp(16px,2vw,32px);flex-wrap:wrap}
+.v-end__call{color:var(--bone);font:500 clamp(15px,1.2vw,18px)/1 var(--cd)}
+.v-end__call span{border-bottom:2px solid var(--red);padding-bottom:3px}
 
-/* V4 Reviews: two lanes drifting in opposite directions */
-.v-rev{padding-inline:0;overflow:hidden}
+/* V4 What to expect. Default (phone, reduced motion): each step a photograph with its text. Wide screens pin it (.is-pinned) and play it with the scroll. */
+.v-exp__list{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:clamp(22px,3vw,40px) clamp(14px,1.6vw,24px)}
+.v-exp__item{display:grid;gap:10px;align-content:start}
+.v-exp__m{display:block;aspect-ratio:4/3;background-size:cover;background-position:center;filter:brightness(.85);clip-path:polygon(0 0,100% 0,100% 100%,18px 100%,0 calc(100% - 18px));margin-bottom:6px}
+.v-exp__item h3{font-size:clamp(18px,1.6vw,24px);line-height:1.05}
+.v-exp__item p{margin:0;color:var(--mute);text-wrap:pretty}
+.v-exp__media{display:none}
+.v-exp.is-pinned{min-height:100svh;display:flex;flex-direction:column;justify-content:center;padding-block:clamp(72px,9vh,110px) clamp(32px,5vh,64px)}
+.v-exp.is-pinned .v-sec__head{margin-bottom:clamp(20px,3.4vh,44px)}
+.v-exp.is-pinned .v-exp__stage{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:clamp(32px,5vw,96px);align-items:center}
+.v-exp.is-pinned .v-exp__list{display:grid;grid-template-columns:minmax(0,1fr);gap:clamp(18px,3vh,36px)}
+.v-exp.is-pinned .v-exp__m{display:none}
+.v-exp.is-pinned .v-exp__item h3{font-size:clamp(22px,2.7vw,44px);line-height:1}
+.v-exp.is-pinned .v-exp__item p{max-width:44ch;font-size:clamp(15px,1.2vw,18px)}
+.v-exp.is-pinned .v-exp__media{display:block;position:relative;height:clamp(340px,62svh,620px);overflow:hidden;background:var(--bk);clip-path:polygon(0 0,100% 0,100% 100%,22px 100%,0 calc(100% - 22px))}
+.v-exp__img{position:absolute;inset:0;background-size:cover;background-position:center;filter:brightness(.85)}
+.v-exp__bar{position:absolute;z-index:2;top:0;right:0;bottom:0;width:5px;background:#ffffff26}
+.v-exp__bar i{position:absolute;inset:0;background:var(--red);transform:scaleY(0);transform-origin:top}
+
+/* V5 Reviews. Default: a row you swipe. On a wide screen the section pins and the scroll pulls the row sideways. */
+.v-rev{padding-inline:0}
 .v-rev .v-sec__head{padding-inline:var(--cg)}
 .v-rating{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font:500 clamp(17px,1.4vw,20px)/1 var(--cd)!important;letter-spacing:.12em;text-transform:uppercase}
 .v-rating b{color:var(--bone);font-weight:700}
 .v-stars{display:inline-flex;gap:2px;color:var(--red)}
-.v-marq{overflow:hidden;margin-top:6px}
-.v-marq__track{display:flex;gap:6px;width:max-content;animation:v-drift 70s linear infinite}
-.v-marq--rev .v-marq__track{animation-direction:reverse;animation-duration:85s}
-@keyframes v-drift{to{transform:translateX(calc(-50% - 3px))}}
-.v-marq:hover .v-marq__track{animation-play-state:paused}
-.v-quote{margin:0;flex:0 0 clamp(290px,28vw,420px);display:flex;flex-direction:column;justify-content:space-between;gap:20px;padding:clamp(22px,2.2vw,32px);background:var(--bk2);border-left:3px solid var(--red)}
-.v-quote blockquote{margin:0;font-size:clamp(16px,1.2vw,18px);line-height:1.5;color:var(--bone);text-wrap:pretty}
-.v-quote figcaption{font:500 17px/1 var(--cd);letter-spacing:.14em;text-transform:uppercase;color:var(--mute)}
-@media(prefers-reduced-motion:reduce){.v-marq{overflow-x:auto}.v-marq__track{animation:none}}
+.v-hview{overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none}
+.v-hview::-webkit-scrollbar{display:none}
+.v-htrack{display:flex;gap:clamp(12px,1.4vw,20px);width:max-content;padding-inline:var(--cg)}
+.v-quote{position:relative;margin:0;scroll-snap-align:start;flex:0 0 clamp(290px,34vw,500px);min-height:clamp(300px,42vh,430px);display:flex;flex-direction:column;justify-content:space-between;gap:24px;padding:clamp(24px,2.4vw,38px);background:var(--bk2);clip-path:polygon(0 0,100% 0,100% 100%,20px 100%,0 calc(100% - 20px))}
+.v-quote__mark{font:500 clamp(64px,7vw,110px)/.7 var(--cd);color:var(--red)}
+.v-quote blockquote{margin:0;font-size:clamp(16px,1.35vw,21px);line-height:1.5;color:var(--bone);text-wrap:pretty}
+.v-quote figcaption{font:500 16px/1 var(--cd);letter-spacing:.14em;text-transform:uppercase;color:var(--mute)}
+.v-hbar{display:none}
+.v-rev.is-pinned{min-height:100svh;display:flex;flex-direction:column;justify-content:center;padding-block:clamp(72px,9vh,110px) clamp(32px,5vh,64px)}
+.v-rev.is-pinned .v-sec__head{margin-bottom:clamp(24px,4vh,48px)}
+.v-rev.is-pinned .v-hview{overflow:hidden}
+.v-rev.is-pinned .v-hbar{display:block;position:relative;height:4px;margin:clamp(24px,4vh,44px) var(--cg) 0;background:#ffffff26}
+.v-hbar i{position:absolute;inset:0;background:var(--red);transform:scaleX(0);transform-origin:left}
 
 /* The closing band follows the review lanes directly */
 .v-page .s-close{border-top:0}
 
-/* V6 The other rides */
-.v-more ul{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 clamp(20px,4vw,72px)}
-.v-more a{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:clamp(14px,1.6vw,22px) 0;font:500 clamp(18px,1.9vw,30px)/1 var(--cd);text-transform:uppercase;letter-spacing:-.01em;color:var(--bone);transition:color .2s}
+/* V6 The other rides: big type, the heading held on the left while the rows come in */
+.v-more__wrap{display:grid;grid-template-columns:minmax(0,.75fr) minmax(0,1.35fr);gap:clamp(24px,5vw,96px);align-items:start}
+.v-more__head{position:sticky;top:calc(72px + 32px)}
+.v-more ul{margin:0;padding:0;list-style:none}
+.v-more li{position:relative}
+.v-more a{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:clamp(14px,2vw,26px) 0;font:500 clamp(26px,4vw,64px)/1 var(--cd);text-transform:uppercase;letter-spacing:-.02em;color:var(--bone);transition:color .2s}
 .v-more a svg{flex:none;color:var(--red);transition:transform .3s var(--ease)}
-@media(hover:hover) and (pointer:fine){.v-more a:hover{color:var(--red)}.v-more a:hover svg{transform:translateX(6px)}}
-@media(max-width:900px){.v-more ul{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:560px){.v-more ul{grid-template-columns:minmax(0,1fr)}}
+.v-more__rule{position:absolute;left:0;right:0;bottom:0;height:2px;background:var(--red);transform-origin:left}
+@media(hover:hover) and (pointer:fine){.v-more a:hover{color:var(--red)}.v-more a:hover svg{transform:translateX(8px)}}
+@media(max-width:900px){.v-more__wrap{grid-template-columns:minmax(0,1fr)}.v-more__head{position:static}}

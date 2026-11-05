@@ -20,9 +20,11 @@ var (
 
 type Booking struct {
 	// PaymentNotice says what happened to money when the booking was moved back out of Completed (set on that response only).
-	PaymentNotice      string     `json:"paymentNotice,omitempty"`
-	ReservationVersion *int       `json:"reservationVersion,omitempty"`
-	ID                 string     `json:"id"`
+	PaymentNotice      string `json:"paymentNotice,omitempty"`
+	ReservationVersion *int   `json:"reservationVersion,omitempty"`
+	ID                 string `json:"id"`
+	// Number is the short booking number staff and customers see (one sequence per organization; imported bookings keep the old site's ID).
+	Number             int64      `json:"number"`
 	OrganizationID     string     `json:"organizationId"`
 	LocationID         string     `json:"locationId"`
 	CustomerID         string     `json:"customerId"`
@@ -60,7 +62,7 @@ type BookingEvent struct {
 const bookingColumns = `b.id::text, b.organization_id::text, b.location_id::text, b.customer_id::text,
 b.vehicle_id::text, b.service_id::text, b.service_name, b.addons, b.reservation_id::text,
 b.channel, b.status, b.booking_time, b.notes, b.cancellation_reason, b.created_at, b.updated_at,
-c.name, c.email, c.phone,(SELECT r.version FROM capacity_reservations r WHERE r.organization_id=b.organization_id AND r.location_id=b.location_id AND r.id=b.reservation_id), b.service_address`
+c.name, c.email, c.phone,(SELECT r.version FROM capacity_reservations r WHERE r.organization_id=b.organization_id AND r.location_id=b.location_id AND r.id=b.reservation_id), b.service_address, b.number`
 
 func scanBooking(row pgx.Row) (Booking, error) {
 	var b Booking
@@ -86,6 +88,7 @@ func scanBooking(row pgx.Row) (Booking, error) {
 		&b.CustomerPhone,
 		&b.ReservationVersion,
 		&b.ServiceAddress,
+		&b.Number,
 	)
 	return b, err
 }

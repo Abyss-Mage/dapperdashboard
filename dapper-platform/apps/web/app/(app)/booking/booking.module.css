@@ -7,7 +7,12 @@
 @media(hover:hover) and (pointer:fine){.bar nav a:hover{color:#efede8}}
 .theme{background:transparent!important;border:0!important;color:#efede8!important;padding:6px!important;min-width:0!important}
 @media(max-width:720px){.bar nav{display:none}.theme{margin-left:auto}}
-.hero{background:#0b0b0c;color:#efede8;padding:clamp(40px,6vw,96px) clamp(16px,3.6vw,56px) clamp(40px,5vw,72px)}
+.hero{position:relative;isolation:isolate;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;min-height:clamp(300px,46vh,460px);background:#0b0b0c;color:#efede8;padding:clamp(40px,6vw,96px) clamp(16px,3.6vw,56px) clamp(40px,5vw,72px)}
+.hero::before{content:'';position:absolute;inset:0;z-index:-2;background:url(/site/assets/frames/mobile/0204.webp) 62% 50%/cover no-repeat}
+@media(min-width:721px){.hero::before{background-image:url(/site/assets/frames/desktop/0204.webp)}}
+.hero::after{content:'';position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,rgba(11,11,12,.92) 8%,rgba(11,11,12,.35) 70%,rgba(11,11,12,.55))}
+@media(prefers-reduced-motion:no-preference){.hero .kicker,.hero h1,.hero .lede{animation:bk-rise .9s cubic-bezier(.23,1,.32,1) both}.hero h1{animation-delay:.08s}.hero .lede{animation-delay:.18s}}
+@keyframes bk-rise{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
 .kicker{margin:0 0 18px;font:500 13px/1 'Unbounded Variable','Arial Narrow',sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#a8a59e}
 .hero h1{margin:0;font:500 clamp(34px,6.2vw,100px)/.94 'Unbounded Variable','Arial Narrow',sans-serif;letter-spacing:-.03em;text-transform:uppercase;text-wrap:balance;color:#efede8}
 .hero h1 em{font-style:normal;color:#e3172b}

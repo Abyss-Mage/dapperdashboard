@@ -67,6 +67,43 @@ func invoiceFailure(w http.ResponseWriter, err error) {
 
 func registerInvoiceRoutes(mux *http.ServeMux, store *postgres.Store, sqClient square.Client) {
 	base := "/api/v1/organizations/{organization}/locations/{location}/invoices"
+	// Bookings imported from the old site: a summary list for the appointment screen, and the invoice built when one is opened.
+	mux.HandleFunc("GET /api/v1/organizations/{organization}/locations/{location}/legacy-billing", func(w http.ResponseWriter, r *http.Request) {
+		org, loc := r.PathValue("organization"), r.PathValue("location")
+		if !uuid(org) || !uuid(loc) {
+			reply(w, 400, map[string]string{"error": "Valid invoice selectors required"})
+			return
+		}
+		scope, err := store.ResolveScope(r.Context(), requestSession(r).principalID, org, loc, "invoices.read")
+		if err != nil {
+			failure(w, err)
+			return
+		}
+		items, err := store.LegacyBillingList(r.Context(), scope)
+		if err != nil {
+			invoiceFailure(w, err)
+			return
+		}
+		reply(w, 200, map[string]any{"items": items})
+	})
+	mux.HandleFunc("GET /api/v1/organizations/{organization}/locations/{location}/legacy-invoices/{booking}", func(w http.ResponseWriter, r *http.Request) {
+		org, loc, booking := r.PathValue("organization"), r.PathValue("location"), r.PathValue("booking")
+		if !uuid(org) || !uuid(loc) || !uuid(booking) {
+			reply(w, 400, map[string]string{"error": "Valid invoice selectors required"})
+			return
+		}
+		scope, err := store.ResolveScope(r.Context(), requestSession(r).principalID, org, loc, "invoices.read")
+		if err != nil {
+			failure(w, err)
+			return
+		}
+		invoice, err := store.LegacyInvoice(r.Context(), scope, booking)
+		if err != nil {
+			invoiceFailure(w, err)
+			return
+		}
+		reply(w, 200, invoice)
+	})
 	mux.HandleFunc("PUT "+base+"/{invoiceId}/draft", func(w http.ResponseWriter, r *http.Request) {
 		org, loc, id := r.PathValue("organization"), r.PathValue("location"), r.PathValue("invoiceId")
 		if !uuid(org) || !uuid(loc) || !uuid(id) {

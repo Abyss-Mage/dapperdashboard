@@ -3,7 +3,7 @@
 
 export const hero = {
   title: 'Detailing that speaks for itself.',
-  lead: 'Detailing, ceramic coating, paint protection film and window tint at 660 The Kingsway, Peterborough.',
+  lead: 'Detailing, ceramic coating, paint protection film and window tint in Peterborough, Ontario.',
 };
 
 export const values = {
@@ -25,17 +25,17 @@ export const services: Service[] = [
   { slug: 'aircraft-detailing', key: 'aircraft', name: 'Aircraft detailing', from: 249, image: '/site/assets/services/aircraft.png', text: 'Our aircraft detailing services help maintain a clean, polished appearance while protecting exterior surfaces and enhancing the overall presentation of your aircraft.' },
 ];
 
-// The dealerships Dapper works with. Four have logo files; the rest are shown as plain names until their logos are supplied.
+// The dealerships Dapper works with. Every dealer has a logo file; Ford, Mitsubishi, Chrysler (both Chrysler dealers) and Kia are the brand marks, until each dealer supplies its own.
 export const partners: { name: string; src?: string }[] = [
   { src: '/site/assets/partners/partner-1.png', name: 'Angevaare Mazda' },
   { src: '/site/assets/partners/partner-2.png', name: 'Jack McGee Peterborough' },
   { src: '/site/assets/partners/partner-3.png', name: 'Subaru' },
   { src: '/site/assets/partners/partner-4.png', name: 'Hyundai' },
-  { name: 'Holiday Ford' },
-  { name: 'Mitsubishi' },
-  { name: 'Peterborough Chrysler' },
-  { name: 'Kawartha Chrysler' },
-  { name: 'Kia Lindsay' },
+  { src: '/site/assets/partners/partner-5.png', name: 'Holiday Ford' },
+  { src: '/site/assets/partners/partner-6.png', name: 'Mitsubishi' },
+  { src: '/site/assets/partners/partner-7.png', name: 'Peterborough Chrysler' },
+  { src: '/site/assets/partners/partner-9.png', name: 'Kawartha Chrysler' },
+  { src: '/site/assets/partners/partner-8.png', name: 'Kia Lindsay' },
 ];
 
 export const transformations = {

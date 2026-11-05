@@ -129,6 +129,8 @@ func TestPostgresScopedPersistence(t *testing.T) {
 	verifyInvoicePrintTemplate(t, ctx, s, scopeA, scopeB)
 	verifyQuotePrintTemplate(t, ctx, s, scopeA, scopeB)
 	verifyOutletTemplates(t, ctx, s, scopeA, scopeB)
+	verifyLegacyBilling(t, ctx, s, scopeA, scopeB)
+	verifyBookingNumbers(t, ctx, s, scopeA, scopeB)
 	// Remove the temporary role so later membership clean-up in this test is unaffected.
 	for _, q := range []string{
 		`DELETE FROM member_role_assignments WHERE role_id IN (SELECT id FROM roles WHERE name='Synthetic tax admin')`,

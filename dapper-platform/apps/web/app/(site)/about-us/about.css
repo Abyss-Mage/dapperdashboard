@@ -60,38 +60,21 @@
 /* A5 Why vehicle owners trust Dapper: six panels, one open at a time */
 .aw{padding:clamp(72px,9vw,140px) var(--cg);background:#efede7}
 .aw h2{font-size:clamp(30px,4vw,64px);line-height:1;max-width:20ch}
-.aw-row{margin:clamp(32px,5vw,64px) 0 0;padding:0;list-style:none;display:flex;gap:8px;height:clamp(420px,64vh,580px)}
-.aw-item{position:relative;flex:1 1 0;min-width:0;display:flex;overflow:hidden;background:#e2dfd7;color:var(--ink);transition:flex-grow .5s var(--ease),background-color .3s}
-.aw-item[data-open]{flex-grow:7;background:var(--ink);color:#f6f4f0}
-.aw-tab{flex:none;align-self:stretch;width:clamp(64px,6vw,92px);padding:clamp(18px,2vw,28px) 0;border:0;background:none;color:inherit;cursor:pointer;display:flex;justify-content:center;align-items:flex-end}
-.aw-title{writing-mode:vertical-rl;transform:rotate(180deg);font:500 clamp(17px,1.7vw,25px)/1.1 var(--ch);letter-spacing:-.02em;white-space:nowrap;text-align:left}
-.aw-item[data-open] .aw-title{color:#fff}
-.aw-panel{flex:1;min-width:0;display:flex;align-items:flex-end;padding:clamp(22px,2.6vw,40px) clamp(22px,2.6vw,40px) clamp(22px,2.6vw,40px) 0;opacity:0;transform:translateX(12px);transition:opacity .25s ease-out,transform .4s var(--ease);pointer-events:none}
-.aw-panel p{min-width:min(30ch,100%);max-width:36ch;font:300 clamp(17px,1.55vw,24px)/1.45 var(--cb)}
-.aw-item[data-open] .aw-panel{opacity:1;transform:none;pointer-events:auto;transition-delay:.12s}
-@media(hover:hover) and (pointer:fine){.aw-item:not([data-open]):hover{background:#d6d2c8}}
-@media(max-width:1023px){
-  .aw-row{flex-direction:column;height:auto}
-  .aw-item{flex:none;flex-direction:column}
-  .aw-tab{width:100%;height:64px;padding:0 20px;justify-content:flex-start;align-items:center}
-  .aw-title{writing-mode:horizontal-tb;transform:none;white-space:normal}
-  .aw-panel{display:none;padding:0 20px 24px;opacity:1;transform:none}
-  .aw-item[data-open] .aw-panel{display:block}
-  .aw-panel p{max-width:60ch}
+.aw-stack{margin-top:clamp(32px,5vw,64px);display:block}
+.aw-card{display:grid;gap:clamp(12px,1.6vw,20px);padding:clamp(24px,4vw,56px) clamp(24px,4vw,56px) clamp(24px,4vw,56px) clamp(30px,4.4vw,64px);background:var(--ink);color:#f6f4f0;box-shadow:inset 6px 0 0 var(--red);transform-origin:50% 0;position:sticky;top:calc(64px + 12px + var(--i) * 14px);margin-bottom:12vh}
+.aw-card:last-child{margin-bottom:0}
+.aw-card h3{margin:0;font:500 clamp(26px,3.4vw,56px)/1 var(--ch);letter-spacing:-.03em;color:#fff}
+.aw-card p{margin:0;max-width:54ch;font:300 clamp(16px,1.3vw,20px)/1.5 var(--cb);color:#d4d1ca;text-wrap:pretty}
+@media(min-width:1024px){
+  .aw-stack{display:block}
+  .aw-card{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:center;column-gap:clamp(32px,5vw,96px);position:sticky;top:calc(72px + 16px + var(--i) * 20px);height:min(50vh,440px);margin-bottom:18vh}
+  .aw-card:last-child{margin-bottom:0}
 }
-@media(prefers-reduced-motion:reduce){.aw-item,.aw-panel{transition-duration:.01ms}}
 
-/* A6 Partners: ink band, tone-stepped tiles */
-.a-partners{background:var(--ink);color:#f3f2ee;padding:clamp(72px,9vw,140px) var(--cg)}
+/* A6 Partners: ink band with the shared dealer lattice */
+.a-partners{background:var(--ink);color:#f3f2ee;padding:clamp(72px,9vw,140px) var(--cg);display:grid;gap:clamp(36px,5vw,72px)}
 .a-partners h2{color:#f3f2ee;font-size:clamp(28px,4vw,64px);line-height:1;max-width:22ch}
-.a-partners__grid{margin:clamp(36px,5vw,72px) 0 0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-.a-partners__grid li{background:#1e1e21;display:grid;place-items:center;aspect-ratio:16/10;padding:clamp(20px,3vw,44px)}
-.a-partners__grid img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;transition:transform .45s var(--ease)}
-.a-partners__name{font:500 clamp(18px,2vw,30px)/1.15 var(--ch);letter-spacing:-.02em;text-align:center;color:#f3f2ee}
-@media(hover:hover) and (pointer:fine){.a-partners__grid li:hover img{transform:scale(1.04)}}
-@media(max-width:900px){.a-partners__grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-/* The McGee file stacks the Chevrolet, Buick and GMC marks under the oval; show the oval alone (the source file is untouched). */
-.a-partners__grid img.is-crop{width:100%;height:auto;max-height:none;aspect-ratio:629/290;object-fit:cover;object-position:50% 0}
+
 
 /* A7 Closing band: type only */
 .a-close{text-align:center;padding:clamp(88px,11vw,170px) var(--cg)}

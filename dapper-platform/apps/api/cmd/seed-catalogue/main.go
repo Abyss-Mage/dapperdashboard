@@ -21,9 +21,11 @@ import (
 
 type export struct {
 	Services []struct {
-		ID   string `json:"bookingpress_service_id"`
-		Name  string `json:"bookingpress_service_name"`
-		Price string `json:"bookingpress_service_price"`
+		ID       string `json:"bookingpress_service_id"`
+		Name     string `json:"bookingpress_service_name"`
+		Price    string `json:"bookingpress_service_price"`
+		Duration string `json:"bookingpress_service_duration_val"`
+		Unit     string `json:"bookingpress_service_duration_unit"`
 	} `json:"services"`
 	Meta []struct {
 		ServiceID string `json:"bookingpress_service_id"`
@@ -44,6 +46,7 @@ func main() {
 	apply := flag.Bool("apply", false, "write the changes (default: report only)")
 	prices := flag.Bool("prices", false, "set the export's prices (before tax) on the existing central services and add-ons instead of creating anything")
 	hiddenArchived := flag.Bool("hidden-as-archived", false, "also import the services hidden on the old site, already archived so they stay off booking")
+	durations := flag.Bool("durations", false, "set the export's service durations (minutes) on the existing central main services instead of creating anything")
 	flag.Parse()
 	if *email == "" || *code == "" || *file == "" {
 		log.Fatal("-email, -franchise and -export are required")
@@ -142,6 +145,10 @@ func main() {
 	}
 	if *prices {
 		setPrices(ctx, store, actor, org, ex, visible, central, byCentralMain, *apply)
+		return
+	}
+	if *durations {
+		setDurations(ctx, store, actor, org, ex, visible, central, *apply)
 		return
 	}
 	fmt.Printf("Central catalogue: %d existing active, would create %d services and %d add-ons\n", existing, newMains, newAddons)

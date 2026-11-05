@@ -93,8 +93,8 @@ def main():
         tid = uid("booking", bid)
         created = clean(ap_["bookingpress_created_at"]) or "2024-01-01 00:00:00"
         out.append(
-            f"INSERT INTO bookings(id,organization_id,location_id,customer_id,service_name,addons,channel,status,booking_time,notes,created_at,updated_at) "
-            f"SELECT {q(tid)},{q(a.org)},{q(a.loc)},m.target_id,{q(sname[:120])},'[]'::jsonb,'online',{q(st)},{q(when.isoformat())}::timestamptz,{q(text)},{q(created)}::timestamptz,now() "
+            f"INSERT INTO bookings(id,organization_id,location_id,customer_id,service_name,addons,channel,status,booking_time,notes,created_at,updated_at,number) "
+            f"SELECT {q(tid)},{q(a.org)},{q(a.loc)},m.target_id,{q(sname[:120])},'[]'::jsonb,'online',{q(st)},{q(when.isoformat())}::timestamptz,{q(text)},{q(created)}::timestamptz,now(),{int(bid) if str(bid).isdigit() else 'NULL'} "
             f"FROM legacy_import_map m WHERE m.source_system='bookingpress' AND m.source_kind='customer' AND m.source_id={q(cid)} AND m.organization_id={q(a.org)} "
             f"AND NOT EXISTS(SELECT 1 FROM legacy_import_map WHERE source_system='bookingpress' AND source_kind='booking' AND source_id={q(bid)} AND organization_id={q(a.org)});")
         out.append(

@@ -114,7 +114,7 @@ export default function Coupons({ base, canManage }: { base: string; canManage: 
             </label>
             <label className="form-field">Discount
               <span style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 110px', gap: 8 }}>
-                <NumberField required min="0.01" step={form.kind === 'percent' ? '1' : '0.01'} inputMode="decimal" value={form.value} onChange={(e) => set('value', e.target.value)} disabled={busy} placeholder="Enter discount" />
+                <NumberField required min="0.01" step="0.01" inputMode="decimal" value={form.value} onChange={(e) => set('value', e.target.value)} disabled={busy} placeholder="Enter discount" />
                 <Select value={form.kind} onChange={(e) => set('kind', e.target.value as 'percent' | 'fixed')} disabled={busy} aria-label="Discount type"><option value="percent">%</option><option value="fixed">$</option></Select>
               </span>
             </label>

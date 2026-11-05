@@ -1,0 +1,15 @@
+/* The dealer lattice (shared): white diamonds, upright logos, a narrow arrangement on phones and a wide inverted triangle from 1024px */
+.dl{position:relative;min-width:0}
+.dl__sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;list-style:none}
+.dl__lat{--d:min(29vw,190px);position:relative;width:calc(var(--d) * 3);height:calc(var(--d) * 2.5);margin-inline:auto}
+.dl__dia{--c:var(--mc);--r:var(--mr);position:absolute;left:calc(var(--c) * var(--d) / 2);top:calc(var(--r) * var(--d) / 2);width:var(--d);height:var(--d);will-change:transform;filter:drop-shadow(0 10px 16px rgba(0,0,0,.2))}
+@media(min-width:1024px){
+  .dl__lat{--d:min(22.5vw,330px);width:calc(var(--d) * 4);height:calc(var(--d) * 2)}
+  .dl__dia{--c:var(--wc);--r:var(--wr)}
+}
+.dl__s{width:100%;height:100%;display:grid;place-items:center;align-content:center;gap:4px;padding:0 14%;background:var(--bg,#fff);clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);transform:scale(.97);transition:transform .5s cubic-bezier(.23,1,.32,1)}
+@media(hover:hover) and (pointer:fine){.dl__dia:hover .dl__s{transform:scale(1.04)}}
+.dl__s:not([style]) img{mix-blend-mode:multiply}
+.dl__s img{display:block;width:100%;height:auto;max-height:58%;object-fit:contain}
+.dl__s img.is-crop{aspect-ratio:629/290;max-height:none;object-fit:cover;object-position:50% 8%}
+.dl__name{font:500 clamp(10px,1.15vw,17px)/1.15 'Unbounded Variable','Unbounded',sans-serif;text-transform:uppercase;text-align:center;text-wrap:balance;color:#121212}

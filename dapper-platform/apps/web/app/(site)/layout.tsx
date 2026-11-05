@@ -16,7 +16,7 @@ const indexing = process.env.DAPPER_PUBLIC_INDEXING === 'enabled';
 export const metadata: Metadata = {
   metadataBase: new URL('https://dapperdetailing.ca'),
   title: { default: 'Dapper Detailing Pros | Vehicle care in Peterborough', template: '%s | Dapper Detailing Pros' },
-  description: 'Detailing, ceramic coating, paint protection film and window tint at 660 The Kingsway, Peterborough, Ontario.',
+  description: 'Detailing, ceramic coating, paint protection film and window tint in Peterborough, Ontario.',
   icons: { icon: '/site/assets/favicon.webp' },
   robots: indexing ? { index: true, follow: true } : { index: false, follow: false },
   openGraph: { type: 'website', images: ['/site/assets/services/suv.webp'] },

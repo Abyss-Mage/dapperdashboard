@@ -4,7 +4,8 @@ import { useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { ArrowRight, Award, CalendarCheck, CalendarClock, Car, CheckCircle2, ClipboardList, FlaskConical, Phone, Play, ShieldCheck, Sparkles, Star, Wrench, X } from 'lucide-react';
 import { gsap, ScrollTrigger, SplitText, useGSAP } from '../_components/gsap';
-import { contact, cta, partners, processSteps, proof, testimonials, transformations, why } from '../dapper';
+import { contact, cta, processSteps, proof, testimonials, transformations, why } from '../dapper';
+import { Dealers } from '../_components/Dealers';
 
 /* Reusable blocks of the Dapper page system (the home page's sections, made into parts for the inner pages). Each one
    animates itself: titles rise out of a mask, cards rise in sequence, dark panels settle as they arrive. */
@@ -95,7 +96,7 @@ export function PartnersStrip() {
   return (
     <section className="d-section d-section--tight">
       <SectionHead chip="Our partners" title="Our trusted commercial partners" center />
-      <ul className="d-partners">{partners.map((p) => <li key={p.name} data-d-in>{p.src ? <img src={p.src} alt={p.name} /> : <span className="d-partners__name">{p.name}</span>}</li>)}</ul>
+      <Dealers />
     </section>
   );
 }

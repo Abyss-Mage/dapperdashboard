@@ -28,7 +28,7 @@ command -v rsync >/dev/null || apt-get install -y -qq rsync >/dev/null
 rsync -a --delete \
   --exclude '/.env' --exclude '/.dapper/' \
   --exclude 'node_modules/' --exclude '/dapper-platform/apps/web/.next/' \
-  --exclude '/main website/assets/frames/' --exclude '/dapper-platform/apps/web/public/site/assets/frames/' \
+  --exclude '/main website/assets/frames/' \
   /opt/dapper/incoming/ /opt/dapper/app/
 rm -rf /opt/dapper/incoming
 chown -R dapper:dapper /opt/dapper/app

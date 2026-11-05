@@ -3,7 +3,8 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { categories } from '../content';
-import { contact, cta, partners, processSteps, testimonials, why } from '../dapper';
+import { contact, cta, processSteps, testimonials, why } from '../dapper';
+import { Dealers } from '../_components/Dealers';
 import { gsap, ScrollTrigger, SplitText, useGSAP } from '../_components/gsapContact';
 
 /* Services, built section by section with the owner's approval of each, in the darker "hard" direction the owner chose for it.
@@ -148,11 +149,7 @@ export default function ServicesPage() {
       {/* S5 The dealerships Dapper works with */}
       <section className="s-par" aria-labelledby="s-par-title">
         <h2 id="s-par-title" className="s-h2" data-head>Dealerships that <em>trust us.</em></h2>
-        <ul className="s-par__grid">
-          {partners.map((p) => (
-            <li key={p.name} data-in>{p.src ? <img className={p.name.includes('McGee') ? 'is-crop' : undefined} src={p.src} alt={p.name} loading="lazy" /> : <span>{p.name}</span>}</li>
-          ))}
-        </ul>
+        <Dealers />
       </section>
 
       {/* S6 Closing band: the booking call, in type */}

@@ -99,14 +99,7 @@ body:has(.s-page),html:has(.s-page){background:#0b0b0c}
 .s-rev__row p{margin:0;font:500 14px/1 var(--cd);letter-spacing:.04em;text-transform:uppercase;color:var(--mute)}
 
 /* S5 The dealerships */
-.s-par{padding:clamp(80px,10vw,160px) var(--cg)}
-.s-par__grid{margin:clamp(32px,4vw,56px) 0 0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-.s-par__grid li{background:var(--bk2);display:grid;place-items:center;aspect-ratio:16/10;padding:clamp(20px,3vw,44px)}
-.s-par__grid img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain}
-.s-par__grid img.is-crop{width:100%;height:auto;max-height:none;aspect-ratio:629/290;object-fit:cover;object-position:50% 0}
-.s-par__grid span{font:500 clamp(15px,1.6vw,24px)/1.15 var(--cd);text-align:center;letter-spacing:-.01em;text-transform:uppercase}
-@media(max-width:900px){.s-par__grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-
+.s-par{padding:clamp(80px,10vw,160px) var(--cg);display:grid;gap:clamp(32px,4vw,56px)}
 /* S6 Closing band: type only */
 .s-btn{display:inline-flex;align-items:center;gap:14px;background:var(--red);color:#fff;min-height:60px;padding:0 28px;font:500 16px/1 var(--cd);letter-spacing:.04em;text-transform:uppercase;clip-path:polygon(0 0,100% 0,100% 100%,14px 100%,0 calc(100% - 14px));transition:background-color .2s,transform .16s var(--ease)}
 .s-btn:active{transform:scale(.97)}

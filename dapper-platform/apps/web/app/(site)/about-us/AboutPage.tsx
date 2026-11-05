@@ -1,12 +1,13 @@
 'use client';
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { timeline } from '../content';
-import { contact, founderPhotos, partners, values, why } from '../dapper';
+import { contact, founderPhotos, values, why } from '../dapper';
+import { Dealers } from '../_components/Dealers';
 import { gsap, ScrollTrigger, SplitText, useGSAP } from '../_components/gsapContact';
 
 /* About, built section by section with the owner's approval of each. Same paper system as Contact (../paper.css).
-   Hero: one full-bleed photograph with the headline over it. Founders: two portraits. Why: six panels, one open at a time.
+   Hero: one full-bleed photograph with the headline over it. Founders: two portraits. Why: six cards that stack, each sliding over the last.
    Partners: the dealerships. Closing band: type only. */
 
 const founders = [
@@ -20,7 +21,6 @@ const Roll = ({ children }: { children: string }) => <span className="c-roll"><s
 export default function AboutPage() {
   const root = useRef<HTMLDivElement>(null);
   const wordRef = useRef<HTMLSpanElement>(null);
-  const [open, setOpen] = useState(0);
 
   useGSAP(() => {
     const mm = gsap.matchMedia();
@@ -50,6 +50,14 @@ export default function AboutPage() {
       }).pause();
       ScrollTrigger.create({ trigger: '.a-values', start: 'top 75%', end: 'bottom 25%', onToggle: (self) => (self.isActive ? call.restart(true) : call.pause()) });
       return () => { call.kill(); word.textContent = words[0]; };
+    });
+
+    // Why-trust cards: the one underneath shrinks back and dims as the next slides up over it.
+    mm.add('(prefers-reduced-motion: no-preference)', () => {
+      const cards = gsap.utils.toArray<HTMLElement>('.aw-card');
+      cards.forEach((card, i) => {
+        if (i < cards.length - 1) gsap.to(card, { scale: .94, opacity: .5, ease: 'none', scrollTrigger: { trigger: cards[i + 1], start: 'top 92%', end: 'top 28%', scrub: true } });
+      });
     });
 
     // (The pin's refreshPriority is 1 so it refreshes first: higher numbers go first, and every trigger below it must measure
@@ -148,33 +156,23 @@ export default function AboutPage() {
           </div>
         </section>
 
-        {/* A5 Why vehicle owners trust Dapper: six panels, one open at a time; the open one carries the reason */}
+        {/* A5 Why vehicle owners trust Dapper: six cards that stack, each sliding up over the one before */}
         <section className="aw" aria-labelledby="a-why-title">
           <h2 id="a-why-title" data-head>Why vehicle owners trust <em>Dapper.</em></h2>
-          <ul className="aw-row" data-in>
+          <div className="aw-stack">
             {why.map((w, i) => (
-              <li key={w.title} className="aw-item" data-open={open === i || undefined} onMouseEnter={() => { if (matchMedia('(hover: hover) and (pointer: fine)').matches) setOpen(i); }}>
-                <button type="button" className="aw-tab" id={'aw-t' + i} aria-expanded={open === i} aria-controls={'aw-p' + i} onClick={() => setOpen(i)} onFocus={() => setOpen(i)}>
-                  <span className="aw-title">{w.title}</span>
-                </button>
-                <div className="aw-panel" id={'aw-p' + i} role="region" aria-labelledby={'aw-t' + i}>
-                  <p>{w.text}</p>
-                </div>
-              </li>
+              <article key={w.title} className="aw-card" style={{ ['--i' as string]: i }}>
+                <h3>{w.title}</h3>
+                <p>{w.text}</p>
+              </article>
             ))}
-          </ul>
+          </div>
         </section>
 
         {/* A6 Partners: the dealerships Dapper works with */}
         <section className="a-partners" aria-labelledby="a-partners-title">
           <h2 id="a-partners-title" data-head>The dealerships that <em>trust us</em> with their cars.</h2>
-          <ul className="a-partners__grid">
-            {partners.map((p) => (
-              <li key={p.name} data-in>
-                {p.src ? <img className={p.name.includes('McGee') ? 'is-crop' : undefined} src={p.src} alt={p.name} loading="lazy" /> : <span className="a-partners__name">{p.name}</span>}
-              </li>
-            ))}
-          </ul>
+          <Dealers />
         </section>
 
         {/* A7 Closing band: the booking call, in type */}

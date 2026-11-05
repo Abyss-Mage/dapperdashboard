@@ -218,7 +218,11 @@ export function InvoiceDocument({ invoice, template }: { invoice: PrintInvoice; 
           </>}
         </div>
       </div>
-      {!quote && <div className={'ddBanner' + (paidInFull ? ' paid' : '')}>
+      {!quote && invoice.status === 'void' && <div className="ddBanner">
+        <div><b>Void</b><small>This invoice was voided, so nothing is owed on it.</small></div>
+        <strong>{money(0, invoice.currency)}</strong>
+      </div>}
+      {!quote && invoice.status !== 'void' && <div className={'ddBanner' + (paidInFull ? ' paid' : '')}>
         <div><b>{paidInFull ? 'Paid in full' : 'Balance due'}</b><small>{paidInFull ? 'Thank you. Nothing further is owed.' : invoice.paidCents > 0 ? `${money(invoice.paidCents, invoice.currency)} received so far.` : 'Nothing has been paid yet.'}</small></div>
         <strong>{paidInFull ? money(invoice.paidCents, invoice.currency) : money(invoice.dueCents, invoice.currency)}</strong>
       </div>}
@@ -242,7 +246,7 @@ export function InvoiceDocument({ invoice, template }: { invoice: PrintInvoice; 
         <div><span>{taxLabel(invoice, t)}</span><span>{money(invoice.taxCents, invoice.currency)}</span></div>
         <div className="ddTot"><span>Total</span><span>{money(invoice.totalCents, invoice.currency)}</span></div>
         {!quote && invoice.paidCents > 0 && <div><span>Paid</span><span>−{money(invoice.paidCents, invoice.currency)}</span></div>}
-        {!quote && !paidInFull && <div className="ddDue"><span>Balance due</span><span>{money(invoice.dueCents, invoice.currency)}</span></div>}
+        {!quote && !paidInFull && invoice.status !== 'void' && <div className="ddDue"><span>Balance due</span><span>{money(invoice.dueCents, invoice.currency)}</span></div>}
         {quote && <div className="ddDue"><span>Quoted total</span><span>{money(invoice.totalCents, invoice.currency)}</span></div>}
       </div>
       {quote && invoice.note && <div className="ddPay"><h2>Note</h2><p>{invoice.note}</p></div>}
