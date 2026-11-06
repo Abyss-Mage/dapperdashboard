@@ -139,7 +139,9 @@ export default function BookingWizard(p: WizardProps) {
   const topRef = useRef<HTMLHeadingElement>(null);
   const panelRef = useRef<HTMLElement>(null);
   const prevStep = useRef(0);
-  const steps = [...(p.phoneCheck ? ['Welcome'] : []), 'Service', 'Where', 'Vehicle', 'Package', 'Extras', 'Day & time', 'Details', ...(p.deposit ? ['Payment'] : [])];
+  // On the website the second question is the package, with the vehicle's details on the same step; staff keep the longer order.
+  const merged = p.audience === 'customer' && !!p.categories;
+  const steps = [...(p.phoneCheck ? ['Welcome'] : []), ...(merged ? ['Service', 'Package', 'Where'] : ['Service', 'Where', 'Vehicle', 'Package']), 'Extras', 'Day & time', 'Details', ...(p.deposit ? ['Payment'] : [])];
   const name = steps[step];
   // Saved details fill in once, and never over something already typed.
   useEffect(() => {
@@ -194,6 +196,13 @@ export default function BookingWizard(p: WizardProps) {
   // In a category the vehicle prefix is dropped when it is the category itself ("Sedan - Exterior Wash" under Sedan); aircraft, boats and film keep the whole name because the size or vehicle matters.
   const packName = (r: WizardRule) => (byCategory && ['aircraft', 'boat', 'ppf', 'other'].includes(catKey(r)) ? r.serviceName : parsed.get(r.id)!.pack);
   const extras = rule?.availableAddons ?? [];
+  const vehicleFields = (
+<div className={styles.fields}>
+            <label className={styles.field}>Year (optional)<input inputMode="numeric" maxLength={4} value={car.year} onChange={(e) => setCar({ ...car, year: e.target.value.replace(/\D/g, '') })} /></label>
+            <label className={styles.field}>Make (optional)<input value={car.make} onChange={(e) => setCar({ ...car, make: e.target.value })} placeholder="e.g. BMW" /></label>
+            <label className={styles.field}>Model (optional)<input value={car.model} onChange={(e) => setCar({ ...car, model: e.target.value })} placeholder="e.g. 330i" /></label>
+          </div>
+  );
   const preApplied = useRef(false);
   useEffect(() => {
     const pre = p.preselect;
@@ -203,7 +212,7 @@ export default function BookingWizard(p: WizardProps) {
     preApplied.current = true;
     if (hit) { setGroup(byCategory ? catKey(hit) : groupOf(parsed.get(hit.id)!.pack)); setVehicle(byCategory ? '' : parsed.get(hit.id)!.vehicle); setRuleId(hit.id); }
     else setGroup(pre.category!);
-    setStep(steps.indexOf('Where'));
+    setStep(hit || !merged ? steps.indexOf('Where') : steps.indexOf('Package'));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rules, baseRules, p.preselect]);
   const price = (id: string) => services.get(id)?.priceCents ?? null;
@@ -374,11 +383,7 @@ export default function BookingWizard(p: WizardProps) {
           {vehicles.length > 0 && <div className={`${styles.choices} ${styles.tiles}`}>{vehicles.map((v) => (
             <button key={v} type="button" className={`${styles.choice} ${styles.tile}`} aria-pressed={vehicle === v} onClick={() => { setVehicle(v); setRuleId(''); setPicked([]); }}><strong>{v}</strong></button>
           ))}</div>}
-          <div className={styles.fields}>
-            <label className={styles.field}>Year (optional)<input inputMode="numeric" maxLength={4} value={car.year} onChange={(e) => setCar({ ...car, year: e.target.value.replace(/\D/g, '') })} /></label>
-            <label className={styles.field}>Make (optional)<input value={car.make} onChange={(e) => setCar({ ...car, make: e.target.value })} placeholder="e.g. BMW" /></label>
-            <label className={styles.field}>Model (optional)<input value={car.model} onChange={(e) => setCar({ ...car, model: e.target.value })} placeholder="e.g. 330i" /></label>
-          </div>
+          {vehicleFields}
         </>}
         {name === 'Package' && <>
           <h2 ref={topRef} tabIndex={-1} className={styles.title}>Choose the package</h2>
@@ -389,6 +394,7 @@ export default function BookingWizard(p: WizardProps) {
             </button>
           ))}</div>
           {!packages.length && <p className={styles.help}>No packages for this choice yet.</p>}
+          {merged && <><h3 className={styles.title} style={{ fontSize: '1.05rem' }}>Your vehicle (optional)</h3>{vehicleFields}</>}
         </>}
         {name === 'Extras' && <>
           <h2 ref={topRef} tabIndex={-1} className={styles.title}>Anything extra?</h2>
