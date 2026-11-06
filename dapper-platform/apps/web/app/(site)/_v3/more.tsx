@@ -1,4 +1,5 @@
 'use client';
+import { SITE_SLUG } from '../_components/site';
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { ArrowRight, CalendarCheck, Car, Clock, Home, Mail, MapPin, Phone, Play, Send, Truck } from 'lucide-react';
@@ -38,7 +39,7 @@ function useAvailability() {
     let live = true;
     (async () => {
       try {
-        const r = await fetch('/api/v1/public/booking/dapper/options', { cache: 'no-store' });
+        const r = await fetch('/api/v1/public/booking/' + SITE_SLUG + '/options', { cache: 'no-store' });
         if (!r.ok) throw Error();
         const o: Options = await r.json();
         const from = iso(new Date());
@@ -47,7 +48,7 @@ function useAvailability() {
           const rule = o.rules.find((x) => x.resourceId === res.id && !(x.addonIds && x.addonIds.length));
           if (!rule) continue;
           const q = new URLSearchParams({ resourceId: res.id, ruleId: rule.id, version: String(rule.version), from, days: '7' });
-          const a = await fetch('/api/v1/public/booking/dapper/availability?' + q, { cache: 'no-store' });
+          const a = await fetch('/api/v1/public/booking/' + SITE_SLUG + '/availability?' + q, { cache: 'no-store' });
           if (!a.ok) continue;
           const av: Avail = await a.json();
           calendars.push({ name: res.name, service: rule.serviceName, days: av.days, timezone: av.timezone || o.timezone });

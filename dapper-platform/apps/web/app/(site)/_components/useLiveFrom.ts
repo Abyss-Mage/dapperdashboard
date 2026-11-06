@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { SITE_SLUG } from './site';
 
 /* The "starting from" price of each vehicle category, taken live from the dashboard: the lowest price among the published base services in
    that category. Returns dollars by category key, and nothing until the website entry is published and a service is priced, so the pages
@@ -12,7 +13,7 @@ export function useLiveFrom(): Record<string, number> {
   useEffect(() => {
     let off = false;
     const get = (u: string) => fetch(u, { cache: 'no-store', headers: { Accept: 'application/json' } }).then((r) => (r.ok ? r.json() : Promise.reject()));
-    Promise.all([get('/api/v1/public/sites/dapper'), get('/api/v1/public/booking/dapper/options')])
+    Promise.all([get('/api/v1/public/sites/' + SITE_SLUG), get('/api/v1/public/booking/' + SITE_SLUG + '/options')])
       .then(([site, options]) => {
         const price = new Map<string, number>((options.services as OptionService[]).filter((s) => s.kind === 'main' && s.priceCents > 0).map((s) => [s.id, s.priceCents]));
         const out: Record<string, number> = {};

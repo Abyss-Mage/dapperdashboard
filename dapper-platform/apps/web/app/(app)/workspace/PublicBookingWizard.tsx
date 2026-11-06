@@ -6,7 +6,7 @@ import SquareCardField from './SquareCardField';
 
 /* The customer's booking on the website. Talks only to the public booking API: no sign-in, prices and the deposit are worked out on the server. */
 
-const SITE = process.env.NEXT_PUBLIC_DAPPER_SITE_SLUG || 'dapper';
+const SITE = process.env.NEXT_PUBLIC_DAPPER_SITE_SLUG || 'dapper-detailing-pros-peterborough';
 const api = `/api/v1/public/booking/${SITE}`;
 
 type Options = { timezone: string; depositPercent: number; phoneVerification: boolean; rules: WizardRule[]; services: (WizardService & { priceCents: number })[]; taxes: NonNullable<WizardTaxes> };
