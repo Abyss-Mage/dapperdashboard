@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { CalendarCheck } from 'lucide-react';
 import styles from '../booking.module.css';
 
-type Booked = { bookingId: string; invoiceNumber: string; totalCents: number; paidCents: number; serviceName: string; pack: string; start: string; name: string; email: string; phone: string; address: string; notes: string };
+type Booked = { bookingId: string; invoiceNumber: string; totalCents: number; paidCents: number; paymentPending?: boolean; serviceName: string; pack: string; start: string; name: string; email: string; phone: string; address: string; notes: string };
 type Win = Window & { dataLayer?: unknown[]; fbq?: (...a: unknown[]) => void };
 
 const money = (c: number) => new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(c / 100);
@@ -48,7 +48,7 @@ export default function ThankYou() {
     ['Email', b.email],
     ['Reference', b.invoiceNumber],
     ['Total, tax included', money(b.totalCents)],
-    ['Payment', b.paidCents >= b.totalCents ? `Paid in full online (${money(b.paidCents)})` : 'Pay on the day'],
+    ['Payment', b.paidCents >= b.totalCents ? `Paid in full online (${money(b.paidCents)})` : b.paymentPending ? 'Card payment is being confirmed. The Dapper team will follow up if anything is needed.' : 'Pay on the day'],
   ] as [string, string][]).filter((r) => !!r[1]) : [];
 
   return (

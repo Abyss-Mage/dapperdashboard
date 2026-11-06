@@ -3,16 +3,14 @@ package workspace
 import (
 	"dapper.local/platform/internal/postgres"
 	"errors"
-	"net"
 	"net/http"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 )
 
-// A small per-visitor limiter (process-local, like the sign-in throttle). The gateway appends the real client address to
-// X-Forwarded-For, so the last entry is the one the gateway saw.
+// A small per-visitor limiter (process-local, like the sign-in throttle). Caddy sets the real client address as the first
+// X-Forwarded-For entry and the gateway appends Caddy's own (loopback) address, so the first entry is the visitor.
 type visitorLimiter struct {
 	mu     sync.Mutex
 	window time.Duration
@@ -48,15 +46,7 @@ func (l *visitorLimiter) allow(key string) bool {
 	return true
 }
 func visitor(r *http.Request) string {
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		parts := strings.Split(xff, ",")
-		return strings.TrimSpace(parts[len(parts)-1])
-	}
-	ip, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr
-	}
-	return ip
+	return postgres.ClientIP(r.RemoteAddr, r.Header.Get("X-Forwarded-For"))
 }
 
 func registerPublicBookingRoutes(mux *http.ServeMux, store *postgres.Store) {
@@ -214,20 +204,26 @@ func registerPublicBookingRoutes(mux *http.ServeMux, store *postgres.Store) {
 			fail(w, err)
 			return
 		}
-		paid := false
+		paid, pending := false, false
 		if in.DepositMethod == "card" {
 			scope, err := store.PublicBookingScope(r.Context(), site)
 			if err == nil {
 				err = takeSquareDeposit(r, store, scope, res.InvoiceID, "dep-"+in.RequestKey, in.SourceID, res.TotalCents)
 			}
-			if err != nil {
+			switch {
+			case err == nil:
+				paid = true
+			case errors.Is(err, postgres.ErrPaymentProvider) && !errors.Is(err, postgres.ErrPaymentDeclined):
+				// The charge may have gone through. Keep the booking and its invoice so the Square notification can settle it; voiding
+				// them here could leave a customer charged with nothing booked.
+				pending = true
+			default:
 				store.PublicBookingAbort(r.Context(), site, res.BookingID, res.InvoiceID)
 				reply(w, 402, map[string]string{"error": depositMessage(err)})
 				return
 			}
-			paid = true
 		}
-		reply(w, 201, map[string]any{"bookingId": res.BookingID, "invoiceNumber": res.InvoiceNumber, "totalCents": res.TotalCents, "depositCents": res.DepositCents, "depositPaid": paid, "paidCents": map[bool]int64{true: res.TotalCents, false: 0}[paid], "serviceName": res.ServiceName})
+		reply(w, 201, map[string]any{"bookingId": res.BookingID, "invoiceNumber": res.InvoiceNumber, "totalCents": res.TotalCents, "depositCents": res.DepositCents, "depositPaid": paid, "paymentPending": pending, "paidCents": map[bool]int64{true: res.TotalCents, false: 0}[paid], "serviceName": res.ServiceName})
 	})
 }
 
@@ -239,8 +235,8 @@ func depositMessage(err error) string {
 	switch {
 	case errors.Is(err, postgres.ErrSquareBinding):
 		return "Online payment is not available yet. Please choose to pay on the day."
-	case errors.Is(err, postgres.ErrPaymentProvider):
-		return "We could not confirm the card payment, so the booking was not kept. Please check your card and try again."
+	case errors.Is(err, postgres.ErrPaymentDeclined):
+		return "Your card was declined, so the booking was not kept. Please check the card details or try another card."
 	default:
 		return "The payment could not be taken, so the booking was not kept. Please try again or pay on the day."
 	}

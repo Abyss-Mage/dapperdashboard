@@ -87,7 +87,7 @@ export default function PublicBookingWizard() {
       submit={async (b: WizardBooking) => {
         const body = { requestKey: key.current, resourceId: b.rule.resourceId, ruleId: b.rule.id, ruleVersion: b.rule.version, start: b.startIso, addonIds: b.addonIds, name: b.customer.name, email: b.customer.email, phone: b.customer.phone, notes: b.notes, serviceAddress: b.serviceAddress, couponCode: b.couponCode, depositMethod: b.deposit?.method ?? 'cash', sourceId: b.deposit?.sourceId };
         try {
-          const res = await json<{ bookingId: string; invoiceNumber: string; totalCents: number; paidCents: number; serviceName: string }>(await fetch(`${api}/book`, post(body)));
+          const res = await json<{ bookingId: string; invoiceNumber: string; totalCents: number; paidCents: number; paymentPending: boolean; serviceName: string }>(await fetch(`${api}/book`, post(body)));
           key.current = crypto.randomUUID();
           // The booking is made: hand its details to the thank-you page, which is where the ad tags report the purchase.
           try {

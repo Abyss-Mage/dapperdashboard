@@ -161,7 +161,7 @@ func (c *squareClient) CreatePayment(ctx context.Context, req PaymentRequest) (P
 		_ = json.Unmarshal(bodyBytes, &errResp)
 		if len(errResp.Errors) > 0 {
 			first := errResp.Errors[0]
-			if first.Code == "CARD_DECLINED" || first.Code == "CARD_EXPIRED" || first.Code == "INSUFFICIENT_FUNDS" {
+			if first.Category == "PAYMENT_METHOD_ERROR" || first.Code == "CARD_DECLINED" || first.Code == "CARD_EXPIRED" || first.Code == "INSUFFICIENT_FUNDS" {
 				return PaymentResponse{}, fmt.Errorf("%w: %s - %s", ErrSquareDeclined, first.Code, first.Detail)
 			}
 			return PaymentResponse{}, fmt.Errorf("%w: %s (%s)", ErrSquarePaymentFailed, first.Detail, first.Code)

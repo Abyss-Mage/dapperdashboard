@@ -5,6 +5,7 @@ import (
 	"dapper.local/platform/internal/paymentstate"
 	"dapper.local/platform/internal/square"
 	"errors"
+	"fmt"
 	"github.com/jackc/pgx/v5"
 	"strings"
 	"time"
@@ -19,6 +20,9 @@ type SquareCredentialResolver func(context.Context, string, string) (VerifiedSqu
 // ExecuteSquareInvoiceIntent is an internal authority, not a browser-callable
 // settlement endpoint. The resolver is server configuration; sourceID is never
 // saved/logged. Unknown outcomes retain the exact provider idempotency identity.
+// ErrPaymentDeclined is a card the bank refused: nothing was charged. Every other provider failure leaves the outcome unknown.
+var ErrPaymentDeclined = fmt.Errorf("%w: the card was declined", ErrPaymentProvider)
+
 func (s *Store) ExecuteSquareInvoiceIntent(ctx context.Context, scope Scope, id, sourceID string, resolve SquareCredentialResolver) (SquareIntentAllocation, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -65,6 +69,10 @@ func (s *Store) ExecuteSquareInvoiceIntent(ctx context.Context, scope Scope, id,
 		return SquareIntentAllocation{}, uncertain()
 	}
 	response, err := client.CreatePayment(ctx, square.PaymentRequest{SourceID: sourceID, IdempotencyKey: attempt.ProviderRequestKey, AmountCents: attempt.AmountCents, Currency: attempt.Currency, LocationID: attempt.ProviderLocationID, ReferenceID: attempt.ID})
+	if errors.Is(err, square.ErrSquareDeclined) {
+		_ = uncertain()
+		return SquareIntentAllocation{}, ErrPaymentDeclined
+	}
 	if err != nil {
 		return SquareIntentAllocation{}, uncertain()
 	}
