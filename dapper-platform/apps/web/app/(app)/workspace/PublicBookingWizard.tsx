@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import BookingWizard, { type WizardAvailability, type WizardBooking, type WizardCustomer, type WizardRule, type WizardService, type WizardTaxes } from './BookingWizard';
 import SquareCardField from './SquareCardField';
+import { categories as siteCategories } from '../../(site)/content';
 
 /* The customer's booking on the website. Talks only to the public booking API: no sign-in, prices and the deposit are worked out on the server. */
 
@@ -21,6 +22,8 @@ const post = (body: unknown): RequestInit => ({ method: 'POST', headers: { 'Cont
 export default function PublicBookingWizard() {
   const [options, setOptions] = useState<Options | null>(null);
   const [error, setError] = useState('');
+  // The website categories set in the dashboard (service id -> category); without any, the wizard falls back to its built-in groups.
+  const [cats, setCats] = useState<Map<string, string> | null>(null);
   // One key per booking attempt; a failed attempt gets a new one so a released time can be tried again.
   const key = useRef(crypto.randomUUID());
   const verified = useRef('');
@@ -28,6 +31,7 @@ export default function PublicBookingWizard() {
   useEffect(() => {
     let live = true;
     fetch(`${api}/options`, { cache: 'no-store' }).then((r) => json<Options>(r)).then((o) => live && setOptions(o)).catch((e) => live && setError(e.message));
+    fetch(`/api/v1/public/sites/${SITE}`, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : Promise.reject())).then((site: { services: { serviceId: string; category: string }[] }) => { if (live) { const m = new Map(site.services.filter((s) => s.category).map((s) => [s.serviceId, s.category])); setCats(m.size ? m : null); } }).catch(() => undefined);
     return () => { live = false; };
   }, []);
 
@@ -36,6 +40,8 @@ export default function PublicBookingWizard() {
 
   return (
     <BookingWizard
+      audience="customer"
+      categories={cats ? { list: siteCategories.map((c) => ({ key: c.key, title: c.title })), of: (id) => cats.get(id) ?? '' } : undefined}
       timezone={options.timezone}
       depositPercent={options.depositPercent}
       loadOptions={async () => ({ rules: options.rules })}

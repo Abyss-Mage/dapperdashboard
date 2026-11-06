@@ -40,6 +40,10 @@ export type WizardProps = {
   deposit?: WizardDeposit;
   /** Wording for the final screen; staff see a default that mentions taking payment later. */
   doneNote?: (b: { name: string; pack: string; when: string; deposit?: 'card' | 'cash' }) => WizardDone;
+  /** 'customer' speaks to the person booking ("you") instead of to staff booking for someone ("them"). */
+  audience?: 'staff' | 'customer';
+  /** The website's service categories (set in the dashboard): when given with the customer wording, step one lists them instead of the built-in groups. */
+  categories?: { list: { key: string; title: string }[]; of: (serviceId: string) => string };
 };
 
 const VEHICLE = /^(hatchback|sedan|suv|pickup|van|2 wheeler|aircraft (?:small|medium|large)|boat (?:small|medium|large))\s*-\s*(.+)$/i;
@@ -153,17 +157,29 @@ export default function BookingWizard(p: WizardProps) {
     return () => { tween.kill(); };
   }, [step]);
 
+  const cust = p.audience === 'customer';
+  const byCategory = cust && !!p.categories;
+  const catKey = (r: WizardRule) => p.categories?.of(r.serviceId) || 'other';
   const baseRules = useMemo(() => (rules ?? []).filter((r) => r.addonIds.length === 0), [rules]);
   const parsed = useMemo(() => new Map(baseRules.map((r) => [r.id, parseName(r.serviceName)])), [baseRules]);
+  const custGroups = useMemo(() => {
+    const present = new Set(baseRules.map((r) => p.categories?.of(r.serviceId) || 'other'));
+    const out = (p.categories?.list ?? []).filter((c) => present.has(c.key));
+    return present.has('other') ? [...out, { key: 'other', title: 'More services' }] : out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [baseRules, p.categories]);
   const groups = useMemo(() => GROUPS.filter((g) => baseRules.some((r) => groupOf(parsed.get(r.id)!.pack) === g)), [baseRules, parsed]);
-  const inGroup = useMemo(() => baseRules.filter((r) => groupOf(parsed.get(r.id)!.pack) === group), [baseRules, parsed, group]);
+  const inGroup = useMemo(() => baseRules.filter((r) => (byCategory ? (p.categories!.of(r.serviceId) || 'other') === group : groupOf(parsed.get(r.id)!.pack) === group)), [baseRules, parsed, group, byCategory, p.categories]);
   // Packages without a vehicle in their name (the ceramic packages, window tint) are for cars, so they open up the car types.
   const vehicles = useMemo(() => {
+    if (byCategory) return [] as string[];
     const named = inGroup.map((r) => parsed.get(r.id)!.vehicle);
     return [...new Set([...named.filter(Boolean), ...(named.some((v) => !v) ? CARS : [])])].sort(byVehicleOrder);
-  }, [inGroup, parsed]);
-  const packages = useMemo(() => inGroup.filter((r) => { const v = parsed.get(r.id)!.vehicle; return !vehicle || (v ? v === vehicle : CARS.includes(vehicle)); }), [inGroup, parsed, vehicle]);
+  }, [inGroup, parsed, byCategory]);
+  const packages = useMemo(() => byCategory ? [...inGroup].sort((a, b) => (services.get(a.serviceId)?.priceCents ?? Infinity) - (services.get(b.serviceId)?.priceCents ?? Infinity)) : inGroup.filter((r) => { const v = parsed.get(r.id)!.vehicle; return !vehicle || (v ? v === vehicle : CARS.includes(vehicle)); }), [inGroup, parsed, vehicle, byCategory, services]);
   const rule = baseRules.find((r) => r.id === ruleId);
+  // In a category the vehicle prefix is dropped when it is the category itself ("Sedan - Exterior Wash" under Sedan); aircraft, boats and film keep the whole name because the size or vehicle matters.
+  const packName = (r: WizardRule) => (byCategory && ['aircraft', 'boat', 'ppf', 'other'].includes(catKey(r)) ? r.serviceName : parsed.get(r.id)!.pack);
   const extras = rule?.availableAddons ?? [];
   const price = (id: string) => services.get(id)?.priceCents ?? null;
   const subtotal = (rule ? price(rule.serviceId) ?? 0 : 0) + picked.reduce((s, id) => s + (price(id) ?? 0), 0);
@@ -228,7 +244,7 @@ export default function BookingWizard(p: WizardProps) {
       }
       await p.submit({ customer: { ...me, name: me.name.trim(), email: me.email.trim(), phone: me.phone.trim() }, rule, startIso: start, localStart: `${z.date}T${z.time}`, addonIds: picked, notes: lines.join('\n'), serviceAddress: where === 'shop' ? '' : address.trim(), couponCode: coupon.trim(), deposit });
       const when = `${new Date(`${z.date}T12:00:00`).toLocaleDateString('en-CA', { weekday: 'long', month: 'long', day: 'numeric' })} at ${slotLabel(start, tz)}`;
-      setDoneInfo(p.doneNote ? p.doneNote({ name: me.name.trim(), pack: parsed.get(rule.id)!.pack, when, deposit: deposit?.method }) : null);
+      setDoneInfo(p.doneNote ? p.doneNote({ name: me.name.trim(), pack: packName(rule), when, deposit: deposit?.method }) : null);
       setDone(true);
     } catch (e) { setError(e instanceof Error ? e.message : 'The booking could not be saved.'); }
     finally { setBusy(false); }
@@ -262,7 +278,7 @@ export default function BookingWizard(p: WizardProps) {
       <section className={`${styles.panel} ${styles.done}`} aria-live="polite">
         <h2 ref={topRef} tabIndex={-1} className={styles.title}>{doneInfo?.title ?? 'Booking saved'}</h2>
         {doneInfo ? doneInfo.lines.map((l, i) => <p key={i} className={styles.help}>{l}</p>) : <>
-          <p className={styles.help}>{parsed.get(rule!.id)!.pack} for {me.name} on {new Date(`${z.date}T12:00:00`).toLocaleDateString('en-CA', { weekday: 'long', month: 'long', day: 'numeric' })} at {slotLabel(start, tz)}.</p>
+          <p className={styles.help}>{packName(rule!)} for {me.name} on {new Date(`${z.date}T12:00:00`).toLocaleDateString('en-CA', { weekday: 'long', month: 'long', day: 'numeric' })} at {slotLabel(start, tz)}.</p>
           <p className={styles.help}>The time is held. Nothing has been paid yet; take the deposit or payment from the booking&rsquo;s payment page.</p></>}
         <button type="button" className={styles.next} onClick={again}>Book another</button>
       </section>
@@ -311,22 +327,26 @@ export default function BookingWizard(p: WizardProps) {
           {payMethod === 'card' && p.deposit.renderCard((fn) => { tokenizer.current = fn; setCardReady(!!fn); }, deposit)}
         </>}
         {name === 'Service' && <>
-          <h2 ref={topRef} tabIndex={-1} className={styles.title}>What can we do for them?</h2>
-          <div className={styles.choices}>{groups.map((g) => (
+          <h2 ref={topRef} tabIndex={-1} className={styles.title}>{cust ? 'What do you need done?' : 'What can we do for them?'}</h2>
+          {byCategory ? <div className={`${styles.choices} ${styles.two}`}>{custGroups.map((g) => {
+            const low = baseRules.filter((r) => (p.categories!.of(r.serviceId) || 'other') === g.key).map((r) => services.get(r.serviceId)?.priceCents).filter((x): x is number => typeof x === 'number' && x > 0);
+            return <button key={g.key} type="button" className={styles.choice} aria-pressed={group === g.key} onClick={() => { setGroup(g.key); setVehicle(''); setRuleId(''); setPicked([]); }}><span><strong>{g.title}</strong>{low.length > 0 && <small>From {money(Math.min(...low))}</small>}</span></button>;
+          })}</div>
+          : <div className={styles.choices}>{groups.map((g) => (
             <button key={g} type="button" className={styles.choice} aria-pressed={group === g} onClick={() => { setGroup(g); setVehicle(''); setRuleId(''); setPicked([]); }}><span><strong>{g}</strong><small>{GROUP_HELP[g]}</small></span></button>
-          ))}</div>
+          ))}</div>}
         </>}
         {name === 'Where' && <>
-          <h2 ref={topRef} tabIndex={-1} className={styles.title}>Where will the work happen?</h2>
+          <h2 ref={topRef} tabIndex={-1} className={styles.title}>{cust ? 'Where would you like the work done?' : 'Where will the work happen?'}</h2>
           <div className={`${styles.choices} ${styles.two}`}>
-            {([['shop', 'In the shop', 'The customer brings the vehicle in'], ['mobile', 'We come to them', 'Our team travels to the customer'], ['valet', 'Valet', 'We pick up and drop off the vehicle']] as [Where, string, string][]).map(([id, t, h]) => (
+            {((cust ? [['shop', 'In the shop', 'You bring your vehicle to us'], ['mobile', 'We come to you', 'Our team travels to your address'], ['valet', 'Pick-up and drop-off', 'We collect your vehicle and bring it back']] : [['shop', 'In the shop', 'The customer brings the vehicle in'], ['mobile', 'We come to them', 'Our team travels to the customer'], ['valet', 'Valet', 'We pick up and drop off the vehicle']]) as [Where, string, string][]).map(([id, t, h]) => (
               <button key={id} type="button" className={styles.choice} aria-pressed={where === id} onClick={() => setWhere(id)}><span><strong>{t}</strong><small>{h}</small></span></button>
             ))}
           </div>
           {addressNeeded && <label className={styles.field}>Address<input value={address} onChange={(e) => setAddress(e.target.value)} autoComplete="street-address" placeholder="Street, city" /></label>}
         </>}
         {name === 'Vehicle' && <>
-          <h2 ref={topRef} tabIndex={-1} className={styles.title}>What are we working on?</h2>
+          <h2 ref={topRef} tabIndex={-1} className={styles.title}>{cust ? 'Tell us about your vehicle' : 'What are we working on?'}</h2>
           {vehicles.length > 0 && <div className={`${styles.choices} ${styles.tiles}`}>{vehicles.map((v) => (
             <button key={v} type="button" className={`${styles.choice} ${styles.tile}`} aria-pressed={vehicle === v} onClick={() => { setVehicle(v); setRuleId(''); setPicked([]); }}><strong>{v}</strong></button>
           ))}</div>}
@@ -340,7 +360,7 @@ export default function BookingWizard(p: WizardProps) {
           <h2 ref={topRef} tabIndex={-1} className={styles.title}>Choose the package</h2>
           <div className={styles.choices}>{packages.map((r) => (
             <button key={r.id} type="button" className={styles.choice} aria-pressed={ruleId === r.id} onClick={() => { setRuleId(r.id); setPicked([]); setStart(''); setDay(''); }}>
-              <span><strong>{parsed.get(r.id)!.pack}</strong><small>About {span(r.durationMinutes)}</small></span>
+              <span><strong>{packName(r)}</strong><small>About {span(r.durationMinutes)}</small></span>
               <span className={styles.price}>{price(r.serviceId) === null ? 'Price not set' : money(price(r.serviceId) as number)}</span>
             </button>
           ))}</div>
@@ -384,7 +404,7 @@ export default function BookingWizard(p: WizardProps) {
             <div className={styles.slots}>{daySlots.map((s) => <button key={s} type="button" className={styles.slot} aria-pressed={start === s} onClick={() => setStart(s)}>{slotLabel(s, tz)}</button>)}</div></>}
         </>}
         {name === 'Details' && <>
-          <h2 ref={topRef} tabIndex={-1} className={styles.title}>Almost done: the customer&rsquo;s details</h2>
+          <h2 ref={topRef} tabIndex={-1} className={styles.title}>{cust ? 'Almost done: your details' : 'Almost done: the customer\u2019s details'}</h2>
           <div className={styles.fields}>
             <label className={`${styles.field} ${styles.wide}`}>Full name<input value={me.name} onChange={(e) => setMe({ ...me, name: e.target.value })} autoComplete="name" /></label>
             <label className={`${styles.field} ${styles.half}`}>Mobile number<input type="tel" value={me.phone} onChange={(e) => setMe({ ...me, phone: e.target.value })} autoComplete="tel" placeholder="+1 416 555 0123" /></label>
@@ -394,15 +414,15 @@ export default function BookingWizard(p: WizardProps) {
             {p.deposit && <label className={`${styles.field} ${styles.wide}`}>Coupon code (optional)<input value={coupon} maxLength={32} onChange={(e) => setCoupon(e.target.value.toUpperCase())} autoComplete="off" placeholder="Have a coupon? Enter it here" /></label>}
             <label className={`${styles.field} ${styles.wide}`}>Notes (optional)<textarea rows={3} maxLength={1000} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything we should know?" /></label>
           </div>
-          <div><div className={styles.ask}><strong>Were they referred?</strong>
+          <div><div className={styles.ask}><strong>{cust ? 'Were you referred?' : 'Were they referred?'}</strong>
             <div className={styles.seg}><button type="button" aria-pressed={referred} onClick={() => setReferred(true)}>Yes</button><button type="button" aria-pressed={!referred} onClick={() => setReferred(false)}>No</button></div></div>
             {referred && <div className={styles.fields} style={{ marginTop: 10 }}>
-              <label className={styles.field}>Who referred them?<input value={ref.name} onChange={(e) => setRef({ ...ref, name: e.target.value })} /></label>
+              <label className={styles.field}>{cust ? 'Who referred you?' : 'Who referred them?'}<input value={ref.name} onChange={(e) => setRef({ ...ref, name: e.target.value })} /></label>
               <label className={styles.field}>Their phone number<input type="tel" value={ref.phone} onChange={(e) => setRef({ ...ref, phone: e.target.value })} /></label>
             </div>}
           </div>
           {rule && <div className={styles.sum} aria-label="Price summary">
-            <div><span>{parsed.get(rule.id)!.pack}</span><span>{price(rule.serviceId) === null ? 'Price not set' : money(price(rule.serviceId) as number)}</span></div>
+            <div><span>{packName(rule)}</span><span>{price(rule.serviceId) === null ? 'Price not set' : money(price(rule.serviceId) as number)}</span></div>
             {picked.map((id) => <div key={id}><span>{extras.find((a) => a.serviceId === id)?.name}</span><span>{price(id) === null ? '' : money(price(id) as number)}</span></div>)}
             <div><span>{taxLabel(taxes)}</span><span>{taxes ? money(tax) : 'Added on the invoice'}</span></div>
             <div className={styles.grand}><span>Total</span><span>{money(total)}</span></div>
@@ -421,10 +441,10 @@ export default function BookingWizard(p: WizardProps) {
       <aside className={styles.side} aria-label="Your booking so far">
         <h3>Your booking</h3>
         <dl>
-          <div><dt>Service</dt><dd>{group || 'Not chosen yet'}</dd></div>
-          {where !== 'shop' && <div><dt>Where</dt><dd>{where === 'mobile' ? 'We come to them' : 'Valet'}</dd></div>}
+          <div><dt>Service</dt><dd>{byCategory ? (custGroups.find((g) => g.key === group)?.title ?? 'Not chosen yet') : group || 'Not chosen yet'}</dd></div>
+          {where !== 'shop' && <div><dt>Where</dt><dd>{where === 'mobile' ? (cust ? 'We come to you' : 'We come to them') : cust ? 'Pick-up and drop-off' : 'Valet'}</dd></div>}
           {vehicle && <div><dt>Vehicle</dt><dd>{vehicle}</dd></div>}
-          <div><dt>Package</dt><dd>{rule ? parsed.get(rule.id)!.pack : 'Not chosen yet'}</dd></div>
+          <div><dt>Package</dt><dd>{rule ? packName(rule) : 'Not chosen yet'}</dd></div>
           {picked.length > 0 && <div><dt>Extras</dt><dd>{picked.map((id) => extras.find((e) => e.serviceId === id)?.name).filter(Boolean).join(', ')}</dd></div>}
           {start && <div><dt>When</dt><dd>{new Date(zoned(start, tz).date + 'T12:00:00').toLocaleDateString('en-CA', { weekday: 'short', month: 'short', day: 'numeric' })} at {slotLabel(start, tz)}</dd></div>}
         </dl>
