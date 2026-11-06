@@ -7,6 +7,7 @@ import '@fontsource/manrope/600.css';
 import '@fontsource/manrope/700.css';
 import './_v3/v3.css';
 import './footer.css';
+import './cut.css';
 import { SiteHeader } from '../_chrome/SiteHeader';
 import { SiteFooter } from '../_chrome/SiteFooter';
 import SmoothScroll from './_components/SmoothScroll';

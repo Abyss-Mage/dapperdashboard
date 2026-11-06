@@ -290,3 +290,5 @@
   .h-fact{grid-template-columns:minmax(0,1fr);row-gap:8px;padding:0;font-size:clamp(20px,6.2vw,30px)}
   .h-fact__l{font-size:13px;line-height:1.25}
 }
+/* Core values on a phone: air between the button and the three figures */
+@media(max-width:899px){.h-val__facts{margin-top:clamp(24px,7vw,36px)}}

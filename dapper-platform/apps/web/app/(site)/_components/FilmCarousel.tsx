@@ -1,31 +1,28 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { ArrowLeft, ArrowRight, Play } from 'lucide-react';
+import { useScrollRow } from './useScrollRow';
+import './scrollrow.css';
 import './films.css';
 
 /* The studio's films as a carousel for the right-hand side of a two-column section (text on the left). Tall reels in a swipeable row with
    arrows; each plays muted while it is on screen, and selecting one calls onOpen so the page can show it with sound. */
 export function FilmCarousel({ clips, onOpen }: { clips: string[]; onOpen: (i: number) => void }) {
   const track = useRef<HTMLUListElement>(null);
-  const [edge, setEdge] = useState({ start: true, end: false });
+  const edge = useScrollRow(track, 3200);
 
   useEffect(() => {
     const el = track.current;
     if (!el) return;
-    const measure = () => setEdge({ start: el.scrollLeft < 8, end: el.scrollLeft + el.clientWidth >= el.scrollWidth - 8 });
-    measure();
-    el.addEventListener('scroll', measure, { passive: true });
-    window.addEventListener('resize', measure);
     const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const vids = Array.from(el.querySelectorAll('video'));
     const io = new IntersectionObserver((entries) => entries.forEach((e) => {
       const v = e.target as HTMLVideoElement;
       if (reduce) return;
       if (e.isIntersecting) void v.play().catch(() => undefined); else v.pause();
     }), { root: el, threshold: .35 });
-    vids.forEach((v) => { if (reduce) { v.preload = 'auto'; v.currentTime = .1; } io.observe(v); });
-    return () => { el.removeEventListener('scroll', measure); window.removeEventListener('resize', measure); io.disconnect(); };
+    el.querySelectorAll('video').forEach((v) => { if (reduce) { v.preload = 'auto'; v.currentTime = .1; } io.observe(v); });
+    return () => io.disconnect();
   }, []);
 
   const by = (dir: number) => { const el = track.current; if (el) el.scrollBy({ left: dir * el.clientWidth * .7, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); };

@@ -63,8 +63,8 @@ export default function AboutPage() {
     // (The pin's refreshPriority is 1 so it refreshes first: higher numbers go first, and every trigger below it must measure
     // the page with its scroll space already added.)
     // Horizontal gallery: the story section pins and its strip slides left, a red line filling along the bottom. Without motion
-    // or on a narrow screen the five years simply stack.
-    mm.add('(prefers-reduced-motion: no-preference) and (min-width: 1024px)', () => {
+    // the five years simply stack. Phones get the same sideways strip.
+    mm.add('(prefers-reduced-motion: no-preference)', () => {
       const el = root.current!;
       const section = el.querySelector<HTMLElement>('.a-story')!;
       const strip = el.querySelector<HTMLElement>('.a-story__strip')!;

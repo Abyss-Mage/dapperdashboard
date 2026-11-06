@@ -12,9 +12,7 @@ import './dealers.css';
    built-in list is shown. Subaru and Hyundai in the built-in list are white marks, so they are drawn in their own brand blue on the white diamond.
    Phones get a narrower arrangement. */
 
-type Dealer = { name: string; src?: string; live?: boolean };
-// Subaru and Hyundai are supplied as white marks: they are drawn in the brand's own blue on the white diamond.
-const BRAND: Record<string, string> = { Subaru: '#10247c', Hyundai: '#002c5f' };
+type Dealer = { name: string; src?: string; live?: boolean; wide?: boolean };
 
 // Wide: rows of k, k-1, k-2 ... shifted one half-step each row (an inverted triangle). Narrow: alternating rows of three and two.
 function layout(n: number) {
@@ -24,6 +22,8 @@ function layout(n: number) {
   for (let r = 0, left = n; left > 0; r++) { const c = Math.min(k - r, left); for (let j = 0; j < c; j++) wide.push([r + 2 * j, r]); left -= c; }
   const narrow: number[][] = [];
   for (let r = 0, left = n; left > 0; r++) { const c = Math.min(r % 2 ? 2 : 3, left); for (let j = 0; j < c; j++) narrow.push([(r % 2) + 2 * j, r]); left -= c; }
+  const last = narrow[narrow.length - 1], above = narrow.filter((p) => last && p[1] === last[1] - 1), alone = narrow.filter((p) => last && p[1] === last[1]).length === 1;
+  if (last && alone && above.length === 3) { last[0] = 2; last[1] += 1; }
   const rows = (pts: number[][]) => pts.reduce((m, p) => Math.max(m, p[1]), 0) + 1;
   return { wide, narrow, k, wideRows: rows(wide), narrowRows: rows(narrow) };
 }
@@ -64,11 +64,10 @@ export function Dealers() {
       <div className="dl__lat" aria-hidden="true" style={{ ['--wcols' as string]: L.k, ['--wrows' as string]: L.wideRows, ['--nrows' as string]: L.narrowRows }}>
         {dealers.map((p, i) => {
           const n = L.narrow[i] ?? [0, 0], w = L.wide[i] ?? [0, 0];
-          const tint = p.live ? undefined : BRAND[p.name];
           return (
             <div className="dl__dia" key={p.name + i} style={{ ['--mc' as string]: n[0], ['--mr' as string]: n[1], ['--wc' as string]: w[0], ['--wr' as string]: w[1] }}>
               <span className="dl__s">
-                {p.src && tint ? <span className="dl__mark" style={{ backgroundColor: tint, maskImage: `url(${p.src})`, WebkitMaskImage: `url(${p.src})` }} /> : p.src ? <img className={p.name.includes('McGee') ? 'is-crop' : undefined} src={p.src} alt="" loading="lazy" /> : <span className="dl__name">{p.name}</span>}
+                {p.src ? <img className={p.name.includes('McGee') ? 'is-crop' : p.wide ? 'is-wide' : undefined} src={p.src} alt="" loading="lazy" onLoad={p.live ? undefined : (e) => e.currentTarget.classList.toggle('is-wide', e.currentTarget.naturalWidth / e.currentTarget.naturalHeight > 6)} /> : <span className="dl__name">{p.name}</span>}
               </span>
             </div>
           );

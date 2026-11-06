@@ -3,7 +3,7 @@
 // `photo` is true only when the image actually shows that kind of vehicle or work. Otherwise the image is the studio and the
 // site says so (until real photos of each vehicle type exist).
 // `from` is the "Starting from" price the current public site shows (only for the categories it prices).
-export type Category = { key: string; slug: string; title: string; short: string; summary: string; image: string; photo: boolean; from?: number };
+export type Category = { key: string; slug: string; title: string; short: string; summary: string; image: string; photo: boolean; from?: number; noun?: string };
 
 const img = (name: string) => '/site/assets/' + name;
 
@@ -17,6 +17,7 @@ export const categories: Category[] = [
   { key: 'ceramic', slug: 'ceramic-coating', title: 'Ceramic coating', short: 'Ceramic', image: img('services/ceramic.jpg'), photo: true, from: 499, summary: 'Explore a coating finish that brings gloss and water repellency. The team will explain preparation, maintenance and suitable coating options.' },
   { key: 'ppf', slug: 'ppf', title: 'Paint protection film', short: 'PPF', image: img('portfolio/portfolio-06.jpg'), photo: true, summary: 'A clear film layer for the painted surfaces you want to protect. Discuss coverage, preparation and finish with Dapper.' },
   { key: 'aircraft', slug: 'aircraft-detailing', title: 'Aircraft detailing', short: 'Aircraft', image: img('services/aircraft.png'), photo: true, from: 249, summary: 'Specialist attention for aircraft interiors and exteriors. Contact the team to discuss your aircraft, its surfaces and the scope of work.' },
+  { key: 'window-tint', slug: 'window-tint', title: 'Window tint', short: 'Window tint', noun: 'windows', image: img('portfolio/portfolio-12.jpg'), photo: false, summary: 'Tint for one window or the whole vehicle. Choose a single window, the standard four-window package or the full five-window premium package.' },
   { key: 'boat', slug: 'boat-detailing', title: 'Boat detailing', short: 'Boats', image: img('portfolio/portfolio-08.jpg'), photo: false, summary: 'Interior and exterior care for your time on the water. Tell us about your boat and its condition for a suitable service recommendation.' },
 ];
 

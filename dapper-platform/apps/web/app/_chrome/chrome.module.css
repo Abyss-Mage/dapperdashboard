@@ -20,13 +20,13 @@
 .menu a{font:500 clamp(26px,8vw,40px)/1.15 'Unbounded Variable','Unbounded',sans-serif;letter-spacing:-.02em;text-transform:uppercase;color:var(--bone);text-decoration:none;padding:12px 0}
 .menu .menuBook{margin-top:auto;justify-content:center;min-height:56px;font-size:15px}
 .dock{display:none}
+.bookMini{display:none}
 @media(max-width:899px){
+  /* On a phone the header is not sticky: it scrolls away with the page, and there is no bar along the bottom */
+  .header{position:absolute}
   .nav,.actions{display:none}
-  .menuBtn{display:grid}
-  .dock{display:grid;grid-template-columns:1fr 1.5fr 1fr 1fr;gap:4px;position:fixed;z-index:70;left:10px;right:10px;bottom:max(10px,env(safe-area-inset-bottom));padding:6px;border-radius:22px;background:#0b0b0cf2;color:var(--bone);box-shadow:0 14px 40px #0008;font-family:'Manrope',sans-serif}
-  .dock a,.dock button{display:grid;justify-items:center;align-content:center;gap:3px;min-height:52px;border:0;border-radius:16px;background:transparent;color:#cfcbc2;font:700 11px/1 'Manrope',sans-serif;text-decoration:none;cursor:pointer}
-  .dock .dockBook{background:var(--red);color:#fff;grid-auto-flow:column;gap:8px;font-size:14px}
-  .dock a:active,.dock button:active{transform:scale(.96)}
+  .bookMini{display:inline-flex;align-items:center;margin-left:auto;min-height:40px;padding:0 16px;background:var(--red);color:#fff;text-decoration:none;font:700 12px/1 'Unbounded Variable','Unbounded',sans-serif;letter-spacing:.05em;text-transform:uppercase;clip-path:polygon(0 0,100% 0,100% 100%,10px 100%,0 calc(100% - 10px))}
+  .menuBtn{display:grid;margin-left:0}
 }
 
 /* Footer */
@@ -47,7 +47,7 @@
 .legal span:last-child{display:flex;gap:18px;flex-wrap:wrap}
 .legal a{color:#a9a69e;text-decoration:none}
 @media(hover:hover) and (pointer:fine){.legal a:hover{color:var(--bone)}}
-@media(max-width:899px){.footer{padding-bottom:calc(96px + env(safe-area-inset-bottom))}.mark{font-size:19vw}.legal{gap:8px 16px}.legal span:last-child{gap:8px 16px}}
+@media(max-width:899px){.mark{font-size:19vw}.legal{gap:8px 16px}.legal span:last-child{gap:8px 16px}}
 
 /* Booking popup: a centred dialog on a wide screen, a full-screen sheet on a phone */
 .dialog{padding:0;border:0;background:#0b0b0c;color:#efece4;overflow:hidden;width:min(980px,94vw);height:min(90dvh,880px);max-width:none;max-height:none;border-radius:22px;box-shadow:0 30px 90px #000a}

@@ -1,0 +1,14 @@
+/* Carousel row: no scrollbar, grabbable with the mouse, arrows underneath */
+.srow{min-width:0}
+.srow__track,.fc__track{margin:0;padding:0 0 4px;list-style:none;display:flex;gap:clamp(10px,1.2vw,18px);overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain;cursor:grab;-webkit-user-select:none;user-select:none}
+.srow__track::-webkit-scrollbar,.fc__track::-webkit-scrollbar{display:none}
+.srow__track.is-dragging,.fc__track.is-dragging{scroll-snap-type:none;cursor:grabbing}
+.srow__track>li{flex:none;scroll-snap-align:start}
+.srow__track img,.fc__track video{-webkit-user-drag:none}
+.srow__ctrl{display:flex;gap:10px;margin-top:clamp(14px,1.6vw,22px)}
+.srow__ctrl button{display:grid;place-items:center;width:54px;height:54px;border:1px solid currentColor;background:transparent;color:inherit;cursor:pointer;transition:background-color .2s,border-color .2s,color .2s,opacity .2s,transform .16s cubic-bezier(.23,1,.32,1)}
+.srow--dark .srow__ctrl button{border-color:#ffffff40}
+.srow--light .srow__ctrl button{border-color:#0b0b0c40}
+.srow__ctrl button:active:not(:disabled){transform:scale(.95)}
+.srow__ctrl button:disabled{opacity:.3;cursor:default}
+@media(hover:hover) and (pointer:fine){.srow__ctrl button:hover:not(:disabled){background:#e3172b;border-color:#e3172b;color:#fff}}

@@ -1,4 +1,5 @@
 'use client';
+import { CtaBand } from '../_components/CtaBand';
 import { FilmCarousel } from '../_components/FilmCarousel';
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight, Check, Play, Star, X } from 'lucide-react';
@@ -309,18 +310,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* H8 Closing band: the finished car from the film behind the booking call */}
-      <section className="h-end" aria-labelledby="h-close-title">
-        <img className="h-end__img" src="/site/assets/frames/desktop/0287.webp" alt="" loading="lazy" />
-        <div className="h-end__in">
-          <h2 id="h-close-title" className="s-h2" data-head>Ready to give your car <em>the care it deserves?</em></h2>
-          <p className="h-end__lede">{cta.text}</p>
-          <div className="h-end__act">
-            <a className="s-btn" href="/booking"><span className="s-roll"><span>Book now</span><span aria-hidden="true">Book now</span></span><ArrowRight size={22} aria-hidden="true" /></a>
-            <a className="h-end__call" href={'tel:' + contact.tel}>or call <span>+1 {contact.phone}</span></a>
-          </div>
-        </div>
-      </section>
+      <CtaBand id="h-close-title" />
 
       <dialog ref={box} className="h-film" aria-label={film !== null ? 'Transformation ' + (film + 1) + ' of ' + clips.length : 'Film'} onClose={() => setFilm(null)}
         onClick={(e) => { if (e.target === e.currentTarget) setFilm(null); }}

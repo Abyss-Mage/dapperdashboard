@@ -45,7 +45,7 @@
 .af-role span{display:inline-block}
 .af-text h3{margin-top:clamp(12px,1.4vw,20px);font-size:clamp(20px,2.2vw,34px);line-height:1.05}
 .af-text .c-muted{margin-top:10px;font-size:clamp(17px,1.4vw,21px)}
-@media(max-width:720px){.af-grid{grid-template-columns:minmax(0,1fr)}.af-frame{width:clamp(110px,34vw,170px)}}
+@media(max-width:720px){.af-grid{grid-template-columns:minmax(0,1fr)}.af-frame{width:clamp(110px,34vw,170px)}.af-role{font-size:clamp(24px,7vw,32px);line-height:1}.af-text h3{font-size:clamp(16px,4.6vw,19px)}.af-text .c-muted{font-size:15px}.af-mono{font-size:clamp(34px,10vw,48px)}}
 
 /* A4 Core values: ink band */
 .a-values{background:var(--ink);color:#f3f2ee;padding:clamp(72px,9vw,140px) var(--cg)}
@@ -85,3 +85,5 @@
 .a-close__call span{color:var(--red-ink);text-decoration:underline;text-underline-offset:.22em;text-decoration-thickness:1px;font-variant-numeric:tabular-nums}
 @media(max-width:720px){.a-values h2,.a-partners h2,.af h2,.aw h2{font-size:clamp(22px,6.4vw,30px)}.a-close h2{font-size:clamp(22px,6.6vw,30px)}}
 .aw-card::after{content:'';position:absolute;inset:0;background:#000;opacity:var(--dim,0);pointer-events:none}
+/* Phones: the same pinned sideways strip as desktop, sized to the screen */
+@media(max-width:720px){.is-pinned .a-story__head{width:80vw}.is-pinned .a-story__items,.is-pinned .a-story__strip{gap:44px}.is-pinned .a-story__item{min-width:74vw}.is-pinned .a-story__year{font-size:clamp(76px,26vw,120px)}.is-pinned .a-story{padding-top:64px}}

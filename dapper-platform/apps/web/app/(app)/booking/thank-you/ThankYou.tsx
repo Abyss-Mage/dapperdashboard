@@ -17,7 +17,7 @@ export default function ThankYou() {
 
   useEffect(() => {
     let got: Booked | null = null;
-    try { got = JSON.parse(sessionStorage.getItem('dapper:booked') || 'null'); } catch { /* fall through */ }
+    try { got = JSON.parse(sessionStorage.getItem('dapper:booked') || localStorage.getItem('dapper:booked') || 'null'); } catch { /* fall through */ }
     const id = new URLSearchParams(location.search).get('b') || '';
     const mine = got && (!id || got.bookingId === id) ? got : null;
     setB(mine);
@@ -56,7 +56,7 @@ export default function ThankYou() {
       <CalendarCheck size={40} aria-hidden="true" />
       <p className={styles.kicker}>Dapper Detailing Pros</p>
       <h1>Thank you. <em>You are booked.</em></h1>
-      {b === undefined ? null : b ? <>
+      {b === undefined ? <p className={styles.lede}>Your booking is confirmed. Loading your booking summary…</p> : b ? <>
         <p className={styles.lede}>Your booking is confirmed and we are holding your time. {b.email ? `A confirmation goes to ${b.email}.` : ''} If anything needs to change, a team member will contact you.</p>
         <dl className={styles.recap}>{rows.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>
       </> : <p className={styles.lede}>Your booking is confirmed and we are holding your time. We will be in touch by email or phone with anything that needs your attention.</p>}

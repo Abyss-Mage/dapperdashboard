@@ -1,8 +1,11 @@
 'use client';
+import { ScrollRow } from '../_components/ScrollRow';
+import { CtaBand } from '../_components/CtaBand';
 import Link from 'next/link';
-import { useRef } from 'react';
-import { ArrowRight, Check, Star } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { ArrowRight, Check, Plus, Star } from 'lucide-react';
 import { categories } from '../content';
+import { faqs } from '../faq';
 import { contact, cta, processSteps, proof, testimonials, why } from '../dapper';
 import { usePublished } from '../_components/usePublished';
 import { money, useLiveCatalog, useLiveFrom } from '../_components/useLiveFrom';
@@ -11,7 +14,7 @@ import { gsap, ScrollTrigger, SplitText, useGSAP } from '../_components/gsapCont
 /* One template for every service page, in the same darker "hard" direction as Services.
    V1 hero with the vehicle, price and a switcher for the other nine. V2 packages published by the team. V3 what to expect. V4 reviews. V5 closing band. */
 
-const kind = (key: string) => (key === 'ceramic' ? 'Coating' : key === 'ppf' ? 'Paint protection film' : 'Detailing');
+const kind = (key: string) => (key === 'ceramic' ? 'Coating' : key === 'ppf' ? 'Paint protection film' : key === 'window-tint' ? 'Window tint' : 'Detailing');
 
 /* What each package includes, in the studio's own words from dapperdetailing.ca. Used when the package's published summary is still the
    generic booking line; once the team writes a real summary in the dashboard (one item per line) that is shown instead. */
@@ -28,15 +31,20 @@ const includes = (name: string, summary: string): { list: string[]; text: string
     return lines.length > 1 ? { list: lines, text: '' } : { list: [], text: summary };
   }
   const hit = INCLUDES.find(([re]) => re.test(name));
-  return { list: hit ? hit[1] : [], text: hit ? '' : summary };
+  return { list: hit ? hit[1] : [], text: hit || GENERIC.test(summary) ? '' : summary };
 };
 
 function Packages({ category, name }: { category: string; name: string }) {
   const { status, services, retry } = usePublished();
   const { price } = useLiveCatalog();
-  // Cheapest first (unpriced last); the cheapest main package is the one the page's "starting from" price comes from.
+  const [tab, setTab] = useState('');
+  // Cheapest first (unpriced last).
   const items = services.filter((s) => s.category === category).sort((a, b) => (price[a.serviceId] ?? Infinity) - (price[b.serviceId] ?? Infinity));
-  const lowest = items.find((s) => s.kind === 'main' && price[s.serviceId] !== undefined)?.serviceId;
+  // Film is priced per vehicle ("Sedan - Front PPF"): choose the vehicle first, then its packages open.
+  const typeOf = (n: string) => (n.includes(' - ') ? n.split(' - ')[0].trim() : '');
+  const types = [...new Set(category === 'ppf' ? items.map((s) => typeOf(s.name)).filter(Boolean) : [])];
+  const active = types.includes(tab) ? tab : types[0] ?? '';
+  const shown = types.length ? items.filter((s) => typeOf(s.name) === active) : items;
   if (status === 'loading') return <p className="v-note" role="status">Loading packages…</p>;
   if (status === 'error') return <div className="v-note" role="status"><span>Current packages could not be loaded. Call the team or try again.</span><button type="button" className="v-ghost" onClick={retry}>Try again</button></div>;
   if (!items.length) return (
@@ -46,24 +54,30 @@ function Packages({ category, name }: { category: string; name: string }) {
     </div>
   );
   return (
-    <ul className="v-pkgs" aria-live="polite">
-      {items.map((s) => {
-        const inc = includes(s.name, s.summary);
-        return (
-          <li key={s.serviceId} className="v-row">
-            <div className="v-row__main">
-              <h3>{s.name}</h3>
-              {price[s.serviceId] !== undefined && <p className="v-row__price"><small>{s.serviceId === lowest ? 'Lowest price' : 'Price'}</small><b>${money(price[s.serviceId])}</b></p>}
-            </div>
-            <div className="v-row__inc">
-              <small>What’s included</small>
-              {inc.list.length ? <ul>{inc.list.map((x) => <li key={x}><Check size={16} strokeWidth={3} aria-hidden="true" />{x}</li>)}</ul> : <p>{inc.text}</p>}
-            </div>
-            <a className="v-row__book" href={'/booking?package=' + encodeURIComponent(s.serviceId)}>Book now<ArrowRight size={18} aria-hidden="true" /></a>
-          </li>
-        );
-      })}
-    </ul>
+    <>
+      {types.length > 1 && (
+        <div className="v-tabs" role="tablist" aria-label="Choose your vehicle">
+          {types.map((t) => <button key={t} type="button" role="tab" aria-selected={t === active} className={t === active ? 'is-on' : undefined} onClick={() => setTab(t)}>{t}</button>)}
+        </div>
+      )}
+      <ul className="v-pkgs" aria-live="polite">
+        {shown.map((s) => {
+          const inc = includes(s.name, s.summary);
+          return (
+            <li key={s.serviceId} className="v-row">
+              <div className="v-row__main">
+                <h3>{types.length || category === 'window-tint' ? s.name.replace(/^.*? - /, '') : s.name}</h3>
+                {price[s.serviceId] !== undefined && <p className="v-row__price"><b>${money(price[s.serviceId])}</b></p>}
+              </div>
+              <div className="v-row__inc">
+                {inc.list.length ? <><small>What’s included</small><ul>{inc.list.map((x) => <li key={x}><Check size={16} strokeWidth={3} aria-hidden="true" />{x}</li>)}</ul></> : inc.text ? <p>{inc.text}</p> : null}
+              </div>
+              <a className="v-row__book" href={'/booking?package=' + encodeURIComponent(s.serviceId)}>Book now<ArrowRight size={18} aria-hidden="true" /></a>
+            </li>
+          );
+        })}
+      </ul>
+    </>
   );
 }
 
@@ -122,7 +136,7 @@ export default function VehiclePage({ slug }: { slug: string }) {
   }, { scope: root });
 
   const other = categories.filter((x) => x.slug !== c.slug);
-  const noun = c.short.toLowerCase().replace(/s$/, '');
+  const noun = c.noun ?? c.short.toLowerCase().replace(/s$/, '');
   return (
     <div ref={root} className="s-page v-page">
       {/* V1 Hero: the vehicle edge to edge, the title over it, the price and the booking call on a bar along the bottom */}
@@ -200,27 +214,28 @@ export default function VehiclePage({ slug }: { slug: string }) {
           <h2 id="v-rv-title" className="s-h2" data-head>Straight from <em>the owners.</em></h2>
           <p className="v-rating"><span className="v-stars" aria-label="5 stars">{[0, 1, 2, 3, 4].map((i) => <Star key={i} size={18} fill="currentColor" strokeWidth={0} />)}</span><b>{proof.rating}</b> · {proof.customers}</p>
         </div>
-        <div className="v-hview">
-          <div className="v-htrack">
+        <div className="v-rev__row">
+          <ScrollRow label="Reviews from owners" auto={4500} className="v-htrack">
             {testimonials.map((t) => (
-              <figure key={t.name} className="v-quote">
-                <span className="v-quote__mark" aria-hidden="true">“</span>
-                <blockquote>{t.quote}</blockquote>
-                <figcaption>{t.name}</figcaption>
-              </figure>
+              <li key={t.name}>
+                <figure className="v-quote">
+                  <span className="v-quote__mark" aria-hidden="true">“</span>
+                  <blockquote>{t.quote}</blockquote>
+                  <figcaption>{t.name}</figcaption>
+                </figure>
+              </li>
             ))}
-          </div>
+          </ScrollRow>
         </div>
-        <div className="v-hbar" aria-hidden="true"><i /></div>
       </section>
 
       {/* V6 Another ride? The other nine as big type; each row fades in and draws its rule with the scroll */}
       <section className="v-sec v-light v-more" aria-labelledby="v-mo-title">
         <div className="v-sec__head">
           <h2 id="v-mo-title" className="s-h2" data-head>Something else <em>in the garage?</em></h2>
-          <p>We care for more than {noun}s. Pick another ride to see its packages.</p>
+          <p>We care for more than {noun}{noun.endsWith('s') ? '' : 's'}. Pick another ride to see its packages.</p>
         </div>
-        <ul className="v-cards">
+        <ScrollRow label="Other vehicle types" tone="light" className="v-cards">
           {other.map((x) => {
             const f = live[x.key] ?? x.from;
             return (
@@ -237,21 +252,26 @@ export default function VehiclePage({ slug }: { slug: string }) {
               </li>
             );
           })}
-        </ul>
+        </ScrollRow>
       </section>
 
-      {/* V7 Closing band: the finished car from the film behind the booking call */}
-      <section className="v-end" aria-labelledby="v-close-title">
-        <img className="v-end__img" src="/site/assets/frames/desktop/0287.webp" alt="" loading="lazy" />
-        <div className="v-end__in">
-          <h2 id="v-close-title" className="s-h2" data-head>Ready to give your {noun} <em>the care it deserves?</em></h2>
-          <p className="v-end__lede">{cta.text}</p>
-          <div className="v-end__act">
-            <a className="s-btn" href={'/booking?category=' + c.key}><span className="s-roll"><span>Book now</span><span aria-hidden="true">Book now</span></span><ArrowRight size={22} aria-hidden="true" /></a>
-            <a className="v-end__call" href={'tel:' + contact.tel}>or call <span>+1 {contact.phone}</span></a>
-          </div>
+      {/* V7 Questions people ask about this service */}
+      <section className="v-sec v-faq" aria-labelledby="v-faq-title">
+        <div className="v-sec__head">
+          <h2 id="v-faq-title" className="s-h2" data-head>Questions, <em>answered.</em></h2>
+          <p>Not sure which package suits your {noun}? Call the team for personal advice.</p>
+        </div>
+        <div className="v-faq__list">
+          {(faqs[c.key] ?? []).map((f) => (
+            <details key={f.q} className="v-faq__item">
+              <summary>{f.q}<Plus size={22} aria-hidden="true" /></summary>
+              <p>{f.a}</p>
+            </details>
+          ))}
         </div>
       </section>
+
+      <CtaBand id="v-close-title" lead={'Ready to give your ' + noun}  />
     </div>
   );
 }

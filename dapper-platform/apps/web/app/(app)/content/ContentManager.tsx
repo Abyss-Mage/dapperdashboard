@@ -8,7 +8,7 @@ type Site={slug:string;name:string;published:boolean;version:number};
 type Service={serviceId:string;name:string;kind:string;parentId:string|null;serviceVersion:number;category:string;summary:string;published:boolean;version:number};
 type Photo={id:string;mediaId:string;title:string;alt:string;category:string;sortOrder:number;published:boolean;version:number};
 type Content={site:Site;services:Service[];portfolio:Photo[];limit:number};
-const categories=[['2-wheeler','2 Wheeler'],['hatchback','Hatchback'],['sedan','Sedan'],['suv','SUV'],['pickup','Pickup'],['van','Van'],['ceramic','Ceramic coating'],['ppf','PPF'],['aircraft','Aircraft'],['boat','Boat']];
+const categories=[['2-wheeler','2 Wheeler'],['hatchback','Hatchback'],['sedan','Sedan'],['suv','SUV'],['pickup','Pickup'],['van','Van'],['ceramic','Ceramic coating'],['ppf','PPF'],['aircraft','Aircraft'],['boat','Boat'],['window-tint','Window tint']];
 type LegacyImage={title:string;alt:string;file:string};
 const initialPhoto:Photo={id:'',mediaId:'',title:'',alt:'',category:'detailing',sortOrder:0,published:false,version:0};
 async function result(response:Response){

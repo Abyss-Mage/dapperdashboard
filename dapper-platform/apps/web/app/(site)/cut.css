@@ -1,0 +1,3 @@
+/* The signature cut: the bottom-left corner of every button and picture is clipped on a slant. */
+.c-btn,.d-btn,.f-btn,.s-btn,.v-row__book,.v-card__go,.v-ghost,.p-photo,.s-tile,.s-shot,.h-dcard,.h-reel,.v-card,.v-exp__item,.v-quote{clip-path:polygon(0 0,100% 0,100% 100%,14px 100%,0 calc(100% - 14px))}
+.p-photo{--cut:14px}

@@ -96,3 +96,6 @@
 /* progress segments fill with a glow */
 .bar i{transition:background-color .5s ease,box-shadow .5s ease,transform .5s cubic-bezier(.2,.8,.2,1)}
 .bar i.on{box-shadow:0 0 12px color-mix(in srgb,var(--primary) 55%,transparent);transform:scaleY(1.25)}
+
+/* Placeholder text is a hint, so it is smaller than what is typed */
+.field input::placeholder,.field textarea::placeholder{font-size:.8125rem}

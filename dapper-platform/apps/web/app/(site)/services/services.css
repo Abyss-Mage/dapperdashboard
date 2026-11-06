@@ -127,3 +127,13 @@ body:has(.s-page),html:has(.s-page){background:#0b0b0c}
 .s-light .s-how__ctrl button{border-color:#0b0b0c55;color:var(--bone)}
 .s-light .s-rev__row{scrollbar-color:#0b0b0c55 transparent}
 .s-light .s-rev__row li{background:#fff}
+
+/* ---- Round 3: pure white (no cream), carousel reviews, eleven tiles ---- */
+.s-light{--bk:#fff;--bk2:#f3f3f3;--line:#0b0b0c1f;background:#fff}
+.s-how.s-light{background:#fff}
+.s-grid{grid-auto-rows:minmax(clamp(220px,28vh,340px),1fr)}
+.s-rev.s-light{padding-inline:var(--cg)}
+.s-rev .s-h2{padding:0}
+.s-rev .srow{margin-top:clamp(32px,4vw,56px);color:var(--bone)}
+.s-rev__row.srow__track{margin:0;padding:0 0 4px}
+.s-light .s-rev__row li{background:#f3f3f3;width:clamp(280px,32vw,440px);scroll-margin-left:0;clip-path:polygon(0 0,100% 0,100% 100%,18px 100%,0 calc(100% - 18px))}

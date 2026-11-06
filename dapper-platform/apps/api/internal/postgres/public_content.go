@@ -63,7 +63,7 @@ func validContentText(value string, min, max int) bool {
 }
 func validServiceCategory(value string) bool {
 	switch value {
-	case "2-wheeler", "hatchback", "sedan", "suv", "pickup", "van", "ceramic", "ppf", "aircraft", "boat":
+	case "2-wheeler", "hatchback", "sedan", "suv", "pickup", "van", "ceramic", "ppf", "aircraft", "boat", "window-tint":
 		return true
 	}
 	return false

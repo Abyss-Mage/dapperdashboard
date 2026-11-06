@@ -177,3 +177,60 @@
 .v-more .v-card__go{padding:0 20px;font:500 13px/1 var(--cd);letter-spacing:.04em;color:#fff;justify-content:flex-start}
 .v-more .v-card__img{padding:0;display:block;font-size:0}
 @media(hover:hover) and (pointer:fine){.v-more .v-card__go:hover{color:#fff}}
+
+/* ---- Round 3: pure white (no cream), red prices, tabs, centred bar, richer What to expect, carousels, FAQ ---- */
+.v-light{--bk:#fff;--bk2:#f3f3f3;--line:#0b0b0c1f;background:#fff}
+.v-light .v-row{background:#fff;box-shadow:none;border:1px solid #0b0b0c1f;clip-path:polygon(0 0,100% 0,100% 100%,18px 100%,0 calc(100% - 18px))}
+.v-row__price b{color:var(--red)}
+.v-row__price{margin:0}
+
+/* Choose the vehicle, then its packages open (paint protection film) */
+.v-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 clamp(18px,2vw,28px)}
+.v-tabs button{min-height:52px;padding:0 24px;border:1px solid #0b0b0c40;background:transparent;color:var(--bone);font:500 14px/1 var(--cd);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;clip-path:polygon(0 0,100% 0,100% 100%,12px 100%,0 calc(100% - 12px));transition:background-color .2s,color .2s,border-color .2s,transform .16s var(--ease)}
+.v-tabs button:active{transform:scale(.97)}
+.v-tabs button.is-on{background:var(--red);border-color:var(--red);color:#fff}
+@media(hover:hover) and (pointer:fine){.v-tabs button:not(.is-on):hover{border-color:var(--red);color:var(--red)}}
+
+/* The bar under the hero: the price on the left, the booking button and the number centred on one line */
+.v-buy{align-items:center}
+.v-buy .s-btn,.v-buy .s-close__call{align-self:center}
+.v-buy .s-close__call{display:inline-flex;align-items:center;min-height:60px;line-height:1}
+.v-buy .s-close__call span{border-bottom:0;padding:0 0 0 .45em;text-decoration:underline;text-decoration-color:var(--red);text-underline-offset:.3em;text-decoration-thickness:2px}
+
+/* What to expect: four tall photo cards with the step over the picture */
+.v-exp .v-exp__list{grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:clamp(12px,1.4vw,20px)}
+.v-exp .v-exp__item{position:relative;isolation:isolate;display:flex;flex-direction:column;justify-content:flex-end;gap:10px;min-height:clamp(360px,34vw,480px);padding:clamp(20px,2vw,28px);overflow:hidden;color:#fff;clip-path:polygon(0 0,100% 0,100% 100%,22px 100%,0 calc(100% - 22px))}
+.v-exp .v-exp__m{position:absolute;inset:0;z-index:-2;aspect-ratio:auto;margin:0;filter:none;clip-path:none;transition:transform .8s var(--ease)}
+.v-exp .v-exp__item::after{content:'';position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(11,11,12,0) 30%,rgba(11,11,12,.9) 100%)}
+.v-exp .v-exp__item h3{color:#fff;font-size:clamp(20px,1.8vw,28px);line-height:1.02}
+.v-exp .v-exp__item h3::before{content:'';display:block;width:34px;height:4px;margin-bottom:14px;background:var(--red)}
+.v-exp .v-exp__item p{color:#e4e1da;font-size:clamp(14px,1.05vw,16px)}
+@media(hover:hover) and (pointer:fine){.v-exp .v-exp__item:hover .v-exp__m{transform:scale(1.06)}}
+
+/* Reviews: a carousel on black; drag it, step it with the arrows or let it move on its own */
+.v-rev__row{padding-inline:var(--cg)}
+.v-rev .srow{color:var(--bone)}
+.v-htrack.srow__track{width:auto;padding-inline:0}
+.v-htrack>li{flex:0 0 clamp(290px,32vw,470px)}
+.v-htrack .v-quote{flex:initial;height:100%;min-height:clamp(280px,36vh,400px)}
+
+/* Something else in the garage: a carousel of cards, the heading centred */
+.v-more .v-sec__head{flex-direction:column;align-items:center;text-align:center}
+.v-more .v-sec__head p{margin-inline:auto;text-align:center;max-width:46ch}
+.srow__track.v-cards{display:flex;padding-bottom:6px}
+.v-cards>li{flex:0 0 clamp(260px,24vw,310px);display:flex}
+.v-cards .v-card{width:100%}
+.v-more .srow{color:var(--bone)}
+.v-more .srow__ctrl{justify-content:center}
+.v-light .v-card{border:1px solid #0b0b0c1f;box-shadow:none}
+
+/* Questions */
+.v-faq .v-sec__head{margin-bottom:clamp(24px,3vw,44px)}
+.v-faq__list{display:grid;gap:8px;max-width:960px}
+.v-faq__item{background:var(--bk2);clip-path:polygon(0 0,100% 0,100% 100%,16px 100%,0 calc(100% - 16px))}
+.v-faq__item summary{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:clamp(18px,2vw,26px) clamp(18px,2.4vw,32px);cursor:pointer;list-style:none;font:500 clamp(15px,1.4vw,20px)/1.25 var(--cd);letter-spacing:-.005em;text-transform:uppercase;color:var(--bone)}
+.v-faq__item summary::-webkit-details-marker{display:none}
+.v-faq__item summary svg{flex:none;color:var(--red);transition:transform .3s var(--ease)}
+.v-faq__item[open] summary svg{transform:rotate(45deg)}
+.v-faq__item p{margin:0;padding:0 clamp(18px,2.4vw,32px) clamp(18px,2.2vw,28px);max-width:70ch;color:var(--mute);font-size:clamp(15px,1.15vw,18px);text-wrap:pretty}
+@media(hover:hover) and (pointer:fine){.v-faq__item summary:hover{color:var(--red)}}

@@ -1,4 +1,5 @@
 'use client';
+import { CtaBand } from '../_components/CtaBand';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, ArrowUpRight, Play, X } from 'lucide-react';
 import { contact, cta, portfolio, transformations } from '../dapper';
@@ -193,15 +194,7 @@ export default function PortfolioPage() {
           </ul>
         </section>
 
-        {/* P5 Closing band: the booking call, in type */}
-        <section className="p-close" aria-labelledby="p-close-title">
-          <h2 id="p-close-title" data-head>Ready to give your car <em>the care it deserves?</em></h2>
-          <p className="c-muted p-close__lede" data-in>{cta.text}</p>
-          <div className="p-close__actions" data-in>
-            <a className="c-btn c-btn--red" href="/booking"><span className="c-roll"><span>Book now</span><span aria-hidden="true">Book now</span></span><ArrowRight size={20} aria-hidden="true" /></a>
-            <a className="p-close__call" href={'tel:' + contact.tel}>or call <span>+1 {contact.phone}</span></a>
-          </div>
-        </section>
+        <CtaBand id="p-close-title" />
       </div>
 
       <dialog ref={viewer} className="p-viewer" aria-label={open !== null ? 'Photo ' + (open + 1) + ' of ' + photos.length : 'Photo'} onClose={() => setOpen(null)}

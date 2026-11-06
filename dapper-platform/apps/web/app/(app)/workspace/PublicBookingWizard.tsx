@@ -91,7 +91,9 @@ export default function PublicBookingWizard() {
           key.current = crypto.randomUUID();
           // The booking is made: hand its details to the thank-you page, which is where the ad tags report the purchase.
           try {
-            sessionStorage.setItem('dapper:booked', JSON.stringify({ ...res, pack: b.rule.serviceName, start: b.localStart, name: b.customer.name, email: b.customer.email, phone: b.customer.phone, address: b.serviceAddress, notes: b.notes }));
+            const saved = JSON.stringify({ ...res, pack: b.rule.serviceName, start: b.localStart, name: b.customer.name, email: b.customer.email, phone: b.customer.phone, address: b.serviceAddress, notes: b.notes });
+            sessionStorage.setItem('dapper:booked', saved);
+            localStorage.setItem('dapper:booked', saved); // a second copy, in case the browser clears the first on the way to the next page
           } catch { /* the thank-you page still opens, with fewer details */ }
           window.location.assign('/booking/thank-you?b=' + encodeURIComponent(res.bookingId));
         } catch (e) {

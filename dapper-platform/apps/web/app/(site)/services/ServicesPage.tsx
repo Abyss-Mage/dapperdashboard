@@ -1,4 +1,6 @@
 'use client';
+import { ScrollRow } from '../_components/ScrollRow';
+import { CtaBand } from '../_components/CtaBand';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
@@ -138,14 +140,14 @@ export default function ServicesPage() {
       {/* S4 What customers say: a row to swipe or scroll */}
       <section className="s-rev s-light" aria-labelledby="s-rev-title">
         <h2 id="s-rev-title" className="s-h2" data-head>What our customers <em>say.</em></h2>
-        <ul className="s-rev__row" data-in tabIndex={0} aria-label="Customer reviews">
+        <ScrollRow label="Customer reviews" tone="light" auto={4500} className="s-rev__row">
           {testimonials.map((t) => (
             <li key={t.name}>
               <blockquote>{t.quote}</blockquote>
               <p>{t.name}</p>
             </li>
           ))}
-        </ul>
+        </ScrollRow>
       </section>
 
       {/* S5 The dealerships Dapper works with */}
@@ -154,15 +156,7 @@ export default function ServicesPage() {
         <Dealers />
       </section>
 
-      {/* S6 Closing band: the booking call, in type */}
-      <section className="s-close s-light" aria-labelledby="s-close-title">
-        <h2 id="s-close-title" className="s-h2" data-head>Ready to give your car <em>the care it deserves?</em></h2>
-        <p className="s-close__lede" data-in>{cta.text}</p>
-        <div className="s-close__actions" data-in>
-          <a className="s-btn" href="/booking"><Roll>Book now</Roll><ArrowRight size={22} aria-hidden="true" /></a>
-          <a className="s-close__call" href={'tel:' + contact.tel}>or call <span>+1 {contact.phone}</span></a>
-        </div>
-      </section>
+      <CtaBand id="s-close-title" />
     </div>
   );
 }
