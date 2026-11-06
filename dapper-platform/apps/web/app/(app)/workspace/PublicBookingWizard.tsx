@@ -25,6 +25,13 @@ export default function PublicBookingWizard() {
   // The website categories set in the dashboard (service id -> category); without any, the wizard falls back to its built-in groups.
   const [cats, setCats] = useState<Map<string, string> | null>(null);
   // A signed-in customer's saved details (silently skipped when nobody is signed in).
+  // Where a Book now button on the website pointed: ?package=<service id> or ?category=<kind of vehicle>.
+  const [preselect] = useState<{ serviceId?: string; category?: string } | undefined>(() => {
+    if (typeof window === 'undefined') return undefined;
+    const q = new URLSearchParams(window.location.search);
+    const serviceId = q.get('package') || undefined, category = q.get('category') || undefined;
+    return serviceId || category ? { serviceId, category } : undefined;
+  });
   const [prefill, setPrefill] = useState<{ name: string; email: string; phone: string; addresses: { id: string; label: string; address: string; isDefault: boolean }[] } | undefined>();
   // One key per booking attempt; a failed attempt gets a new one so a released time can be tried again.
   const key = useRef(crypto.randomUUID());
@@ -56,6 +63,7 @@ export default function PublicBookingWizard() {
     <BookingWizard
       audience="customer"
       prefill={prefill}
+      preselect={preselect}
       categories={cats ? { list: siteCategories.map((c) => ({ key: c.key, title: c.title })), of: (id) => cats.get(id) ?? '' } : undefined}
       timezone={options.timezone}
       depositPercent={options.depositPercent}

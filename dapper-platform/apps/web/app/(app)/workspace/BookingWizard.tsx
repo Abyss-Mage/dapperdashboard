@@ -45,6 +45,8 @@ export type WizardProps = {
   /** The website's service categories (set in the dashboard): when given with the customer wording, step one lists them instead of the built-in groups. */
   categories?: { list: { key: string; title: string }[]; of: (serviceId: string) => string };
   /** A signed-in customer's saved details: their name, email and phone fill in, and their saved addresses are offered for mobile and valet jobs. */
+  /** Arrive from a Book now button on the website: the package (or just the kind of service) is already chosen, so the steps start at Where. */
+  preselect?: { serviceId?: string; category?: string };
   prefill?: { name: string; email: string; phone: string; addresses: { id: string; label: string; address: string; isDefault: boolean }[] };
 };
 
@@ -192,6 +194,18 @@ export default function BookingWizard(p: WizardProps) {
   // In a category the vehicle prefix is dropped when it is the category itself ("Sedan - Exterior Wash" under Sedan); aircraft, boats and film keep the whole name because the size or vehicle matters.
   const packName = (r: WizardRule) => (byCategory && ['aircraft', 'boat', 'ppf', 'other'].includes(catKey(r)) ? r.serviceName : parsed.get(r.id)!.pack);
   const extras = rule?.availableAddons ?? [];
+  const preApplied = useRef(false);
+  useEffect(() => {
+    const pre = p.preselect;
+    if (preApplied.current || !pre || !rules) return;
+    const hit = pre.serviceId ? baseRules.find((r) => r.serviceId === pre.serviceId) : undefined;
+    if (!hit && !(pre.category && byCategory && custGroups.some((g) => g.key === pre.category))) return;
+    preApplied.current = true;
+    if (hit) { setGroup(byCategory ? catKey(hit) : groupOf(parsed.get(hit.id)!.pack)); setVehicle(byCategory ? '' : parsed.get(hit.id)!.vehicle); setRuleId(hit.id); }
+    else setGroup(pre.category!);
+    setStep(steps.indexOf('Where'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rules, baseRules, p.preselect]);
   const price = (id: string) => services.get(id)?.priceCents ?? null;
   const subtotal = (rule ? price(rule.serviceId) ?? 0 : 0) + picked.reduce((s, id) => s + (price(id) ?? 0), 0);
   const unpriced = !!rule && (price(rule.serviceId) === null || picked.some((id) => price(id) === null));

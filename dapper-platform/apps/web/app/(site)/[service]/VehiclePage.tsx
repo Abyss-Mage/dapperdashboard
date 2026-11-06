@@ -59,7 +59,7 @@ function Packages({ category, name }: { category: string; name: string }) {
               <small>What’s included</small>
               {inc.list.length ? <ul>{inc.list.map((x) => <li key={x}><Check size={16} strokeWidth={3} aria-hidden="true" />{x}</li>)}</ul> : <p>{inc.text}</p>}
             </div>
-            <a className="v-row__book" href="/booking">Book now<ArrowRight size={18} aria-hidden="true" /></a>
+            <a className="v-row__book" href={'/booking?package=' + encodeURIComponent(s.serviceId)}>Book now<ArrowRight size={18} aria-hidden="true" /></a>
           </li>
         );
       })}
@@ -139,7 +139,7 @@ export default function VehiclePage({ slug }: { slug: string }) {
           {fromPrice
             ? <p className="v-price"><small>Starting from</small><b aria-label={'$' + money(fromPrice)}>${money(fromPrice)}</b></p>
             : <p className="v-price v-price--ask"><small>Pricing</small><b>Ask the team</b></p>}
-          <a className="s-btn" href="/booking"><span className="s-roll"><span>Book now</span><span aria-hidden="true">Book now</span></span><ArrowRight size={22} aria-hidden="true" /></a>
+          <a className="s-btn" href={'/booking?category=' + c.key}><span className="s-roll"><span>Book now</span><span aria-hidden="true">Book now</span></span><ArrowRight size={22} aria-hidden="true" /></a>
           <a className="s-close__call" href={'tel:' + contact.tel}>or call <span>+1 {contact.phone}</span></a>
         </div>
       </section>
@@ -247,7 +247,7 @@ export default function VehiclePage({ slug }: { slug: string }) {
           <h2 id="v-close-title" className="s-h2" data-head>Ready to give your {noun} <em>the care it deserves?</em></h2>
           <p className="v-end__lede">{cta.text}</p>
           <div className="v-end__act">
-            <a className="s-btn" href="/booking"><span className="s-roll"><span>Book now</span><span aria-hidden="true">Book now</span></span><ArrowRight size={22} aria-hidden="true" /></a>
+            <a className="s-btn" href={'/booking?category=' + c.key}><span className="s-roll"><span>Book now</span><span aria-hidden="true">Book now</span></span><ArrowRight size={22} aria-hidden="true" /></a>
             <a className="v-end__call" href={'tel:' + contact.tel}>or call <span>+1 {contact.phone}</span></a>
           </div>
         </div>
