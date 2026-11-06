@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"errors"
-	"html"
 	"log"
 	"net"
 	"net/http"
@@ -140,9 +139,8 @@ func registerAccountCredentialRoutes(mux *http.ServeMux, store *postgres.Store, 
 				go func() {
 					ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 					defer cancel()
-					text := "Someone asked to reset the password for this email address at Dapper Detailing.\n\nUse this link within one hour to choose a new password:\n" + link + "\n\nIf this was not you, ignore this email. Your password has not changed."
-					body := "<p>Someone asked to reset the password for this email address at Dapper Detailing.</p><p><a href=\"" + html.EscapeString(link) + "\">Choose a new password</a> (the link works once, for one hour).</p><p>If this was not you, ignore this email. Your password has not changed.</p>"
-					if _, err := sender.SendEmail(ctx, email, "Reset your Dapper Detailing password", body, text); err != nil {
+					subject, body, text := store.RenderEmail(ctx, "password_reset", map[string]string{"link": link})
+					if _, err := sender.SendEmail(ctx, email, subject, body, text); err != nil {
 						log.Print("The password reset email could not be sent")
 					}
 				}()

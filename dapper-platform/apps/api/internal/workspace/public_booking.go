@@ -1,6 +1,9 @@
 package workspace
 
 import (
+	"context"
+	"fmt"
+	"log"
 	"dapper.local/platform/internal/postgres"
 	"errors"
 	"net/http"
@@ -49,7 +52,7 @@ func visitor(r *http.Request) string {
 	return postgres.ClientIP(r.RemoteAddr, r.Header.Get("X-Forwarded-For"))
 }
 
-func registerPublicBookingRoutes(mux *http.ServeMux, store *postgres.Store) {
+func registerPublicBookingRoutes(mux *http.ServeMux, store *postgres.Store, sender postgres.EmailSender) {
 	browse := newVisitorLimiter(240, time.Minute)
 	book := newVisitorLimiter(6, 10*time.Minute)
 	sendCode := newVisitorLimiter(5, time.Hour)
@@ -245,6 +248,31 @@ func registerPublicBookingRoutes(mux *http.ServeMux, store *postgres.Store) {
 				reply(w, 402, map[string]string{"error": depositMessage(err)})
 				return
 			}
+		}
+		// The confirmation email, in the owner's wording. It is sent in the background and only when outgoing email works.
+		if emailReady(sender) {
+			go func(name, to string, start time.Time, paid, pending bool) {
+				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+				defer cancel()
+				zone, err := time.LoadLocation("America/Toronto")
+				if err != nil {
+					zone = time.UTC
+				}
+				payment := "Pay on the day"
+				switch {
+				case paid:
+					payment = "Paid in full online"
+				case pending:
+					payment = "Card payment is being confirmed"
+				}
+				subject, body, text := store.RenderEmail(ctx, "booking_confirmation", map[string]string{
+					"name": name, "service": res.ServiceName, "when": start.In(zone).Format("Monday, January 2 at 3:04 PM"),
+					"total": fmt.Sprintf("$%.2f", float64(res.TotalCents)/100), "payment": payment, "reference": res.InvoiceNumber,
+				})
+				if _, err := sender.SendEmail(ctx, to, subject, body, text); err != nil {
+					log.Print("The booking confirmation email could not be sent")
+				}
+			}(in.Name, in.Email, in.Start, paid, pending)
 		}
 		reply(w, 201, map[string]any{"bookingId": res.BookingID, "invoiceNumber": res.InvoiceNumber, "totalCents": res.TotalCents, "depositCents": res.DepositCents, "depositPaid": paid, "paymentPending": pending, "paidCents": map[bool]int64{true: res.TotalCents, false: 0}[paid], "serviceName": res.ServiceName})
 	})

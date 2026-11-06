@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, ArrowUpRight, Play, X } from 'lucide-react';
 import { contact, cta, portfolio, transformations } from '../dapper';
 import { FilmCarousel } from '../_components/FilmCarousel';
+import { useFilms } from '../_components/useFilms';
 import { gsap, ScrollTrigger, SplitText, useGSAP } from '../_components/gsapContact';
 
 /* Portfolio, built section by section with the owner's approval of each. Same paper system as Contact and About (../paper.css).
@@ -57,7 +58,7 @@ export default function PortfolioPage() {
   // The films open in the same kind of modal dialog, with sound and controls.
   const filmBox = useRef<HTMLDialogElement>(null);
   const [film, setFilm] = useState<number | null>(null);
-  const clips = transformations.clips;
+  const clips = useFilms(transformations.clips);
   useEffect(() => {
     const d = filmBox.current;
     if (!d) return;
@@ -135,7 +136,7 @@ export default function PortfolioPage() {
           <div className="ph__copy">
             <h1 id="p-title" className="p-h1">Real results.<br /><em>Real vehicles.</em></h1>
             <div className="ph__aside">
-              <p>Every transformation shows our commitment to excellence: {photos.length} vehicles and details, and {transformations.clips.length} films from the Dapper studio.</p>
+              <p>Every transformation shows our commitment to excellence: {photos.length} vehicles and details, and {clips.length} films from the Dapper studio.</p>
               <a className="c-btn c-btn--red" href="#p-gallery-title"><span className="c-roll"><span>See the work</span><span aria-hidden="true">See the work</span></span><ArrowRight size={20} aria-hidden="true" /></a>
             </div>
           </div>

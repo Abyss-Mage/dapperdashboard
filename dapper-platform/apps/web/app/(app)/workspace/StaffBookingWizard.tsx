@@ -30,6 +30,7 @@ export default function StaffBookingWizard(props: StaffBookingWizardProps) {
   return (
     <BookingWizard
       timezone={props.timezone}
+      allowCoupon={!employee}
       loadOptions={async () => (employee ? json<{ rules: WizardRule[] }>(await fetch('/api/v1/employee/walk-in/options', { cache: 'no-store' })) : json<{ rules: WizardRule[] }>(await fetch(`${base}/bookings/reservation-options`, { cache: 'no-store' })))}
       loadServices={async () => (await json<{ items: WizardService[] }>(await fetch(employee ? '/api/v1/employee/services' : `${base}/services`, { cache: 'no-store' }))).items}
       loadTaxes={async (): Promise<WizardTaxes> => {
@@ -59,7 +60,7 @@ export default function StaffBookingWizard(props: StaffBookingWizardProps) {
             const made = await json<{ id: string }>(await fetch(`${base}/customers`, post({ name: b.customer.name, email: b.customer.email, phone: b.customer.phone })));
             customerId = made.id;
           }
-          const body = { customerId, vehicleId: null, resourceId: b.rule.resourceId, ruleId: b.rule.id, ruleVersion: b.rule.version, start: b.startIso, channel: 'walk_in', notes: b.notes, serviceAddress: b.serviceAddress, ...(b.addonIds.length ? { addonIds: b.addonIds } : {}) };
+          const body = { customerId, vehicleId: null, resourceId: b.rule.resourceId, ruleId: b.rule.id, ruleVersion: b.rule.version, start: b.startIso, channel: 'walk_in', notes: b.notes, serviceAddress: b.serviceAddress, ...(b.addonIds.length ? { addonIds: b.addonIds } : {}), ...(b.couponCode ? { couponCode: b.couponCode } : {}) };
           await json(await fetch(`${base}/bookings/reserve`, post({ ...body, requestKey: keyFor(body) })));
         }
         await props.onBooked();

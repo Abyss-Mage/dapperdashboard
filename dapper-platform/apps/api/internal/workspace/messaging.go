@@ -169,6 +169,52 @@ func registerMessagingRoutes(mux *http.ServeMux, store *postgres.Store, sender p
 		}
 		reply(w, 200, map[string]bool{"sent": true})
 	})
+	// The wording of the emails the system sends: the owner edits subject and text, with {{placeholders}}; deleting brings back the built-in wording.
+	mux.HandleFunc("GET "+base+"/templates", func(w http.ResponseWriter, r *http.Request) {
+		id, ok := org(w, r)
+		if !ok {
+			return
+		}
+		items, err := store.EmailTemplates(r.Context(), requestSession(r).principalID, id)
+		if err != nil {
+			messagingFailure(w, err)
+			return
+		}
+		reply(w, 200, map[string]any{"items": items})
+	})
+	mux.HandleFunc("PUT "+base+"/templates/{key}", func(w http.ResponseWriter, r *http.Request) {
+		id, ok := org(w, r)
+		if !ok {
+			return
+		}
+		var in struct {
+			Subject string `json:"subject"`
+			Body    string `json:"body"`
+		}
+		if !decodeLimited(w, r, &in, 16*1024) {
+			return
+		}
+		if err := store.SaveEmailTemplate(r.Context(), requestSession(r).principalID, id, r.PathValue("key"), in.Subject, in.Body); err != nil {
+			if errors.Is(err, postgres.ErrEmailTemplate) {
+				reply(w, 422, map[string]string{"error": "The subject and text are required, and a reset or invitation email must keep its {{link}}."})
+				return
+			}
+			messagingFailure(w, err)
+			return
+		}
+		reply(w, 200, map[string]bool{"saved": true})
+	})
+	mux.HandleFunc("DELETE "+base+"/templates/{key}", func(w http.ResponseWriter, r *http.Request) {
+		id, ok := org(w, r)
+		if !ok {
+			return
+		}
+		if err := store.ResetEmailTemplate(r.Context(), requestSession(r).principalID, id, r.PathValue("key")); err != nil {
+			messagingFailure(w, err)
+			return
+		}
+		reply(w, 200, map[string]bool{"reset": true})
+	})
 	mux.HandleFunc("PUT "+base+"/sms", func(w http.ResponseWriter, r *http.Request) {
 		id, ok := org(w, r)
 		if !ok {

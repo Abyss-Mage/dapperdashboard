@@ -39,6 +39,8 @@ export type WizardProps = {
   phoneCheck?: WizardPhoneCheck;
   deposit?: WizardDeposit;
   /** Checks a coupon code against the main service and the subtotal; resolves with what it takes off, or throws the reason it cannot be used. */
+  /** Staff booking: show the coupon box (the code is checked when the booking is made). */
+  allowCoupon?: boolean;
   checkCoupon?: (code: string, serviceId: string, subtotalCents: number) => Promise<{ code: string; discountCents: number }>;
   /** Wording for the final screen; staff see a default that mentions taking payment later. */
   doneNote?: (b: { name: string; pack: string; when: string; deposit?: 'card' | 'cash' }) => WizardDone;
@@ -448,7 +450,7 @@ export default function BookingWizard(p: WizardProps) {
             <label className={`${styles.field} ${styles.half}`}>Email<input type="email" value={me.email} onChange={(e) => setMe({ ...me, email: e.target.value })} autoComplete="email" placeholder="you@example.com" /></label>
             {p.findCustomers && <div className={styles.wide}><button type="button" className={styles.back} disabled={me.phone.replace(/\D/g, '').length < 4} onClick={() => void lookup()}>Find an existing customer by phone</button>
               {found && (found.length ? <div className={styles.choices} style={{ marginTop: 8 }}>{found.map((c) => <button key={c.id} type="button" className={styles.choice} onClick={() => { setMe({ id: c.id, name: c.name, email: c.email, phone: c.phone }); setFound(null); }}><span><strong>{c.name}</strong><small>{c.email || 'No email'} · {c.phone}</small></span></button>)}</div> : <p className={styles.help}>No customer with that number.</p>)}</div>}
-            {p.deposit && <div className={`${styles.field} ${styles.wide}`}><label htmlFor="coupon-code">Coupon code (optional)</label>
+            {(p.deposit || p.allowCoupon) && <div className={`${styles.field} ${styles.wide}`}><label htmlFor="coupon-code">Coupon code (optional)</label>
               <div style={{ display: 'flex', gap: 8 }}><input id="coupon-code" value={coupon} maxLength={32} onChange={(e) => { setCoupon(e.target.value.toUpperCase()); setCouponMsg(''); }} autoComplete="off" placeholder="Have a coupon? Enter it here" />
                 {p.checkCoupon && <button type="button" className={styles.back} disabled={couponBusy || !coupon.trim() || !rule} onClick={async () => {
                   setCouponBusy(true); setCouponMsg('');

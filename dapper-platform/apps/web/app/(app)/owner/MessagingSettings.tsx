@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import styles from './owner.module.css';
+import EmailTemplates from './EmailTemplates';
 import ConfirmDialog from '../workspace/ConfirmDialog';
 
 type View = {
@@ -90,6 +91,7 @@ export default function MessagingSettings({ organizationId, revision }: { organi
               <button type="button" className="secondary" disabled={!!busy || !mailTo.trim() || !view.emailWorking} onClick={testMail}>{busy === 'mail-test' ? 'Sending…' : 'Send test email'}</button>
             </div>
           </form>
+          <EmailTemplates url={url} />
 
           <form onSubmit={saveSms} className={styles.resource}>
             <div className={styles.rowBetween}>

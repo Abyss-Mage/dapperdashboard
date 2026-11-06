@@ -1,6 +1,7 @@
 'use client';
 import { CtaBand } from '../_components/CtaBand';
 import { FilmCarousel } from '../_components/FilmCarousel';
+import { useFilms } from '../_components/useFilms';
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight, Check, Play, Star, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -30,7 +31,7 @@ export default function HomePage() {
   const priceOf = (c: { key: string; from?: number }) => live[c.key] ?? c.from;
   const nRev = testimonials.length;
   const goRev = (to: number) => setRev(((to % nRev) + nRev) % nRev);
-  const clips = transformations.clips;
+  const clips = useFilms(transformations.clips);
   const box = useRef<HTMLDialogElement>(null);
   const [film, setFilm] = useState<number | null>(null);
   const stepFilm = (n: number) => setFilm((i) => (i === null ? i : (i + n + clips.length) % clips.length));

@@ -1,6 +1,7 @@
 package workspace
 
 import (
+	"context"
 	"dapper.local/platform/internal/postgres"
 	"errors"
 	"net/http"
@@ -149,13 +150,34 @@ func registerBookingRoutes(mux *http.ServeMux, store *postgres.Store) {
 			failure(w, err)
 			return
 		}
-		var input postgres.ReserveBookingInput
-		if !decode(w, r, &input) {
+		var body struct {
+			postgres.ReserveBookingInput
+			CouponCode string `json:"couponCode"`
+		}
+		if !decode(w, r, &body) {
 			return
 		}
+		input, coupon := body.ReserveBookingInput, strings.TrimSpace(body.CouponCode)
 		if !uuid(input.CustomerID) || !uuid(input.ResourceID) || !uuid(input.RuleID) || (input.VehicleID != nil && !uuid(*input.VehicleID)) {
 			reply(w, 422, map[string]string{"error": "Valid scoped customer, owned equipment, resource and rule selectors required"})
 			return
+		}
+		// A coupon is checked before anything is held; a booking with a coupon is invoiced at once so the discount is on the books.
+		couponFailed := func(err error) bool {
+			var bad postgres.CouponInvalid
+			if errors.As(err, &bad) {
+				reply(w, 422, map[string]string{"error": bad.Reason})
+				return true
+			}
+			return false
+		}
+		if coupon != "" {
+			if err := store.CheckStaffCoupon(r.Context(), scope, input, coupon); err != nil {
+				if !couponFailed(err) {
+					bookingFailure(w, err)
+				}
+				return
+			}
 		}
 		booking, err := store.ReserveBooking(r.Context(), scope, input)
 		if errors.Is(err, postgres.ErrReservationConflict) || errors.Is(err, postgres.ErrSchedulingRuleConflict) {
@@ -169,6 +191,15 @@ func registerBookingRoutes(mux *http.ServeMux, store *postgres.Store) {
 		if err != nil {
 			bookingFailure(w, err)
 			return
+		}
+		if coupon != "" {
+			if err := store.InvoiceStaffBooking(r.Context(), scope, input, booking.ID, coupon); err != nil {
+				_, _ = store.UpdateBookingStatus(context.WithoutCancel(r.Context()), scope, booking.ID, "cancelled", "The coupon could not be applied", "")
+				if !couponFailed(err) {
+					bookingFailure(w, err)
+				}
+				return
+			}
 		}
 		reply(w, 201, booking)
 	})

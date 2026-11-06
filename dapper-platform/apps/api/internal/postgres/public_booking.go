@@ -201,36 +201,9 @@ func (s *Store) PublicBook(ctx context.Context, slug string, in PublicBookingInp
 	if err != nil {
 		return out, err
 	}
-	// Prices come from the catalogue: the main service of this rule and each chosen add-on.
-	var serviceID, serviceName string
-	var mainPrice *int64
-	err = s.pool.QueryRow(ctx, `SELECT c.id::text,c.name,c.price_cents FROM service_scheduling_rules r JOIN catalog_services c ON c.id=r.service_id AND c.organization_id=r.organization_id AND c.location_id=r.location_id WHERE r.organization_id=$1 AND r.location_id=$2 AND r.id=$3 AND r.resource_id=$4 AND r.version=$5 AND c.kind='main' AND NOT c.archived`, scope.OrganizationID, scope.LocationID, in.RuleID, in.ResourceID, in.RuleVersion).Scan(&serviceID, &serviceName, &mainPrice)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return out, ErrPublicBookingInput
-	}
+	serviceID, serviceName, items, subtotal, err := s.priceBooking(ctx, scope, in.RuleID, in.ResourceID, in.RuleVersion, in.AddonIDs)
 	if err != nil {
 		return out, err
-	}
-	if mainPrice == nil {
-		return out, ErrPublicBookingPrice
-	}
-	items := []CreateInvoiceItemInput{{Description: serviceName, Quantity: 1, UnitPriceCents: *mainPrice}}
-	subtotal := *mainPrice
-	for _, id := range in.AddonIDs {
-		var name string
-		var price *int64
-		err = s.pool.QueryRow(ctx, `SELECT name,price_cents FROM catalog_services WHERE organization_id=$1 AND location_id=$2 AND id::text=$3 AND kind='addon' AND catalog_addon_offered_with(id,$4::uuid) AND NOT archived`, scope.OrganizationID, scope.LocationID, id, serviceID).Scan(&name, &price)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return out, ErrPublicBookingInput
-		}
-		if err != nil {
-			return out, err
-		}
-		if price == nil {
-			return out, ErrPublicBookingPrice
-		}
-		items = append(items, CreateInvoiceItemInput{Description: name, Quantity: 1, UnitPriceCents: *price})
-		subtotal += *price
 	}
 	tax, _, err := s.taxOnSubtotal(ctx, scope, subtotal)
 	if err != nil {
@@ -299,6 +272,75 @@ func (s *Store) PublicCouponPreview(ctx context.Context, slug, code, mainService
 		return CouponApplication{}, err
 	}
 	return s.evaluateCoupon(ctx, s.pool, scope, code, "", &mainServiceID, subtotal)
+}
+
+// priceBooking prices a rule's main service and each chosen add-on from the catalogue (never from what the browser says).
+func (s *Store) priceBooking(ctx context.Context, scope Scope, ruleID, resourceID string, ruleVersion int, addonIDs []string) (serviceID, serviceName string, items []CreateInvoiceItemInput, subtotal int64, err error) {
+	var mainPrice *int64
+	err = s.pool.QueryRow(ctx, `SELECT c.id::text,c.name,c.price_cents FROM service_scheduling_rules r JOIN catalog_services c ON c.id=r.service_id AND c.organization_id=r.organization_id AND c.location_id=r.location_id WHERE r.organization_id=$1 AND r.location_id=$2 AND r.id=$3 AND r.resource_id=$4 AND r.version=$5 AND c.kind='main' AND NOT c.archived`, scope.OrganizationID, scope.LocationID, ruleID, resourceID, ruleVersion).Scan(&serviceID, &serviceName, &mainPrice)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", "", nil, 0, ErrPublicBookingInput
+	}
+	if err != nil {
+		return "", "", nil, 0, err
+	}
+	if mainPrice == nil {
+		return "", "", nil, 0, ErrPublicBookingPrice
+	}
+	items = []CreateInvoiceItemInput{{Description: serviceName, Quantity: 1, UnitPriceCents: *mainPrice}}
+	subtotal = *mainPrice
+	for _, id := range addonIDs {
+		var name string
+		var price *int64
+		err = s.pool.QueryRow(ctx, `SELECT name,price_cents FROM catalog_services WHERE organization_id=$1 AND location_id=$2 AND id::text=$3 AND kind='addon' AND catalog_addon_offered_with(id,$4::uuid) AND NOT archived`, scope.OrganizationID, scope.LocationID, id, serviceID).Scan(&name, &price)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", "", nil, 0, ErrPublicBookingInput
+		}
+		if err != nil {
+			return "", "", nil, 0, err
+		}
+		if price == nil {
+			return "", "", nil, 0, ErrPublicBookingPrice
+		}
+		items = append(items, CreateInvoiceItemInput{Description: name, Quantity: 1, UnitPriceCents: *price})
+		subtotal += *price
+	}
+	return serviceID, serviceName, items, subtotal, nil
+}
+
+// InvoiceStaffBooking is for a booking staff made with a coupon: it prices the booking, applies the coupon and issues the invoice, so the
+// discount is on the books from the start. The coupon is checked first, so a bad code stops the booking before anything is held.
+func (s *Store) CheckStaffCoupon(ctx context.Context, scope Scope, in ReserveBookingInput, code string) error {
+	serviceID, _, _, subtotal, err := s.priceBooking(ctx, scope, in.RuleID, in.ResourceID, in.RuleVersion, in.AddonIDs)
+	if err != nil {
+		return err
+	}
+	_, err = s.evaluateCoupon(ctx, s.pool, scope, code, in.CustomerID, &serviceID, subtotal)
+	return err
+}
+
+func (s *Store) InvoiceStaffBooking(ctx context.Context, scope Scope, in ReserveBookingInput, bookingID, code string) error {
+	_, _, items, subtotal, err := s.priceBooking(ctx, scope, in.RuleID, in.ResourceID, in.RuleVersion, in.AddonIDs)
+	if err != nil {
+		return err
+	}
+	tax, _, err := s.taxOnSubtotal(ctx, scope, subtotal)
+	if err != nil {
+		return err
+	}
+	inv, err := s.CreateInvoice(ctx, scope, CreateInvoiceInput{CustomerID: in.CustomerID, BookingID: &bookingID, TaxCents: tax, Notes: "Booked by staff", Items: items})
+	if err != nil {
+		return err
+	}
+	if _, err = s.ApplyCouponToInvoice(ctx, scope, inv.ID, code); err != nil {
+		_, _ = s.VoidInvoice(context.WithoutCancel(ctx), scope, inv.ID, "The coupon could not be applied")
+		return err
+	}
+	if _, err = s.IssueInvoice(ctx, scope, inv.ID); err != nil {
+		_, _ = s.VoidInvoice(context.WithoutCancel(ctx), scope, inv.ID, "The invoice could not be issued")
+		return err
+	}
+	return nil
 }
 
 // PublicBookingScope is the website's scope for a published site (used to take the deposit with the card processor).
