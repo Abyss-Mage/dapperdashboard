@@ -80,6 +80,44 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
     const pub = local ? (content.services as Pub[]).find((x) => x.serviceId === local.id) : undefined;
     return { local, pub, site: !!content.site?.slug };
   }
+  // Put every main service that is not on the website yet into the category its name says (Sedan - ..., SUV - ..., Aircraft ..., ... PPF), after a preview.
+  const categoryByName = (n: string) => /ppf/i.test(n) ? 'ppf' : /^2 wheeler/i.test(n) ? '2-wheeler' : /^hatchback/i.test(n) ? 'hatchback' : /^sedan/i.test(n) ? 'sedan' : /^suv/i.test(n) ? 'suv' : /^pickup/i.test(n) ? 'pickup' : /^van\b/i.test(n) ? 'van' : /^aircraft/i.test(n) ? 'aircraft' : /^boat/i.test(n) ? 'boat' : /ceramic/i.test(n) ? 'ceramic' : '';
+  const nounOf = (cat: string) => ({ sedan: 'sedan', suv: 'SUV', pickup: 'pickup', van: 'van', hatchback: 'hatchback', '2-wheeler': 'motorcycle', aircraft: 'aircraft', boat: 'boat' } as Record<string, string>)[cat] ?? 'vehicle';
+  const [auto, setAuto] = useState<null | { todo: { local: Service; cat: string }[]; skipped: string[]; done: number }>(null);
+  async function previewAuto() {
+    if (!wbase) return;
+    setBusy(true); setError(''); setNotice('');
+    try {
+      const locals = (await readJson(await fetch(wbase + '/services', { cache: 'no-store' }))).items as Service[];
+      const content = await readJson(await fetch(wbase + '/content', { cache: 'no-store' }));
+      if (!content.site?.slug) throw new Error('Set up the website entry under Website images first.');
+      const have = new Set((content.services as Pub[]).filter((x) => x.version > 0).map((x) => x.serviceId));
+      const todo: { local: Service; cat: string }[] = [], skipped: string[] = [];
+      for (const l of locals) {
+        if (l.kind !== 'main' || l.archived || have.has(l.id)) continue;
+        const cat = categoryByName(l.name);
+        if (cat) todo.push({ local: l, cat }); else skipped.push(l.name);
+      }
+      if (!todo.length && !skipped.length) { setNotice('Every main service is already in a website category.'); return; }
+      setAuto({ todo, skipped, done: 0 });
+    } catch (e) { setError(e instanceof Error ? e.message : 'The services could not be checked.'); }
+    finally { setBusy(false); }
+  }
+  async function applyAuto() {
+    if (!auto || !wbase) return;
+    setBusy(true); setError(''); setNotice('');
+    let n = 0;
+    try {
+      for (const { local, cat } of auto.todo) {
+        const summary = `${local.name}. Book online, or call the team to talk through the right package for your ${nounOf(cat)}.`;
+        await readJson(await fetch(`${wbase}/content/services/${local.id}`, send('PUT', { category: cat, summary, published: true, version: 0, serviceVersion: local.version })));
+        n += 1; setAuto((a) => (a ? { ...a, done: n } : a));
+      }
+      setNotice(`${n} service${n === 1 ? '' : 's'} added to their website categories.`);
+      setAuto(null);
+    } catch (e) { setError((e instanceof Error ? e.message : 'The assignment stopped.') + (n ? ` ${n} were added before this.` : '')); }
+    finally { setBusy(false); await load().catch(() => undefined); }
+  }
   async function loadWebsite(s: Service) {
     if (!wbase || s.kind !== 'main') { setWeb({ state: 'idle', cat: '', summary: '' }); return; }
     setWeb({ state: 'loading', cat: '', summary: '' });
@@ -319,12 +357,28 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
             <p className={styles.personSub}>{folded ? `${counts.main} main services · ${counts.addon} add-ons${counts.archived ? ` · ${counts.archived} archived` : ''}` : <>{intro} <Link href="/content" className={styles.inlineLink}>Service pages &amp; portfolio images</Link></>}</p>
           </div>
         </div>
+        {canManage && !editing && wbase && <button type="button" className="secondary" disabled={busy} onClick={() => void previewAuto()}>Assign website categories</button>}
         {canManage && !editing && <button type="button" className="primary" onClick={() => { fold(false); open('new'); }}>New service</button>}
       </div>
       <Collapse open={!folded} className={styles.stack}>
 
       {error && <p role="alert" className="field-error">{error}</p>}
       {notice && <p role="status" className={styles.status}>{notice}</p>}
+
+      {auto && (
+        <div className={styles.resource} role="region" aria-label="Assign website categories">
+          <h3 style={{ margin: 0 }}>Assign website categories</h3>
+          <p className={styles.personSub}>{auto.todo.length} main service{auto.todo.length === 1 ? '' : 's'} not on the website yet will go into the category their name says, shown on the website with a plain description you can edit afterwards. Names and prices are not touched.</p>
+          <ul style={{ margin: '8px 0', paddingLeft: 18 }}>
+            {websiteCategories.map((x) => { const k = auto.todo.filter((t) => t.cat === x.key).length; return k ? <li key={x.key}>{x.title}: {k}</li> : null; })}
+          </ul>
+          {auto.skipped.length > 0 && <p className={styles.personSub}>Left as they are (no matching website category): {auto.skipped.join('; ')}. Set a category for these by editing them.</p>}
+          <div className={styles.rowBetween}>
+            <button type="button" className="primary" disabled={busy || auto.todo.length === 0} onClick={() => void applyAuto()}>{busy ? `Adding… ${auto.done} of ${auto.todo.length}` : `Add ${auto.todo.length} to the website`}</button>
+            <button type="button" className="secondary" disabled={busy} onClick={() => setAuto(null)}>Cancel</button>
+          </div>
+        </div>
+      )}
 
       {canManage && picked.size > 0 && !editing && (
         <div className={styles.resource} role="region" aria-label="Selected services">
