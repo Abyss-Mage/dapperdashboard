@@ -77,9 +77,6 @@ export default function HomePage() {
       });
       // The closing call: the picture settles from a slight zoom as it arrives.
       gsap.fromTo('.h-end__img', { scale: 1.14 }, { scale: 1, ease: 'none', scrollTrigger: { trigger: '.h-end', start: 'top bottom', end: 'bottom bottom', scrub: true } });
-      // The films play only while they are on screen.
-      const io = new IntersectionObserver((es) => es.forEach((e) => { const v = e.target as HTMLVideoElement; if (e.isIntersecting) void v.play().catch(() => {}); else v.pause(); }), { threshold: .35 });
-      gsap.utils.toArray<HTMLVideoElement>('.h-reel video').forEach((v) => io.observe(v));
       // The hero pins and plays the frame sequence with the scroll.
       const seq = root.current?.querySelector<HTMLElement>('.h-seq');
       const stop = seq ? frameSequence(seq) : undefined;
@@ -119,10 +116,6 @@ export default function HomePage() {
       facts.forEach((f, i) => tl.to(c[i], { v: f.to, duration: .55, ease: 'power2.out', onUpdate: () => show(nums[i], c[i].v) }, .7 + i * .18));
       tl.to({}, { duration: .3 });
       return () => { nums.forEach((n, i) => show(n, facts[i].to)); };
-    });
-    mm.add('(prefers-reduced-motion: reduce)', () => {
-      // With reduced motion a film stays paused, so nudge it to paint its first frame.
-      gsap.utils.toArray<HTMLVideoElement>('.h-reel video').forEach((v) => { v.preload = 'auto'; v.currentTime = .1; });
     });
     document.fonts?.ready.then(() => ScrollTrigger.refresh());
     return () => mm.revert();

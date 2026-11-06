@@ -86,7 +86,7 @@ func (s *Store) RenderEmail(ctx context.Context, key string, vars map[string]str
 	d := emailDefaults[key]
 	sub, body := d.subject, d.body
 	var savedSub, savedBody string
-	if err := s.pool.QueryRow(ctx, `SELECT subject,body FROM email_templates WHERE template_key=$1 ORDER BY updated_at DESC LIMIT 1`, key).Scan(&savedSub, &savedBody); err == nil {
+	if err := s.pool.QueryRow(ctx, `SELECT a.subject,a.body FROM email_templates a JOIN public_sites ps ON ps.organization_id=a.organization_id AND ps.slug=$2 WHERE a.template_key=$1 LIMIT 1`, key, mainSiteSlug()).Scan(&savedSub, &savedBody); err == nil {
 		sub, body = savedSub, savedBody
 	}
 	return renderEmail(sub, body, vars)

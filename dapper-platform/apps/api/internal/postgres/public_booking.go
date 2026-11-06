@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"fmt"
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
@@ -28,8 +29,6 @@ var (
 	ErrPhoneVerificationLimit       = errors.New("too many attempts; try again later")
 )
 
-// DepositPercent is the share of the total taken as a card deposit when an online booking is made (owner decision, 2026-10-24).
-const DepositPercent = 30
 
 // PhoneVerifier delivers a one-time code by text message. No provider is wired up yet, so without one the site offers no
 // returning-customer lookup.
@@ -82,7 +81,6 @@ type PublicService struct {
 }
 type PublicBookingOptions struct {
 	Timezone          string                  `json:"timezone"`
-	DepositPercent    int                     `json:"depositPercent"`
 	PhoneVerification bool                    `json:"phoneVerification"`
 	Rules             []BookingRuleChoice     `json:"rules"`
 	Services          []PublicService         `json:"services"`
@@ -110,7 +108,7 @@ func (s *Store) PublicBookingOptions(ctx context.Context, slug string) (PublicBo
 			priced[v.ID] = PublicService{ID: v.ID, Name: v.Name, Kind: v.Kind, ParentID: v.ParentID, PriceCents: *v.PriceCents}
 		}
 	}
-	out := PublicBookingOptions{DepositPercent: DepositPercent, PhoneVerification: s.phoneVerifier != nil, Rules: []BookingRuleChoice{}, Services: []PublicService{}, Resources: choices.Resources}
+	out := PublicBookingOptions{PhoneVerification: s.phoneVerifier != nil, Rules: []BookingRuleChoice{}, Services: []PublicService{}, Resources: choices.Resources}
 	if len(choices.Resources) > 0 {
 		out.Timezone = choices.Resources[0].Timezone
 	}
@@ -170,8 +168,9 @@ type PublicBookingResult struct {
 	InvoiceID     string `json:"invoiceId"`
 	InvoiceNumber string `json:"invoiceNumber"`
 	TotalCents    int64  `json:"totalCents"`
-	DepositCents  int64  `json:"depositCents"`
 	ServiceName   string `json:"serviceName"`
+	// NewCustomer is true when this booking created the customer record (so the address typed is the only claim on it).
+	NewCustomer bool `json:"-"`
 }
 
 func phoneDigits(p string) string {
@@ -211,12 +210,14 @@ func (s *Store) PublicBook(ctx context.Context, slug string, in PublicBookingInp
 	}
 	// The customer: reuse the one with this email at this location (their saved details are not changed by a stranger), else add one.
 	customerID, err := existingCustomer(ctx, s.pool, scope.OrganizationID, scope.LocationID, in.Email, in.Phone)
+	newCustomer := false
 	if err == nil && customerID == "" {
 		c, e := s.CreateCustomer(ctx, scope, in.Name, in.Email, in.Phone)
 		if e != nil {
 			return out, e
 		}
 		customerID = c.ID
+		newCustomer = true
 	} else if err != nil {
 		return out, err
 	}
@@ -238,7 +239,7 @@ func (s *Store) PublicBook(ctx context.Context, slug string, in PublicBookingInp
 	var invTotal int64
 	err = s.pool.QueryRow(ctx, `SELECT id::text,invoice_number,total_cents FROM invoices WHERE organization_id=$1 AND location_id=$2 AND booking_id=$3 AND status<>'void' ORDER BY created_at LIMIT 1`, scope.OrganizationID, scope.LocationID, bookingID).Scan(&invID, &invNumber, &invTotal)
 	if err == nil {
-		return PublicBookingResult{BookingID: bookingID, InvoiceID: invID, InvoiceNumber: invNumber, TotalCents: invTotal, DepositCents: (invTotal*DepositPercent + 50) / 100, ServiceName: serviceName}, nil
+		return PublicBookingResult{BookingID: bookingID, InvoiceID: invID, InvoiceNumber: invNumber, TotalCents: invTotal, ServiceName: serviceName}, nil
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return out, err
@@ -261,7 +262,7 @@ func (s *Store) PublicBook(ctx context.Context, slug string, in PublicBookingInp
 		release()
 		return out, err
 	}
-	out = PublicBookingResult{BookingID: bookingID, InvoiceID: issued.ID, InvoiceNumber: issued.InvoiceNumber, TotalCents: issued.TotalCents, DepositCents: (issued.TotalCents*DepositPercent + 50) / 100, ServiceName: serviceName}
+	out = PublicBookingResult{BookingID: bookingID, InvoiceID: issued.ID, InvoiceNumber: issued.InvoiceNumber, TotalCents: issued.TotalCents, ServiceName: serviceName, NewCustomer: newCustomer}
 	return out, nil
 }
 
@@ -322,23 +323,23 @@ func (s *Store) CheckStaffCoupon(ctx context.Context, scope Scope, in ReserveBoo
 func (s *Store) InvoiceStaffBooking(ctx context.Context, scope Scope, in ReserveBookingInput, bookingID, code string) error {
 	_, _, items, subtotal, err := s.priceBooking(ctx, scope, in.RuleID, in.ResourceID, in.RuleVersion, in.AddonIDs)
 	if err != nil {
-		return err
+		return fmt.Errorf("price: %w", err)
 	}
 	tax, _, err := s.taxOnSubtotal(ctx, scope, subtotal)
 	if err != nil {
-		return err
+		return fmt.Errorf("tax: %w", err)
 	}
 	inv, err := s.CreateInvoice(ctx, scope, CreateInvoiceInput{CustomerID: in.CustomerID, BookingID: &bookingID, TaxCents: tax, Notes: "Booked by staff", Items: items})
 	if err != nil {
-		return err
+		return fmt.Errorf("invoice: %w", err)
 	}
 	if _, err = s.ApplyCouponToInvoice(ctx, scope, inv.ID, code); err != nil {
 		_, _ = s.VoidInvoice(context.WithoutCancel(ctx), scope, inv.ID, "The coupon could not be applied")
-		return err
+		return fmt.Errorf("coupon: %w", err)
 	}
 	if _, err = s.IssueInvoice(ctx, scope, inv.ID); err != nil {
 		_, _ = s.VoidInvoice(context.WithoutCancel(ctx), scope, inv.ID, "The invoice could not be issued")
-		return err
+		return fmt.Errorf("issue: %w", err)
 	}
 	return nil
 }

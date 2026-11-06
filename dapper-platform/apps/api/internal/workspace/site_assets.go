@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strconv"
 	"time"
 
 	"dapper.local/platform/internal/postgres"
@@ -80,14 +81,27 @@ func registerSiteAssetRoutes(mux *http.ServeMux, store *postgres.Store) {
 	})
 
 	mux.HandleFunc("GET /api/v1/public/site-asset", func(w http.ResponseWriter, r *http.Request) {
-		data, kind, at, err := store.PublicSiteAsset(r.Context(), r.URL.Query().Get("path"))
+		path := r.URL.Query().Get("path")
+		kind, at, err := store.PublicSiteAssetVersion(r.Context(), path)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		// The browser keeps the file for two minutes, then asks with the version it has; only a changed file is read from the database.
+		etag := `"` + strconv.FormatInt(at.UnixNano(), 36) + `"`
+		w.Header().Set("ETag", etag)
+		w.Header().Set("Cache-Control", "public, max-age=120")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		if r.Header.Get("If-None-Match") == etag {
+			w.WriteHeader(http.StatusNotModified)
+			return
+		}
+		data, err := store.PublicSiteAssetData(r.Context(), path)
 		if err != nil {
 			http.NotFound(w, r)
 			return
 		}
 		w.Header().Set("Content-Type", kind)
-		w.Header().Set("Cache-Control", "no-cache")
-		w.Header().Set("X-Content-Type-Options", "nosniff")
 		http.ServeContent(w, r, "", at, bytes.NewReader(data))
 	})
 	mux.HandleFunc("GET /api/v1/public/site-asset-paths", func(w http.ResponseWriter, r *http.Request) {

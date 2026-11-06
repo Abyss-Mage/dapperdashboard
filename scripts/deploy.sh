@@ -10,6 +10,12 @@ HOST="${DAPPER_HOST:-dapper-prod}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
+# Checks first: nothing is sent unless the Go services build and pass vet and the web app type-checks.
+echo "Checking the code before sending it…"
+(cd dapper-platform/apps/api && go build ./... && go vet ./...) || { echo "Go check failed: nothing was deployed."; exit 1; }
+(cd dapper-platform/apps/web && npx tsc --noEmit) || { echo "Web type check failed: nothing was deployed."; exit 1; }
+if ! git diff --quiet HEAD -- . 2>/dev/null; then echo "Note: this working tree has changes that are not committed yet."; fi
+
 LIST="$(mktemp)"
 git ls-files -co --exclude-standard \
   | grep -vE '^(Dapper Detailing Knowledge/|output/|3D/|\.impeccable/|\.codex/|reference/|main website/frames-brief/)' \
@@ -41,10 +47,11 @@ echo "Installing web dependencies…"; npm ci --no-audit --no-fund --loglevel=er
 echo "Building the web app…"; npm run build >/opt/dapper/web-build.log 2>&1 || { tail -40 /opt/dapper/web-build.log; exit 1; }
 cd /opt/dapper/app/dapper-platform/apps/api
 mkdir -p /opt/dapper/app/.dapper/bin
+[ -d /opt/dapper/app/.dapper/bin ] && rm -rf /opt/dapper/app/.dapper/bin.prev && cp -a /opt/dapper/app/.dapper/bin /opt/dapper/app/.dapper/bin.prev   # the last working services, for a quick way back
 echo "Building the Go services…"
 for t in workspace gateway dapper; do go build -o /opt/dapper/app/.dapper/bin/$t ./cmd/$t; done
 if [ -f /opt/dapper/app/.env ]; then echo "Migrating the database…"; /opt/dapper/app/.dapper/bin/dapper migrate --home /opt/dapper/app; fi
 '
 if systemctl list-unit-files dapper.service >/dev/null 2>&1 && [ -f /opt/dapper/app/.env ]; then systemctl restart dapper && echo "Restarted the dapper service."; else echo "Built. The dapper service starts once setup has written .env."; fi
 REMOTE
-echo "Deploy finished."
+echo "Deploy finished. (To go back to the previous Go services: ssh dapper-prod 'sudo -u dapper cp -a /opt/dapper/app/.dapper/bin.prev/. /opt/dapper/app/.dapper/bin/ && sudo systemctl restart dapper')"

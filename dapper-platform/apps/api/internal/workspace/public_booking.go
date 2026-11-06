@@ -57,6 +57,7 @@ func registerPublicBookingRoutes(mux *http.ServeMux, store *postgres.Store, send
 	book := newVisitorLimiter(6, 10*time.Minute)
 	sendCode := newVisitorLimiter(5, time.Hour)
 	checkCode := newVisitorLimiter(20, time.Hour)
+	couponTries := newVisitorLimiter(15, 10*time.Minute)
 	base := "/api/v1/public/booking/{site}"
 	limited := func(w http.ResponseWriter, r *http.Request, l *visitorLimiter) bool {
 		if l.allow(visitor(r)) {
@@ -128,7 +129,7 @@ func registerPublicBookingRoutes(mux *http.ServeMux, store *postgres.Store, send
 		reply(w, 200, map[string]any{"configured": true, "credentialsConfigured": store.SquareCredentialResolver() != nil, "applicationId": store.SquareApplicationID(b.Environment), "binding": map[string]any{"environment": b.Environment, "squareLocationId": b.SquareLocationID}})
 	})
 	mux.HandleFunc("POST "+base+"/coupon", func(w http.ResponseWriter, r *http.Request) {
-		if limited(w, r, browse) {
+		if limited(w, r, couponTries) {
 			return
 		}
 		var in struct {
@@ -250,7 +251,7 @@ func registerPublicBookingRoutes(mux *http.ServeMux, store *postgres.Store, send
 			}
 		}
 		// The confirmation email, in the owner's wording. It is sent in the background and only when outgoing email works.
-		if emailReady(sender) {
+		if emailReady(sender) && res.NewCustomer {
 			go func(name, to string, start time.Time, paid, pending bool) {
 				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 				defer cancel()
@@ -274,7 +275,7 @@ func registerPublicBookingRoutes(mux *http.ServeMux, store *postgres.Store, send
 				}
 			}(in.Name, in.Email, in.Start, paid, pending)
 		}
-		reply(w, 201, map[string]any{"bookingId": res.BookingID, "invoiceNumber": res.InvoiceNumber, "totalCents": res.TotalCents, "depositCents": res.DepositCents, "depositPaid": paid, "paymentPending": pending, "paidCents": map[bool]int64{true: res.TotalCents, false: 0}[paid], "serviceName": res.ServiceName})
+		reply(w, 201, map[string]any{"bookingId": res.BookingID, "invoiceNumber": res.InvoiceNumber, "totalCents": res.TotalCents, "depositPaid": paid, "paymentPending": pending, "paidCents": map[bool]int64{true: res.TotalCents, false: 0}[paid], "serviceName": res.ServiceName})
 	})
 }
 

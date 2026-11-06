@@ -19,7 +19,6 @@ export type WizardBooking = {
 };
 /* Customer-facing extras: a phone check for returning customers, and a deposit step with a card form. */
 export type WizardDeposit = {
-  percent: number;
   // Draws the card form; call register(fn) with a function that turns the typed card into a single-use token (or null when not ready).
   renderCard: (register: (tokenize: (() => Promise<string>) | null) => void, amountCents: number) => React.ReactNode;
 };
@@ -35,7 +34,6 @@ export type WizardProps = {
   submit: (booking: WizardBooking) => Promise<void>;
   findCustomers?: (phone: string) => Promise<WizardCustomer[]>;
   timezone: string;
-  depositPercent?: number;
   phoneCheck?: WizardPhoneCheck;
   deposit?: WizardDeposit;
   /** Checks a coupon code against the main service and the subtotal; resolves with what it takes off, or throws the reason it cannot be used. */

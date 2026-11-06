@@ -36,7 +36,7 @@ func main() {
 	webURL, _ := url.Parse("http://127.0.0.1:3006")
 	handler := gatewayHandler(apiURL, webURL, hosts)
 	go refreshAssetOverrides(apiURL)
-	server := &http.Server{Addr: listen, Handler: handler, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 60 * time.Second, IdleTimeout: 60 * time.Second}
+	server := &http.Server{Addr: listen, Handler: handler, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 20 * time.Second, IdleTimeout: 60 * time.Second}
 	if os.Getenv("DAPPER_BEHIND_PROXY") == "1" {
 		log.Printf("Dapper listening on %s over plain HTTP behind your reverse proxy, which must serve the public HTTPS address", listen)
 		log.Fatal(server.ListenAndServe())
@@ -111,7 +111,7 @@ func gatewayHandler(apiURL, webURL *url.URL, hosts map[string]bool) http.Handler
 		}
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Referrer-Policy", "same-origin")
-		if r.Method == http.MethodPost && r.URL.Path == "/api/v1/employee/uploads" || r.Method == http.MethodPut && strings.HasSuffix(r.URL.Path, "/site-assets") {
+		if r.Method == http.MethodPost && r.URL.Path == "/api/v1/employee/uploads" || r.Method == http.MethodPut && strings.HasSuffix(r.URL.Path, "/site-assets") || r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/test") && strings.Contains(r.URL.Path, "/messaging/") {
 			// Multi-photo posts from phones need a longer window than the global limits.
 			controller := http.NewResponseController(w)
 			_ = controller.SetReadDeadline(time.Now().Add(3 * time.Minute))

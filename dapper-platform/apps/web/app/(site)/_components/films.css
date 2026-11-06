@@ -11,10 +11,5 @@
 .fc__play{position:absolute;right:12px;bottom:12px;z-index:2;display:grid;place-items:center;width:42px;height:42px;background:#e3172b;transition:transform .25s cubic-bezier(.23,1,.32,1)}
 .fc__reel:focus-visible,.fc__track:focus-visible{outline:3px solid #e3172b;outline-offset:3px}
 @media(hover:hover) and (pointer:fine){.fc__reel:hover video{transform:scale(1.05)}.fc__reel:hover .fc__play{transform:scale(1.1)}}
-.fc__ctrl{display:flex;gap:10px;margin-top:clamp(14px,1.6vw,22px)}
-.fc__ctrl button{display:grid;place-items:center;width:54px;height:54px;border:1px solid #ffffff40;background:transparent;color:inherit;cursor:pointer;transition:background-color .2s,border-color .2s,opacity .2s,transform .16s cubic-bezier(.23,1,.32,1)}
-.fc__ctrl button:active:not(:disabled){transform:scale(.95)}
-.fc__ctrl button:disabled{opacity:.3;cursor:default}
-@media(hover:hover) and (pointer:fine){.fc__ctrl button:hover:not(:disabled){background:#e3172b;border-color:#e3172b}}
 @media(max-width:899px){.fc-sec{grid-template-columns:minmax(0,1fr)}.fc__track li{flex-basis:min(56vw,240px)}}
 @media(prefers-reduced-motion:reduce){.fc__reel video{transition-duration:.01ms}}

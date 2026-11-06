@@ -1,35 +1,33 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { ArrowLeft, ArrowRight, Play } from 'lucide-react';
-import { useScrollRow } from './useScrollRow';
-import './scrollrow.css';
+import { Play } from 'lucide-react';
+import { ScrollRow } from './ScrollRow';
 import './films.css';
 
-/* The studio's films as a carousel for the right-hand side of a two-column section (text on the left). Tall reels in a swipeable row with
-   arrows; each plays muted while it is on screen, and selecting one calls onOpen so the page can show it with sound. */
+/* The studio's films as a carousel for the right-hand side of a two-column section (text on the left). Tall reels in the shared carousel
+   (swipe, drag, arrows, moves along by itself); each plays muted while it is on screen, and selecting one calls onOpen so the page can
+   show it with sound. */
 export function FilmCarousel({ clips, onOpen }: { clips: string[]; onOpen: (i: number) => void }) {
-  const track = useRef<HTMLUListElement>(null);
-  const edge = useScrollRow(track, 3200);
+  const wrap = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const el = track.current;
+    const el = wrap.current;
     if (!el) return;
     const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // The viewport as root still counts what the sliding row hides, so only the films you can see play.
     const io = new IntersectionObserver((entries) => entries.forEach((e) => {
       const v = e.target as HTMLVideoElement;
       if (reduce) return;
       if (e.isIntersecting) void v.play().catch(() => undefined); else v.pause();
-    }), { root: el, threshold: .35 });
+    }), { threshold: .35 });
     el.querySelectorAll('video').forEach((v) => { if (reduce) { v.preload = 'auto'; v.currentTime = .1; } io.observe(v); });
     return () => io.disconnect();
-  }, []);
-
-  const by = (dir: number) => { const el = track.current; if (el) el.scrollBy({ left: dir * el.clientWidth * .7, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); };
+  }, [clips]);
 
   return (
-    <div className="fc">
-      <ul className="fc__track" ref={track} tabIndex={0} aria-label="Films from the Dapper studio">
+    <div className="fc" ref={wrap}>
+      <ScrollRow label="Films from the Dapper studio" auto={3200} className="fc__track">
         {clips.map((c, i) => (
           <li key={c}>
             <button type="button" className="fc__reel" onClick={() => onOpen(i)} aria-label={'Watch film ' + (i + 1) + ' of ' + clips.length + ' with sound'}>
@@ -39,11 +37,7 @@ export function FilmCarousel({ clips, onOpen }: { clips: string[]; onOpen: (i: n
             </button>
           </li>
         ))}
-      </ul>
-      <div className="fc__ctrl">
-        <button type="button" onClick={() => by(-1)} disabled={edge.start} aria-label="Previous films"><ArrowLeft size={22} aria-hidden="true" /></button>
-        <button type="button" onClick={() => by(1)} disabled={edge.end} aria-label="Next films"><ArrowRight size={22} aria-hidden="true" /></button>
-      </div>
+      </ScrollRow>
     </div>
   );
 }

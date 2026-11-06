@@ -338,7 +338,7 @@ func (s *Store) IssueInvoice(ctx context.Context, scope Scope, id string, review
 	if err = tx.QueryRow(ctx, `SELECT coalesce(sum(total_price_cents),0),count(*) FROM invoice_items WHERE organization_id=$1 AND location_id=$2 AND invoice_id=$3`, scope.OrganizationID, scope.LocationID, id).Scan(&lineSubtotal, &lineCount); err != nil {
 		return Invoice{}, ErrInvoiceInput
 	}
-	if lineCount == 0 || lineSubtotal != inv.SubtotalCents || inv.SubtotalCents > math.MaxInt64-inv.TaxCents || inv.TotalCents != inv.SubtotalCents+inv.TaxCents || inv.PaidCents != 0 || inv.DueCents != inv.TotalCents {
+	if lineCount == 0 || lineSubtotal != inv.SubtotalCents || inv.SubtotalCents > math.MaxInt64-inv.TaxCents || inv.TotalCents != inv.SubtotalCents-inv.DiscountCents+inv.TaxCents || inv.PaidCents != 0 || inv.DueCents != inv.TotalCents {
 		return Invoice{}, ErrInvoiceInput
 	}
 	var customer InvoiceCustomerSnapshot

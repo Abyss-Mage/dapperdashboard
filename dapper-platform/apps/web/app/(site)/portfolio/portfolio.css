@@ -57,28 +57,6 @@
 /* P3 Films: five portrait films on an ink band; a swipeable row on small screens, five drifting columns on desktop */
 .p-films{background:var(--ink);color:#f3f2ee;padding:clamp(72px,9vw,140px) var(--cg) clamp(96px,11vw,170px);overflow:clip}
 .p-films .fc-sec__text p{font:300 clamp(18px,1.6vw,26px)/1.35 var(--cb);color:#c9c6bf}
-.p-films__head{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:clamp(20px,4vw,64px);align-items:end;padding:0 var(--cg);margin-bottom:clamp(36px,5vw,72px)}
-.p-films__head h2{color:#f3f2ee;font-size:clamp(34px,4.7vw,79.9px);line-height:.98;letter-spacing:-.035em}
-.p-films__head p{font:300 clamp(18px,1.6vw,26px)/1.35 var(--cb);color:#c9c6bf;max-width:36ch}
-.p-films__reels{margin:0;padding:0 var(--cg) 12px;list-style:none;display:flex;gap:clamp(12px,1.4vw,22px);overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:thin;scrollbar-color:#ffffff40 transparent}
-.p-films__reels li{flex:none;width:clamp(150px,44vw,230px);scroll-snap-align:start;scroll-margin-left:var(--cg)}
-.p-reel{position:relative;display:block;width:100%;aspect-ratio:9/16;padding:0;border:0;border-radius:0;overflow:hidden;background:#1b1b1f;cursor:pointer;color:#fff}
-.p-reel video{width:100%;height:100%;object-fit:cover;display:block}
-.p-reel__play{position:absolute;right:14px;bottom:14px;display:grid;place-items:center;width:44px;height:44px;background:var(--red);transition:transform .3s var(--ease)}
-@media(hover:hover) and (pointer:fine){.p-reel:hover .p-reel__play{transform:scale(1.1)}}
-/* On a wide screen the five films are a short row that opens like an accordion: the one pointed at (the first, at rest) grows wide and plays larger. */
-@media(min-width:1024px){
-  .p-films__reels{overflow:visible;height:clamp(300px,44vh,420px);gap:10px;padding-inline:var(--cg)}
-  .p-films__reels li{flex:1 1 0;width:auto;min-width:0;transition:flex-grow .7s var(--ease)}
-  .p-films__reels:not(:hover):not(:focus-within) li:first-child,.p-films__reels li:hover,.p-films__reels li:focus-within{flex-grow:3.4}
-  .p-films__reels .p-reel{height:100%;aspect-ratio:auto;border-radius:22px}
-  .p-reel__tag{position:absolute;left:18px;bottom:16px;font:500 14px/1 var(--ch);color:#fff}
-}
-.p-reel video{transition:transform .6s var(--ease)}
-@media(hover:hover) and (pointer:fine) and (min-width:1024px){.p-films__reels li:hover .p-reel video{transform:scale(1.04)}}
-@media(max-width:1023px){.p-reel__tag{display:none}.p-reel{border-radius:18px}}
-@media(max-width:1023px){.p-films__head{grid-template-columns:minmax(0,1fr)}}
-@media(prefers-reduced-motion:reduce){.p-films__reels li,.p-reel video{transition-duration:.01ms}}
 .p-viewer--film video{aspect-ratio:9/16;height:calc(100svh - clamp(140px,16vw,200px));max-width:100%;width:auto;background:#000}
 
 /* P4 Follow the work: two large link rows on paper */

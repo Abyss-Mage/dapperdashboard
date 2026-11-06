@@ -158,6 +158,8 @@ func registerMessagingRoutes(mux *http.ServeMux, store *postgres.Store, sender p
 		if !allowTest(w, r) {
 			return
 		}
+		rc := http.NewResponseController(w)
+		_ = rc.SetWriteDeadline(time.Now().Add(60 * time.Second))
 		if _, err := sender.SendEmail(r.Context(), to, "Dapper test email", "<p>This is a test message from Dapper Detailing. Email is working.</p>", "This is a test message from Dapper Detailing. Email is working."); err != nil {
 			// The server's own reason (it never contains the password) tells the owner what to fix, for example a mailbox that has SMTP sign-in switched off.
 			why := strings.TrimPrefix(err.Error(), email.ErrSMTPSend.Error()+": ")
@@ -266,6 +268,8 @@ func registerMessagingRoutes(mux *http.ServeMux, store *postgres.Store, sender p
 		if !allowTest(w, r) {
 			return
 		}
+		rc := http.NewResponseController(w)
+		_ = rc.SetWriteDeadline(time.Now().Add(60 * time.Second))
 		if strings.TrimSpace(in.To) == "" {
 			if err = sms.Verify(r.Context(), cfg); err != nil {
 				reply(w, 422, map[string]string{"error": err.Error()})

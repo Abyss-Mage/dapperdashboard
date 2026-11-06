@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -99,22 +100,39 @@ func (s *Store) SiteAssets(ctx context.Context, scope Scope) ([]SiteAsset, error
 	return out, rows.Err()
 }
 
-// PublicSiteAsset is what the website serves for an overridden path (the website has one owner, so the path alone finds it).
-func (s *Store) PublicSiteAsset(ctx context.Context, path string) ([]byte, string, time.Time, error) {
+// mainSiteSlug is the public website everything below belongs to. Another franchise's uploads never reach it.
+func mainSiteSlug() string {
+	if v := os.Getenv("DAPPER_SITE_SLUG"); v != "" {
+		return v
+	}
+	return "dapper-detailing-pros-peterborough"
+}
+
+const onMainSite = ` JOIN public_sites ps ON ps.organization_id=a.organization_id AND ps.location_id=a.location_id AND ps.slug=$1 `
+
+// PublicSiteAssetVersion says whether a path is replaced and when, without reading the file, so a browser that already has it gets a cheap "not modified".
+func (s *Store) PublicSiteAssetVersion(ctx context.Context, path string) (string, time.Time, error) {
 	path, ok := cleanAssetPath(path)
 	if !ok {
-		return nil, "", time.Time{}, ErrSiteAsset
+		return "", time.Time{}, ErrSiteAsset
 	}
-	var data []byte
 	var kind string
 	var at time.Time
-	err := s.pool.QueryRow(ctx, `SELECT data,content_type,updated_at FROM site_assets WHERE path=$1 ORDER BY updated_at DESC LIMIT 1`, path).Scan(&data, &kind, &at)
-	return data, kind, at, err
+	err := s.pool.QueryRow(ctx, `SELECT a.content_type,a.updated_at FROM site_assets a`+onMainSite+`WHERE a.path=$2`, mainSiteSlug(), path).Scan(&kind, &at)
+	return kind, at, err
+}
+
+// PublicSiteAssetData is the file itself.
+func (s *Store) PublicSiteAssetData(ctx context.Context, path string) ([]byte, error) {
+	path, _ = cleanAssetPath(path)
+	var data []byte
+	err := s.pool.QueryRow(ctx, `SELECT a.data FROM site_assets a`+onMainSite+`WHERE a.path=$2`, mainSiteSlug(), path).Scan(&data)
+	return data, err
 }
 
 // PublicSiteAssetPaths lists every overridden path, so the front door only asks for the ones that exist.
 func (s *Store) PublicSiteAssetPaths(ctx context.Context) ([]string, error) {
-	rows, err := s.pool.Query(ctx, `SELECT DISTINCT path FROM site_assets`)
+	rows, err := s.pool.Query(ctx, `SELECT DISTINCT a.path FROM site_assets a`+onMainSite, mainSiteSlug())
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +150,7 @@ func (s *Store) PublicSiteAssetPaths(ctx context.Context) ([]string, error) {
 
 // PublicFilms lists the films the owner added (paths under films/), oldest first. Without any, the website shows its built-in films.
 func (s *Store) PublicFilms(ctx context.Context) ([]string, error) {
-	rows, err := s.pool.Query(ctx, `SELECT path FROM site_assets WHERE path LIKE 'films/%' AND content_type LIKE 'video/%' ORDER BY created_at,path`)
+	rows, err := s.pool.Query(ctx, `SELECT a.path FROM site_assets a`+onMainSite+`WHERE a.path LIKE 'films/%' AND a.content_type LIKE 'video/%' ORDER BY a.created_at,a.path`, mainSiteSlug())
 	if err != nil {
 		return nil, err
 	}

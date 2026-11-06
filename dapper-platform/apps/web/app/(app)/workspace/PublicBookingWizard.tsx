@@ -10,7 +10,7 @@ import { categories as siteCategories } from '../../(site)/content';
 const SITE = process.env.NEXT_PUBLIC_DAPPER_SITE_SLUG || 'dapper-detailing-pros-peterborough';
 const api = `/api/v1/public/booking/${SITE}`;
 
-type Options = { timezone: string; depositPercent: number; phoneVerification: boolean; rules: WizardRule[]; services: (WizardService & { priceCents: number })[]; taxes: NonNullable<WizardTaxes> };
+type Options = { timezone: string; phoneVerification: boolean; rules: WizardRule[]; services: (WizardService & { priceCents: number })[]; taxes: NonNullable<WizardTaxes> };
 
 async function json<T>(r: Response): Promise<T> {
   const body = await r.json().catch(() => ({}));
@@ -67,7 +67,6 @@ export default function PublicBookingWizard() {
       preselect={preselect}
       categories={cats ? { list: siteCategories.map((c) => ({ key: c.key, title: c.title })), of: (id) => cats.get(id) ?? '' } : undefined}
       timezone={options.timezone}
-      depositPercent={options.depositPercent}
       loadOptions={async () => ({ rules: options.rules })}
       loadServices={async () => options.services}
       loadTaxes={async () => options.taxes}
@@ -76,7 +75,7 @@ export default function PublicBookingWizard() {
         start: async (phone) => { await json(await fetch(`${api}/verify/start`, post({ phone }))); },
         check: async (phone, code): Promise<WizardCustomer[]> => { const r = await json<{ token: string; customers: WizardCustomer[] }>(await fetch(`${api}/verify/check`, post({ phone, code }))); verified.current = r.token; return r.customers; },
       } : undefined}
-      deposit={{ percent: options.depositPercent, renderCard: (register) => <SquareCardField infoUrl={`${api}/square`} register={register} /> }}
+      deposit={{ renderCard: (register) => <SquareCardField infoUrl={`${api}/square`} register={register} /> }}
       doneNote={({ name, pack, when, deposit }) => ({
         title: 'You are booked',
         lines: [

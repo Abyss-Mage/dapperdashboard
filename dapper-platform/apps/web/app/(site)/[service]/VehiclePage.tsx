@@ -119,13 +119,6 @@ export default function VehiclePage({ slug }: { slug: string }) {
         onEnter: (els) => gsap.from(els, { y: 36, opacity: 0, duration: .8, stagger: .07, ease: 'expo.out', overwrite: true }) });
       gsap.fromTo('.v-hero__img', { yPercent: 0 }, { yPercent: 12, ease: 'none', scrollTrigger: { trigger: '.v-hero', start: 'top top', end: 'bottom top', scrub: true } });
     });
-    // The garage list: each row fades and slides in and draws its rule as it reaches the middle of the screen.
-    mm.add('(prefers-reduced-motion: no-preference)', () => {
-      gsap.utils.toArray<HTMLElement>('.v-more li').forEach((li) => {
-        gsap.fromTo(li.querySelector('a'), { opacity: .2, xPercent: -3 }, { opacity: 1, xPercent: 0, ease: 'none', scrollTrigger: { trigger: li, start: 'top 94%', end: 'top 60%', scrub: true } });
-        gsap.fromTo(li.querySelector('.v-more__rule'), { scaleX: 0 }, { scaleX: 1, ease: 'none', scrollTrigger: { trigger: li, start: 'top 94%', end: 'top 64%', scrub: true } });
-      });
-    });
     // On a phone the steps simply rise in one after another.
     mm.add('(max-width: 899px) and (prefers-reduced-motion: no-preference)', () => {
       ScrollTrigger.batch('.v-exp__item', { start: 'top 92%', once: true,
@@ -201,10 +194,6 @@ export default function VehiclePage({ slug }: { slug: string }) {
               </li>
             ))}
           </ol>
-          <div className="v-exp__media" aria-hidden="true">
-            {processSteps.map((p) => <span key={p.title} className="v-exp__img" style={{ backgroundImage: 'url(' + p.image + ')' }} />)}
-            <span className="v-exp__bar"><i /></span>
-          </div>
         </div>
       </section>
 

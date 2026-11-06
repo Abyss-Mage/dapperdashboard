@@ -9,8 +9,8 @@ type Win = Window & { dataLayer?: unknown[]; fbq?: (...a: unknown[]) => void };
 
 const money = (c: number) => new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(c / 100);
 
-/* The confirmation, with everything the customer booked. Reporting the purchase happens here, once per booking: a Google tag
-   (dataLayer) "purchase" event and a Meta Pixel "Purchase" event, each with the booking's value in CAD. The details come from the
+/* The confirmation, with everything the customer booked. Reporting happens here, once per booking: a paid-in-full booking is a Google tag
+   (dataLayer) "purchase" and a Meta Pixel "Purchase"; one to be paid on the day is a "generate_lead" and a "Lead". Each carries the booking's value in CAD. The details come from the
    booking just made in this browser; the page address carries only the booking number. */
 export default function ThankYou() {
   const [b, setB] = useState<Booked | null | undefined>();
@@ -18,6 +18,8 @@ export default function ThankYou() {
   useEffect(() => {
     let got: Booked | null = null;
     try { got = JSON.parse(sessionStorage.getItem('dapper:booked') || localStorage.getItem('dapper:booked') || 'null'); } catch { /* fall through */ }
+    // The spare copy exists only to get here; it is not left on a shared computer.
+    try { localStorage.removeItem('dapper:booked'); } catch { /* nothing to remove */ }
     const id = new URLSearchParams(location.search).get('b') || '';
     const mine = got && (!id || got.bookingId === id) ? got : null;
     setB(mine);
@@ -27,12 +29,17 @@ export default function ThankYou() {
     const w = window as Win;
     const value = Math.round(mine.totalCents) / 100;
     w.dataLayer = w.dataLayer || [];
-    w.dataLayer.push({ event: 'purchase', ecommerce: { transaction_id: mine.invoiceNumber || id, value, currency: 'CAD', items: [{ item_id: mine.bookingId, item_name: mine.pack || mine.serviceName, price: value, quantity: 1 }] } });
+    // Only money that has been paid is a purchase. A booking to be paid on the day is a lead, with the same value, so ad reports show real revenue.
+    const paid = mine.paidCents >= mine.totalCents;
+    const item = { item_id: mine.bookingId, item_name: mine.pack || mine.serviceName, price: value, quantity: 1 };
+    w.dataLayer.push(paid
+      ? { event: 'purchase', ecommerce: { transaction_id: mine.invoiceNumber || id, value, currency: 'CAD', items: [item] } }
+      : { event: 'generate_lead', value, currency: 'CAD', transaction_id: mine.invoiceNumber || id, items: [item] });
     // The Meta Pixel is loaded by the page's tag loader a moment after the page opens, so wait for it (up to ten seconds).
     let tries = 0;
     const t = setInterval(() => {
       tries++;
-      if (w.fbq) { clearInterval(t); w.fbq('track', 'Purchase', { value, currency: 'CAD', content_name: mine.pack || mine.serviceName, content_type: 'product' }, { eventID: id }); }
+      if (w.fbq) { clearInterval(t); w.fbq('track', paid ? 'Purchase' : 'Lead', { value, currency: 'CAD', content_name: mine.pack || mine.serviceName, content_type: 'product' }, { eventID: id }); }
       else if (tries > 40) clearInterval(t);
     }, 250);
     return () => clearInterval(t);

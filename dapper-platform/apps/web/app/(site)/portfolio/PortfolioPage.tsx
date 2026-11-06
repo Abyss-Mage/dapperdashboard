@@ -92,17 +92,6 @@ export default function PortfolioPage() {
         .to('.p-gallery__bar i', { scaleX: 1 }, 0);
       return () => el.classList.remove('is-gallery');
     });
-    // Films play only while they are on screen (and not at all with reduced motion, where each shows its first frame).
-    gsap.utils.toArray<HTMLVideoElement>('.p-reel video').forEach((v) => {
-      // With reduced motion a film stays paused, so nudge it to paint its first frame instead of an empty box.
-      const still = () => { if (matchMedia('(prefers-reduced-motion: reduce)').matches) { v.preload = 'auto'; v.currentTime = .1; } };
-      if (v.readyState >= 1) still(); else v.addEventListener('loadedmetadata', still, { once: true });
-      ScrollTrigger.create({ trigger: v, start: 'top 95%', end: 'bottom 5%', onToggle: (self) => {
-        if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-        if (self.isActive) void v.play().catch(() => {}); else v.pause();
-      } });
-    });
-
     // Pinned panel with overscroll (as on Contact and About): the hero stays put and settles back as the gallery slides over it.
     mm.add('(prefers-reduced-motion: no-preference) and (min-width: 1024px)', () => {
       const hero = root.current!.querySelector<HTMLElement>('.p-hero')!;
