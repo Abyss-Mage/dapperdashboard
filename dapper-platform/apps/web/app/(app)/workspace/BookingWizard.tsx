@@ -44,6 +44,8 @@ export type WizardProps = {
   audience?: 'staff' | 'customer';
   /** The website's service categories (set in the dashboard): when given with the customer wording, step one lists them instead of the built-in groups. */
   categories?: { list: { key: string; title: string }[]; of: (serviceId: string) => string };
+  /** A signed-in customer's saved details: their name, email and phone fill in, and their saved addresses are offered for mobile and valet jobs. */
+  prefill?: { name: string; email: string; phone: string; addresses: { id: string; label: string; address: string; isDefault: boolean }[] };
 };
 
 const VEHICLE = /^(hatchback|sedan|suv|pickup|van|2 wheeler|aircraft (?:small|medium|large)|boat (?:small|medium|large))\s*-\s*(.+)$/i;
@@ -137,6 +139,15 @@ export default function BookingWizard(p: WizardProps) {
   const prevStep = useRef(0);
   const steps = [...(p.phoneCheck ? ['Welcome'] : []), 'Service', 'Where', 'Vehicle', 'Package', 'Extras', 'Day & time', 'Details', ...(p.deposit ? ['Deposit'] : [])];
   const name = steps[step];
+  // Saved details fill in once, and never over something already typed.
+  useEffect(() => {
+    const pf = p.prefill;
+    if (!pf) return;
+    setMe((cur) => (cur.name || cur.email || cur.phone ? cur : { name: pf.name, email: pf.email, phone: pf.phone }));
+    const d = pf.addresses.find((a) => a.isDefault) ?? pf.addresses[0];
+    if (d) setAddress((cur) => cur || d.address);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [p.prefill]);
 
   useEffect(() => {
     let live = true;
@@ -343,6 +354,7 @@ export default function BookingWizard(p: WizardProps) {
               <button key={id} type="button" className={styles.choice} aria-pressed={where === id} onClick={() => setWhere(id)}><span><strong>{t}</strong><small>{h}</small></span></button>
             ))}
           </div>
+          {addressNeeded && !!p.prefill?.addresses.length && <div className={styles.choices} aria-label="Your saved addresses">{p.prefill.addresses.map((a) => <button key={a.id} type="button" className={styles.choice} aria-pressed={address === a.address} onClick={() => setAddress(a.address)}><span><strong>{a.label}</strong><small>{a.address}</small></span></button>)}</div>}
           {addressNeeded && <label className={styles.field}>Address<input value={address} onChange={(e) => setAddress(e.target.value)} autoComplete="street-address" placeholder="Street, city" /></label>}
         </>}
         {name === 'Vehicle' && <>
@@ -405,6 +417,7 @@ export default function BookingWizard(p: WizardProps) {
         </>}
         {name === 'Details' && <>
           <h2 ref={topRef} tabIndex={-1} className={styles.title}>{cust ? 'Almost done: your details' : 'Almost done: the customer\u2019s details'}</h2>
+          {p.prefill && <p className={styles.help} role="status">Filled in from your account. Change anything that is not right for this booking.</p>}
           <div className={styles.fields}>
             <label className={`${styles.field} ${styles.wide}`}>Full name<input value={me.name} onChange={(e) => setMe({ ...me, name: e.target.value })} autoComplete="name" /></label>
             <label className={`${styles.field} ${styles.half}`}>Mobile number<input type="tel" value={me.phone} onChange={(e) => setMe({ ...me, phone: e.target.value })} autoComplete="tel" placeholder="+1 416 555 0123" /></label>

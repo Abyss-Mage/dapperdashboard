@@ -24,3 +24,4 @@
 .page :global(.form-field input),.page :global(.form-field select),.page :global(.form-field textarea){min-height:48px}
 .page :global(.primary),.page :global(.secondary){min-height:48px}
 @media(max-width:700px){.stats b{font-size:clamp(17px,5vw,24px)}.stats div{padding:12px}}
+.avatar{margin-bottom:14px}

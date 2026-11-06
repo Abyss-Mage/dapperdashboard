@@ -167,7 +167,7 @@
 @media(prefers-reduced-motion:reduce){.h-reel video{transition-duration:.01ms}}
 /* Real results: on a wide screen with motion the section pins and the five films spread out of a stack into a row as you scroll */
 .h-fan__stage{display:contents}
-@media(prefers-reduced-motion:no-preference){
+@media(prefers-reduced-motion:no-preference) and (min-width:900px){
   .h-films{padding:0}
   .h-fan__stage{--w:min(calc(min(58vh,560px) * .5625),16.4vw);display:grid;grid-template-rows:auto 1fr;gap:clamp(8px,2vh,24px);min-height:100vh;padding:calc(72px + 14px) var(--cg) 40px;overflow:hidden}
   .h-films__head{margin-bottom:0}
@@ -175,7 +175,7 @@
   .h-films__reels{position:relative;display:block;height:100%;min-height:calc(var(--w) / .5625)}
   .h-films__reels li{position:absolute;left:50%;top:50%;width:var(--w);margin:0!important;will-change:transform}
 }
-@media(prefers-reduced-motion:no-preference) and (max-width:1023px){
+@media(prefers-reduced-motion:no-preference) and (min-width:900px) and (max-width:1023px){
   .h-fan__stage{--w:min(calc(min(44svh,420px) * .5625),32vw);padding:calc(64px + 12px) var(--cg) 32px}
   .h-films__head>div p{display:none}
   .h-films__head .s-h2{font-size:clamp(26px,8vw,40px)}
@@ -281,4 +281,25 @@
   .h-hero__in{padding-bottom:calc(104px + env(safe-area-inset-bottom))}
   .h-seq .h-seq__book{display:none!important}
   .h-story__body,.h-story--right .h-story__body,.h-story--left .h-story__body{bottom:calc(112px + env(safe-area-inset-bottom))}
+}
+
+/* Phones, second pass: the values scene fits one screen (figures in a row, door words stacked clear of the bar), the films are a swipe row,
+   and the footer name fits. */
+@media(max-width:899px){
+  .h-films{padding:calc(56px + 16px) var(--cg) 56px}
+  .h-films__head{margin-bottom:24px}
+  .h-films__head .s-h2{font-size:clamp(28px,8.4vw,40px)}
+  .h-films__reels li{flex:0 0 min(58vw,260px)}
+}
+@media(max-width:899px) and (prefers-reduced-motion:no-preference){
+  .h-val{align-content:start;gap:20px;padding:calc(64px + 20px) var(--cg) calc(104px + env(safe-area-inset-bottom))}
+  .h-val__text{gap:14px}
+  .h-val__text>p:not(.h-tag){font-size:15px;line-height:1.5}
+  .h-door__sign{bottom:calc(150px + env(safe-area-inset-bottom));font-size:clamp(28px,8.4vw,44px)}
+  .h-door__hint{left:var(--cg);right:auto;bottom:calc(112px + env(safe-area-inset-bottom));font-size:14px}
+}
+@media(max-width:719px){
+  .h-val__facts{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+  .h-fact{grid-template-columns:minmax(0,1fr);row-gap:8px;padding:0;font-size:clamp(20px,6.2vw,30px)}
+  .h-fact__l{font-size:13px;line-height:1.25}
 }

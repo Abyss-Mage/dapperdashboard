@@ -78,6 +78,7 @@ func verifyCustomerAccountManagement(t *testing.T, ctx context.Context, s *Store
 	if err = s.UpdatePortalDetails(ctx, target, customer, "X", "", ""); !errors.Is(err, ErrCustomerInput) {
 		t.Fatal("a one-letter name was accepted", err)
 	}
+	verifyPortalProfile(t, ctx, s, target, customer, foreignCustomer)
 	if _, err = s.PortalInvoice(ctx, target, foreignCustomer, "00000000-0000-0000-0000-000000000000"); !errors.Is(err, ErrForbidden) {
 		t.Fatal("invoice of an unlinked customer was readable", err)
 	}

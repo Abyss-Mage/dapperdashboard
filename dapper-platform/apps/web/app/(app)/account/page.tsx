@@ -8,6 +8,8 @@ import InvoicePaymentForm from './InvoicePaymentForm';
 import Select from '../GlassSelect';
 import { SignInDetails } from '../workspace/AccountSecurity';
 import AuthShell from '../AuthShell';
+import AccountProfile, {Avatar, type SavedAddress} from './AccountProfile';
+import BookingHistory from './BookingHistory';
 import { SiteHeader } from '../../_chrome/SiteHeader';
 import { SiteFooter } from '../../_chrome/SiteFooter';
 import ForceDark from '../../_chrome/ForceDark';
@@ -20,6 +22,8 @@ type Records = {
   vehicles: {id: string; description: string; categoryDescription: string; identifier: string}[];
   bookings: {id: string; serviceName: string; status: string; bookingTime: string}[];
   invoices: {id: string; number: string; status: string; currency: string; totalCents: number; dueCents: number}[];
+  addresses: SavedAddress[];
+  hasAvatar: boolean;
   limit: number;
 };
 
@@ -177,6 +181,7 @@ export default function CustomerAccount() {
     {notice && <p role="status" style={{margin: '0 auto', maxWidth: 1100, padding: '0 clamp(16px,3.4vw,56px)'}}>{notice}</p>}
     {checking ? <p role="status" className={a.wait}>Checking your account…</p> : !ready ? <section className={a.wait + ' panel detail-card'}><h2>Account service unavailable</h2><p>Secure sign-in is unavailable at this address. Please use the configured Dapper customer account address.</p></section> : <>
       <section className={a.hello} aria-labelledby="acct-title">
+        {records && <div className={a.avatar}><Avatar customerId={selected} name={records.account.name} has={records.hasAvatar} version={revision} size={72} /></div>}
         <p className={a.kicker}>Your account</p>
         <h1 id="acct-title">{records ? <>Hello, <em>{firstName}.</em></> : <>Your <em>account.</em></>}</h1>
         <p className={a.sub}>Your vehicles, appointments and invoices in one place.</p>
@@ -195,14 +200,26 @@ export default function CustomerAccount() {
         {!records && !error && <p role="status">Loading your records…</p>}
         {records && <>
           <nav className={a.tabs} aria-label="Account sections">
-            <a href="#book">Book a time</a><a href="#bookings">Bookings</a><a href="#invoices">Invoices</a><a href="#vehicles">Vehicles</a><a href="#details">Details</a>
+            <a href="#profile">Profile</a><a href="#book">Book a time</a><a href="#bookings">Bookings</a><a href="#invoices">Invoices</a><a href="#vehicles">Vehicles</a><a href="#payment">Payment</a>
           </nav>
+          <div id="profile" className={a.sec}>
+            <AccountProfile customerId={selected} name={records.account.name} email={records.account.email} hasAvatar={records.hasAvatar} addresses={records.addresses} onChanged={() => setRevision((v) => v + 1)} />
+          <form className="panel detail-card" onSubmit={saveDetails}>
+            <h3>Your details</h3>
+            {records.account.email && <p>You sign in with <strong>{records.account.email}</strong>.</p>}
+            <label className="form-field">Name<input required minLength={2} maxLength={100} autoComplete="name" value={detailName} onChange={(e) => setDetailName(e.target.value)} disabled={busy} /></label>
+            <label className="form-field">Phone<input type="tel" maxLength={30} autoComplete="tel" value={detailPhone} onChange={(e) => setDetailPhone(e.target.value)} disabled={busy} /></label>
+            <label className="form-field">Address (for mobile detailing)<input maxLength={300} autoComplete="street-address" value={detailAddress} onChange={(e) => setDetailAddress(e.target.value)} disabled={busy} /></label>
+            <button className="primary" disabled={busy}>{busy ? 'Saving…' : 'Save my details'}</button>
+          </form>
+            <section className="panel detail-card"><h3>Email and password</h3><SignInDetails email={records.account.email} /></section>
+          </div>
           <div id="book" className={a.sec}>
             <CustomerAvailabilityBrowser key={selected+'-availability'} customerId={selected} vehicles={records.vehicles} onSubmitted={()=>setRequestRevision(current=>current+1)}/>
             <CustomerBookingRequestList key={selected+'-requests'} endpoint={`/api/v1/portal/accounts/${encodeURIComponent(selected)}/booking-requests`} revision={requestRevision}/>
           </div>
           <div id="bookings" className={a.sec}>
-            <section className="panel detail-card"><h3>Your bookings</h3>{records.bookings.length ? records.bookings.map((b) => <article key={b.id}><h4>{b.serviceName}</h4><p>{b.status.replaceAll('_', ' ')} · {new Intl.DateTimeFormat('en-CA', {dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/Toronto'}).format(new Date(b.bookingTime))} (Toronto time)</p></article>) : <p>No bookings recorded.</p>}</section>
+            <BookingHistory bookings={records.bookings} />
           </div>
           <div id="invoices" className={a.sec}>
           <section className="panel detail-card">
@@ -246,16 +263,11 @@ export default function CustomerAccount() {
             <button className="primary" disabled={busy}>{busy ? 'Saving…' : 'Add equipment'}</button>
           </form>
           </div>
-          <div id="details" className={a.sec}>
-          <form className="panel detail-card" onSubmit={saveDetails}>
-            <h3>Your details</h3>
-            {records.account.email && <p>You sign in with <strong>{records.account.email}</strong>.</p>}
-            <label className="form-field">Name<input required minLength={2} maxLength={100} autoComplete="name" value={detailName} onChange={(e) => setDetailName(e.target.value)} disabled={busy} /></label>
-            <label className="form-field">Phone<input type="tel" maxLength={30} autoComplete="tel" value={detailPhone} onChange={(e) => setDetailPhone(e.target.value)} disabled={busy} /></label>
-            <label className="form-field">Address (for mobile detailing)<input maxLength={300} autoComplete="street-address" value={detailAddress} onChange={(e) => setDetailAddress(e.target.value)} disabled={busy} /></label>
-            <button className="primary" disabled={busy}>{busy ? 'Saving…' : 'Save my details'}</button>
-          </form>
-            <section className="panel detail-card"><h3>Email and password</h3><SignInDetails email={records.account.email} /></section>
+          <div id="payment" className={a.sec}>
+            <section className="panel detail-card">
+              <h3>Payment methods</h3>
+              <p>Saved cards are not available yet. You pay your deposit by card when you book (a secure Square card form), and any balance from the Invoices section above.</p>
+            </section>
           </div>
           <p>Up to {records.limit} recent records per section. Online payments are recorded directly to your account ledger.</p>
         </>}

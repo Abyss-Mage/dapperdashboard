@@ -24,6 +24,8 @@ export default function PublicBookingWizard() {
   const [error, setError] = useState('');
   // The website categories set in the dashboard (service id -> category); without any, the wizard falls back to its built-in groups.
   const [cats, setCats] = useState<Map<string, string> | null>(null);
+  // A signed-in customer's saved details (silently skipped when nobody is signed in).
+  const [prefill, setPrefill] = useState<{ name: string; email: string; phone: string; addresses: { id: string; label: string; address: string; isDefault: boolean }[] } | undefined>();
   // One key per booking attempt; a failed attempt gets a new one so a released time can be tried again.
   const key = useRef(crypto.randomUUID());
   const verified = useRef('');
@@ -32,6 +34,18 @@ export default function PublicBookingWizard() {
     let live = true;
     fetch(`${api}/options`, { cache: 'no-store' }).then((r) => json<Options>(r)).then((o) => live && setOptions(o)).catch((e) => live && setError(e.message));
     fetch(`/api/v1/public/sites/${SITE}`, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : Promise.reject())).then((site: { services: { serviceId: string; category: string }[] }) => { if (live) { const m = new Map(site.services.filter((s) => s.category).map((s) => [s.serviceId, s.category])); setCats(m.size ? m : null); } }).catch(() => undefined);
+    (async () => {
+      try {
+        const list = await fetch('/api/v1/portal/accounts', { cache: 'no-store', credentials: 'same-origin' });
+        if (!list.ok) return;
+        const first = ((await list.json()).items ?? [])[0] as { customerId: string } | undefined;
+        if (!first) return;
+        const rec = await fetch(`/api/v1/portal/accounts/${encodeURIComponent(first.customerId)}/records`, { cache: 'no-store', credentials: 'same-origin' });
+        if (!rec.ok) return;
+        const r = await rec.json();
+        if (live) setPrefill({ name: r.account.name ?? '', email: r.account.email ?? '', phone: r.account.phone ?? '', addresses: r.addresses ?? [] });
+      } catch { /* not signed in: the form simply starts empty */ }
+    })();
     return () => { live = false; };
   }, []);
 
@@ -41,6 +55,7 @@ export default function PublicBookingWizard() {
   return (
     <BookingWizard
       audience="customer"
+      prefill={prefill}
       categories={cats ? { list: siteCategories.map((c) => ({ key: c.key, title: c.title })), of: (id) => cats.get(id) ?? '' } : undefined}
       timezone={options.timezone}
       depositPercent={options.depositPercent}

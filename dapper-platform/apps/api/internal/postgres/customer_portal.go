@@ -79,7 +79,10 @@ type PortalRecords struct {
 	Vehicles []Vehicle       `json:"vehicles"`
 	Bookings []PortalBooking `json:"bookings"`
 	Invoices []PortalInvoice `json:"invoices"`
-	Limit    int             `json:"limit"`
+	// Saved addresses (default first) and whether the customer has a profile picture.
+	Addresses []PortalAddress `json:"addresses"`
+	HasAvatar bool            `json:"hasAvatar"`
+	Limit     int             `json:"limit"`
 }
 
 func (s *Store) CustomerAccounts(ctx context.Context, actor string) ([]PortalAccount, error) {
@@ -115,7 +118,7 @@ func (s *Store) CustomerRecords(ctx context.Context, actor, customer string) (Po
 		return PortalRecords{}, err
 	}
 	defer tx.Rollback(ctx)
-	result := PortalRecords{Vehicles: []Vehicle{}, Bookings: []PortalBooking{}, Invoices: []PortalInvoice{}, Limit: 100}
+	result := PortalRecords{Vehicles: []Vehicle{}, Bookings: []PortalBooking{}, Invoices: []PortalInvoice{}, Addresses: []PortalAddress{}, Limit: 100}
 	var org, loc string
 	// Hold the membership and active principal through the entire read, so link
 	// revocation/deactivation cannot race a separately authorized record query.
@@ -179,6 +182,12 @@ func (s *Store) CustomerRecords(ctx context.Context, actor, customer string) (Po
 	err = rows.Err()
 	rows.Close()
 	if err != nil {
+		return PortalRecords{}, err
+	}
+	if result.Addresses, err = readPortalAddresses(ctx, tx, org, loc, customer); err != nil {
+		return PortalRecords{}, err
+	}
+	if err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM customer_avatars WHERE organization_id=$1 AND location_id=$2 AND customer_id=$3)`, org, loc, customer).Scan(&result.HasAvatar); err != nil {
 		return PortalRecords{}, err
 	}
 	if err = tx.Commit(ctx); err != nil {

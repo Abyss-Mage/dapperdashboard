@@ -4,6 +4,7 @@ import (
 	"dapper.local/platform/internal/postgres"
 	"dapper.local/platform/internal/square"
 	"errors"
+	"io"
 	"net/http"
 )
 
@@ -32,6 +33,103 @@ func registerCustomerPortalRoutes(mux *http.ServeMux, store *postgres.Store, sqC
 			return
 		}
 		reply(w, 201, vehicle)
+	})
+	// Saved addresses and the profile picture of the customer's own record.
+	mux.HandleFunc("PUT /api/v1/portal/accounts/{customer}/addresses", func(w http.ResponseWriter, r *http.Request) {
+		customer := r.PathValue("customer")
+		if !uuid(customer) {
+			reply(w, 400, map[string]string{"error": "Valid customer selector required"})
+			return
+		}
+		var input postgres.PortalAddress
+		if !decode(w, r, &input) {
+			return
+		}
+		if input.ID != "" && !uuid(input.ID) {
+			reply(w, 400, map[string]string{"error": "Valid address selector required"})
+			return
+		}
+		saved, err := store.SavePortalAddress(r.Context(), requestSession(r).principalID, customer, input)
+		switch {
+		case errors.Is(err, postgres.ErrPortalAddress):
+			reply(w, 422, map[string]string{"error": "Give the address a name (up to 40 characters) and enter the full address"})
+		case errors.Is(err, postgres.ErrPortalAddressLimit):
+			reply(w, 409, map[string]string{"error": "You can save up to 10 addresses. Remove one first"})
+		case errors.Is(err, postgres.ErrCustomerNotFound):
+			reply(w, 404, map[string]string{"error": "Address not found"})
+		case err != nil:
+			failure(w, err)
+		default:
+			reply(w, 200, saved)
+		}
+	})
+	mux.HandleFunc("DELETE /api/v1/portal/accounts/{customer}/addresses/{address}", func(w http.ResponseWriter, r *http.Request) {
+		customer, address := r.PathValue("customer"), r.PathValue("address")
+		if !uuid(customer) || !uuid(address) {
+			reply(w, 400, map[string]string{"error": "Valid selectors required"})
+			return
+		}
+		err := store.DeletePortalAddress(r.Context(), requestSession(r).principalID, customer, address)
+		switch {
+		case errors.Is(err, postgres.ErrCustomerNotFound):
+			reply(w, 404, map[string]string{"error": "Address not found"})
+		case err != nil:
+			failure(w, err)
+		default:
+			reply(w, 200, map[string]bool{"removed": true})
+		}
+	})
+	mux.HandleFunc("PUT /api/v1/portal/accounts/{customer}/avatar", func(w http.ResponseWriter, r *http.Request) {
+		customer := r.PathValue("customer")
+		if !uuid(customer) {
+			reply(w, 400, map[string]string{"error": "Valid customer selector required"})
+			return
+		}
+		r.Body = http.MaxBytesReader(w, r.Body, 3*1024*1024)
+		data, err := io.ReadAll(r.Body)
+		if err != nil {
+			reply(w, 413, map[string]string{"error": "Upload a JPEG or PNG picture of 2 MB or less"})
+			return
+		}
+		switch err = store.SetPortalAvatar(r.Context(), requestSession(r).principalID, customer, data); {
+		case errors.Is(err, postgres.ErrPortalAvatar):
+			reply(w, 422, map[string]string{"error": "Upload a JPEG or PNG picture of 2 MB or less"})
+		case err != nil:
+			failure(w, err)
+		default:
+			reply(w, 200, map[string]bool{"saved": true})
+		}
+	})
+	mux.HandleFunc("GET /api/v1/portal/accounts/{customer}/avatar", func(w http.ResponseWriter, r *http.Request) {
+		customer := r.PathValue("customer")
+		if !uuid(customer) {
+			reply(w, 400, map[string]string{"error": "Valid customer selector required"})
+			return
+		}
+		data, mime, err := store.PortalAvatar(r.Context(), requestSession(r).principalID, customer)
+		switch {
+		case errors.Is(err, postgres.ErrCustomerNotFound):
+			reply(w, 404, map[string]string{"error": "No picture"})
+		case err != nil:
+			failure(w, err)
+		default:
+			w.Header().Set("Cache-Control", "private, no-cache")
+			w.Header().Set("Content-Type", mime)
+			w.Header().Set("X-Content-Type-Options", "nosniff")
+			w.Write(data)
+		}
+	})
+	mux.HandleFunc("DELETE /api/v1/portal/accounts/{customer}/avatar", func(w http.ResponseWriter, r *http.Request) {
+		customer := r.PathValue("customer")
+		if !uuid(customer) {
+			reply(w, 400, map[string]string{"error": "Valid customer selector required"})
+			return
+		}
+		if err := store.DeletePortalAvatar(r.Context(), requestSession(r).principalID, customer); err != nil {
+			failure(w, err)
+			return
+		}
+		reply(w, 200, map[string]bool{"removed": true})
 	})
 	mux.HandleFunc("GET /api/v1/portal/accounts", func(w http.ResponseWriter, r *http.Request) {
 		items, err := store.CustomerAccounts(r.Context(), requestSession(r).principalID)

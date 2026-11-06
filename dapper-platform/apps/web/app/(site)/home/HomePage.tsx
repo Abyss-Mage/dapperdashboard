@@ -83,7 +83,7 @@ export default function HomePage() {
       return () => stop?.();
     });
     // Real results: the section pins; the five films start stacked in the middle and spread into a row as you scroll.
-    mm.add('(prefers-reduced-motion: no-preference)', () => {
+    mm.add('(prefers-reduced-motion: no-preference) and (min-width: 900px)', () => {
       const items = gsap.utils.toArray<HTMLElement>('.h-films__reels li');
       const n = items.length, mid = (n - 1) / 2;
       if (!n) return;
