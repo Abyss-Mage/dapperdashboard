@@ -953,7 +953,7 @@
 /* Enquiries: one card each, the person and when on top, how to reach them, what they asked, then the actions */
 .enqList { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
 .enq { display: grid; gap: 12px; padding: 18px 20px; border-radius: 16px; background: var(--surface, #fff); border: 1px solid var(--border, #00000014); }
-.enq[data-new] { box-shadow: inset 4px 0 0 var(--red, #d22b2b); }
+.enq[data-new] { border-color: color-mix(in srgb, var(--red, #d22b2b) 45%, transparent); }
 .enqHead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .enqHead strong { font-size: 17px; }
 .enqWhen { margin-left: auto; color: var(--text-muted); font-size: 13px; }
