@@ -124,6 +124,29 @@ func registerPublicBookingRoutes(mux *http.ServeMux, store *postgres.Store) {
 		w.Header().Set("Cache-Control", "no-store")
 		reply(w, 200, map[string]any{"configured": true, "credentialsConfigured": store.SquareCredentialResolver() != nil, "applicationId": store.SquareApplicationID(b.Environment), "binding": map[string]any{"environment": b.Environment, "squareLocationId": b.SquareLocationID}})
 	})
+	mux.HandleFunc("POST "+base+"/coupon", func(w http.ResponseWriter, r *http.Request) {
+		if limited(w, r, browse) {
+			return
+		}
+		var in struct {
+			Code          string `json:"code"`
+			ServiceID     string `json:"serviceId"`
+			SubtotalCents int64  `json:"subtotalCents"`
+		}
+		if !decode(w, r, &in) {
+			return
+		}
+		if !uuid(in.ServiceID) || in.SubtotalCents <= 0 || in.SubtotalCents > 100000000 {
+			reply(w, 422, map[string]string{"error": "Please check your choices and try again."})
+			return
+		}
+		out, err := store.PublicCouponPreview(r.Context(), r.PathValue("site"), in.Code, in.ServiceID, in.SubtotalCents)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		reply(w, 200, map[string]any{"code": out.Code, "discountCents": out.DiscountCents})
+	})
 	mux.HandleFunc("GET "+base+"/availability", func(w http.ResponseWriter, r *http.Request) {
 		if limited(w, r, browse) {
 			return

@@ -150,6 +150,38 @@ func registerAccountCredentialRoutes(mux *http.ServeMux, store *postgres.Store, 
 		}
 		reply(w, 200, same)
 	})
+	// Staff hand a customer their reset link directly (for example while outgoing email is not working). The link works once, for one hour.
+	mux.HandleFunc("POST /api/v1/organizations/{organization}/locations/{location}/customer-accounts/{principal}/reset-link", func(w http.ResponseWriter, r *http.Request) {
+		org, loc, principal := r.PathValue("organization"), r.PathValue("location"), r.PathValue("principal")
+		if !uuid(org) || !uuid(loc) || !uuid(principal) {
+			reply(w, 400, map[string]string{"error": "Valid selectors required"})
+			return
+		}
+		scope, err := store.ResolveScope(r.Context(), requestSession(r).principalID, org, loc, "customer_accounts.manage")
+		if err != nil {
+			failure(w, err)
+			return
+		}
+		email, err := store.LinkedAccountEmail(r.Context(), scope, principal)
+		if errors.Is(err, postgres.ErrCustomerNotFound) {
+			reply(w, 404, map[string]string{"error": "That account is not linked to a customer here."})
+			return
+		}
+		if err != nil {
+			failure(w, err)
+			return
+		}
+		token, err := auth.RequestPasswordReset(r.Context(), email)
+		if err != nil {
+			credentialFailure(w, err)
+			return
+		}
+		if token == "" {
+			reply(w, 429, map[string]string{"error": "A reset link was just made for this account. Wait two minutes and try again."})
+			return
+		}
+		reply(w, 200, map[string]string{"link": strings.TrimRight(origin, "/") + "/reset-password?token=" + token, "email": email})
+	})
 	mux.HandleFunc("POST /api/v1/public/auth/password-reset/confirm", func(w http.ResponseWriter, r *http.Request) {
 		var input struct {
 			Token    string `json:"token"`

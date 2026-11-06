@@ -115,10 +115,10 @@ export default function Reports({ base }: { base: string }) {
           </div>
           {kind !== 'customers' && report.series.length > 0 && (
             <div className={styles.resource} aria-label={kind === 'revenue' ? 'Net payments per day' : 'Appointments per day'}>
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: report.series.length > 60 ? 1 : 3, height: 140, overflowX: 'auto' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: report.series.length > 60 ? 1 : 3, height: 140, overflowX: 'auto', borderBottom: '1px solid color-mix(in srgb, currentColor 20%, transparent)' }}>
                 {report.series.map((p) => {
                   const v = kind === 'revenue' ? p.cents : p.count;
-                  return <div key={p.day} title={`${p.day}: ${kind === 'revenue' ? '$' + (p.cents / 100).toFixed(2) : p.count}`} style={{ flex: '1 0 6px', minWidth: 6, height: `${Math.max(2, (v / max) * 100)}%`, background: v ? 'var(--accent, #d22b2b)' : 'rgba(255,255,255,.12)', borderRadius: '3px 3px 0 0' }} />;
+                  return <div key={p.day} title={`${p.day}: ${kind === 'revenue' ? '$' + (p.cents / 100).toFixed(2) : p.count}`} style={{ flex: '1 1 0', minWidth: 4, maxWidth: 26, height: `${Math.max(3, (v / max) * 100)}%`, background: v ? 'var(--accent, #d22b2b)' : 'color-mix(in srgb, currentColor 16%, transparent)', borderRadius: '4px 4px 0 0' }} />;
                 })}
               </div>
               <div className={styles.rowBetween} style={{ marginTop: 6 }}><span className={styles.personSub}>{report.series[0].day}</span><span className={styles.personSub}>{report.series[report.series.length - 1].day}</span></div>

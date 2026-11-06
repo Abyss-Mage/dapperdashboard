@@ -16,6 +16,7 @@ export default function CustomerAccountManager({base, revision = 0}: {base: stri
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [resetLink, setResetLink] = useState<{email: string; link: string} | null>(null);
   const errorRef = useRef<HTMLParagraphElement>(null);
   const load = useCallback(async () => {
     const response = await fetch(`${base}/customer-accounts`, {cache: 'no-store'});
@@ -35,6 +36,16 @@ export default function CustomerAccountManager({base, revision = 0}: {base: stri
     } catch (failure) {setError(failure instanceof Error ? failure.message : 'Customer access could not be changed.');}
     finally {setBusy(false);}
   }
+  async function makeResetLink(principalId: string) {
+    setBusy(true); setError(''); setNotice(''); setResetLink(null);
+    try {
+      const response = await fetch(`${base}/customer-accounts/${principalId}/reset-link`, {method: 'POST'});
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error ?? 'The reset link could not be made.');
+      setResetLink(body);
+    } catch (failure) {setError(failure instanceof Error ? failure.message : 'The reset link could not be made.');}
+    finally {setBusy(false);}
+  }
   return <section className="panel detail-card" aria-label="Customer account ownership">
     <h2>Customer account ownership</h2>
     <p>Connect a verified enrolled organization member to a customer at this location. Matching email addresses never grant access automatically.</p>
@@ -48,10 +59,15 @@ export default function CustomerAccountManager({base, revision = 0}: {base: stri
         <label><input type="checkbox" required checked={reviewed} disabled={busy || !selectedCustomer || !selectedMember?.active} onChange={event => setReviewed(event.target.checked)} /> I verified this account is authorized to access the selected customer record.</label>
         <button className="primary" disabled={busy || !selectedCustomer || !selectedMember?.active || !reviewed}>{busy ? 'Saving…' : 'Grant reviewed customer access'}</button>
       </form>
+      {resetLink && <div role="status" className="management-form">
+        <p>Password reset link for <strong>{resetLink.email}</strong>. It works once, for one hour. Send it to the customer yourself.</p>
+        <input readOnly aria-label="Password reset link" value={resetLink.link} onFocus={event => event.currentTarget.select()} style={{width: '100%'}} />
+        <button type="button" className="secondary" onClick={() => void navigator.clipboard?.writeText(resetLink.link)}>Copy link</button>
+      </div>}
       <h3>Existing customer access</h3>
       {!data.links.length && <p>No customer account links at this location.</p>}
       <ul>{data.links.map(link => <li key={`${link.customerId}:${link.principalId}`} style={{paddingBlock: '.75rem', overflowWrap: 'anywhere'}}>
-        {link.customerName} → {link.email || 'Previously enrolled account'}{link.active ? '' : ' (inactive)'} <button type="button" className="secondary" disabled={busy} onClick={() => change(link.customerId, link.principalId, false)}>Revoke customer access</button>
+        {link.customerName} → {link.email || 'Previously enrolled account'}{link.active ? '' : ' (inactive)'} <button type="button" className="secondary" disabled={busy || !link.active} onClick={() => makeResetLink(link.principalId)}>Password reset link</button> <button type="button" className="secondary" disabled={busy} onClick={() => change(link.customerId, link.principalId, false)}>Revoke customer access</button>
       </li>)}</ul>
       {(data.customers.length === data.limit || data.members.length === data.limit || data.links.length === data.limit) && <p>Each list shows up to {data.limit} records.</p>}
     </>}

@@ -47,21 +47,23 @@ export default function Enquiries({ organizationId, canManage }: { organizationI
       {error && <p role="alert" className="field-error">{error}</p>}
       {!items && !error && <div className={`${styles.card} ${styles.skeleton}`} role="status" aria-label="Loading enquiries" />}
       {items && items.length === 0 && <p className={styles.status}>No enquiries here.</p>}
-      <ul className={styles.people}>
+      <ul className={styles.enqList}>
         {(items ?? []).map((e) => (
-          <li key={e.id} className={styles.person} style={{ display: 'grid', gap: 8, borderLeft: e.status === 'new' ? '4px solid var(--red, #d22b2b)' : undefined }}>
-            <div className={styles.rowBetween}>
-              <strong style={{ fontSize: 16 }}>{e.name}{e.status === 'new' && <span className={styles.badge} style={{ marginLeft: 10 }}>New</span>}</strong>
-              <span className={styles.personSub}>{when(e.createdAt)}</span>
+          <li key={e.id} className={styles.enq} data-new={e.status === 'new' || undefined}>
+            <div className={styles.enqHead}>
+              <strong>{e.name}</strong>
+              {e.status === 'new' && <span className={styles.enqNew}>New</span>}
+              {e.status === 'archived' && <span className={styles.enqOld}>Archived</span>}
+              <time className={styles.enqWhen}>{when(e.createdAt)}</time>
             </div>
-            <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', fontSize: 16, fontWeight: 600 }}>
-              {e.phone && <a href={`tel:${e.phone}`} style={{ textDecoration: 'underline' }}>{e.phone}</a>}
-              {e.email && <a href={`mailto:${e.email}`} style={{ textDecoration: 'underline' }}>{e.email}</a>}
+            <div className={styles.enqChips}>
+              {e.phone && <a href={`tel:${e.phone}`}>{e.phone}</a>}
+              {e.email && <a href={`mailto:${e.email}`}>{e.email}</a>}
+              {(e.service || e.vehicle) && <span>{[e.service, e.vehicle].filter(Boolean).join(' · ')}</span>}
             </div>
-            {(e.service || e.vehicle) && <p style={{ margin: 0, fontSize: 15 }}>{[e.service, e.vehicle].filter(Boolean).join(' · ')}</p>}
-            {e.message && <p style={{ margin: 0, fontSize: 15, whiteSpace: 'pre-wrap' }}>{e.message}</p>}
+            {e.message && <p className={styles.enqMsg}>{e.message}</p>}
             {canManage && (
-              <div className={styles.svcActions}>
+              <div className={styles.enqAct}>
                 {e.status !== 'read' && e.status !== 'archived' && <button type="button" className="secondary" disabled={busy} onClick={() => void mark(e.id, 'read')}>Mark read</button>}
                 {e.status !== 'archived' && <button type="button" className="secondary" disabled={busy} onClick={() => void mark(e.id, 'archived')}>Archive</button>}
                 {e.status !== 'new' && <button type="button" className="secondary" disabled={busy} onClick={() => void mark(e.id, 'new')}>Mark new</button>}

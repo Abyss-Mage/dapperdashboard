@@ -204,7 +204,7 @@ func main() {
 		}
 		handler = workspace.NewHandlerWithFullServices(store, origin, invitations, sqClient, emailSender, sqWebhookURL, sqSignatureKey, login)
 	}
-	server := &http.Server{Addr: "127.0.0.1:8121", Handler: handler, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second}
+	server := &http.Server{Addr: "127.0.0.1:8121", Handler: handler, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 45 * time.Second, IdleTimeout: 60 * time.Second}
 	log.Print("Dapper application API listening on 127.0.0.1:8121; verified identity required; explicit migrations only")
 	log.Fatal(server.ListenAndServe())
 }

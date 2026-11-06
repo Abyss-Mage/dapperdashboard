@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import styles from './owner.module.css';
-import NumberField from '../NumberField';
 import ConfirmDialog from '../workspace/ConfirmDialog';
 
 type View = {
@@ -71,7 +70,7 @@ export default function MessagingSettings({ organizationId, revision }: { organi
             </div>
             <div className={styles.inlineForm}>
               <label className="form-field">Email server<input value={host} onChange={(e) => setHost(e.target.value)} placeholder="smtp.example.com" maxLength={255} autoComplete="off" required disabled={!!busy} /></label>
-              <label className="form-field" style={{ maxWidth: 160 }}>Port<NumberField min="1" max="65535" step="1" value={port} onChange={(e) => setPort(e.target.value)} disabled={!!busy} /></label>
+              <label className="form-field" style={{ maxWidth: 160 }}>Port<input inputMode="numeric" pattern="[0-9]*" maxLength={5} value={port} onChange={(e) => setPort(e.target.value.replace(/\D/g, ""))} disabled={!!busy} /></label>
             </div>
             <div className={styles.inlineForm}>
               <label className="form-field">Username<input value={user} onChange={(e) => setUser(e.target.value)} maxLength={255} autoComplete="off" disabled={!!busy} /></label>

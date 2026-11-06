@@ -17,7 +17,7 @@
 .labelBox { display: block; flex: 1; min-width: 0; overflow: hidden; }
 .label { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .placeholder { color: var(--text-muted, #8a8f96); font-weight: 500; }
-.chev { position: absolute; right: 12px; top: 50%; margin-top: -8px; width: 16px; height: 16px; display: grid; place-items: center; color: var(--text-muted, currentColor); pointer-events: none; transform-origin: 50% 50%; }
+.chev { position: absolute; right: 12px; top: 50%; margin-top: -8px; width: 16px; height: 16px; display: grid; place-items: center; color: currentColor; opacity: .7; pointer-events: none; transform-origin: 50% 50%; }
 /* Keeps native "required" validation working without showing a second control. */
 .proxy { position: absolute; left: 0; bottom: 0; width: 100%; height: 1px; opacity: 0; pointer-events: none; border: 0; padding: 0; }
 

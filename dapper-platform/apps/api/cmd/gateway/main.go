@@ -31,7 +31,7 @@ func main() {
 	apiURL, _ := url.Parse("http://127.0.0.1:8121")
 	webURL, _ := url.Parse("http://127.0.0.1:3006")
 	handler := gatewayHandler(apiURL, webURL, hosts)
-	server := &http.Server{Addr: listen, Handler: handler, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 20 * time.Second, IdleTimeout: 60 * time.Second}
+	server := &http.Server{Addr: listen, Handler: handler, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 60 * time.Second, IdleTimeout: 60 * time.Second}
 	if os.Getenv("DAPPER_BEHIND_PROXY") == "1" {
 		log.Printf("Dapper listening on %s over plain HTTP behind your reverse proxy, which must serve the public HTTPS address", listen)
 		log.Fatal(server.ListenAndServe())

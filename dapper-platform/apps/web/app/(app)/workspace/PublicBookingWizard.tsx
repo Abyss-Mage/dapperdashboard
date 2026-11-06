@@ -63,6 +63,7 @@ export default function PublicBookingWizard() {
     <BookingWizard
       audience="customer"
       prefill={prefill}
+      checkCoupon={async (code, serviceId, subtotalCents) => json(await fetch(`${api}/coupon`, post({ code, serviceId, subtotalCents })))}
       preselect={preselect}
       categories={cats ? { list: siteCategories.map((c) => ({ key: c.key, title: c.title })), of: (id) => cats.get(id) ?? '' } : undefined}
       timezone={options.timezone}

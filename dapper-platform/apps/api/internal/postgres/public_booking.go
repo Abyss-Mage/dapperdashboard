@@ -292,6 +292,15 @@ func (s *Store) PublicBook(ctx context.Context, slug string, in PublicBookingInp
 	return out, nil
 }
 
+// PublicCouponPreview tells a visitor what a code would take off, before they book. The booking itself works the price out again on the server.
+func (s *Store) PublicCouponPreview(ctx context.Context, slug, code, mainServiceID string, subtotal int64) (CouponApplication, error) {
+	scope, err := s.websiteScope(ctx, slug)
+	if err != nil {
+		return CouponApplication{}, err
+	}
+	return s.evaluateCoupon(ctx, s.pool, scope, code, "", &mainServiceID, subtotal)
+}
+
 // PublicBookingScope is the website's scope for a published site (used to take the deposit with the card processor).
 func (s *Store) PublicBookingScope(ctx context.Context, slug string) (Scope, error) {
 	return s.websiteScope(ctx, slug)

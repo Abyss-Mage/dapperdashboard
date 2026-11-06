@@ -159,7 +159,12 @@ func registerMessagingRoutes(mux *http.ServeMux, store *postgres.Store, sender p
 			return
 		}
 		if _, err := sender.SendEmail(r.Context(), to, "Dapper test email", "<p>This is a test message from Dapper Detailing. Email is working.</p>", "This is a test message from Dapper Detailing. Email is working."); err != nil {
-			reply(w, 502, map[string]string{"error": "The email server did not accept the message. Check the server, port, username, password and From address."})
+			// The server's own reason (it never contains the password) tells the owner what to fix, for example a mailbox that has SMTP sign-in switched off.
+			why := strings.TrimPrefix(err.Error(), email.ErrSMTPSend.Error()+": ")
+			if len(why) > 240 {
+				why = why[:240]
+			}
+			reply(w, 502, map[string]string{"error": "The email server did not accept the message (" + why + "). Check the server, port, username, password and From address."})
 			return
 		}
 		reply(w, 200, map[string]bool{"sent": true})

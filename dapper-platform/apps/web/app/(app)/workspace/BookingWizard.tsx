@@ -38,6 +38,8 @@ export type WizardProps = {
   depositPercent?: number;
   phoneCheck?: WizardPhoneCheck;
   deposit?: WizardDeposit;
+  /** Checks a coupon code against the main service and the subtotal; resolves with what it takes off, or throws the reason it cannot be used. */
+  checkCoupon?: (code: string, serviceId: string, subtotalCents: number) => Promise<{ code: string; discountCents: number }>;
   /** Wording for the final screen; staff see a default that mentions taking payment later. */
   doneNote?: (b: { name: string; pack: string; when: string; deposit?: 'card' | 'cash' }) => WizardDone;
   /** 'customer' speaks to the person booking ("you") instead of to staff booking for someone ("them"). */
@@ -130,6 +132,7 @@ export default function BookingWizard(p: WizardProps) {
   const [me, setMe] = useState<WizardCustomer>({ name: '', email: '', phone: '' });
   const [notes, setNotes] = useState('');
   const [coupon, setCoupon] = useState('');
+  const [couponHit, setCouponHit] = useState<{ code: string; discount: number; subtotal: number } | null>(null), [couponMsg, setCouponMsg] = useState(''), [couponBusy, setCouponBusy] = useState(false);
   const [referred, setReferred] = useState(false);
   const [ref, setRef] = useState({ name: '', phone: '' });
   const [found, setFound] = useState<WizardCustomer[] | null>(null);
@@ -218,8 +221,11 @@ export default function BookingWizard(p: WizardProps) {
   const price = (id: string) => services.get(id)?.priceCents ?? null;
   const subtotal = (rule ? price(rule.serviceId) ?? 0 : 0) + picked.reduce((s, id) => s + (price(id) ?? 0), 0);
   const unpriced = !!rule && (price(rule.serviceId) === null || picked.some((id) => price(id) === null));
-  const tax = taxOn(subtotal, taxes);
-  const total = subtotal + tax;
+  // A checked coupon comes off before tax, and only while the subtotal is the one it was checked against.
+  const couponOff = couponHit && couponHit.subtotal === subtotal && couponHit.code === coupon.trim() ? couponHit.discount : 0;
+  const net = Math.max(0, subtotal - couponOff);
+  const tax = taxOn(net, taxes);
+  const total = net + tax;
   // Paying online takes the whole total (owner decision 2026-11-06: pay in full online, or pay on the day; no deposit).
   const deposit = total;
   const tz = avail?.timezone || p.timezone;
@@ -442,7 +448,15 @@ export default function BookingWizard(p: WizardProps) {
             <label className={`${styles.field} ${styles.half}`}>Email<input type="email" value={me.email} onChange={(e) => setMe({ ...me, email: e.target.value })} autoComplete="email" placeholder="you@example.com" /></label>
             {p.findCustomers && <div className={styles.wide}><button type="button" className={styles.back} disabled={me.phone.replace(/\D/g, '').length < 4} onClick={() => void lookup()}>Find an existing customer by phone</button>
               {found && (found.length ? <div className={styles.choices} style={{ marginTop: 8 }}>{found.map((c) => <button key={c.id} type="button" className={styles.choice} onClick={() => { setMe({ id: c.id, name: c.name, email: c.email, phone: c.phone }); setFound(null); }}><span><strong>{c.name}</strong><small>{c.email || 'No email'} · {c.phone}</small></span></button>)}</div> : <p className={styles.help}>No customer with that number.</p>)}</div>}
-            {p.deposit && <label className={`${styles.field} ${styles.wide}`}>Coupon code (optional)<input value={coupon} maxLength={32} onChange={(e) => setCoupon(e.target.value.toUpperCase())} autoComplete="off" placeholder="Have a coupon? Enter it here" /></label>}
+            {p.deposit && <div className={`${styles.field} ${styles.wide}`}><label htmlFor="coupon-code">Coupon code (optional)</label>
+              <div style={{ display: 'flex', gap: 8 }}><input id="coupon-code" value={coupon} maxLength={32} onChange={(e) => { setCoupon(e.target.value.toUpperCase()); setCouponMsg(''); }} autoComplete="off" placeholder="Have a coupon? Enter it here" />
+                {p.checkCoupon && <button type="button" className={styles.back} disabled={couponBusy || !coupon.trim() || !rule} onClick={async () => {
+                  setCouponBusy(true); setCouponMsg('');
+                  try { const r = await p.checkCoupon!(coupon.trim(), rule!.serviceId, subtotal); setCouponHit({ code: coupon.trim(), discount: r.discountCents, subtotal }); setCouponMsg(`Coupon ${r.code} applied: ${money(r.discountCents)} off.`); }
+                  catch (e) { setCouponHit(null); setCouponMsg(e instanceof Error ? e.message : 'That coupon could not be checked.'); }
+                  finally { setCouponBusy(false); }
+                }}>{couponBusy ? 'Checking…' : 'Apply'}</button>}</div>
+              {couponMsg && <span role="status" className={styles.help}>{couponMsg}</span>}</div>}
             <label className={`${styles.field} ${styles.wide}`}>Notes (optional)<textarea rows={3} maxLength={1000} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything we should know?" /></label>
           </div>
           <div><div className={styles.ask}><strong>{cust ? 'Were you referred?' : 'Were they referred?'}</strong>
@@ -455,6 +469,7 @@ export default function BookingWizard(p: WizardProps) {
           {rule && <div className={styles.sum} aria-label="Price summary">
             <div><span>{packName(rule)}</span><span>{price(rule.serviceId) === null ? 'Price not set' : money(price(rule.serviceId) as number)}</span></div>
             {picked.map((id) => <div key={id}><span>{extras.find((a) => a.serviceId === id)?.name}</span><span>{price(id) === null ? '' : money(price(id) as number)}</span></div>)}
+            {couponOff > 0 && <div><span>Coupon {couponHit?.code}</span><span>−{money(couponOff)}</span></div>}
             <div><span>{taxLabel(taxes)}</span><span>{taxes ? money(tax) : 'Added on the invoice'}</span></div>
             <div className={styles.grand}><span>Total</span><span>{money(total)}</span></div>
             {unpriced && <p className={styles.help}>Some items have no price yet, so this total is not final.</p>}
