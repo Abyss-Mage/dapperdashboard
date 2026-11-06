@@ -94,7 +94,7 @@ export default function ServicesPage() {
       </section>
 
       {/* S2 How we do it: scroll (or press a step) and the screen beside it changes to the one that step happens in */}
-      <section className="s-how" aria-labelledby="s-how-title">
+      <section className="s-how s-light" aria-labelledby="s-how-title">
         <div className="s-how__text">
           <h2 id="s-how-title" className="s-h2" data-head>How we <em>do it.</em></h2>
           <ol className="s-how__steps" aria-label="Steps">
@@ -136,7 +136,7 @@ export default function ServicesPage() {
       </section>
 
       {/* S4 What customers say: a row to swipe or scroll */}
-      <section className="s-rev" aria-labelledby="s-rev-title">
+      <section className="s-rev s-light" aria-labelledby="s-rev-title">
         <h2 id="s-rev-title" className="s-h2" data-head>What our customers <em>say.</em></h2>
         <ul className="s-rev__row" data-in tabIndex={0} aria-label="Customer reviews">
           {testimonials.map((t) => (
@@ -155,7 +155,7 @@ export default function ServicesPage() {
       </section>
 
       {/* S6 Closing band: the booking call, in type */}
-      <section className="s-close" aria-labelledby="s-close-title">
+      <section className="s-close s-light" aria-labelledby="s-close-title">
         <h2 id="s-close-title" className="s-h2" data-head>Ready to give your car <em>the care it deserves?</em></h2>
         <p className="s-close__lede" data-in>{cta.text}</p>
         <div className="s-close__actions" data-in>

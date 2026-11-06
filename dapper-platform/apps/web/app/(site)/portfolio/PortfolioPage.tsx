@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, ArrowUpRight, Play, X } from 'lucide-react';
 import { contact, cta, portfolio, transformations } from '../dapper';
+import { FilmCarousel } from '../_components/FilmCarousel';
 import { gsap, ScrollTrigger, SplitText, useGSAP } from '../_components/gsapContact';
 
 /* Portfolio, built section by section with the owner's approval of each. Same paper system as Contact and About (../paper.css).
@@ -163,21 +164,14 @@ export default function PortfolioPage() {
 
         {/* P3 Films: five transformations, playing while they are in view; select one for sound and controls */}
         <section className="p-films" aria-labelledby="p-films-title">
-          <div className="p-films__head">
-            <h2 id="p-films-title" data-head>The finish, in <em>motion.</em></h2>
-            <p>Real work from the Dapper studio. Select a film to watch it with sound.</p>
+          <div className="fc-sec">
+            <div className="fc-sec__text">
+              <h2 id="p-films-title" data-head>The finish, in <em>motion.</em></h2>
+              <p>Real work from the Dapper studio. Select a film to watch it with sound.</p>
+              <a className="c-btn c-btn--red" href="/booking"><span className="c-roll"><span>Book now</span><span aria-hidden="true">Book now</span></span><ArrowRight size={20} aria-hidden="true" /></a>
+            </div>
+            <FilmCarousel clips={clips} onOpen={setFilm} />
           </div>
-          <ul className="p-films__reels">
-            {clips.map((c, i) => (
-              <li key={c}>
-                <button type="button" className="p-reel" onClick={() => setFilm(i)} aria-label={'Watch transformation ' + (i + 1) + ' of ' + clips.length}>
-                  <video src={c + '#t=0.1'} muted loop playsInline preload="metadata" aria-hidden="true" tabIndex={-1} />
-                  <span className="p-reel__tag" aria-hidden="true">Film {i + 1}</span>
-                  <span className="p-reel__play" aria-hidden="true"><Play size={18} fill="currentColor" /></span>
-                </button>
-              </li>
-            ))}
-          </ul>
         </section>
 
         {/* P4 Follow the work: the studio's two channels */}

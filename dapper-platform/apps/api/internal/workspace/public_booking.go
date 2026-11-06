@@ -206,7 +206,7 @@ func registerPublicBookingRoutes(mux *http.ServeMux, store *postgres.Store) {
 		}
 		site := r.PathValue("site")
 		if in.DepositMethod != "card" && in.DepositMethod != "cash" || in.DepositMethod == "card" && (len(in.SourceID) < 8 || len(in.SourceID) > 200) {
-			reply(w, 422, map[string]string{"error": "Choose how to pay the deposit."})
+			reply(w, 422, map[string]string{"error": "Choose how to pay."})
 			return
 		}
 		res, err := store.PublicBook(r.Context(), site, in.PublicBookingInput)
@@ -218,7 +218,7 @@ func registerPublicBookingRoutes(mux *http.ServeMux, store *postgres.Store) {
 		if in.DepositMethod == "card" {
 			scope, err := store.PublicBookingScope(r.Context(), site)
 			if err == nil {
-				err = takeSquareDeposit(r, store, scope, res.InvoiceID, "dep-"+in.RequestKey, in.SourceID, res.DepositCents)
+				err = takeSquareDeposit(r, store, scope, res.InvoiceID, "dep-"+in.RequestKey, in.SourceID, res.TotalCents)
 			}
 			if err != nil {
 				store.PublicBookingAbort(r.Context(), site, res.BookingID, res.InvoiceID)
@@ -227,7 +227,7 @@ func registerPublicBookingRoutes(mux *http.ServeMux, store *postgres.Store) {
 			}
 			paid = true
 		}
-		reply(w, 201, map[string]any{"bookingId": res.BookingID, "invoiceNumber": res.InvoiceNumber, "totalCents": res.TotalCents, "depositCents": res.DepositCents, "depositPaid": paid, "serviceName": res.ServiceName})
+		reply(w, 201, map[string]any{"bookingId": res.BookingID, "invoiceNumber": res.InvoiceNumber, "totalCents": res.TotalCents, "depositCents": res.DepositCents, "depositPaid": paid, "paidCents": map[bool]int64{true: res.TotalCents, false: 0}[paid], "serviceName": res.ServiceName})
 	})
 }
 
@@ -238,11 +238,11 @@ func isCapacityConflict(err error) bool {
 func depositMessage(err error) string {
 	switch {
 	case errors.Is(err, postgres.ErrSquareBinding):
-		return "Card payments are not available yet. Please choose to pay on the day."
+		return "Online payment is not available yet. Please choose to pay on the day."
 	case errors.Is(err, postgres.ErrPaymentProvider):
 		return "We could not confirm the card payment, so the booking was not kept. Please check your card and try again."
 	default:
-		return "The deposit could not be taken, so the booking was not kept. Please try again or pay on the day."
+		return "The payment could not be taken, so the booking was not kept. Please try again or pay on the day."
 	}
 }
 

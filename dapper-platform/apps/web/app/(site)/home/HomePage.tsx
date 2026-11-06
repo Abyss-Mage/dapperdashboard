@@ -1,4 +1,5 @@
 'use client';
+import { FilmCarousel } from '../_components/FilmCarousel';
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight, Check, Play, Star, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -81,16 +82,6 @@ export default function HomePage() {
       const seq = root.current?.querySelector<HTMLElement>('.h-seq');
       const stop = seq ? frameSequence(seq) : undefined;
       return () => stop?.();
-    });
-    // Real results: the section pins; the five films start stacked in the middle and spread into a row as you scroll.
-    mm.add('(prefers-reduced-motion: no-preference) and (min-width: 900px)', () => {
-      const items = gsap.utils.toArray<HTMLElement>('.h-films__reels li');
-      const n = items.length, mid = (n - 1) / 2;
-      if (!n) return;
-      items.forEach((li, i) => gsap.set(li, { xPercent: -50, yPercent: -50, x: (i - mid) * 18, y: Math.abs(i - mid) * 10, rotation: (i - mid) * 9, scale: .88, zIndex: n - Math.round(Math.abs(i - mid)) }));
-      const tl = gsap.timeline({ defaults: { ease: 'none' }, scrollTrigger: { trigger: '.h-films', start: 'top top', end: '+=' + Math.round(innerHeight * 1.1), pin: true, scrub: .6, anticipatePin: 1, invalidateOnRefresh: true } });
-      items.forEach((li, i) => tl.to(li, { x: () => (i - mid) * Math.min(li.offsetWidth + innerWidth * .016, (innerWidth - li.offsetWidth - 32) / (n - 1)), y: i % 2 ? 22 : -10, rotation: 0, scale: 1, ease: 'power2.inOut', duration: 1 }, 0));
-      tl.to({}, { duration: .35 });
     });
     // Services: a pinned deck of ten cards. Each scroll step throws the top card off to the left and the rest settle forward into the pile.
     mm.add('(prefers-reduced-motion: no-preference)', () => {
@@ -270,24 +261,13 @@ export default function HomePage() {
 
       {/* H5 Transformations: five real films, playing while they are in view */}
       <section className="h-films" id="work" aria-labelledby="h-films-title">
-        <div className="h-fan__stage">
-        <div className="h-films__head">
-          <h2 id="h-films-title" className="s-h2" data-head>Real results. <em>Real vehicles.</em></h2>
-          <div>
+        <div className="fc-sec">
+          <div className="fc-sec__text">
+            <h2 id="h-films-title" className="s-h2" data-head>Real results. <em>Real vehicles.</em></h2>
             <p>Every vehicle tells a story and every transformation showcases our commitment to excellence. Select a film to watch it with sound.</p>
             <Link className="s-btn" href="/portfolio"><span className="s-roll"><span>Explore portfolio</span><span aria-hidden="true">Explore portfolio</span></span><ArrowRight size={22} aria-hidden="true" /></Link>
           </div>
-        </div>
-        <ul className="h-films__reels">
-          {clips.map((c, i) => (
-            <li key={c}>
-              <button type="button" className="h-reel" onClick={() => setFilm(i)} aria-label={'Watch transformation ' + (i + 1) + ' of ' + clips.length}>
-                <video src={c} muted loop playsInline preload="metadata" />
-                <span className="h-reel__play" aria-hidden="true"><Play size={20} fill="currentColor" /></span>
-              </button>
-            </li>
-          ))}
-        </ul>
+          <FilmCarousel clips={clips} onOpen={setFilm} />
         </div>
       </section>
 

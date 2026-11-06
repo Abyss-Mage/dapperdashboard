@@ -121,3 +121,59 @@
 .v-more__rule{position:absolute;left:0;right:0;bottom:0;height:2px;background:var(--red);transform-origin:left}
 @media(hover:hover) and (pointer:fine){.v-more a:hover{color:var(--red)}.v-more a:hover svg{transform:translateX(8px)}}
 @media(max-width:900px){.v-more__wrap{grid-template-columns:minmax(0,1fr)}.v-more__head{position:static}}
+
+/* Light sections: the page alternates black and white. A .v-light section redefines the tokens, so everything inside follows. */
+.v-light{--bk:#f5f2eb;--bk2:#ebe7dd;--bone:#0b0b0c;--mute:#55524b;--line:#0b0b0c26;background:var(--bk);color:var(--bone)}
+.v-light ::selection{background:var(--red);color:#fff}
+.v-light .v-sec__head p{color:var(--mute)}
+
+/* Packages: name and price, what is included, and Book now */
+.v-row{grid-template-columns:minmax(0,.9fr) minmax(0,1.5fr) auto;align-items:start}
+.v-light .v-row{background:#fff;box-shadow:0 1px 0 var(--line)}
+.v-light .v-row h3{color:var(--bone)}
+.v-row__main{display:grid;gap:14px;align-content:start}
+.v-row__price{display:grid;justify-items:start;gap:4px;margin:0}
+.v-row__price small{color:var(--red);font:500 12px/1 var(--cd);letter-spacing:.08em;text-transform:uppercase}
+.v-row__price b{font:500 clamp(26px,2.6vw,40px)/1 var(--cd);letter-spacing:-.02em;color:var(--bone)}
+.v-row__inc small{display:block;margin-bottom:10px;font:500 12px/1 var(--cd);letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+.v-row__inc ul{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px 20px}
+.v-row__inc li{display:flex;align-items:flex-start;gap:10px;color:var(--bone);font-size:clamp(15px,1.1vw,17px);line-height:1.35}
+.v-row__inc li svg{flex:none;margin-top:3px;color:var(--red)}
+.v-row__inc p{margin:0;color:var(--mute)}
+.v-row__book{align-self:center;display:inline-flex;align-items:center;justify-content:center;gap:12px;min-height:56px;padding:0 26px;background:var(--red);color:#fff;font:500 15px/1 var(--cd);letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;clip-path:polygon(0 0,100% 0,100% 100%,12px 100%,0 calc(100% - 12px));transition:background-color .2s,transform .16s var(--ease)}
+.v-row__book:active{transform:scale(.97)}
+.v-row__book svg{transition:transform .3s var(--ease)}
+@media(hover:hover) and (pointer:fine){.v-light .v-row:hover{background:#fff}.v-row__book:hover{background:#c4121f}.v-row__book:hover svg{transform:translateX(4px)}}
+@media(max-width:900px){.v-row{grid-template-columns:minmax(0,1fr)}.v-row__book{justify-self:stretch}}
+.v-light .v-note{background:#fff;color:var(--mute)}
+.v-light .v-ghost{border-color:#0b0b0c55;color:var(--bone)}
+
+/* What to expect: four cards, the photograph first (no pinning, so nothing overlaps) */
+.v-exp .v-exp__list{grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr))}
+.v-exp__item h3{color:var(--bone)}
+.v-exp__item p{color:var(--mute)}
+
+/* Reviews: a plain row to swipe or scroll */
+.v-hview{scrollbar-width:thin;scrollbar-color:#ffffff55 transparent;padding-bottom:10px}
+.v-hview::-webkit-scrollbar{display:block;height:8px}
+.v-hview::-webkit-scrollbar-thumb{background:#ffffff55}
+
+/* Something else in the garage: a card for each other ride, picture, name, line, starting price and a button */
+.v-cards{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,290px),1fr));gap:clamp(12px,1.4vw,20px)}
+.v-card{display:flex;flex-direction:column;background:#fff;box-shadow:0 1px 0 var(--line);clip-path:polygon(0 0,100% 0,100% 100%,18px 100%,0 calc(100% - 18px))}
+.v-card__img{display:block;aspect-ratio:16/10;overflow:hidden;background:var(--bk2)}
+.v-card__img span{display:block;width:100%;height:100%;background-size:cover;background-position:center;transition:transform .7s var(--ease)}
+.v-card__body{display:flex;flex-direction:column;gap:10px;flex:1;padding:clamp(18px,1.8vw,26px)}
+.v-card h3{font-size:clamp(18px,1.6vw,24px);line-height:1.05;color:var(--bone)}
+.v-card p{margin:0;color:var(--mute);font-size:15px;line-height:1.45;text-wrap:pretty;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.v-card__foot{margin-top:auto;padding-top:14px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.v-card__from{display:grid;gap:4px}
+.v-card__from small{font:500 11px/1 var(--cd);letter-spacing:.08em;text-transform:uppercase;color:var(--red)}
+.v-card__from b{font:500 clamp(20px,1.8vw,28px)/1 var(--cd);letter-spacing:-.02em;color:var(--bone)}
+.v-card__go{display:inline-flex;align-items:center;gap:10px;min-height:48px;padding:0 20px;background:var(--bone);color:#fff;font:500 13px/1 var(--cd);letter-spacing:.04em;text-transform:uppercase;transition:background-color .2s}
+.v-card__go svg{transition:transform .3s var(--ease)}
+@media(hover:hover) and (pointer:fine){.v-card:hover .v-card__img span{transform:scale(1.05)}.v-card__go:hover{background:var(--red)}.v-card__go:hover svg{transform:translateX(4px)}}
+/* The old garage list styles matched every link in the section; the cards set their own */
+.v-more .v-card__go{padding:0 20px;font:500 13px/1 var(--cd);letter-spacing:.04em;color:#fff;justify-content:flex-start}
+.v-more .v-card__img{padding:0;display:block;font-size:0}
+@media(hover:hover) and (pointer:fine){.v-more .v-card__go:hover{color:#fff}}

@@ -55,7 +55,8 @@
 @media(prefers-reduced-motion:reduce){.p-viewer,.p-photo img{transition-duration:.01ms}}
 
 /* P3 Films: five portrait films on an ink band; a swipeable row on small screens, five drifting columns on desktop */
-.p-films{background:var(--ink);color:#f3f2ee;padding:clamp(72px,9vw,140px) 0 clamp(96px,11vw,170px);overflow:clip}
+.p-films{background:var(--ink);color:#f3f2ee;padding:clamp(72px,9vw,140px) var(--cg) clamp(96px,11vw,170px);overflow:clip}
+.p-films .fc-sec__text p{font:300 clamp(18px,1.6vw,26px)/1.35 var(--cb);color:#c9c6bf}
 .p-films__head{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:clamp(20px,4vw,64px);align-items:end;padding:0 var(--cg);margin-bottom:clamp(36px,5vw,72px)}
 .p-films__head h2{color:#f3f2ee;font-size:clamp(34px,4.7vw,79.9px);line-height:.98;letter-spacing:-.035em}
 .p-films__head p{font:300 clamp(18px,1.6vw,26px)/1.35 var(--cb);color:#c9c6bf;max-width:36ch}
@@ -103,3 +104,4 @@
 .p-close__call{font-size:clamp(17px,1.4vw,21px);color:var(--ink-2)}
 .p-close__call span{color:var(--red-ink);text-decoration:underline;text-underline-offset:.22em;text-decoration-thickness:1px;font-variant-numeric:tabular-nums}
 @media(max-width:720px){.p-close h2{font-size:clamp(22px,6.2vw,28px)}}
+.p-films h2{color:#f3f2ee;font-size:clamp(34px,4.7vw,79.9px);line-height:.98;letter-spacing:-.035em}

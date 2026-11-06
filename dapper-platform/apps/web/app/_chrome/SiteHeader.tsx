@@ -7,7 +7,6 @@ import { ArrowRight, CalendarCheck, Menu, Phone, UserRound, Wrench, X } from 'lu
 import '@fontsource-variable/unbounded/index.css';
 import { categories } from '../(site)/content';
 import { contact } from '../(site)/dapper';
-import BookDialog from './BookDialog';
 import s from './chrome.module.css';
 
 const links = [
@@ -19,7 +18,7 @@ const links = [
 ];
 
 /* The one header: a black bar on a wide screen (links, Account, Book now) and, on a phone, the name with a full-screen menu plus a bottom
-   bar whose big button is Book now. Every "Book now" opens the booking popup (see BookDialog) instead of a separate page. */
+   bar whose big button is Book now. Every "Book now" goes to the booking page, so the ad tags can follow the visit through to the thank-you page. */
 export function SiteHeader() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -53,7 +52,6 @@ export function SiteHeader() {
         <a href={'tel:' + contact.tel}><Phone size={20} aria-hidden="true" />Call</a>
         <Link href="/account"><UserRound size={20} aria-hidden="true" />Account</Link>
       </nav>
-      <BookDialog />
     </>
   );
 }

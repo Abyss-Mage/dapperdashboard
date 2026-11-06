@@ -165,21 +165,8 @@
 .h-film__prev{top:50%;left:-60px;margin-top:-26px}.h-film__next{top:50%;right:-60px;margin-top:-26px}
 @media(max-width:700px){.h-film__prev{left:0}.h-film__next{right:0}}
 @media(prefers-reduced-motion:reduce){.h-reel video{transition-duration:.01ms}}
-/* Real results: on a wide screen with motion the section pins and the five films spread out of a stack into a row as you scroll */
-.h-fan__stage{display:contents}
-@media(prefers-reduced-motion:no-preference) and (min-width:900px){
-  .h-films{padding:0}
-  .h-fan__stage{--w:min(calc(min(58vh,560px) * .5625),16.4vw);display:grid;grid-template-rows:auto 1fr;gap:clamp(8px,2vh,24px);min-height:100vh;padding:calc(72px + 14px) var(--cg) 40px;overflow:hidden}
-  .h-films__head{margin-bottom:0}
-  .h-films__head .s-h2{font-size:clamp(28px,3.4vw,56px)}
-  .h-films__reels{position:relative;display:block;height:100%;min-height:calc(var(--w) / .5625)}
-  .h-films__reels li{position:absolute;left:50%;top:50%;width:var(--w);margin:0!important;will-change:transform}
-}
-@media(prefers-reduced-motion:no-preference) and (min-width:900px) and (max-width:1023px){
-  .h-fan__stage{--w:min(calc(min(44svh,420px) * .5625),32vw);padding:calc(64px + 12px) var(--cg) 32px}
-  .h-films__head>div p{display:none}
-  .h-films__head .s-h2{font-size:clamp(26px,8vw,40px)}
-}
+.h-films .s-h2{font-size:clamp(31.2px,4.1vw,67.2px)}
+.h-films .fc-sec__text p{color:var(--mute);font-size:clamp(16px,1.3vw,20px)}
 
 /* H6 Why trust Dapper: white, six reasons in a hairline grid; a tile turns black under the pointer */
 /* H6 Why choose us (light): the heading holds on the left while the six reasons are ticked off down a line that fills as you scroll */

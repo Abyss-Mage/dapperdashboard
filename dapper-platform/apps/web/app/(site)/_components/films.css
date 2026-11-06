@@ -1,0 +1,22 @@
+/* Two-column film section: the text on the left (.fc-sec__text), this carousel on the right. Colours inherit from the dark section around it. */
+.fc-sec{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:clamp(28px,5vw,88px);align-items:center}
+.fc-sec__text{display:grid;gap:clamp(16px,2vw,28px);justify-items:start;align-content:center}
+.fc-sec__text p{margin:0;max-width:40ch;text-wrap:pretty}
+.fc{min-width:0}
+.fc__track{margin:0;padding:0 0 4px;list-style:none;display:flex;gap:clamp(10px,1.2vw,18px);overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain}
+.fc__track::-webkit-scrollbar{display:none}
+.fc__track li{flex:0 0 clamp(168px,17vw,250px);scroll-snap-align:start}
+.fc__reel{position:relative;display:block;width:100%;aspect-ratio:9/16;padding:0;border:0;overflow:hidden;background:#1b1b1f;cursor:pointer;color:#fff;clip-path:polygon(0 0,100% 0,100% 100%,16px 100%,0 calc(100% - 16px))}
+.fc__reel video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .8s cubic-bezier(.23,1,.32,1)}
+.fc__reel::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,11,12,0) 60%,rgba(11,11,12,.75));pointer-events:none}
+.fc__n{position:absolute;left:14px;bottom:14px;z-index:2;font:500 13px/1 'Unbounded Variable','Arial Narrow',sans-serif;letter-spacing:.1em;text-transform:uppercase}
+.fc__play{position:absolute;right:12px;bottom:12px;z-index:2;display:grid;place-items:center;width:42px;height:42px;background:#e3172b;transition:transform .25s cubic-bezier(.23,1,.32,1)}
+.fc__reel:focus-visible,.fc__track:focus-visible{outline:3px solid #e3172b;outline-offset:3px}
+@media(hover:hover) and (pointer:fine){.fc__reel:hover video{transform:scale(1.05)}.fc__reel:hover .fc__play{transform:scale(1.1)}}
+.fc__ctrl{display:flex;gap:10px;margin-top:clamp(14px,1.6vw,22px)}
+.fc__ctrl button{display:grid;place-items:center;width:54px;height:54px;border:1px solid #ffffff40;background:transparent;color:inherit;cursor:pointer;transition:background-color .2s,border-color .2s,opacity .2s,transform .16s cubic-bezier(.23,1,.32,1)}
+.fc__ctrl button:active:not(:disabled){transform:scale(.95)}
+.fc__ctrl button:disabled{opacity:.3;cursor:default}
+@media(hover:hover) and (pointer:fine){.fc__ctrl button:hover:not(:disabled){background:#e3172b;border-color:#e3172b}}
+@media(max-width:899px){.fc-sec{grid-template-columns:minmax(0,1fr)}.fc__track li{flex-basis:min(56vw,240px)}}
+@media(prefers-reduced-motion:reduce){.fc__reel video{transition-duration:.01ms}}

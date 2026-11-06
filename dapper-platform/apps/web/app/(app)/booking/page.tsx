@@ -2,25 +2,17 @@ import '@fontsource-variable/unbounded/index.css';
 import { SiteHeader } from '../../_chrome/SiteHeader';
 import { SiteFooter } from '../../_chrome/SiteFooter';
 import PublicBookingWizard from '../workspace/PublicBookingWizard';
-import ForceDark from '../../_chrome/ForceDark';
+import Tracking from '../../(site)/_components/Tracking';
 import styles from './booking.module.css';
 
 export const metadata = { title: 'Book now | Dapper Detailing Pros', description: 'Choose mobile service or at-shop detailing and pick your date and time with Dapper Detailing Pros in Peterborough.' };
 
-/* The booking steps. Opened on its own it wears the site's header, a film-frame headline and footer; with ?embed=1 (the popup that every
-   Book now button opens) it is only the steps, in the dark theme, so the popup is just the booking. */
-export default async function PublicBookingPortal({ searchParams }: { searchParams: Promise<{ embed?: string }> }) {
-  const embed = (await searchParams).embed === '1';
-  if (embed) {
-    return (
-      <div className={styles.embed}>
-        <ForceDark />
-        <PublicBookingWizard />
-      </div>
-    );
-  }
+/* The booking page: the site's header, a film-frame headline, the booking steps and the footer. It is a page of its own (not a popup) so
+   the ad tags see the visit, and a finished booking sends the customer on to /booking/thank-you. */
+export default function PublicBookingPortal() {
   return (
     <div className={styles.page}>
+      <Tracking />
       <SiteHeader />
       <section className={styles.hero} aria-labelledby="book-title">
         <p className={styles.kicker}>Dapper Detailing Pros · Peterborough</p>

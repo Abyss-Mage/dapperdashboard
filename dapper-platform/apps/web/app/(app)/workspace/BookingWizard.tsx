@@ -137,7 +137,7 @@ export default function BookingWizard(p: WizardProps) {
   const topRef = useRef<HTMLHeadingElement>(null);
   const panelRef = useRef<HTMLElement>(null);
   const prevStep = useRef(0);
-  const steps = [...(p.phoneCheck ? ['Welcome'] : []), 'Service', 'Where', 'Vehicle', 'Package', 'Extras', 'Day & time', 'Details', ...(p.deposit ? ['Deposit'] : [])];
+  const steps = [...(p.phoneCheck ? ['Welcome'] : []), 'Service', 'Where', 'Vehicle', 'Package', 'Extras', 'Day & time', 'Details', ...(p.deposit ? ['Payment'] : [])];
   const name = steps[step];
   // Saved details fill in once, and never over something already typed.
   useEffect(() => {
@@ -197,8 +197,8 @@ export default function BookingWizard(p: WizardProps) {
   const unpriced = !!rule && (price(rule.serviceId) === null || picked.some((id) => price(id) === null));
   const tax = taxOn(subtotal, taxes);
   const total = subtotal + tax;
-  const pct = p.depositPercent ?? 30;
-  const deposit = Math.round((total * pct) / 100);
+  // Paying online takes the whole total (owner decision 2026-11-06: pay in full online, or pay on the day; no deposit).
+  const deposit = total;
   const tz = avail?.timezone || p.timezone;
 
   const monthDays = new Date(month.y, month.m + 1, 0).getDate();
@@ -226,7 +226,7 @@ export default function BookingWizard(p: WizardProps) {
     Extras: true,
     'Day & time': !!start,
     Details: detailsOk,
-    Deposit: payMethod === 'cash' || cardReady,
+    Payment: payMethod === 'cash' || cardReady,
   } as Record<string, boolean>)[name];
 
   function go(n: number) { setError(''); setStep(n); }
@@ -324,16 +324,14 @@ export default function BookingWizard(p: WizardProps) {
             <button key={c.id} type="button" className={styles.choice} onClick={() => { setMe({ id: c.id, name: c.name, email: c.email, phone: c.phone }); go(step + 1); }}><span><strong>Yes, I&rsquo;m {c.name}</strong><small>{c.email || 'No email saved'}</small></span></button>
           ))}</div>}
         </>}
-        {name === 'Deposit' && p.deposit && <>
-          <h2 ref={topRef} tabIndex={-1} className={styles.title}>Hold your time with a deposit</h2>
-          <div className={styles.sum} aria-label="Deposit summary">
-            <div><span>Total, tax included</span><span>{money(total)}</span></div>
-            <div className={styles.grand}><span>Deposit due now ({p.deposit.percent}%)</span><span>{money(deposit)}</span></div>
-            <div><span>Balance on the day</span><span>{money(total - deposit)}</span></div>
+        {name === 'Payment' && p.deposit && <>
+          <h2 ref={topRef} tabIndex={-1} className={styles.title}>How would you like to pay?</h2>
+          <div className={styles.sum} aria-label="Total">
+            <div className={styles.grand}><span>Total, tax included</span><span>{money(total)}</span></div>
           </div>
           <div className={`${styles.choices} ${styles.two}`}>
-            <button type="button" className={styles.choice} aria-pressed={payMethod === 'card'} onClick={() => setPayMethod('card')}><span><strong>Pay the deposit by card</strong><small>Secure card form by Square</small></span></button>
-            <button type="button" className={styles.choice} aria-pressed={payMethod === 'cash'} onClick={() => setPayMethod('cash')}><span><strong>Pay everything on the day</strong><small>Nothing is charged now</small></span></button>
+            <button type="button" className={styles.choice} aria-pressed={payMethod === 'card'} onClick={() => setPayMethod('card')}><span><strong>Pay online now</strong><small>The full {money(total)}, by card, securely through Square</small></span></button>
+            <button type="button" className={styles.choice} aria-pressed={payMethod === 'cash'} onClick={() => setPayMethod('cash')}><span><strong>Pay on the day</strong><small>Nothing is charged now. You pay when we do the work.</small></span></button>
           </div>
           {payMethod === 'card' && p.deposit.renderCard((fn) => { tokenizer.current = fn; setCardReady(!!fn); }, deposit)}
         </>}
@@ -419,9 +417,9 @@ export default function BookingWizard(p: WizardProps) {
           <h2 ref={topRef} tabIndex={-1} className={styles.title}>{cust ? 'Almost done: your details' : 'Almost done: the customer\u2019s details'}</h2>
           {p.prefill && <p className={styles.help} role="status">Filled in from your account. Change anything that is not right for this booking.</p>}
           <div className={styles.fields}>
-            <label className={`${styles.field} ${styles.wide}`}>Full name<input value={me.name} onChange={(e) => setMe({ ...me, name: e.target.value })} autoComplete="name" /></label>
+            <label className={`${styles.field} ${styles.wide}`}>Full name<input value={me.name} onChange={(e) => setMe({ ...me, name: e.target.value })} autoComplete="name" placeholder="Your full name" /></label>
             <label className={`${styles.field} ${styles.half}`}>Mobile number<input type="tel" value={me.phone} onChange={(e) => setMe({ ...me, phone: e.target.value })} autoComplete="tel" placeholder="+1 416 555 0123" /></label>
-            <label className={`${styles.field} ${styles.half}`}>Email<input type="email" value={me.email} onChange={(e) => setMe({ ...me, email: e.target.value })} autoComplete="email" /></label>
+            <label className={`${styles.field} ${styles.half}`}>Email<input type="email" value={me.email} onChange={(e) => setMe({ ...me, email: e.target.value })} autoComplete="email" placeholder="you@example.com" /></label>
             {p.findCustomers && <div className={styles.wide}><button type="button" className={styles.back} disabled={me.phone.replace(/\D/g, '').length < 4} onClick={() => void lookup()}>Find an existing customer by phone</button>
               {found && (found.length ? <div className={styles.choices} style={{ marginTop: 8 }}>{found.map((c) => <button key={c.id} type="button" className={styles.choice} onClick={() => { setMe({ id: c.id, name: c.name, email: c.email, phone: c.phone }); setFound(null); }}><span><strong>{c.name}</strong><small>{c.email || 'No email'} · {c.phone}</small></span></button>)}</div> : <p className={styles.help}>No customer with that number.</p>)}</div>}
             {p.deposit && <label className={`${styles.field} ${styles.wide}`}>Coupon code (optional)<input value={coupon} maxLength={32} onChange={(e) => setCoupon(e.target.value.toUpperCase())} autoComplete="off" placeholder="Have a coupon? Enter it here" /></label>}
@@ -448,7 +446,7 @@ export default function BookingWizard(p: WizardProps) {
           {subtotalNote(name, rule, subtotal, total)}
           {step < steps.length - 1
             ? <button type="button" className={styles.next} disabled={!stepOk} onClick={() => go(step + 1)}>{name === 'Welcome' ? 'I’m new, let’s start' : name === 'Extras' && !picked.length ? 'Skip' : 'Continue'} →</button>
-            : <button type="button" className={styles.next} disabled={!stepOk || busy} onClick={() => void save()}>{busy ? (p.deposit && payMethod === 'card' ? 'Taking deposit…' : 'Saving…') : p.deposit ? (payMethod === 'card' ? `Pay ${money(deposit)} and book` : 'Book it') : 'Save booking'}</button>}
+            : <button type="button" className={styles.next} disabled={!stepOk || busy} onClick={() => void save()}>{busy ? (p.deposit && payMethod === 'card' ? 'Taking payment…' : 'Saving…') : p.deposit ? (payMethod === 'card' ? `Pay ${money(deposit)} and book` : 'Book now, pay on the day') : 'Save booking'}</button>}
         </div>
       </section>
       <aside className={styles.side} aria-label="Your booking so far">
@@ -476,5 +474,5 @@ function taxLabel(taxes: WizardTaxes) {
 
 function subtotalNote(name: string, rule: WizardRule | undefined, subtotal: number, total: number) {
   if (!rule || ['Welcome', 'Service', 'Where', 'Vehicle'].includes(name)) return <span />;
-  return <span className={styles.total}>{name === 'Details' || name === 'Deposit' ? 'Total with tax' : 'Total so far'}<strong><AnimatedNumber text={money(name === 'Details' || name === 'Deposit' ? total : subtotal)} duration={0.7} /></strong></span>;
+  return <span className={styles.total}>{name === 'Details' || name === 'Payment' ? 'Total with tax' : 'Total so far'}<strong><AnimatedNumber text={money(name === 'Details' || name === 'Payment' ? total : subtotal)} duration={0.7} /></strong></span>;
 }

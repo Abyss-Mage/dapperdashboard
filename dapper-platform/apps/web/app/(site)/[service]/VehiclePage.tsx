@@ -13,6 +13,24 @@ import { gsap, ScrollTrigger, SplitText, useGSAP } from '../_components/gsapCont
 
 const kind = (key: string) => (key === 'ceramic' ? 'Coating' : key === 'ppf' ? 'Paint protection film' : 'Detailing');
 
+/* What each package includes, in the studio's own words from dapperdetailing.ca. Used when the package's published summary is still the
+   generic booking line; once the team writes a real summary in the dashboard (one item per line) that is shown instead. */
+const GENERIC = /book online, or call the team/i;
+const INCLUDES: [RegExp, string[]][] = [
+  [/ultimate/i, ['Includes the Luxury Full Body Detail', '12–18 month ceramic coating', '12-month fabric protection', 'Windshield ceramic coating', 'Glass cleaned inside and out']],
+  [/luxury/i, ['Full interior detail', 'Exterior detail and wax', 'Rims and wheels detailed', 'Exterior surfaces enhanced', 'Tire dressing finish']],
+  [/vip/i, ['Interior revived and shined', 'Professional steam cleaning', 'Deep seat cleaning', 'Glass and windows cleaned', 'Air freshener treatment']],
+  [/exterior/i, ['Thorough hand wash', 'Wheel and tire cleaning', 'Bug and tar removal', 'Door jamb cleaning', '30-day wax protection']],
+];
+const includes = (name: string, summary: string): { list: string[]; text: string } => {
+  if (summary && !GENERIC.test(summary)) {
+    const lines = summary.split(/\r?\n|•|;/).map((x) => x.trim()).filter(Boolean);
+    return lines.length > 1 ? { list: lines, text: '' } : { list: [], text: summary };
+  }
+  const hit = INCLUDES.find(([re]) => re.test(name));
+  return { list: hit ? hit[1] : [], text: hit ? '' : summary };
+};
+
 function Packages({ category, name }: { category: string; name: string }) {
   const { status, services, retry } = usePublished();
   const { price } = useLiveCatalog();
@@ -29,16 +47,22 @@ function Packages({ category, name }: { category: string; name: string }) {
   );
   return (
     <ul className="v-pkgs" aria-live="polite">
-      {items.map((s) => (
-        <li key={s.serviceId} className="v-row">
-          <h3>{s.name}</h3>
-          <p>{s.summary}</p>
-          <div className="v-row__end">
-            {price[s.serviceId] !== undefined && <span className="v-row__price">{s.serviceId === lowest && <small>Lowest price</small>}<b>${money(price[s.serviceId])}</b></span>}
-            <a className="v-row__go" href="/account">View options<ArrowRight size={18} aria-hidden="true" /></a>
-          </div>
-        </li>
-      ))}
+      {items.map((s) => {
+        const inc = includes(s.name, s.summary);
+        return (
+          <li key={s.serviceId} className="v-row">
+            <div className="v-row__main">
+              <h3>{s.name}</h3>
+              {price[s.serviceId] !== undefined && <p className="v-row__price"><small>{s.serviceId === lowest ? 'Lowest price' : 'Price'}</small><b>${money(price[s.serviceId])}</b></p>}
+            </div>
+            <div className="v-row__inc">
+              <small>What’s included</small>
+              {inc.list.length ? <ul>{inc.list.map((x) => <li key={x}><Check size={16} strokeWidth={3} aria-hidden="true" />{x}</li>)}</ul> : <p>{inc.text}</p>}
+            </div>
+            <a className="v-row__book" href="/booking">Book now<ArrowRight size={18} aria-hidden="true" /></a>
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -93,40 +117,6 @@ export default function VehiclePage({ slug }: { slug: string }) {
       ScrollTrigger.batch('.v-exp__item', { start: 'top 92%', once: true,
         onEnter: (els) => gsap.from(els, { y: 36, opacity: 0, duration: .8, stagger: .08, ease: 'expo.out', overwrite: true }) });
     });
-    // On a wide screen the reviews and the steps pin and play with the scroll.
-    mm.add('(min-width: 900px) and (prefers-reduced-motion: no-preference)', () => {
-      const page = root.current;
-      if (!page) return;
-      const undo: Array<() => void> = [];
-      const rev = page.querySelector<HTMLElement>('.v-rev');
-      const view = page.querySelector<HTMLElement>('.v-hview');
-      const track = page.querySelector<HTMLElement>('.v-htrack');
-      if (rev && view && track) {
-        rev.classList.add('is-pinned');
-        undo.push(() => rev.classList.remove('is-pinned'));
-        const dist = () => Math.max(0, track.scrollWidth - view.clientWidth);
-        gsap.timeline({ defaults: { ease: 'none' }, scrollTrigger: { trigger: rev, start: 'top top', end: () => '+=' + dist(), pin: true, scrub: 1, invalidateOnRefresh: true, anticipatePin: 1, refreshPriority: 1 } })
-          .to(track, { x: () => -dist() }, 0)
-          .to('.v-hbar i', { scaleX: 1 }, 0);
-      }
-      const exp = page.querySelector<HTMLElement>('.v-exp');
-      if (exp) {
-        exp.classList.add('is-pinned');
-        undo.push(() => exp.classList.remove('is-pinned'));
-        const items = gsap.utils.toArray<HTMLElement>('.v-exp__item', exp);
-        const imgs = gsap.utils.toArray<HTMLElement>('.v-exp__img', exp);
-        gsap.set(items.slice(1), { opacity: .28 });
-        gsap.set(imgs.slice(1), { clipPath: 'inset(100% 0% 0% 0%)' });
-        const tl = gsap.timeline({ defaults: { ease: 'power2.inOut' }, scrollTrigger: { trigger: exp, start: 'top top', end: () => '+=' + Math.round(window.innerHeight * .85 * (items.length - 1)), pin: true, scrub: .8, invalidateOnRefresh: true, anticipatePin: 1, refreshPriority: 2 } });
-        for (let i = 1; i < items.length; i++) {
-          tl.to(imgs[i], { clipPath: 'inset(0% 0% 0% 0%)', duration: 1 }, i - 1)
-            .to(items[i - 1], { opacity: .28, duration: .45 }, i - 1)
-            .to(items[i], { opacity: 1, duration: .45 }, i - 1 + .4);
-        }
-        tl.to('.v-exp__bar i', { scaleY: 1, ease: 'none', duration: items.length - 1 }, 0);
-      }
-      return () => undo.forEach((fn) => fn());
-    });
     document.fonts?.ready.then(() => ScrollTrigger.refresh());
     return () => mm.revert();
   }, { scope: root });
@@ -155,10 +145,10 @@ export default function VehiclePage({ slug }: { slug: string }) {
       </section>
 
       {/* V2 Packages: exactly what the team has published for this category */}
-      <section className="v-sec" aria-labelledby="v-pk-title">
+      <section className="v-sec v-light" aria-labelledby="v-pk-title">
         <div className="v-sec__head">
           <h2 id="v-pk-title" className="s-h2" data-head>Find your <em>care.</em></h2>
-          <p>Packages are published by the Dapper team. Sign in to choose one for your own vehicle and request a time.</p>
+          <p>Every package, what is in it and what it costs. Pick the one that fits and book it online in a few minutes.</p>
         </div>
         <Packages category={c.key} name={c.short} />
       </section>
@@ -182,7 +172,7 @@ export default function VehiclePage({ slug }: { slug: string }) {
       </section>
 
       {/* V4 What to expect: on a wide screen it pins, the four steps lit one at a time while the photograph changes beside them */}
-      <section className="v-sec v-sec--alt v-exp" aria-labelledby="v-st-title">
+      <section className="v-sec v-light v-exp" aria-labelledby="v-st-title">
         <div className="v-sec__head">
           <h2 id="v-st-title" className="s-h2" data-head>What to <em>expect.</em></h2>
           <p>From the first tap to the last wipe.</p>
@@ -225,15 +215,29 @@ export default function VehiclePage({ slug }: { slug: string }) {
       </section>
 
       {/* V6 Another ride? The other nine as big type; each row fades in and draws its rule with the scroll */}
-      <section className="v-sec v-more" aria-labelledby="v-mo-title">
-        <div className="v-more__wrap">
-          <div className="v-more__head">
-            <h2 id="v-mo-title" className="s-h2" data-head>Something else <em>in the garage?</em></h2>
-          </div>
-          <ul>
-            {other.map((x) => <li key={x.slug}><Link href={'/' + x.slug}><span>{x.short}</span><ArrowRight size={28} aria-hidden="true" /></Link><i className="v-more__rule" aria-hidden="true" /></li>)}
-          </ul>
+      <section className="v-sec v-light v-more" aria-labelledby="v-mo-title">
+        <div className="v-sec__head">
+          <h2 id="v-mo-title" className="s-h2" data-head>Something else <em>in the garage?</em></h2>
+          <p>We care for more than {noun}s. Pick another ride to see its packages.</p>
         </div>
+        <ul className="v-cards">
+          {other.map((x) => {
+            const f = live[x.key] ?? x.from;
+            return (
+              <li key={x.slug} className="v-card" data-in>
+                <Link href={'/' + x.slug} className="v-card__img" tabIndex={-1} aria-hidden="true"><span style={{ backgroundImage: 'url(' + x.image + ')' }} /></Link>
+                <div className="v-card__body">
+                  <h3>{x.short}</h3>
+                  <p>{x.summary}</p>
+                  <div className="v-card__foot">
+                    <span className="v-card__from">{f ? <><small>Starts from</small><b>${money(f)}</b></> : <><small>Pricing</small><b>Ask the team</b></>}</span>
+                    <Link href={'/' + x.slug} className="v-card__go">See packages<ArrowRight size={18} aria-hidden="true" /></Link>
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
       </section>
 
       {/* V7 Closing band: the finished car from the film behind the booking call */}

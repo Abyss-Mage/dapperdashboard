@@ -118,3 +118,12 @@ body:has(.s-page),html:has(.s-page){background:#0b0b0c}
 /* Phones: two tiles a row, so the names, the sub line and the corner labels all shrink to fit */
 @media(max-width:720px){.s-tile__name{font-size:clamp(14px,4.2vw,18px);letter-spacing:0;left:10px;right:10px;bottom:30px}.s-tile__sub{left:10px;right:10px;bottom:12px;font-size:11px;letter-spacing:.08em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.s-tile__tag{font-size:10px;letter-spacing:.08em;padding:6px 7px 4px}.s-tile__price{font-size:16px;padding:7px 9px 5px}}
 @media(max-width:720px){.s-tile__tag{display:none}.s-tile__sub{font-size:10px;letter-spacing:.03em}}
+
+/* The page alternates black and white sections: .s-light redefines the tokens for its section */
+.s-light{--bk:#f5f2eb;--bk2:#ebe7dd;--bone:#0b0b0c;--mute:#55524b;--line:#0b0b0c26;background:var(--bk2);color:var(--bone)}
+.s-how.s-light{background:var(--bk)}
+.s-light .s-how__steps button{color:#7d7a72}
+.s-light .s-how__steps button.is-on,.s-light .s-how__steps button:hover{color:var(--bone)}
+.s-light .s-how__ctrl button{border-color:#0b0b0c55;color:var(--bone)}
+.s-light .s-rev__row{scrollbar-color:#0b0b0c55 transparent}
+.s-light .s-rev__row li{background:#fff}
