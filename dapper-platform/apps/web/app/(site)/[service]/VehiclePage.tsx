@@ -5,7 +5,7 @@ import { ArrowRight, Check, Star } from 'lucide-react';
 import { categories } from '../content';
 import { contact, cta, processSteps, proof, testimonials, why } from '../dapper';
 import { usePublished } from '../_components/usePublished';
-import { money, useLiveFrom } from '../_components/useLiveFrom';
+import { money, useLiveCatalog, useLiveFrom } from '../_components/useLiveFrom';
 import { gsap, ScrollTrigger, SplitText, useGSAP } from '../_components/gsapContact';
 
 /* One template for every service page, in the same darker "hard" direction as Services.
@@ -15,7 +15,10 @@ const kind = (key: string) => (key === 'ceramic' ? 'Coating' : key === 'ppf' ? '
 
 function Packages({ category, name }: { category: string; name: string }) {
   const { status, services, retry } = usePublished();
-  const items = services.filter((s) => s.category === category);
+  const { price } = useLiveCatalog();
+  // Cheapest first (unpriced last); the cheapest main package is the one the page's "starting from" price comes from.
+  const items = services.filter((s) => s.category === category).sort((a, b) => (price[a.serviceId] ?? Infinity) - (price[b.serviceId] ?? Infinity));
+  const lowest = items.find((s) => s.kind === 'main' && price[s.serviceId] !== undefined)?.serviceId;
   if (status === 'loading') return <p className="v-note" role="status">Loading packages…</p>;
   if (status === 'error') return <div className="v-note" role="status"><span>Current packages could not be loaded. Call the team or try again.</span><button type="button" className="v-ghost" onClick={retry}>Try again</button></div>;
   if (!items.length) return (
@@ -27,10 +30,13 @@ function Packages({ category, name }: { category: string; name: string }) {
   return (
     <ul className="v-pkgs" aria-live="polite">
       {items.map((s) => (
-        <li key={s.name} className="v-row">
+        <li key={s.serviceId} className="v-row">
           <h3>{s.name}</h3>
           <p>{s.summary}</p>
-          <a className="v-row__go" href="/account">View options<ArrowRight size={18} aria-hidden="true" /></a>
+          <div className="v-row__end">
+            {price[s.serviceId] !== undefined && <span className="v-row__price">{s.serviceId === lowest && <small>Lowest price</small>}<b>${money(price[s.serviceId])}</b></span>}
+            <a className="v-row__go" href="/account">View options<ArrowRight size={18} aria-hidden="true" /></a>
+          </div>
         </li>
       ))}
     </ul>

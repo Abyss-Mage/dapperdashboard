@@ -2,33 +2,37 @@
 import { useEffect, useState } from 'react';
 import { SITE_SLUG } from './site';
 
-/* The "starting from" price of each vehicle category, taken live from the dashboard: the lowest price among the published base services in
-   that category. Returns dollars by category key, and nothing until the website entry is published and a service is priced, so the pages
-   keep their built-in prices as the fallback. Prices are computed by the backend; the website only reads them. */
+/* Prices taken live from the dashboard. `from` is the "starting from" price of each vehicle category: the lowest price among the published
+   base (main) services in that category. `price` is each service's own price by service id. Both are dollars. Nothing is returned until the
+   website entry is published and services are priced, so the pages keep their built-in prices as the fallback. Prices are computed by the
+   backend; the website only reads them. */
 type SiteService = { serviceId: string; kind: string; category: string };
 type OptionService = { id: string; kind: string; priceCents: number };
+type Live = { from: Record<string, number>; price: Record<string, number> };
+const none: Live = { from: {}, price: {} };
 
-export function useLiveFrom(): Record<string, number> {
-  const [from, setFrom] = useState<Record<string, number>>({});
+export function useLiveCatalog(): Live {
+  const [live, setLive] = useState<Live>(none);
   useEffect(() => {
     let off = false;
     const get = (u: string) => fetch(u, { cache: 'no-store', headers: { Accept: 'application/json' } }).then((r) => (r.ok ? r.json() : Promise.reject()));
     Promise.all([get('/api/v1/public/sites/' + SITE_SLUG), get('/api/v1/public/booking/' + SITE_SLUG + '/options')])
       .then(([site, options]) => {
-        const price = new Map<string, number>((options.services as OptionService[]).filter((s) => s.kind === 'main' && s.priceCents > 0).map((s) => [s.id, s.priceCents]));
-        const out: Record<string, number> = {};
+        const price: Record<string, number> = {};
+        for (const s of options.services as OptionService[]) if (s.priceCents > 0) price[s.id] = s.priceCents / 100;
+        const from: Record<string, number> = {};
         for (const s of site.services as SiteService[]) {
-          const cents = price.get(s.serviceId);
-          if (s.kind !== 'main' || !s.category || cents === undefined) continue;
-          const dollars = cents / 100;
-          if (out[s.category] === undefined || dollars < out[s.category]) out[s.category] = dollars;
+          const dollars = price[s.serviceId];
+          if (s.kind !== 'main' || !s.category || dollars === undefined) continue;
+          if (from[s.category] === undefined || dollars < from[s.category]) from[s.category] = dollars;
         }
-        if (!off) setFrom(out);
+        if (!off) setLive({ from, price });
       })
       .catch(() => undefined);
     return () => { off = true; };
   }, []);
-  return from;
+  return live;
 }
 
+export const useLiveFrom = () => useLiveCatalog().from;
 export const money = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(2));
