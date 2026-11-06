@@ -81,7 +81,8 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
     return { local, pub, site: !!content.site?.slug };
   }
   // Put every main service that is not on the website yet into the category its name says (Sedan - ..., SUV - ..., Aircraft ..., ... PPF), after a preview.
-  const categoryByName = (n: string) => /ppf/i.test(n) ? 'ppf' : /^2 wheeler/i.test(n) ? '2-wheeler' : /^hatchback/i.test(n) ? 'hatchback' : /^sedan/i.test(n) ? 'sedan' : /^suv/i.test(n) ? 'suv' : /^pickup/i.test(n) ? 'pickup' : /^van\b/i.test(n) ? 'van' : /^aircraft/i.test(n) ? 'aircraft' : /^boat/i.test(n) ? 'boat' : /ceramic/i.test(n) ? 'ceramic' : '';
+  // Matches the packages dapperdetailing.ca lists on each category page. "Express Interior Detail" is not on the current website, so it is left out.
+  const categoryByName = (n: string) => /express interior/i.test(n) ? '' : /ppf/i.test(n) ? 'ppf' : /^2 wheeler/i.test(n) ? '2-wheeler' : /^hatchback/i.test(n) ? 'hatchback' : /^sedan/i.test(n) ? 'sedan' : /^suv/i.test(n) ? 'suv' : /^pickup/i.test(n) ? 'pickup' : /^van\b/i.test(n) ? 'van' : /^aircraft/i.test(n) ? 'aircraft' : /^boat/i.test(n) ? 'boat' : /ceramic|armour/i.test(n) ? 'ceramic' : '';
   const nounOf = (cat: string) => ({ sedan: 'sedan', suv: 'SUV', pickup: 'pickup', van: 'van', hatchback: 'hatchback', '2-wheeler': 'motorcycle', aircraft: 'aircraft', boat: 'boat' } as Record<string, string>)[cat] ?? 'vehicle';
   const [auto, setAuto] = useState<null | { todo: { local: Service; cat: string }[]; skipped: string[]; done: number }>(null);
   async function previewAuto() {
