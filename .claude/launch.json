@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dapper-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "dapper-platform/apps/web", "exec", "--", "next", "dev", "dapper-platform/apps/web", "--webpack", "--hostname", "127.0.0.1", "--port", "3016"],
+      "port": 3016
+    }
+  ]
+}

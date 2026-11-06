@@ -56,7 +56,7 @@ export default function AboutPage() {
     mm.add('(prefers-reduced-motion: no-preference)', () => {
       const cards = gsap.utils.toArray<HTMLElement>('.aw-card');
       cards.forEach((card, i) => {
-        if (i < cards.length - 1) gsap.to(card, { scale: .94, opacity: .5, ease: 'none', scrollTrigger: { trigger: cards[i + 1], start: 'top 92%', end: 'top 28%', scrub: true } });
+        if (i < cards.length - 1) gsap.to(card, { scale: .94, '--dim': .55, ease: 'none', scrollTrigger: { trigger: cards[i + 1], start: 'top 92%', end: 'top 28%', scrub: true } });
       });
     });
 

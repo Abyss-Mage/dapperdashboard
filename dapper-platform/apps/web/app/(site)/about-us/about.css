@@ -84,3 +84,4 @@
 .a-close__call{font-size:clamp(17px,1.4vw,21px);color:var(--ink-2)}
 .a-close__call span{color:var(--red-ink);text-decoration:underline;text-underline-offset:.22em;text-decoration-thickness:1px;font-variant-numeric:tabular-nums}
 @media(max-width:720px){.a-values h2,.a-partners h2,.af h2,.aw h2{font-size:clamp(22px,6.4vw,30px)}.a-close h2{font-size:clamp(22px,6.6vw,30px)}}
+.aw-card::after{content:'';position:absolute;inset:0;background:#000;opacity:var(--dim,0);pointer-events:none}

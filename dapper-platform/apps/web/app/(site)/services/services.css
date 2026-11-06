@@ -114,3 +114,7 @@ body:has(.s-page),html:has(.s-page){background:#0b0b0c}
 .s-close__call{font:500 clamp(16px,1.4vw,21px)/1 var(--cd);letter-spacing:.04em;text-transform:uppercase;color:var(--mute)}
 .s-close__call span{color:var(--bone);border-bottom:2px solid var(--red);padding-bottom:2px;font-variant-numeric:tabular-nums}
 @media(max-width:720px){.s-close .s-h2{font-size:clamp(18px,5vw,22px)}.s-tile__sub,.s-tile__tag{font-size:13px}}
+
+/* Phones: two tiles a row, so the names, the sub line and the corner labels all shrink to fit */
+@media(max-width:720px){.s-tile__name{font-size:clamp(14px,4.2vw,18px);letter-spacing:0;left:10px;right:10px;bottom:30px}.s-tile__sub{left:10px;right:10px;bottom:12px;font-size:11px;letter-spacing:.08em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.s-tile__tag{font-size:10px;letter-spacing:.08em;padding:6px 7px 4px}.s-tile__price{font-size:16px;padding:7px 9px 5px}}
+@media(max-width:720px){.s-tile__tag{display:none}.s-tile__sub{font-size:10px;letter-spacing:.03em}}
