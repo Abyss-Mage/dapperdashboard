@@ -8,6 +8,7 @@ import Select from '../GlassSelect';
 import Collapse from '../motion/Collapse';
 import NumberField from '../NumberField';
 import ServiceSlots from './ServiceSlots';
+import { categories as websiteCategories } from '../../(site)/content';
 
 type Service = { id: string; name: string; kind: string; parentId: string | null; parentIds?: string[]; version: number; archived: boolean; centralServiceId?: string | null; priceCents?: number | null; durationMinutes?: number | null };
 const money = (c: number) => `$${(c / 100).toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -66,6 +67,42 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  // The website category of a service: which page of the website lists it and the description shown there (the selected franchise's website entry).
+  const wbase = locationBase ?? (mode === 'franchise' ? listUrl.slice(0, -'/services'.length) : undefined);
+  type Pub = { serviceId: string; category: string; summary: string; published: boolean; version: number };
+  const [web, setWeb] = useState<{ state: 'idle' | 'loading' | 'ready' | 'nosite' | 'missing'; local?: Service; pub?: Pub; cat: string; summary: string }>({ state: 'idle', cat: '', summary: '' });
+  const [webTags, setWebTags] = useState<Record<string, { cat: string; published: boolean }>>({});
+  const catTitle = (key: string) => websiteCategories.find((x) => x.key === key)?.short ?? key;
+  async function websiteLookup(id: string) {
+    const list = (await readJson(await fetch(wbase + '/services', { cache: 'no-store' }))).items as Service[];
+    const local = mode === 'franchise' ? list.find((x) => x.id === id) : list.find((x) => x.centralServiceId === id && !x.archived);
+    const content = await readJson(await fetch(wbase + '/content', { cache: 'no-store' }));
+    const pub = local ? (content.services as Pub[]).find((x) => x.serviceId === local.id) : undefined;
+    return { local, pub, site: !!content.site?.slug };
+  }
+  async function loadWebsite(s: Service) {
+    if (!wbase || s.kind !== 'main') { setWeb({ state: 'idle', cat: '', summary: '' }); return; }
+    setWeb({ state: 'loading', cat: '', summary: '' });
+    try {
+      const { local, pub, site } = await websiteLookup(s.id);
+      if (!site) setWeb({ state: 'nosite', cat: '', summary: '' });
+      else if (!local) setWeb({ state: 'missing', cat: '', summary: '' });
+      else setWeb({ state: 'ready', local, pub, cat: pub?.published ? pub.category : '', summary: pub?.summary ?? '' });
+    } catch { setWeb({ state: 'idle', cat: '', summary: '' }); }
+  }
+  // After the service itself is saved: put it on (or take it off) its website category.
+  async function applyWebsite(id: string) {
+    if (web.state !== 'ready') return;
+    const was = web.pub?.published ? web.pub.category : '';
+    if (web.cat === was && (web.summary.trim() === (web.pub?.summary ?? '').trim() || !web.cat)) return;
+    const { local, pub, site } = await websiteLookup(id);
+    if (!site) throw new Error('Set up the website entry under Website images first.');
+    if (!local) throw new Error('This service is not switched on at the selected franchise, so it cannot be placed on its website yet.');
+    const category = web.cat || pub?.category || '';
+    if (!category) return;
+    const summary = web.summary.trim() || pub?.summary || websiteCategories.find((x) => x.key === category)?.summary || local.name;
+    await readJson(await fetch(`${wbase}/content/services/${local.id}`, send('PUT', { category, summary, published: web.cat !== '', version: pub?.version ?? 0, serviceVersion: local.version })));
+  }
   // The whole catalogue can be folded away, and each main service can hide its add-ons; both are remembered on this device.
   const memory = `dapper-collapse:${mode}:${organizationId}`;
   const [folded, setFolded] = useState(false);
@@ -80,6 +117,15 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
   const load = useCallback(async () => {
     try {
       setItems((await readJson(await fetch(listUrl, { cache: 'no-store' }))).items);
+      if (wbase && canManage) {
+        try {
+          const [locals, content] = await Promise.all([fetch(wbase + '/services', { cache: 'no-store' }).then(readJson), fetch(wbase + '/content', { cache: 'no-store' }).then(readJson)]);
+          const pubs = new Map<string, { category: string; published: boolean }>((content.services as Pub[]).filter((x) => x.version > 0).map((x) => [x.serviceId, x]));
+          const tags: Record<string, { cat: string; published: boolean }> = {};
+          for (const l of locals.items as Service[]) { const p = pubs.get(l.id); if (p && !l.archived) tags[mode === 'franchise' ? l.id : l.centralServiceId ?? ''] = { cat: p.category, published: p.published }; }
+          setWebTags(tags);
+        } catch { setWebTags({}); }
+      }
       if (mode === 'franchise' && canManage) {
         const r = await fetch(`/api/v1/organizations/${organizationId}/central-services`, { cache: 'no-store' });
         setCentral(r.ok ? (await r.json()).items.filter((s: Service) => !s.archived) : []);
@@ -88,7 +134,7 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
       setItems(null);
       setError(e instanceof Error ? e.message : 'The catalogue could not be loaded.');
     }
-  }, [listUrl, mode, canManage, organizationId]);
+  }, [listUrl, mode, canManage, organizationId, wbase]);
   useEffect(() => {
     setItems(null);
     setError('');
@@ -127,6 +173,7 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
     const u = next === 'new' || next.durationMinutes == null ? 'minutes' : bestUnit(next.durationMinutes);
     setUnit(u);
     setDuration(next === 'new' || next.durationMinutes == null ? '' : String(next.durationMinutes / UNITS[u]));
+    if (next === 'new') setWeb({ state: 'idle', cat: '', summary: '' }); else void loadWebsite(next);
   }
 
   async function run(fn: () => Promise<string>) {
@@ -152,6 +199,7 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
       } else {
         await readJson(await fetch(was === 'new' || !was ? listUrl : `${listUrl}/${was.id}`, send(was === 'new' || !was ? 'POST' : 'PUT', { ...fields, parentId: null, ...(was && was !== 'new' ? { version: was.version } : {}) })));
       }
+      if (was && was !== 'new') await applyWebsite(was.id);
       setEditing(null);
       return `Service “${name.trim()}” saved.`;
     });
@@ -243,7 +291,7 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6 3.5L10.5 8 6 12.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </button>
       )}
-      <strong className={styles.svcName} title={s.name}>{canManage && !s.archived && <input type="checkbox" aria-label={`Select ${s.name}`} checked={picked.has(s.id)} onChange={() => togglePick(s.id)} style={{ marginRight: 10, verticalAlign: 'middle' }} />}{s.name}</strong>
+      <strong className={styles.svcName} title={s.name}>{canManage && !s.archived && <input type="checkbox" aria-label={`Select ${s.name}`} checked={picked.has(s.id)} onChange={() => togglePick(s.id)} style={{ marginRight: 10, verticalAlign: 'middle' }} />}{s.name}{webTags[s.id] && s.kind === 'main' && <small style={{ marginLeft: 10, padding: '2px 9px', borderRadius: 99, fontSize: 12, fontWeight: 500, background: 'rgba(227,23,43,.12)', color: 'inherit', opacity: webTags[s.id].published ? 1 : .6, whiteSpace: 'nowrap' }}>{webTags[s.id].published ? 'On website: ' + catTitle(webTags[s.id].cat) : 'Hidden on website'}</small>}</strong>
       <span className={styles.svcCell}>{s.archived ? 'Archived' : s.kind === 'addon' ? 'Add-on' : 'Main'}</span>
       <span className={styles.svcCell}>{s.priceCents != null ? money(s.priceCents) : 'No price'}</span>
       <span className={styles.svcCell}>{s.durationMinutes != null ? minutesText(s.durationMinutes) : 'No time'}</span>
@@ -379,6 +427,30 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
               </fieldset>
             )}
           </div>
+          {kind === 'main' && editing !== 'new' && web.state !== 'idle' && (
+            <fieldset className={styles.parentPick}>
+              <legend>On the website</legend>
+              {web.state === 'loading' && <p className={styles.personSub}>Loading the website settings…</p>}
+              {web.state === 'nosite' && <p className={styles.personSub}>Set up the website entry under Website images first, then choose a category here.</p>}
+              {web.state === 'missing' && <p className={styles.personSub}>This service is not switched on at the selected franchise, so it cannot be placed on the website yet.</p>}
+              {web.state === 'ready' && (
+                <>
+                  <label className="form-field">Website category
+                    <Select value={web.cat} disabled={busy} onChange={(e) => { const v = e.target.value; setWeb({ ...web, cat: v, summary: web.summary.trim() || !v ? web.summary : websiteCategories.find((x) => x.key === v)?.summary ?? '' }); }}>
+                      <option value="">Not on the website</option>
+                      {websiteCategories.map((x) => <option key={x.key} value={x.key}>{x.title}</option>)}
+                    </Select>
+                  </label>
+                  {web.cat && (
+                    <label className="form-field">Description on the website
+                      <textarea rows={3} maxLength={2000} value={web.summary} disabled={busy} onChange={(e) => setWeb({ ...web, summary: e.target.value })} />
+                    </label>
+                  )}
+                  <p className={styles.footnote}>Saved with the service. The name and price on the website always come from this screen.</p>
+                </>
+              )}
+            </fieldset>
+          )}
           <div className={styles.rowBetween}>
             <button className="primary" disabled={busy || name.trim().length < 2 || (kind === 'addon' && parentIds.length === 0) || (price.trim() !== '' && !(Number(price) >= 0)) || (durationMinutes !== null && !(durationMinutes >= 1 && durationMinutes <= 10080))}>{busy ? 'Saving…' : editing === 'new' ? 'Add service' : 'Save revision'}</button>
             <button type="button" className="secondary" disabled={busy} onClick={() => setEditing(null)}>Cancel</button>
