@@ -59,7 +59,7 @@ func (s *Store) DeletePortfolioImage(ctx context.Context, scope Scope, id string
 	if err != nil {
 		return err
 	}
-	if _, err = tx.Exec(ctx, `DELETE FROM content_media m WHERE m.id=$1 AND NOT EXISTS(SELECT 1 FROM portfolio_images p WHERE p.media_id=m.id)`, media); err != nil {
+	if _, err = tx.Exec(ctx, `DELETE FROM content_media m WHERE m.id=$1 AND NOT EXISTS(SELECT 1 FROM portfolio_images p WHERE p.media_id=m.id) AND NOT EXISTS(SELECT 1 FROM website_dealers d WHERE d.media_id=m.id)`, media); err != nil {
 		return err
 	}
 	if err = contentAudit(ctx, tx, scope, "portfolio.deleted", id, map[string]string{"mediaId": media}); err != nil {

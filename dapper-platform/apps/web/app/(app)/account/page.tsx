@@ -8,6 +8,7 @@ import CustomerQuoteList from './CustomerQuoteList';
 import InvoicePaymentForm from './InvoicePaymentForm';
 import Select from '../GlassSelect';
 import { SignInDetails } from '../workspace/AccountSecurity';
+import AuthShell from '../AuthShell';
 import { DEFAULT_PRINT_TEMPLATE, fillInvoiceWindow, openInvoiceWindow } from '../workspace/InvoicePrint';
 
 type Account = {customerId: string; name: string; locationName: string; email?: string; phone?: string; address?: string};
@@ -143,6 +144,23 @@ export default function CustomerAccount() {
       setRecords(null); setAccounts([]); setSelected(''); setSignedIn(false); setPassword('');
     } catch {setError('Could not sign out. Please retry.');}
     finally {setBusy(false);}
+  }
+
+  if (!checking && !signedIn) {
+    return (
+      <AuthShell kind="Customer account" title="Sign in to your account" lead="Your vehicles, appointments and invoices in one place.">
+        {error && <p className="field-error" role="alert">{error}</p>}
+        {notice && <p role="status">{notice}</p>}
+        {!ready && <p>Secure sign-in is unavailable at this address. Please use the configured Dapper customer account address.</p>}
+        <form onSubmit={signIn} style={{ display: 'grid', gap: 14 }}>
+          <label className="form-field">Email<input type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} disabled={busy || !ready} /></label>
+          <label className="form-field">Password<input type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} disabled={busy || !ready} /></label>
+          <p style={{ margin: 0 }}><a href="/reset-password" style={{ textDecoration: 'underline' }}>Forgot your password?</a></p>
+          <button className="primary" disabled={busy || !ready}>{busy ? 'Signing in…' : 'Sign in'}</button>
+          <p style={{ margin: 0, opacity: .75 }}>Use your Dapper customer account to access your records. New here? <a href="/booking" style={{ textDecoration: 'underline' }}>Book a detail</a> and we will set you up.</p>
+        </form>
+      </AuthShell>
+    );
   }
 
   return <main className="secure-workspace" style={{maxWidth: 1000, margin: '0 auto', padding: '1.5rem'}}>

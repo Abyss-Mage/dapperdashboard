@@ -14,6 +14,7 @@ import ReservedBookingForm from './ReservedBookingForm';
 import BookingOfferManager from './BookingOfferManager';
 import CustomerBookingRequestList from '../account/CustomerBookingRequestList';
 import SOPCompliancePanel from './SOPCompliancePanel';
+import AuthShell from '../AuthShell';
 import ThemeToggle from '../ThemeToggle';
 import AccessManager from './AccessManager';
 import InvoiceIssuerEditor from './InvoiceIssuerEditor';
@@ -330,6 +331,27 @@ export default function SecureWorkspace({ownerView=false}:{ownerView?:boolean}) 
     Boolean(
       scope?.actions.some((a) => ['customer_accounts.manage', 'marketing.read'].includes(a))
     );
+
+  if (!principal) {
+    return (
+      <AuthShell kind={ownerView ? 'Owner dashboard' : 'Staff workspace'} title={ownerView ? 'Sign in to the owner dashboard' : 'Sign in to Dapper'}
+        lead={ownerView ? 'An overview of your authorized business locations.' : 'Your account, services and available work.'}>
+        {error && <p role="alert" className="field-error">{error}</p>}
+        {!ready && <p>Secure sign-in is currently unavailable. Open the configured Dapper application address or contact your administrator.</p>}
+        <form onSubmit={signIn} style={{ display: 'grid', gap: 14 }}>
+          <label className="form-field">Email address
+            <input type="email" autoComplete="username" disabled={!ready || busy} required maxLength={254} value={email} onChange={(e) => setEmail(e.target.value)} />
+          </label>
+          <label className="form-field">Password
+            <input type="password" autoComplete="current-password" disabled={!ready || busy} required maxLength={1024} value={password} onChange={(e) => setPassword(e.target.value)} />
+          </label>
+          <p style={{ margin: 0 }}><a href="/reset-password" style={{ textDecoration: 'underline' }}>Forgot your password?</a></p>
+          <button className="primary" disabled={busy || !ready}>{busy ? 'Signing in…' : 'Sign in'}</button>
+          <p style={{ margin: 0, opacity: .75 }}>Use your Dapper staff account. Contact your administrator if you need access.</p>
+        </form>
+      </AuthShell>
+    );
+  }
 
   return (
     <main className="secure-workspace">

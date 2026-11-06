@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { categories } from '../content';
 import { contact, cta, processSteps, testimonials, why } from '../dapper';
 import { Dealers } from '../_components/Dealers';
+import { money, useLiveFrom } from '../_components/useLiveFrom';
 import { gsap, ScrollTrigger, SplitText, useGSAP } from '../_components/gsapContact';
 
 /* Services, built section by section with the owner's approval of each, in the darker "hard" direction the owner chose for it.
@@ -14,6 +15,7 @@ import { gsap, ScrollTrigger, SplitText, useGSAP } from '../_components/gsapCont
 const Roll = ({ children }: { children: string }) => <span className="s-roll"><span>{children}</span><span aria-hidden="true">{children}</span></span>;
 
 export default function ServicesPage() {
+  const live = useLiveFrom();
   const root = useRef<HTMLDivElement>(null);
   const [cur, setCur] = useState(0);
   const prev = useRef(0);
@@ -81,10 +83,10 @@ export default function ServicesPage() {
             <li key={c.slug}>
               <Link href={'/' + c.slug} className="s-tile">
                 <span className="s-tile__img" style={{ backgroundImage: 'url(' + c.image + ')' }} role="img" aria-label={c.photo ? c.title : 'Vehicle detailed by Dapper'} />
-                {c.from ? <span className="s-tile__price" aria-label={'Starting from $' + c.from}>${c.from}</span> : null}
+                {(live[c.key] ?? c.from) ? <span className="s-tile__price" aria-label={'Starting from $' + money((live[c.key] ?? c.from)!)}>${money((live[c.key] ?? c.from)!)}</span> : null}
                 <span className="s-tile__name">{c.short}</span>
                 {c.photo ? null : <span className="s-tile__tag">Studio photo</span>}
-                <span className="s-tile__sub">{c.key === 'ceramic' ? 'Coating' : c.key === 'ppf' ? 'Paint protection film' : c.from ? 'Detailing' : 'Ask the team'}</span>
+                <span className="s-tile__sub">{c.key === 'ceramic' ? 'Coating' : c.key === 'ppf' ? 'Paint protection film' : (live[c.key] ?? c.from) ? 'Detailing' : 'Ask the team'}</span>
               </Link>
             </li>
           ))}

@@ -5,6 +5,7 @@ import { ArrowRight, Check, Star } from 'lucide-react';
 import { categories } from '../content';
 import { contact, cta, processSteps, proof, testimonials, why } from '../dapper';
 import { usePublished } from '../_components/usePublished';
+import { money, useLiveFrom } from '../_components/useLiveFrom';
 import { gsap, ScrollTrigger, SplitText, useGSAP } from '../_components/gsapContact';
 
 /* One template for every service page, in the same darker "hard" direction as Services.
@@ -39,6 +40,8 @@ function Packages({ category, name }: { category: string; name: string }) {
 export default function VehiclePage({ slug }: { slug: string }) {
   const root = useRef<HTMLDivElement>(null);
   const c = categories.find((x) => x.slug === slug)!;
+  const live = useLiveFrom();
+  const fromPrice = live[c.key] ?? c.from;
   const words = c.title.split(' ');
   const last = words.pop();
 
@@ -62,9 +65,9 @@ export default function VehiclePage({ slug }: { slug: string }) {
       gsap.fromTo('.v-end__img', { scale: 1.14 }, { scale: 1, ease: 'none', scrollTrigger: { trigger: '.v-end', start: 'top bottom', end: 'bottom bottom', scrub: true } });
       // The price counts up to itself.
       const price = document.querySelector<HTMLElement>('.v-price b');
-      if (price && c.from) {
+      if (price && fromPrice && Number.isInteger(fromPrice)) {
         const o = { n: 0 };
-        gsap.to(o, { n: c.from, duration: 1.4, ease: 'power3.out', delay: .6, onUpdate: () => { price.textContent = '$' + Math.round(o.n); } });
+        gsap.to(o, { n: fromPrice, duration: 1.4, ease: 'power3.out', delay: .6, onUpdate: () => { price.textContent = '$' + Math.round(o.n); } });
       }
       gsap.utils.toArray<HTMLElement>('[data-head]').forEach((el) => SplitText.create(el, { type: 'lines,words', mask: 'lines', linesClass: 'c-line', autoSplit: true,
         onSplit: (self) => gsap.from(self.words, { yPercent: 110, duration: .6, stagger: .04, ease: 'expo.out', scrollTrigger: { trigger: el, start: 'top 88%', once: true } }) }));
@@ -137,8 +140,8 @@ export default function VehiclePage({ slug }: { slug: string }) {
         </div>
         {c.photo ? null : <span className="s-tile__tag">Studio photo</span>}
         <div className="v-buy">
-          {c.from
-            ? <p className="v-price"><small>Starting from</small><b aria-label={'$' + c.from}>${c.from}</b></p>
+          {fromPrice
+            ? <p className="v-price"><small>Starting from</small><b aria-label={'$' + money(fromPrice)}>${money(fromPrice)}</b></p>
             : <p className="v-price v-price--ask"><small>Pricing</small><b>Ask the team</b></p>}
           <a className="s-btn" href="/booking"><span className="s-roll"><span>Book now</span><span aria-hidden="true">Book now</span></span><ArrowRight size={22} aria-hidden="true" /></a>
           <a className="s-close__call" href={'tel:' + contact.tel}>or call <span>+1 {contact.phone}</span></a>

@@ -2,7 +2,7 @@
 
 import { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import glass from '../glass.module.css';
+import AuthShell from '../AuthShell';
 
 const json = { 'Content-Type': 'application/json' };
 
@@ -37,9 +37,7 @@ function ResetPassword() {
   }
 
   return (
-    <main style={{ maxWidth: 520, margin: '8vh auto', padding: '0 20px' }}>
-      <section className={glass.card} style={{ padding: 28, display: 'grid', gap: 16 }}>
-        <h1 style={{ margin: 0, fontSize: 28 }}>{token ? 'Choose a new password' : 'Forgot your password?'}</h1>
+    <AuthShell kind="Account help" title={token ? 'Choose a new password' : 'Forgot your password?'}>
         {done ? (
           <>
             <p>Your password was changed. You can sign in with it now.</p>
@@ -62,8 +60,7 @@ function ResetPassword() {
             <button className="primary" disabled={busy}>{busy ? 'Sending…' : 'Email me a reset link'}</button>
           </form>
         )}
-      </section>
-    </main>
+    </AuthShell>
   );
 }
 

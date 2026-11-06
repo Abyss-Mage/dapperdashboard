@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import styles from './owner.module.css';
 import Select from '../GlassSelect';
 import ConfirmDialog from '../workspace/ConfirmDialog';
+import WebsiteDealers from './WebsiteDealers';
 
 type Photo = { id: string; mediaId: string; title: string; alt: string; category: string; sortOrder: number; published: boolean; version: number; width?: number; height?: number };
 type Site = { slug: string; name: string; published: boolean; version: number };
@@ -155,6 +156,7 @@ export default function WebsiteImages({ base, franchiseName, franchiseCode }: { 
           </ul>
         </>
       )}
+      {photos && site && <WebsiteDealers base={base} />}
       <ConfirmDialog isOpen={target !== null} title="Delete photo" entityName={target?.title ?? ''} entityType="Photo" actionType="delete" isBusy={busy}
         explanation="The photo is taken off the website and deleted. This cannot be undone." onConfirm={() => void remove()} onCancel={() => setTarget(null)} />
     </div>

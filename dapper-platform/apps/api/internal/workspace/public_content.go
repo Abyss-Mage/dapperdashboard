@@ -38,6 +38,15 @@ func registerPublicContentRoutes(mux *http.ServeMux, store *postgres.Store) {
 		w.Header().Set("Cache-Control", "no-store")
 		reply(w, 200, map[string]any{"items": items})
 	})
+	mux.HandleFunc("GET /api/v1/public/dealers", func(w http.ResponseWriter, r *http.Request) {
+		items, err := store.PublicDealers(r.Context())
+		if err != nil {
+			contentFailure(w, err)
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		reply(w, 200, map[string]any{"items": items})
+	})
 	mux.HandleFunc("GET /api/v1/public/media/{media}", func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("media")
 		if !uuid(id) {
@@ -230,6 +239,65 @@ func registerPublicContentRoutes(mux *http.ServeMux, store *postgres.Store) {
 			return
 		}
 		reply(w, 200, map[string]bool{"removed": true})
+	})
+	mux.HandleFunc("PUT "+base+"/dealers", func(w http.ResponseWriter, r *http.Request) {
+		scope, ok := scopeFor(w, r, "content.manage")
+		if !ok {
+			return
+		}
+		var input postgres.WebsiteDealer
+		if !decode(w, r, &input) {
+			return
+		}
+		if !uuid(input.MediaID) || (input.ID != "" && !uuid(input.ID)) {
+			reply(w, 422, map[string]string{"error": "Select a valid uploaded logo"})
+			return
+		}
+		data, err := store.SaveWebsiteDealer(r.Context(), scope, input)
+		if err != nil {
+			contentFailure(w, err)
+			return
+		}
+		reply(w, 200, data)
+	})
+	mux.HandleFunc("DELETE "+base+"/dealers/{dealer}", func(w http.ResponseWriter, r *http.Request) {
+		scope, ok := scopeFor(w, r, "content.manage")
+		if !ok {
+			return
+		}
+		id := r.PathValue("dealer")
+		if !uuid(id) {
+			reply(w, 400, map[string]string{"error": "Select a valid dealer"})
+			return
+		}
+		if err := store.DeleteWebsiteDealer(r.Context(), scope, id); err != nil {
+			contentFailure(w, err)
+			return
+		}
+		reply(w, 200, map[string]bool{"removed": true})
+	})
+	mux.HandleFunc("PUT "+base+"/dealers-order", func(w http.ResponseWriter, r *http.Request) {
+		scope, ok := scopeFor(w, r, "content.manage")
+		if !ok {
+			return
+		}
+		var input struct {
+			IDs []string `json:"ids"`
+		}
+		if !decode(w, r, &input) {
+			return
+		}
+		for _, id := range input.IDs {
+			if !uuid(id) {
+				reply(w, 400, map[string]string{"error": "Select valid dealers"})
+				return
+			}
+		}
+		if err := store.OrderWebsiteDealers(r.Context(), scope, input.IDs); err != nil {
+			contentFailure(w, err)
+			return
+		}
+		reply(w, 200, map[string]bool{"ordered": true})
 	})
 	mux.HandleFunc("PUT "+base+"/portfolio-order", func(w http.ResponseWriter, r *http.Request) {
 		scope, ok := scopeFor(w, r, "content.manage")

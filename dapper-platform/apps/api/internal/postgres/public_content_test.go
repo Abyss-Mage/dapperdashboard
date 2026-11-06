@@ -181,6 +181,38 @@ func TestPublicContentPersistence(t *testing.T) {
 	if _, _, err = s.PublicImage(ctx, media); !errors.Is(err, ErrContentNotFound) {
 		t.Fatal("unpublished image still accessible", err)
 	}
+	// Dealers follow the same rules: unpublished logos stay private, publishing needs the rights confirmation, only published ones are listed.
+	dealer := WebsiteDealer{MediaID: media, Name: "Synthetic dealership", SortOrder: 1}
+	dealer, err = s.SaveWebsiteDealer(ctx, scope, dealer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if list, e := s.PublicDealers(ctx); e != nil || len(list) != 0 {
+		t.Fatal("unpublished dealer listed", e)
+	}
+	dealer.Published = true
+	if _, err = s.SaveWebsiteDealer(ctx, scope, dealer); !errors.Is(err, ErrContentInput) {
+		t.Fatal("dealer published without rights confirmation")
+	}
+	dealer.RightsReviewed = true
+	if dealer, err = s.SaveWebsiteDealer(ctx, scope, dealer); err != nil {
+		t.Fatal(err)
+	}
+	if list, e := s.PublicDealers(ctx); e != nil || len(list) != 1 || list[0].Name != dealer.Name {
+		t.Fatal("published dealer missing", e)
+	}
+	if _, _, e := s.PublicImage(ctx, media); e != nil {
+		t.Fatal("dealer logo not served", e)
+	}
+	if _, err = s.SaveWebsiteDealer(ctx, otherScope, WebsiteDealer{MediaID: media, Name: "Cross scope"}); !errors.Is(err, ErrContentInput) {
+		t.Fatal("cross-location logo accepted", err)
+	}
+	if err = s.DeleteWebsiteDealer(ctx, scope, dealer.ID); err != nil {
+		t.Fatal(err)
+	}
+	if list, e := s.PublicDealers(ctx); e != nil || len(list) != 0 {
+		t.Fatal("deleted dealer still listed", e)
+	}
 	// Audit insertion failure must roll back the actual publication, not just its log.
 	if _, err = pool.Exec(ctx, `CREATE FUNCTION reject_content_audit() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RAISE EXCEPTION 'synthetic audit rejection'; END$$; CREATE TRIGGER reject_content_audit BEFORE INSERT ON content_events FOR EACH ROW EXECUTE FUNCTION reject_content_audit()`); err != nil {
 		t.Fatal(err)

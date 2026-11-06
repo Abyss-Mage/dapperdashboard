@@ -2,7 +2,9 @@
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight, Check, Play, Star, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { contact, cta, hero, partners, proof, servicesIntro, testimonials, transformations, values, why } from '../dapper';
+import { contact, cta, hero, proof, servicesIntro, testimonials, transformations, values, why } from '../dapper';
+import { Dealers } from '../_components/Dealers';
+import { money, useLiveFrom } from '../_components/useLiveFrom';
 import { categories } from '../content';
 import { gsap, ScrollTrigger, SplitText, useGSAP } from '../_components/gsapContact';
 import { frameSequence } from './frameSequence';
@@ -22,6 +24,8 @@ export default function HomePage() {
   const root = useRef<HTMLDivElement>(null);
   const [rev, setRev] = useState(0);
   const [deckIdx, setDeckIdx] = useState(0);
+  const live = useLiveFrom();
+  const priceOf = (c: { key: string; from?: number }) => live[c.key] ?? c.from;
   const nRev = testimonials.length;
   const goRev = (to: number) => setRev(((to % nRev) + nRev) % nRev);
   const clips = transformations.clips;
@@ -87,33 +91,6 @@ export default function HomePage() {
       const tl = gsap.timeline({ defaults: { ease: 'none' }, scrollTrigger: { trigger: '.h-films', start: 'top top', end: '+=' + Math.round(innerHeight * 1.1), pin: true, scrub: .6, anticipatePin: 1, invalidateOnRefresh: true } });
       items.forEach((li, i) => tl.to(li, { x: () => (i - mid) * Math.min(li.offsetWidth + innerWidth * .016, (innerWidth - li.offsetWidth - 32) / (n - 1)), y: i % 2 ? 22 : -10, rotation: 0, scale: 1, ease: 'power2.inOut', duration: 1 }, 0));
       tl.to({}, { duration: .35 });
-    });
-    // Partners: the diamonds pop in from the middle with a spring, then bob in a slow ripple; the lattice drifts a little with the scroll.
-    mm.add('(prefers-reduced-motion: no-preference)', () => {
-      const tiles = gsap.utils.toArray<HTMLElement>('.h-dia');
-      if (!tiles.length) return;
-      gsap.set(tiles, { scale: 0, rotation: -24, transformOrigin: '50% 50%' });
-      const enter = ScrollTrigger.create({ trigger: '.h-lattice', start: 'top 82%', once: true, onEnter: () => {
-        gsap.to(tiles, { scale: 1, rotation: 0, duration: .9, ease: 'back.out(1.7)', stagger: { each: .07, from: 'center' },
-          onComplete: () => tiles.forEach((t, i) => gsap.to(t, { y: -7, duration: 2.6, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: i * .22 })) });
-      } });
-      // Pointing at a diamond sends a ripple through the lattice: the nearest ones jolt first, the far ones a beat later.
-      const offs = tiles.map((t) => {
-        const on = () => {
-          const rt = t.getBoundingClientRect();
-          const cx = rt.left + rt.width / 2, cy = rt.top + rt.height / 2;
-          tiles.forEach((o) => {
-            const ro = o.getBoundingClientRect();
-            const dist = Math.hypot(ro.left + ro.width / 2 - cx, ro.top + ro.height / 2 - cy) / rt.width;
-            gsap.killTweensOf(o, 'scale,rotation');
-            gsap.fromTo(o, { scale: 1, rotation: 0 }, { keyframes: [{ scale: o === t ? 1.12 : 1.06, rotation: o === t ? 0 : -5, duration: .18 }, { scale: 1, rotation: 0, duration: .9, ease: 'elastic.out(1,.35)' }], delay: dist * .09, overwrite: false });
-          });
-        };
-        t.addEventListener('pointerenter', on);
-        return () => t.removeEventListener('pointerenter', on);
-      });
-      const drift = gsap.to('.h-lattice', { yPercent: -7, ease: 'none', scrollTrigger: { trigger: '.h-par', start: 'top bottom', end: 'bottom top', scrub: true } });
-      return () => { offs.forEach((f) => f()); enter.kill(); drift.scrollTrigger?.kill(); drift.kill(); tiles.forEach((t) => gsap.killTweensOf(t)); gsap.set(tiles, { clearProps: 'transform,scale,rotation,y,transformOrigin' }); gsap.set('.h-lattice', { clearProps: 'transform,yPercent' }); };
     });
     // Services: a pinned deck of ten cards. Each scroll step throws the top card off to the left and the rest settle forward into the pile.
     mm.add('(prefers-reduced-motion: no-preference)', () => {
@@ -240,7 +217,7 @@ export default function HomePage() {
                   <span className="h-hcard__body">
                     <span className="h-hcard__name">{c.title}</span>
                     <span className="h-hcard__foot">
-                      {c.from ? <span className="h-hcard__price">from<b>${c.from}</b></span> : null}
+                      {priceOf(c) ? <span className="h-hcard__price">from<b>${money(priceOf(c)!)}</b></span> : null}
                       <span className="h-hcard__go">Check now<ArrowRight size={18} aria-hidden="true" /></span>
                     </span>
                   </span>
@@ -257,7 +234,7 @@ export default function HomePage() {
             <div className="h-deck__now" aria-live="polite">
               <Link key={categories[deckIdx].slug} href={'/' + categories[deckIdx].slug}>
                 <span className="h-deck__nowname">{categories[deckIdx].title}</span>
-                {categories[deckIdx].from ? <span className="h-deck__nowprice">from <b>${categories[deckIdx].from}</b></span> : null}
+                {priceOf(categories[deckIdx]) ? <span className="h-deck__nowprice">from <b>${money(priceOf(categories[deckIdx])!)}</b></span> : null}
                 <span className="h-deck__go">Check now<ArrowRight size={18} aria-hidden="true" /></span>
               </Link>
             </div>
@@ -271,7 +248,7 @@ export default function HomePage() {
                   {c.photo ? null : <span className="h-dcard__note">Example photo</span>}
                   <span className="h-dcard__cap">
                     <span className="h-dcard__name">{c.title}</span>
-                    {c.from ? <span className="h-dcard__price">from <b>${c.from}</b></span> : null}
+                    {priceOf(c) ? <span className="h-dcard__price">from <b>${money(priceOf(c)!)}</b></span> : null}
                   </span>
                 </Link>
               </article>
@@ -287,23 +264,8 @@ export default function HomePage() {
           <p className="h-tag">Our partners</p>
           <h2 id="h-par-title" className="s-h2" data-head>Trusted by <em>the dealers.</em></h2>
           <p>The dealerships we work with.</p>
-          <ul className="sr-only">{partners.map((p) => <li key={p.name}>{p.name}</li>)}</ul>
         </div>
-        <div className="h-lattice" aria-hidden="true">
-          {partners.map((p, i) => {
-            const small = [[0, 0], [2, 0], [4, 0], [1, 1], [3, 1], [0, 2], [2, 2], [4, 2], [1, 3]][i] ?? [0, 0];
-            const wide = [[0, 0], [2, 0], [4, 0], [6, 0], [1, 1], [3, 1], [5, 1], [2, 2], [4, 2]][i] ?? [0, 0];
-            // Subaru and Hyundai are white marks, so they sit on their own brand blue.
-            const bg = p.name === 'Subaru' ? '#10247c' : p.name === 'Hyundai' ? '#002c5f' : undefined;
-            return (
-              <div className="h-dia" key={p.name} style={{ ['--mc' as string]: small[0], ['--mr' as string]: small[1], ['--wc' as string]: wide[0], ['--wr' as string]: wide[1] }}>
-                <span className="h-dia__s" style={bg ? { ['--bg' as string]: bg } : undefined}>
-                  {p.src ? <img className={p.name.includes('McGee') ? 'is-crop' : undefined} src={p.src} alt="" loading="lazy" /> : <span className="h-dia__name">{p.name}</span>}
-                </span>
-              </div>
-            );
-          })}
-        </div>
+        <Dealers />
       </section>
 
       {/* H5 Transformations: five real films, playing while they are in view */}

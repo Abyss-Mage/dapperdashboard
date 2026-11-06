@@ -1,5 +1,6 @@
 'use client';
 import {useEffect, useRef, useState} from 'react';
+import AuthShell from '../AuthShell';
 
 export default function EnrollmentPage() {
   const [token, setToken] = useState('');
@@ -36,9 +37,7 @@ export default function EnrollmentPage() {
     } catch (failure) {setError(failure instanceof Error ? failure.message : 'Invitation could not be accepted.');}
     finally {setBusy(false);}
   }
-  return <main style={{maxWidth: '640px', padding: '2rem 1rem'}}>
-    <section className="panel detail-card">
-      <h1>Join your Dapper organization</h1>
+  return <AuthShell kind="Invitation" title="Join your Dapper organization">
       {complete ? <><p role="status">Organization membership accepted. Operational permissions are assigned separately by your administrator.</p><a className="primary" href="/workspace">Continue to sign in</a></> : !token ? <p>Open the complete invitation link from your email. If the link has expired or was already used, ask your administrator for a new invitation.</p> : <>
         <p>This invitation adds organization membership. It does not grant access to bookings, customer records or financial operations.</p>
         <p>If another account is signed in, <a href="/workspace" target="_blank" rel="noreferrer">manage or sign out of that session in another tab</a> before creating a new account.</p>
@@ -52,6 +51,5 @@ export default function EnrollmentPage() {
           <button className="primary" disabled={busy}>{busy ? 'Accepting…' : 'Accept organization invitation'}</button>
         </form>
       </>}
-    </section>
-  </main>;
+  </AuthShell>;
 }
