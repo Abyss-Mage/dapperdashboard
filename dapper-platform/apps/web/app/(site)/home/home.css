@@ -274,3 +274,11 @@
 }
 .h-seq__scrim{position:absolute;inset:0;z-index:1;pointer-events:none;opacity:0;transition:opacity .4s;background:linear-gradient(0deg,rgba(11,11,12,.86) 0,rgba(11,11,12,.5) 26%,rgba(11,11,12,0) 56%),linear-gradient(180deg,rgba(11,11,12,.6) 0,rgba(11,11,12,0) 18%)}
 .h-seq.story-on .h-seq__scrim{opacity:1}
+
+/* Phones: the bottom bar (Services, Book now, Call, Account) sits over the last 90px, so the hero and the film words keep clear of it, and the
+   hero's own Book now is dropped because the bar already has one. */
+@media(max-width:899px){
+  .h-hero__in{padding-bottom:calc(104px + env(safe-area-inset-bottom))}
+  .h-seq .h-seq__book{display:none!important}
+  .h-story__body,.h-story--right .h-story__body,.h-story--left .h-story__body{bottom:calc(112px + env(safe-area-inset-bottom))}
+}

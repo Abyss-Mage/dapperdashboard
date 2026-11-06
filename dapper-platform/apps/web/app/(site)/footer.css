@@ -37,3 +37,8 @@ body .d-nav--paper .d-btn,body .d-nav--dark .d-btn{min-height:46px;padding:0 22p
 body .f-btn{font-size:16px;min-height:60px;padding:0 32px}
 body .c-btn:focus-visible,body .d-btn:focus-visible,body .s-btn:focus-visible,body .f-btn:focus-visible{outline-offset:-5px;outline-color:#fff}
 @media(max-width:560px){body .c-btn,body .d-btn,body .s-btn,body .f-btn{white-space:normal;text-align:center;font-size:14px}}
+
+/* Touch: text links and small buttons get a finger-sized target (44px) without changing how they look. */
+@media(pointer:coarse){
+  .h-end__call,.v-end__call,.h-hs__all,.h-deck__all,.h-deck__now a,.h-hcard__go,.h-card__go,.s-close__call,.v-row__go,.h-dcard>a{display:inline-flex;align-items:center;min-height:44px}
+}

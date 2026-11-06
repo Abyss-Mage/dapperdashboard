@@ -1,0 +1,73 @@
+/* The one header, footer and booking popup of the whole customer-facing site (public pages, booking and account). Scoped to this module, so it
+   looks the same under both layouts. */
+.header{--red:#e4202e;--ink:#0b0b0c;--bone:#efece4;position:fixed;z-index:60;top:0;left:0;right:0;height:72px;display:flex;align-items:center;gap:clamp(14px,2.4vw,40px);padding:0 clamp(16px,3.4vw,56px);background:var(--ink);color:var(--bone);font-family:'Manrope','Helvetica Neue',Arial,sans-serif}
+.brand{font:500 clamp(19px,1.6vw,24px)/1 'Unbounded Variable','Unbounded','Arial Narrow',sans-serif;letter-spacing:.04em;text-transform:uppercase;color:var(--bone);text-decoration:none}
+.nav{display:flex;gap:clamp(16px,2.2vw,36px);margin-left:auto;font:500 13px/1 'Unbounded Variable','Unbounded',sans-serif;letter-spacing:.08em;text-transform:uppercase}
+.nav a{position:relative;padding:8px 0;color:#a9a69e;text-decoration:none;transition:color .2s}
+.nav a::after{content:'';position:absolute;left:0;right:0;bottom:0;height:2px;background:var(--red);transform:scaleX(0);transform-origin:left;transition:transform .35s cubic-bezier(.23,1,.32,1)}
+.nav a[aria-current=page],.nav a[aria-current=true]{color:var(--bone)}
+.nav a[aria-current=page]::after,.nav a[aria-current=true]::after{transform:none}
+@media(hover:hover) and (pointer:fine){.nav a:hover{color:var(--bone)}.nav a:hover::after{transform:none}}
+.actions{display:flex;align-items:center;gap:10px}
+.account{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 14px;color:var(--bone);text-decoration:none;font:600 14px/1 'Manrope',sans-serif;border-radius:999px;transition:background-color .2s}
+@media(hover:hover) and (pointer:fine){.account:hover{background:#ffffff14}}
+.book{display:inline-flex;align-items:center;gap:10px;min-height:46px;padding:0 22px;border:0;background:var(--red);color:#fff;text-decoration:none;cursor:pointer;font:700 13px/1 'Unbounded Variable','Unbounded',sans-serif;letter-spacing:.05em;text-transform:uppercase;clip-path:polygon(0 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%);transition:background-color .2s,transform .16s cubic-bezier(.23,1,.32,1)}
+.book:active{transform:scale(.97)}
+@media(hover:hover) and (pointer:fine){.book:hover{background:#c91a27}}
+.menuBtn{display:none;margin-left:auto;width:48px;height:48px;border:0;border-radius:50%;background:transparent;color:var(--bone);cursor:pointer;place-items:center}
+.menu{position:fixed;z-index:55;inset:0;display:flex;flex-direction:column;gap:2px;padding:92px 22px 120px;background:var(--ink);color:var(--bone);opacity:0;visibility:hidden;transition:opacity .3s cubic-bezier(.23,1,.32,1),visibility 0s .3s}
+.menu.open{opacity:1;visibility:visible;transition:opacity .3s cubic-bezier(.23,1,.32,1)}
+.menu a{font:500 clamp(26px,8vw,40px)/1.15 'Unbounded Variable','Unbounded',sans-serif;letter-spacing:-.02em;text-transform:uppercase;color:var(--bone);text-decoration:none;padding:12px 0}
+.menu .menuBook{margin-top:auto;justify-content:center;min-height:56px;font-size:15px}
+.dock{display:none}
+@media(max-width:899px){
+  .nav,.actions{display:none}
+  .menuBtn{display:grid}
+  .dock{display:grid;grid-template-columns:1fr 1.5fr 1fr 1fr;gap:4px;position:fixed;z-index:70;left:10px;right:10px;bottom:max(10px,env(safe-area-inset-bottom));padding:6px;border-radius:22px;background:#0b0b0cf2;color:var(--bone);box-shadow:0 14px 40px #0008;font-family:'Manrope',sans-serif}
+  .dock a,.dock button{display:grid;justify-items:center;align-content:center;gap:3px;min-height:52px;border:0;border-radius:16px;background:transparent;color:#cfcbc2;font:700 11px/1 'Manrope',sans-serif;text-decoration:none;cursor:pointer}
+  .dock .dockBook{background:var(--red);color:#fff;grid-auto-flow:column;gap:8px;font-size:14px}
+  .dock a:active,.dock button:active{transform:scale(.96)}
+}
+
+/* Footer */
+.footer{--red:#e4202e;--bone:#efece4;background:#0b0b0c;color:var(--bone);padding:clamp(56px,7vw,110px) clamp(16px,3.4vw,56px) clamp(24px,3vw,40px);font-family:'Manrope','Helvetica Neue',Arial,sans-serif}
+.cta{display:grid;gap:clamp(16px,2vw,28px);padding-bottom:clamp(36px,5vw,72px)}
+.lead{margin:0;font:500 clamp(28px,5vw,80px)/1 'Unbounded Variable','Unbounded',sans-serif;letter-spacing:-.03em;text-transform:uppercase;max-width:14ch;text-wrap:balance}
+.lead em{font-style:normal;color:var(--red)}
+.ctaRow{display:flex;align-items:center;gap:clamp(16px,2vw,32px);flex-wrap:wrap}
+.call{color:var(--bone);text-decoration:none;font:600 clamp(15px,1.2vw,18px)/1 'Manrope',sans-serif}
+.call span{border-bottom:2px solid var(--red);padding-bottom:3px}
+.cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(28px,4vw,56px) clamp(20px,3vw,48px);padding:clamp(32px,4vw,56px) 0}
+@media(min-width:900px){.cols{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.cols h2{margin:0 0 14px;font:500 13px/1 'Unbounded Variable','Unbounded',sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#a9a69e}
+.cols a,.cols p{display:block;margin:0 0 10px;color:var(--bone);text-decoration:none;font-size:16px;line-height:1.4}
+@media(hover:hover) and (pointer:fine){.cols a:hover{text-decoration:underline;text-underline-offset:.25em}}
+.mark{margin:0;overflow:hidden;font:500 clamp(70px,22vw,360px)/.8 'Unbounded Variable','Unbounded',sans-serif;letter-spacing:-.05em;text-transform:uppercase;color:#17171a;user-select:none}
+.legal{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px 24px;padding-top:20px;color:#a9a69e;font-size:13px}
+.legal span:last-child{display:flex;gap:18px;flex-wrap:wrap}
+.legal a{color:#a9a69e;text-decoration:none}
+@media(hover:hover) and (pointer:fine){.legal a:hover{color:var(--bone)}}
+@media(max-width:899px){.footer{padding-bottom:calc(96px + env(safe-area-inset-bottom))}}
+
+/* Booking popup: a centred dialog on a wide screen, a full-screen sheet on a phone */
+.dialog{padding:0;border:0;background:#0b0b0c;color:#efece4;overflow:hidden;width:min(980px,94vw);height:min(90dvh,880px);max-width:none;max-height:none;border-radius:22px;box-shadow:0 30px 90px #000a}
+.dialog::backdrop{background:rgba(5,5,6,.78)}
+.dialog[open]{animation:pop .45s cubic-bezier(.23,1,.32,1) both}
+.dialog[open]::backdrop{animation:fade .3s ease-out both}
+.dialogBar{display:flex;align-items:center;justify-content:space-between;gap:12px;height:60px;padding:0 10px 0 22px;background:#0b0b0c}
+.dialogBar strong{font:500 14px/1 'Unbounded Variable','Unbounded',sans-serif;letter-spacing:.06em;text-transform:uppercase}
+.close{display:grid;place-items:center;width:48px;height:48px;border:0;border-radius:50%;background:transparent;color:#efece4;cursor:pointer;transition:background-color .2s}
+@media(hover:hover) and (pointer:fine){.close:hover{background:#ffffff1a}}
+.frame{display:block;width:100%;height:calc(100% - 60px);border:0;background:#0b0b0c}
+.wait{position:absolute;inset:60px 0 0;display:grid;place-items:center;color:#a9a69e;font:500 15px/1 'Manrope',sans-serif;pointer-events:none}
+@media(max-width:700px){
+  .dialog{width:100vw;height:100dvh;border-radius:0;box-shadow:none}
+  .dialog[open]{animation:sheet .4s cubic-bezier(.23,1,.32,1) both}
+  .dialogBar{height:56px}
+  .frame{height:calc(100% - 56px)}
+}
+@keyframes pop{from{opacity:0;transform:translateY(18px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes sheet{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:none}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@media(prefers-reduced-motion:reduce){.dialog[open],.dialog[open]::backdrop{animation:none}.nav a::after{transition:none}}
+@media(pointer:coarse){.cols a{display:flex;align-items:center;min-height:44px;margin:0}.call{display:inline-flex;align-items:center;min-height:44px}.legal a{display:inline-flex;align-items:center;min-height:44px}}

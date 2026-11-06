@@ -1,7 +1,6 @@
 'use client';
 
 import {useEffect, useState} from 'react';
-import ThemeToggle from '../ThemeToggle';
 import CustomerAvailabilityBrowser from './CustomerAvailabilityBrowser';
 import CustomerBookingRequestList from './CustomerBookingRequestList';
 import CustomerQuoteList from './CustomerQuoteList';
@@ -9,6 +8,10 @@ import InvoicePaymentForm from './InvoicePaymentForm';
 import Select from '../GlassSelect';
 import { SignInDetails } from '../workspace/AccountSecurity';
 import AuthShell from '../AuthShell';
+import { SiteHeader } from '../../_chrome/SiteHeader';
+import { SiteFooter } from '../../_chrome/SiteFooter';
+import ForceDark from '../../_chrome/ForceDark';
+import a from './account.module.css';
 import { DEFAULT_PRINT_TEMPLATE, fillInvoiceWindow, openInvoiceWindow } from '../workspace/InvoicePrint';
 
 type Account = {customerId: string; name: string; locationName: string; email?: string; phone?: string; address?: string};
@@ -163,50 +166,45 @@ export default function CustomerAccount() {
     );
   }
 
-  return <main className="secure-workspace" style={{maxWidth: 1000, margin: '0 auto', padding: '1.5rem'}}>
-    <header style={{display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', justifyContent: 'space-between', height: 'auto', padding: 0, background: 'transparent', border: 0}}>
-      <a className="brand" href="/" style={{textDecoration: 'none', padding: 0}}><span className="brandmark">D<span>↗</span></span><span>DAPPER<small>DETAILING PROS</small></span></a>
-      <ThemeToggle />
-    </header>
-    <h1>Your customer account</h1>
-    <p>Your vehicles, appointments and invoices in one place.</p>
-    {error && <p className="field-error" role="alert">{error}</p>}
-    {notice && <p role="status">{notice}</p>}
-    {checking ? <p role="status">Checking account service…</p> : !ready ? <section className="panel detail-card"><h2>Account service unavailable</h2><p>Secure sign-in is unavailable at this address. Please use the configured Dapper customer account address.</p></section> : !signedIn ? <form className="panel detail-card secure-login" onSubmit={signIn}>
-      <h2>Sign in</h2>
-      <label className="form-field">Email<input type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} disabled={busy} /></label>
-      <label className="form-field">Password<input type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} disabled={busy} /></label>
-      <p><a href="/reset-password" style={{ textDecoration: 'underline' }}>Forgot your password?</a></p>
-      <button className="primary" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
-      <p>Use your Dapper customer account to access your records.</p>
-    </form> : <>
-      <button type="button" className="secondary" onClick={signOut} disabled={busy}>Sign out</button>
-      {accounts.length === 0 ? <section className="panel detail-card"><h2>No customer records available</h2><p>Contact Dapper to connect your customer records to this account.</p></section> : <>
+  const firstName = records ? records.account.name.trim().split(/\s+/)[0] : '';
+  const upcoming = records ? records.bookings.filter((b) => new Date(b.bookingTime).getTime() > Date.now() && !/cancel|complete/i.test(b.status)).length : 0;
+  const owing = records ? records.invoices.reduce((t, i) => t + (i.dueCents > 0 ? i.dueCents : 0), 0) : 0;
+  const currency = records?.invoices[0]?.currency ?? 'CAD';
+  return <div className={a.page}>
+    <ForceDark />
+    <SiteHeader />
+    {error && <p className="field-error" role="alert" style={{margin: '0 auto', maxWidth: 1100, padding: '1rem clamp(16px,3.4vw,56px)'}}>{error}</p>}
+    {notice && <p role="status" style={{margin: '0 auto', maxWidth: 1100, padding: '0 clamp(16px,3.4vw,56px)'}}>{notice}</p>}
+    {checking ? <p role="status" className={a.wait}>Checking your account…</p> : !ready ? <section className={a.wait + ' panel detail-card'}><h2>Account service unavailable</h2><p>Secure sign-in is unavailable at this address. Please use the configured Dapper customer account address.</p></section> : <>
+      <section className={a.hello} aria-labelledby="acct-title">
+        <p className={a.kicker}>Your account</p>
+        <h1 id="acct-title">{records ? <>Hello, <em>{firstName}.</em></> : <>Your <em>account.</em></>}</h1>
+        <p className={a.sub}>Your vehicles, appointments and invoices in one place.</p>
+        {records && <div className={a.stats}>
+          <div><small>Upcoming bookings</small><b>{upcoming}</b></div>
+          <div><small>Balance due</small><b>{amount(owing, currency)}</b></div>
+          <div><small>Vehicles</small><b>{records.vehicles.length}</b></div>
+        </div>}
+        <div className={a.actions}>
+          <a className={a.book} href="/booking">Book a detail</a>
+          <button type="button" className={a.out} onClick={signOut} disabled={busy}>Sign out</button>
+        </div>
+      </section>
+      {accounts.length === 0 ? <section className={a.body + ' panel detail-card'}><h2>No customer records available</h2><p>Contact Dapper to connect your customer records to this account.</p></section> : <div className={a.body}>
         <label className="form-field">Customer account<Select disabled={busy} value={selected} onChange={(e) => {setRecords(null); setNotice(''); setSelected(e.target.value);}}>{accounts.map((a) => <option key={a.customerId} value={a.customerId}>{a.name} · {a.locationName}</option>)}</Select></label>
         {!records && !error && <p role="status">Loading your records…</p>}
         {records && <>
-          <h2>{records.account.name} · {records.account.locationName}</h2>
-          <CustomerAvailabilityBrowser key={selected+'-availability'} customerId={selected} vehicles={records.vehicles} onSubmitted={()=>setRequestRevision(current=>current+1)}/>
-          <CustomerBookingRequestList key={selected+'-requests'} endpoint={`/api/v1/portal/accounts/${encodeURIComponent(selected)}/booking-requests`} revision={requestRevision}/>
-          <CustomerQuoteList key={selected+'-quotes'} customerId={selected} revision={requestRevision}/>
-          <form className="panel detail-card" onSubmit={saveDetails}>
-            <h3>Your details</h3>
-            {records.account.email && <p>You sign in with <strong>{records.account.email}</strong>.</p>}
-            <label className="form-field">Name<input required minLength={2} maxLength={100} autoComplete="name" value={detailName} onChange={(e) => setDetailName(e.target.value)} disabled={busy} /></label>
-            <label className="form-field">Phone<input type="tel" maxLength={30} autoComplete="tel" value={detailPhone} onChange={(e) => setDetailPhone(e.target.value)} disabled={busy} /></label>
-            <label className="form-field">Address (for mobile detailing)<input maxLength={300} autoComplete="street-address" value={detailAddress} onChange={(e) => setDetailAddress(e.target.value)} disabled={busy} /></label>
-            <button className="primary" disabled={busy}>{busy ? 'Saving…' : 'Save my details'}</button>
-          </form>
-          <section className="panel detail-card"><h3>Email and password</h3><SignInDetails email={records.account.email} /></section>
-          <section className="panel detail-card"><h3>Your vehicles and equipment</h3>{records.vehicles.length ? records.vehicles.map((v) => <p key={v.id}>{v.description} · {v.categoryDescription || 'Category not provided'}{v.identifier ? ` · ${v.identifier}` : ''}</p>) : <p>No equipment recorded.</p>}</section>
-          <form className="panel detail-card" onSubmit={addEquipment}>
-            <h3>Add your vehicle or equipment</h3>
-            <label className="form-field">Description<input required minLength={2} maxLength={120} value={description} onChange={(e) => setDescription(e.target.value)} disabled={busy} /></label>
-            <label className="form-field">Category (optional)<input maxLength={60} value={category} onChange={(e) => setCategory(e.target.value)} disabled={busy} /></label>
-            <label className="form-field">Identifier (optional)<input maxLength={60} value={identifier} onChange={(e) => setIdentifier(e.target.value)} disabled={busy} /></label>
-            <button className="primary" disabled={busy}>{busy ? 'Saving…' : 'Add equipment'}</button>
-          </form>
-          <section className="panel detail-card"><h3>Your bookings</h3>{records.bookings.length ? records.bookings.map((b) => <article key={b.id}><h4>{b.serviceName}</h4><p>{b.status.replaceAll('_', ' ')} · {new Intl.DateTimeFormat('en-CA', {dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/Toronto'}).format(new Date(b.bookingTime))} (Toronto time)</p></article>) : <p>No bookings recorded.</p>}</section>
+          <nav className={a.tabs} aria-label="Account sections">
+            <a href="#book">Book a time</a><a href="#bookings">Bookings</a><a href="#invoices">Invoices</a><a href="#vehicles">Vehicles</a><a href="#details">Details</a>
+          </nav>
+          <div id="book" className={a.sec}>
+            <CustomerAvailabilityBrowser key={selected+'-availability'} customerId={selected} vehicles={records.vehicles} onSubmitted={()=>setRequestRevision(current=>current+1)}/>
+            <CustomerBookingRequestList key={selected+'-requests'} endpoint={`/api/v1/portal/accounts/${encodeURIComponent(selected)}/booking-requests`} revision={requestRevision}/>
+          </div>
+          <div id="bookings" className={a.sec}>
+            <section className="panel detail-card"><h3>Your bookings</h3>{records.bookings.length ? records.bookings.map((b) => <article key={b.id}><h4>{b.serviceName}</h4><p>{b.status.replaceAll('_', ' ')} · {new Intl.DateTimeFormat('en-CA', {dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/Toronto'}).format(new Date(b.bookingTime))} (Toronto time)</p></article>) : <p>No bookings recorded.</p>}</section>
+          </div>
+          <div id="invoices" className={a.sec}>
           <section className="panel detail-card">
             <h3>Your invoices</h3>
             {records.invoices.length ? (
@@ -236,9 +234,33 @@ export default function CustomerAccount() {
               <p>No issued invoices recorded.</p>
             )}
           </section>
+            <CustomerQuoteList key={selected+'-quotes'} customerId={selected} revision={requestRevision}/>
+          </div>
+          <div id="vehicles" className={a.sec}>
+            <section className="panel detail-card"><h3>Your vehicles and equipment</h3>{records.vehicles.length ? records.vehicles.map((v) => <p key={v.id}>{v.description} · {v.categoryDescription || 'Category not provided'}{v.identifier ? ` · ${v.identifier}` : ''}</p>) : <p>No equipment recorded.</p>}</section>
+          <form className="panel detail-card" onSubmit={addEquipment}>
+            <h3>Add your vehicle or equipment</h3>
+            <label className="form-field">Description<input required minLength={2} maxLength={120} value={description} onChange={(e) => setDescription(e.target.value)} disabled={busy} /></label>
+            <label className="form-field">Category (optional)<input maxLength={60} value={category} onChange={(e) => setCategory(e.target.value)} disabled={busy} /></label>
+            <label className="form-field">Identifier (optional)<input maxLength={60} value={identifier} onChange={(e) => setIdentifier(e.target.value)} disabled={busy} /></label>
+            <button className="primary" disabled={busy}>{busy ? 'Saving…' : 'Add equipment'}</button>
+          </form>
+          </div>
+          <div id="details" className={a.sec}>
+          <form className="panel detail-card" onSubmit={saveDetails}>
+            <h3>Your details</h3>
+            {records.account.email && <p>You sign in with <strong>{records.account.email}</strong>.</p>}
+            <label className="form-field">Name<input required minLength={2} maxLength={100} autoComplete="name" value={detailName} onChange={(e) => setDetailName(e.target.value)} disabled={busy} /></label>
+            <label className="form-field">Phone<input type="tel" maxLength={30} autoComplete="tel" value={detailPhone} onChange={(e) => setDetailPhone(e.target.value)} disabled={busy} /></label>
+            <label className="form-field">Address (for mobile detailing)<input maxLength={300} autoComplete="street-address" value={detailAddress} onChange={(e) => setDetailAddress(e.target.value)} disabled={busy} /></label>
+            <button className="primary" disabled={busy}>{busy ? 'Saving…' : 'Save my details'}</button>
+          </form>
+            <section className="panel detail-card"><h3>Email and password</h3><SignInDetails email={records.account.email} /></section>
+          </div>
           <p>Up to {records.limit} recent records per section. Online payments are recorded directly to your account ledger.</p>
         </>}
-      </>}
+      </div>}
     </>}
-  </main>;
+    <SiteFooter />
+  </div>;
 }

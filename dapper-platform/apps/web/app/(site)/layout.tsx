@@ -7,7 +7,8 @@ import '@fontsource/manrope/600.css';
 import '@fontsource/manrope/700.css';
 import './_v3/v3.css';
 import './footer.css';
-import { Nav3, Footer3 } from './_v3/Chrome3';
+import { SiteHeader } from '../_chrome/SiteHeader';
+import { SiteFooter } from '../_chrome/SiteFooter';
 import SmoothScroll from './_components/SmoothScroll';
 import Tracking from './_components/Tracking';
 
@@ -30,9 +31,9 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
     <html lang="en-CA">
       <body>
         <a className="d-skip" href="#main">Skip to content</a>
-        <Nav3 />
+        <SiteHeader />
         <main id="main" tabIndex={-1}>{children}</main>
-        <Footer3 />
+        <SiteFooter />
         <SmoothScroll />
         <Tracking />
       </body>
