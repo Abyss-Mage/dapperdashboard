@@ -46,12 +46,13 @@ export function SiteHeader() {
         <Link href="/account">My account</Link>
         <a className={s.book + ' ' + s.menuBook} href="/booking">Book now<ArrowRight size={18} aria-hidden="true" /></a>
       </div>
-      <nav className={s.dock} aria-label="Quick actions">
+      {/* The booking pages have their own bar at the bottom of the screen, so the quick-action bar steps aside there. */}
+      {!pathname.startsWith('/booking') && <nav className={s.dock} aria-label="Quick actions">
         <Link href="/services"><Wrench size={20} aria-hidden="true" />Services</Link>
         <a className={s.dockBook} href="/booking"><CalendarCheck size={20} aria-hidden="true" />Book now</a>
         <a href={'tel:' + contact.tel}><Phone size={20} aria-hidden="true" />Call</a>
         <Link href="/account"><UserRound size={20} aria-hidden="true" />Account</Link>
-      </nav>
+      </nav>}
     </>
   );
 }

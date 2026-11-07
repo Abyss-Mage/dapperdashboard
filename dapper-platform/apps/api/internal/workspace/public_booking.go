@@ -257,6 +257,7 @@ func registerPublicBookingRoutes(mux *http.ServeMux, store *postgres.Store, send
 				// them here could leave a customer charged with nothing booked.
 				pending = true
 			default:
+				log.Printf("public booking: card deposit failed for invoice %s: %v", res.InvoiceID, err)
 				store.PublicBookingAbort(r.Context(), site, res.BookingID, res.InvoiceID)
 				reply(w, 402, map[string]string{"error": depositMessage(err)})
 				return
