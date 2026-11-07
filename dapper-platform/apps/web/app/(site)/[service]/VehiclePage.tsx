@@ -20,6 +20,10 @@ const kind = (key: string) => (key === 'ceramic' ? 'Coating' : key === 'ppf' ? '
    generic booking line; once the team writes a real summary in the dashboard (one item per line) that is shown instead. */
 const GENERIC = /book online, or call the team/i;
 const INCLUDES: [RegExp, string[]][] = [
+  [/^(boat|aircraft).*signature/i, ['Full interior detail', 'Full exterior detail', 'Surfaces cleaned, decontaminated and dried', 'Protective wax finish']],
+  [/^(boat|aircraft).*paint correction/i, ['Surface washed and decontaminated', 'Machine polishing to reduce swirls and light scratches', 'Gloss restored across the paint']],
+  [/^(boat|aircraft).*ceramic/i, ['Surface washed and decontaminated', 'Ceramic coating applied to the exterior', 'A glossy, water-repellent finish']],
+  [/^(boat|aircraft).*interior/i, ['Thorough vacuum of every surface', 'Seats, carpet and upholstery cleaned', 'Panels, trim and vinyl wiped and conditioned', 'Glass and windows cleaned inside']],
   [/ultimate/i, ['Includes the Luxury Full Body Detail', '12–18 month ceramic coating', '12-month fabric protection', 'Windshield ceramic coating', 'Glass cleaned inside and out']],
   [/luxury/i, ['Full interior detail', 'Exterior detail and wax', 'Rims and wheels detailed', 'Exterior surfaces enhanced', 'Tire dressing finish']],
   [/vip/i, ['Interior revived and shined', 'Professional steam cleaning', 'Deep seat cleaning', 'Glass and windows cleaned', 'Air freshener treatment']],
@@ -36,15 +40,22 @@ const includes = (name: string, summary: string): { list: string[]; text: string
 
 function Packages({ category, name }: { category: string; name: string }) {
   const { status, services, retry } = usePublished();
-  const { price } = useLiveCatalog();
+  const { price, addons } = useLiveCatalog();
   const [tab, setTab] = useState('');
   // Cheapest first (unpriced last).
   const items = services.filter((s) => s.category === category).sort((a, b) => (price[a.serviceId] ?? Infinity) - (price[b.serviceId] ?? Infinity));
   // Film is priced per vehicle ("Sedan - Front PPF"): choose the vehicle first, then its packages open.
   const typeOf = (n: string) => (n.includes(' - ') ? n.split(' - ')[0].trim() : '');
-  const types = [...new Set(category === 'ppf' ? items.map((s) => typeOf(s.name)).filter(Boolean) : [])];
+  const sized = category === 'boat' || category === 'aircraft';
+  const order = ['Small', 'Medium', 'Large'];
+  const sizeOf = (t: string) => t.replace(/^(boat|aircraft)\s+/i, '');
+  const types = [...new Set(category === 'ppf' || sized ? items.map((s) => typeOf(s.name)).filter(Boolean) : [])]
+    .sort((a, b) => (sized ? order.indexOf(sizeOf(a)) - order.indexOf(sizeOf(b)) : 0));
   const active = types.includes(tab) ? tab : types[0] ?? '';
   const shown = types.length ? items.filter((s) => typeOf(s.name) === active) : items;
+  // Add-ons that belong to any package on this page, once each by name.
+  const ids = new Set(items.map((s) => s.serviceId));
+  const extras = [...new Map(addons.filter((a) => ids.has(a.parentId)).map((a) => [a.name.trim().toLowerCase(), a])).values()].sort((a, b) => a.name.localeCompare(b.name));
   if (status === 'loading') return <p className="v-note" role="status">Loading packages…</p>;
   if (status === 'error') return <div className="v-note" role="status"><span>Current packages could not be loaded. Call the team or try again.</span><button type="button" className="v-ghost" onClick={retry}>Try again</button></div>;
   if (!items.length) return (
@@ -56,8 +67,8 @@ function Packages({ category, name }: { category: string; name: string }) {
   return (
     <>
       {types.length > 1 && (
-        <div className="v-tabs" role="tablist" aria-label="Choose your vehicle">
-          {types.map((t) => <button key={t} type="button" role="tab" aria-selected={t === active} className={t === active ? 'is-on' : undefined} onClick={() => setTab(t)}>{t}</button>)}
+        <div className="v-tabs" role="tablist" aria-label={sized ? 'Choose the size' : 'Choose your vehicle'}>
+          {types.map((t) => <button key={t} type="button" role="tab" aria-selected={t === active} className={t === active ? 'is-on' : undefined} onClick={() => setTab(t)}>{sized ? sizeOf(t) : t}</button>)}
         </div>
       )}
       <ul className="v-pkgs" aria-live="polite">
@@ -77,6 +88,13 @@ function Packages({ category, name }: { category: string; name: string }) {
           );
         })}
       </ul>
+      {extras.length > 0 && (
+        <div className="v-addons">
+          <h3>Add-ons</h3>
+          <p>Pick these in the booking when you choose your package.</p>
+          <ul>{extras.map((x) => <li key={x.name}><span>{x.name}</span><b>+${money(x.priceCents / 100)}</b></li>)}</ul>
+        </div>
+      )}
     </>
   );
 }
@@ -98,7 +116,7 @@ export default function VehiclePage({ slug }: { slug: string }) {
         .from('.v-hero__img', { scale: 1.14, duration: 1.4, ease: 'power3.out' }, 0)
         .from('.v-crumb', { y: 14, opacity: 0, duration: .8 }, .15)
         .from('.v-lede', { y: 22, opacity: 0, duration: .9 }, .45)
-        .from('.v-buy > *', { y: 24, opacity: 0, duration: .8, stagger: .08 }, .6);
+        .from('.v-buy > *', { opacity: 0, duration: .8, stagger: .08 }, .6);
       // The standard: the line fills and each point is ticked as it reaches the middle of the screen.
       gsap.fromTo('.v-steps__line i', { scaleY: 0 }, { scaleY: 1, ease: 'none', scrollTrigger: { trigger: '.v-steps', start: 'top 62%', end: 'bottom 62%', scrub: true } });
       gsap.utils.toArray<HTMLElement>('.v-step').forEach((el) => {

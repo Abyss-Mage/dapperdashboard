@@ -36,7 +36,7 @@ export function SiteFooter() {
           <a href={contact.youtube} target="_blank" rel="noopener noreferrer">YouTube</a>
         </div>
       </div>
-      <p className={s.mark} aria-hidden="true">Dapper<br />Detailing</p>
+      <p className={s.mark} aria-hidden="true"><span>Dapper</span> <span>Detailing</span></p>
       <div className={s.legal}>
         <span>© 2026 Dapper Detailing Pros Ltd. All rights reserved.</span>
         <span><a href="/privacy-policy">Privacy policy</a><a href="/terms-conditions">Terms &amp; conditions</a><a href="/refund-and-cancellation">Refund &amp; cancellation</a></span>

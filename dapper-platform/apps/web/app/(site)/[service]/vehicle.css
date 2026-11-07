@@ -212,3 +212,14 @@
   .v-buy .s-btn{justify-content:flex-start}
   .v-buy .s-close__call{text-align:left;min-height:0}
 }
+
+/* The bar under the hero: nothing may nudge the button off the middle line */
+.v-buy .s-btn,.v-buy .s-close__call{margin:0;translate:none}
+
+/* Add-ons offered with this page's packages */
+.v-addons{margin-top:clamp(28px,3.4vw,48px);padding:clamp(20px,2.4vw,32px);background:#fff;border:1px solid #0b0b0c1a}
+.v-addons h3{margin:0 0 4px;font:500 clamp(20px,2vw,28px)/1.1 var(--cd,'Unbounded Variable','Unbounded',sans-serif);letter-spacing:-.01em;text-transform:uppercase;color:#0b0b0c}
+.v-addons p{margin:0 0 16px;color:#5b5a60;font-size:15px}
+.v-addons ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr));gap:10px}
+.v-addons li{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:52px;padding:0 16px;border:1px solid #0b0b0c1f;font:600 15px/1.2 'Manrope',sans-serif;color:#0b0b0c}
+.v-addons b{color:var(--red,#e4202e);font-weight:700;white-space:nowrap}

@@ -34,7 +34,7 @@
 }
 
 /* Footer */
-.footer{position:relative;isolation:isolate;overflow:hidden;display:block;gap:0;font-size:16px;line-height:1.5;--red:#e4202e;--bone:#efece4;background:#0b0b0c;color:var(--bone);padding:clamp(56px,7vw,110px) clamp(16px,3.4vw,56px) clamp(24px,3vw,40px);font-family:'Manrope','Helvetica Neue',Arial,sans-serif}
+.footer{position:relative;isolation:isolate;overflow:hidden;display:block;gap:0;font-size:16px;line-height:1.5;--red:#e4202e;--bone:#efece4;background:#0b0b0c;color:var(--bone);margin:clamp(10px,1.6vw,24px);clip-path:polygon(0 0,calc(100% - 32px) 0,100% 32px,100% 100%,32px 100%,0 calc(100% - 32px));padding:clamp(48px,6vw,96px) clamp(22px,3.6vw,64px) clamp(24px,3vw,40px);font-family:'Manrope','Helvetica Neue',Arial,sans-serif}
 .fGrid{display:grid;grid-template-columns:1fr;gap:clamp(28px,4vw,48px);padding:clamp(32px,4vw,56px) 0}
 @media(min-width:900px){.fGrid{grid-template-columns:minmax(0,1.3fr) minmax(0,1.5fr) minmax(0,1fr) minmax(0,1.2fr)}}
 .fBrand{display:grid;gap:16px;align-content:start;justify-items:start}
@@ -47,7 +47,7 @@
 @media(hover:hover) and (pointer:fine){.fCol a:hover{text-decoration:underline;text-underline-offset:.25em}}
 /* The big name, with a light that sweeps across the letters, and a soft red glow behind the footer that slowly breathes */
 .footer::before{content:'';position:absolute;z-index:-1;left:-10%;right:-10%;top:-30%;height:80%;background:radial-gradient(55% 60% at 30% 0%,#e4202e38,transparent 70%);pointer-events:none;animation:footGlow 7s ease-in-out infinite alternate}
-.mark{margin:clamp(8px,2vw,24px) 0 0;overflow:hidden;font:500 clamp(40px,11.2vw,230px)/.9 'Unbounded Variable','Unbounded',sans-serif;letter-spacing:-.05em;text-transform:uppercase;white-space:nowrap;user-select:none;color:transparent;background:linear-gradient(100deg,#1a1a1e 0%,#1a1a1e 38%,#8a8a92 46%,#f2efe7 50%,#8a8a92 54%,#1a1a1e 62%,#1a1a1e 100%) 0 0/260% 100%;-webkit-background-clip:text;background-clip:text;animation:markSweep 7s ease-in-out infinite}
+.mark{margin:clamp(8px,2vw,24px) 0 0;overflow:hidden;font:500 clamp(22px,6.5vw,150px)/1 'Unbounded Variable','Unbounded',sans-serif;letter-spacing:-.04em;text-transform:uppercase;white-space:nowrap;text-align:center;user-select:none;color:transparent;background:linear-gradient(100deg,#1a1a1e 0%,#1a1a1e 38%,#8a8a92 46%,#f2efe7 50%,#8a8a92 54%,#1a1a1e 62%,#1a1a1e 100%) 0 0/260% 100%;-webkit-background-clip:text;background-clip:text;animation:markSweep 7s ease-in-out infinite}
 @keyframes markSweep{0%{background-position:100% 0}60%,100%{background-position:0 0}}
 @keyframes footGlow{from{opacity:.5}to{opacity:1}}
 @media(prefers-reduced-motion:reduce){.footer::before{animation:none}.mark{animation:none;background:linear-gradient(100deg,#1a1a1e,#2a2a30)0 0/100% 100%;-webkit-background-clip:text;background-clip:text}}
@@ -86,7 +86,8 @@
 .megaBtn[aria-expanded=true] svg{transform:rotate(180deg)}
 .mega{position:fixed;z-index:59;top:72px;left:0;right:0;max-height:calc(100dvh - 72px);overflow:auto;background:var(--ink);color:var(--bone);border-bottom:1px solid #ffffff1f;box-shadow:0 30px 60px #0008;padding:clamp(20px,2.4vw,36px) clamp(16px,3.4vw,56px) clamp(24px,3vw,44px);animation:megaIn .28s cubic-bezier(.23,1,.32,1) both;font-family:'Manrope',sans-serif;--red:#e4202e;--bone:#efece4}
 .megaGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:14px}
-.megaCard{display:grid;gap:10px;color:var(--bone);text-decoration:none}
+.megaCard{display:grid;grid-template-rows:auto 1fr;align-content:start;gap:10px;color:var(--bone);text-decoration:none}
+.megaCard>span:last-child{display:block;align-self:start}
 .megaCard .pic{aspect-ratio:16/10;overflow:hidden;border-radius:14px;background:#17171a}
 .megaCard img{display:block;width:100%;height:100%;object-fit:cover;transition:transform .5s cubic-bezier(.23,1,.32,1)}
 .megaCard strong{font:500 13px/1.2 'Unbounded Variable','Unbounded',sans-serif;letter-spacing:.04em;text-transform:uppercase}
@@ -97,3 +98,5 @@
 @keyframes megaIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
 @media(max-width:899px){.mega,.megaBtn{display:none}}
 @media(prefers-reduced-motion:reduce){.mega{animation:none}}
+
+@media(max-width:700px){.mark{font-size:13.5vw;line-height:.95;white-space:normal}.mark span{display:block}}

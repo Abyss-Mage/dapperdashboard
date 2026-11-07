@@ -7,9 +7,10 @@ import { SITE_SLUG } from './site';
    website entry is published and services are priced, so the pages keep their built-in prices as the fallback. Prices are computed by the
    backend; the website only reads them. */
 type SiteService = { serviceId: string; kind: string; category: string };
-type OptionService = { id: string; kind: string; priceCents: number };
-type Live = { from: Record<string, number>; price: Record<string, number> };
-const none: Live = { from: {}, price: {} };
+type OptionService = { id: string; name: string; kind: string; parentId: string | null; priceCents: number };
+export type LiveAddon = { id: string; name: string; parentId: string; priceCents: number };
+type Live = { from: Record<string, number>; price: Record<string, number>; addons: LiveAddon[] };
+const none: Live = { from: {}, price: {}, addons: [] };
 
 export function useLiveCatalog(): Live {
   const [live, setLive] = useState<Live>(none);
@@ -26,7 +27,8 @@ export function useLiveCatalog(): Live {
           if (s.kind !== 'main' || !s.category || dollars === undefined) continue;
           if (from[s.category] === undefined || dollars < from[s.category]) from[s.category] = dollars;
         }
-        if (!off) setLive({ from, price });
+        const addons = (options.services as OptionService[]).filter((s) => s.kind === 'addon' && s.parentId && s.priceCents > 0).map((s) => ({ id: s.id, name: s.name, parentId: s.parentId as string, priceCents: s.priceCents }));
+        if (!off) setLive({ from, price, addons });
       })
       .catch(() => undefined);
     return () => { off = true; };
