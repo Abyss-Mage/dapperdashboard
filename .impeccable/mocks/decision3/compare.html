@@ -1,0 +1,17 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Dapper design directions</title>
+<style>
+body{margin:0;background:#16161a;color:#eee;font:15px/1.5 system-ui,sans-serif;padding:24px}
+h1{font-size:20px;margin:0 0 4px}p{margin:0 0 18px;color:#aaa}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+figure{margin:0}figcaption{margin:8px 0 0;font-size:14px}figcaption b{color:#fff}
+.frame{width:100%;aspect-ratio:16/10;overflow:hidden;position:relative;border:1px solid #333;background:#000}
+iframe{width:1440px;height:900px;border:0;transform-origin:0 0;position:absolute;left:0;top:0}
+</style></head><body>
+<h1>Dapper website: professional directions</h1><p>First screen only, real Dapper photos and partners, Delta colours. Choose in the chat.</p>
+<div class="grid">
+<figure><img src="a-showroom.png" style="width:100%;display:block;border:1px solid #333"><figcaption><b>A · Showroom</b>: light, airy, premium dealership feel; partner logos and Google rating right under the hero.</figcaption></figure>
+<figure><img src="b-executive.png" style="width:100%;display:block;border:1px solid #333"><figcaption><b>B · Executive dark</b>: full-bleed real photo, restrained red hairlines, a facts bar.</figcaption></figure>
+<figure><img src="c-split.png" style="width:100%;display:block;border:1px solid #333"><figcaption><b>C · Two-tone panel</b>: near-black frame holding a light rounded panel; friendly, modern SaaS-grade polish.</figcaption></figure>
+</div>
+<script>const fit=()=>document.querySelectorAll('.frame').forEach(f=>{f.querySelector('iframe').style.transform='scale('+(f.clientWidth/1440)+')'});addEventListener('resize',fit);fit();</script>
+</body></html>

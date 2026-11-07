@@ -1,0 +1,49 @@
+{
+  "title": "Choose the design system for the new Dapper website",
+  "question": "Colours come from Delta, every word and photo from Dapper. The roll dealt the Livery system; keep it, take the inspection report, or re-roll.",
+  "options": [
+    {
+      "id": "assigned",
+      "kind": "assigned",
+      "label": "Livery",
+      "kicker": "THE ROLL",
+      "lineage": "endurance-racing liveries and race-car number roundels",
+      "thesis": "The website is painted like a race car: Delta red and black livery bands cut across every page, sponsor-decal plates, and a numbered roundel for each step.",
+      "palette": ["#d22b2b", "#000000", "#211c20", "#fafaf9", "#d1d4d0"],
+      "materials": ["skewed livery bands", "sponsor decal plates", "number roundels"],
+      "viewport": "A real Dapper photo cut on a diagonal, red and black livery bands sweeping across under a huge condensed headline, the partners as decals, Book as the red band's end.",
+      "risk": "Racing clichés (checkered flags, speed lines) creep in unless the bands stay the only device.",
+      "raised": [
+        {"from": "challenger-tensegrity", "raise": "Photos carry leader-line callouts pinned to the panel they describe, like force labels on a sculpture."},
+        {"from": "challenger-quotes", "raise": "Every label plate sits square on one grid, stencilled, the way crates are marked."},
+        {"from": "challenger-detector", "raise": "One car held at a time: each section focuses on a single real vehicle, never a collage."},
+        {"from": "challenger-opart", "raise": "The livery bands run continuously across section joins, so the page reads as one painted body with no seams."}
+      ],
+      "html": ".impeccable/mocks/decision2/livery.html",
+      "comp": ".impeccable/mocks/decision2/livery.png"
+    },
+    {
+      "id": "model-pick",
+      "kind": "pick",
+      "label": "Inspection Report",
+      "kicker": "IMPECCABLE’S PICK",
+      "lineage": "a detailer's vehicle inspection and paint-depth report",
+      "thesis": "Every page is a care report on a real car: panels pinned with what was done, measured and returned.",
+      "palette": ["#211c20", "#1a1619", "#d22b2b", "#fafaf9", "#a1a1aa"],
+      "materials": ["report sheet", "leader-line callouts", "measurement figures"],
+      "viewport": "A real car on a dark report sheet, red leader lines pinning Paint, Glass and Cabin to what was done, the headline below, Book at the corner.",
+      "risk": "Can feel technical and cold; it needs real photos and warm testimonials to stay human.",
+      "html": ".impeccable/mocks/decision2/inspection.html",
+      "comp": ".impeccable/mocks/decision2/inspection.png"
+    },
+    {"id": "challenger-tensegrity", "kind": "challenger", "catalogId": "kinetic-sculpture-automata-tensegrity-breathing-column", "label": "Tensegrity Column", "verdict": "declined", "lineage": "kinetic sculpture", "thesis": "Forces in balance.", "palette": ["#d9d6cf", "#111111", "#c8102e"], "materials": ["carbon rods", "red cord"], "viewport": "A breathing column.", "risk": "Off-subject.", "case": "Loses both axes.", "kept": "Leader-line callouts pinned to what they describe."},
+    {"id": "challenger-quotes", "kind": "challenger", "catalogId": "textiles-weave-drape-fashion-industrial-quote-grammar", "label": "Industrial Quotes", "verdict": "declined", "lineage": "industrial streetwear", "thesis": "Name the obvious in quotes.", "palette": ["#ffffff", "#111111", "#ff6a00"], "materials": ["hazard stripes", "zip ties"], "viewport": "Quoted caps on cotton.", "risk": "Reads as a fashion label.", "case": "Loses both axes.", "kept": "Label plates square on one grid."},
+    {"id": "challenger-detector", "kind": "challenger", "catalogId": "scientific-notation-particle-detector-event-display", "label": "Event Display", "verdict": "declined", "lineage": "particle physics", "thesis": "One event held at a time.", "palette": ["#05070a", "#4a6a8a", "#f2d23c"], "materials": ["detector rings"], "viewport": "A collision cross-section.", "risk": "Off-subject.", "case": "Loses both axes.", "kept": "One car held at a time."},
+    {"id": "challenger-opart", "kind": "challenger", "catalogId": "design-canon-op-art-textile-repeat", "label": "Op-Art Repeat", "verdict": "declined", "lineage": "op-art textiles", "thesis": "A field with no seam.", "palette": ["#000000", "#ffffff"], "materials": ["wave print"], "viewport": "A distorting wave.", "risk": "Dizzying, off-brand.", "case": "Loses both axes.", "kept": "Bands continuous across section joins."}
+  ],
+  "reroll": {"registers": ["safer", "bolder"]},
+  "buildPath": {"value": "code"},
+  "canon": true,
+  "canonCard": {"kind": "canon", "label": "The category standard", "thesis": "Dark car photo, big headline, red pill button.", "palette": ["#000000", "#ffffff", "#d22b2b"], "materials": ["dark photography"], "viewport": "Photo, headline, Book Now.", "risk": "Looks like every detailer, including Delta.", "html": ".impeccable/mocks/decision2/canon.html"},
+  "steer": true
+}
