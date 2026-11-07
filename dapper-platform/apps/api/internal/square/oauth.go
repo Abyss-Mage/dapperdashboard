@@ -135,6 +135,33 @@ type MerchantLocation struct {
 	Cards    bool   `json:"cards"`
 }
 
+// MerchantMe returns the merchant id a Square access token belongs to; it also proves the token works.
+func MerchantMe(ctx context.Context, environment, accessToken string, hc *http.Client) (string, error) {
+	app := OAuthApp{Environment: environment, HTTPClient: hc}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, app.base()+"/v2/merchants/me", nil)
+	if err != nil {
+		return "", ErrOAuth
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("Square-Version", OAuthVersion)
+	req.Header.Set("Accept", "application/json")
+	res, err := app.client().Do(req)
+	if err != nil {
+		return "", ErrOAuth
+	}
+	defer res.Body.Close()
+	data, err := io.ReadAll(io.LimitReader(res.Body, 64*1024))
+	var decoded struct {
+		Merchant struct {
+			ID string `json:"id"`
+		} `json:"merchant"`
+	}
+	if err != nil || res.StatusCode != http.StatusOK || json.Unmarshal(data, &decoded) != nil || decoded.Merchant.ID == "" {
+		return "", ErrOAuth
+	}
+	return decoded.Merchant.ID, nil
+}
+
 // ListLocations reads the connected merchant's locations so the owner can pick the one this franchise charges to.
 func ListLocations(ctx context.Context, environment, accessToken string, hc *http.Client) ([]MerchantLocation, error) {
 	app := OAuthApp{Environment: environment, HTTPClient: hc}

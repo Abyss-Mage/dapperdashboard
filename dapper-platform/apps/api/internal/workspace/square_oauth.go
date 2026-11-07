@@ -63,6 +63,32 @@ func registerSquareOAuthRoutes(mux *http.ServeMux, store *postgres.Store, origin
 		}
 		reply(w, 200, map[string]string{"authorizeUrl": link})
 	})
+	// Sandbox only: connect the test account with its access token when Square's test sign-in page will not open.
+	mux.HandleFunc("POST "+base+"/token", func(w http.ResponseWriter, r *http.Request) {
+		org, loc, ok := selectors(w, r)
+		if !ok {
+			return
+		}
+		var in struct {
+			AccessToken string `json:"accessToken"`
+		}
+		if !decode(w, r, &in) {
+			return
+		}
+		if err := store.ConnectSquareSandboxToken(r.Context(), requestSession(r).principalID, org, loc, in.AccessToken); err != nil {
+			if errors.Is(err, postgres.ErrPaymentInput) {
+				reply(w, 422, map[string]string{"error": "That does not look like a Square sandbox access token."})
+				return
+			}
+			if errors.Is(err, square.ErrOAuth) {
+				reply(w, 422, map[string]string{"error": "Square did not accept that access token. Copy the Sandbox access token again from the Developer Console."})
+				return
+			}
+			fail(w, err)
+			return
+		}
+		w.WriteHeader(204)
+	})
 	mux.HandleFunc("GET "+base+"/locations", func(w http.ResponseWriter, r *http.Request) {
 		org, loc, ok := selectors(w, r)
 		if !ok {

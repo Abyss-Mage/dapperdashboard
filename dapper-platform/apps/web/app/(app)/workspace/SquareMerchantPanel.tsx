@@ -57,6 +57,12 @@ export default function SquareMerchantPanel({ organizationId, locationId, canMan
     try { const b = await read<{ authorizeUrl: string }>(await fetch(`${scope}/connection/start?environment=${env}`, { method: 'POST', headers: json, body: '{}' })); window.location.assign(b.authorizeUrl); }
     catch (e) { setError((e as Error).message); setBusy(false); }
   }
+  const [tok, setTok] = useState('');
+  async function connectToken() {
+    setBusy(true); setError(''); setNotice('');
+    try { const r = await fetch(`${scope}/connection/token`, { method: 'POST', headers: json, body: JSON.stringify({ accessToken: tok }) }); if (!r.ok && r.status !== 204) await read(r); setTok(''); setNotice('Test Square account connected. Now choose the Square location.'); await load(); }
+    catch (e) { setError((e as Error).message); } finally { setBusy(false); }
+  }
   async function disconnect() {
     setBusy(true); setError(''); setNotice('');
     try { const r = await fetch(`${scope}/connection/disconnect?environment=${env}`, { method: 'POST', headers: json, body: '{}' }); if (!r.ok && r.status !== 204) await read(r); setNotice('Square account disconnected. Card payments for this franchise stop until an account is connected again.'); await load(); }
@@ -84,7 +90,11 @@ export default function SquareMerchantPanel({ organizationId, locationId, canMan
         <label className={glass.field}>Square account type<Select disabled={busy} value={env} onChange={(e) => setEnv(e.target.value as Env)} style={{ minHeight: 46, borderRadius: 14, padding: '0 12px', font: 'inherit' }}><option value="sandbox">{ENV_LABEL.sandbox}</option><option value="production">{ENV_LABEL.production}</option></Select></label>
       </div>
       {!available[env] && <p className={`${glass.notice} ${glass.warn}`}>The {env === 'production' ? 'live' : 'testing'} Square keys have not been added yet. Add the Application ID and secret under “Online payment keys” above.</p>}
-      {env === 'sandbox' && !connection && <p className={glass.notice}>Before you press Connect: in the Square Developer Console open <strong>Sandbox test accounts</strong> and click <strong>Open</strong> on your test account, and keep that tab open. Without it Square&rsquo;s test sign-in shows a blank page.</p>}
+      {env === 'sandbox' && !connection && <div className={glass.notice} style={{ display: 'grid', gap: 10 }}>
+        <p style={{ margin: 0 }}><strong>Square&rsquo;s test sign-in page not opening?</strong> Connect the test account with its access token instead: in the Square Developer Console open your app, then <strong>Credentials</strong>, switch to <strong>Sandbox</strong>, and copy the <strong>Sandbox access token</strong>.</p>
+        <label className={glass.field}>Sandbox access token<input type="password" autoComplete="off" value={tok} onChange={(e) => setTok(e.target.value)} disabled={busy} placeholder="EAAA…" style={{ minHeight: 46, borderRadius: 14, padding: '0 12px', font: 'inherit' }} /></label>
+        <div className={glass.actions}><button type="button" className={glass.button} disabled={busy || tok.trim().length < 20} onClick={() => void connectToken()}>{busy ? 'Checking with Square…' : 'Connect with this token'}</button></div>
+      </div>}
       {connection ? <>
         <p className={glass.notice}>Connected to Square account {connection.merchantId} on {new Date(connection.connectedAt).toLocaleDateString()}. The connection renews itself.</p>
         {!places ? <p role="status" className={glass.lede}>Loading this account&rsquo;s Square locations…</p> : <>

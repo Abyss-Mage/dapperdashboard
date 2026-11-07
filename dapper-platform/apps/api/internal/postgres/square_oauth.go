@@ -126,6 +126,28 @@ func (s *Store) storeSquareToken(ctx context.Context, actor, org, loc, env strin
 	return tx.Commit(ctx)
 }
 
+// ConnectSquareSandboxToken connects the franchise's Square TEST account with the sandbox access token from the Square Developer
+// Console, for when Square's sandbox sign-in page will not open. Sandbox only: a live token must always come through OAuth.
+// The token does not expire or refresh, so its refresh time is pushed far ahead to keep the renewal job away from it.
+func (s *Store) ConnectSquareSandboxToken(ctx context.Context, actor, org, loc, accessToken string) error {
+	accessToken = strings.TrimSpace(accessToken)
+	if len(s.mfaKey) != 32 {
+		return ErrSquareOAuthUnavailable
+	}
+	if len(accessToken) < 20 || len(accessToken) > 400 {
+		return ErrPaymentInput
+	}
+	merchant, err := square.MerchantMe(ctx, "sandbox", accessToken, nil)
+	if err != nil {
+		return err
+	}
+	if err = s.storeSquareToken(ctx, actor, org, loc, "sandbox", square.OAuthToken{AccessToken: accessToken, MerchantID: merchant, ExpiresAt: time.Now().AddDate(10, 0, 0)}); err != nil {
+		return err
+	}
+	_, err = s.pool.Exec(ctx, `UPDATE square_oauth_connections SET refreshed_at=now()+interval '10 years' WHERE organization_id=$1 AND location_id=$2 AND environment='sandbox'`, org, loc)
+	return err
+}
+
 // SquareConnection is what the dashboard shows about a franchise's Square account (never the tokens).
 type SquareConnection struct {
 	Environment string    `json:"environment"`
