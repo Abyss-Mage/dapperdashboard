@@ -282,11 +282,9 @@ func registerPublicBookingRoutes(mux *http.ServeMux, store *postgres.Store, send
 				}
 				vars := map[string]string{"name": name, "phone": phone, "email": to, "service": res.ServiceName, "when": whenText(start), "where": where,
 					"total": fmt.Sprintf("$%.2f", float64(res.TotalCents)/100), "payment": payment}
-				if newCustomer {
-					subject, body, text := store.RenderEmail(ctx, "booking_confirmation", vars)
-					if _, err := sender.SendEmail(ctx, to, subject, body, text); err != nil {
-						log.Print("The booking confirmation email could not be sent")
-					}
+				subject, body, text := store.RenderEmail(ctx, "booking_confirmation", vars)
+				if _, err := sender.SendEmail(ctx, to, subject, body, text); err != nil {
+					log.Print("The booking confirmation email could not be sent")
 				}
 				if admin := store.AdminNotifyEmail(ctx); admin != "" {
 					subject, body, text := store.RenderEmail(ctx, "booking_admin", vars)

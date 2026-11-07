@@ -112,8 +112,13 @@ updated_at=now() WHERE organization_id=$2 AND location_id=$3 AND id=$4`, toStatu
 // CorrectBookingStatus is the staff status change; a cancellation is announced so the customer can be emailed.
 func (s *Store) CorrectBookingStatus(ctx context.Context, scope Scope, id, toStatus, reason, notes string, versions ...int) (Booking, error) {
 	b, err := s.correctBookingStatus(ctx, scope, id, toStatus, reason, notes, versions...)
-	if err == nil && toStatus == "cancelled" {
-		s.emitBooking(ctx, "booking_cancelled", id)
+	if err == nil {
+		switch toStatus {
+		case "cancelled":
+			s.emitBooking(ctx, "booking_cancelled", id)
+		case "completed":
+			s.emitBooking(ctx, "booking_completed", id)
+		}
 	}
 	return b, err
 }

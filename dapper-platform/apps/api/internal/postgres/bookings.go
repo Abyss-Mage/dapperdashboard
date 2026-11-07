@@ -445,8 +445,13 @@ WHERE b.id=$1`, id)
 // UpdateBookingStatus changes a booking's status; a cancellation is announced so the customer can be emailed.
 func (s *Store) UpdateBookingStatus(ctx context.Context, scope Scope, id string, toStatus, cancellationReason, notes string, reservationVersions ...int) (Booking, error) {
 	b, err := s.updateBookingStatus(ctx, scope, id, toStatus, cancellationReason, notes, reservationVersions...)
-	if err == nil && strings.TrimSpace(toStatus) == "cancelled" {
-		s.emitBooking(ctx, "booking_cancelled", id)
+	if err == nil {
+		switch strings.TrimSpace(toStatus) {
+		case "cancelled":
+			s.emitBooking(ctx, "booking_cancelled", id)
+		case "completed":
+			s.emitBooking(ctx, "booking_completed", id)
+		}
 	}
 	return b, err
 }

@@ -79,9 +79,10 @@ export default function MessagingSettings({ organizationId, revision }: { organi
             </div>
             <div className={styles.inlineForm}>
               <label className="form-field">From address<input type="email" value={from} onChange={(e) => setFrom(e.target.value)} placeholder="hello@yourbusiness.com" maxLength={254} required disabled={!!busy} /></label>
-              <label className="form-field">Send new-booking alerts to<input type="email" value={notify} onChange={(e) => setNotify(e.target.value)} placeholder="Blank: the From address" maxLength={254} disabled={!!busy} /></label>
+              <label className="form-field">Business email (receives the new-booking alerts)<input type="email" value={notify} onChange={(e) => setNotify(e.target.value)} placeholder={from ? `Blank: ${from}` : 'Blank: the From address'} maxLength={254} disabled={!!busy} /></label>
               <label className="form-field">From name<input value={fromName} onChange={(e) => setFromName(e.target.value)} placeholder="Dapper Detailing" maxLength={120} disabled={!!busy} /></label>
             </div>
+            <p className={styles.footnote}>Customers get their booking, completion, cancellation and new-time emails from the From address. The business email is the inbox that gets a message for every new booking: type any address, such as your own, to move the alerts to a different account. Leave it blank to send them to the From address.</p>
             <p className={styles.footnote}>Port 587 (STARTTLS) is the usual choice. Port 465 also works. The connection must be encrypted.</p>
             <div className={styles.svcActions}>
               <button className="primary" disabled={!!busy || !host.trim() || !from.trim()}>{busy === 'smtp' ? 'Saving…' : 'Save email settings'}</button>
