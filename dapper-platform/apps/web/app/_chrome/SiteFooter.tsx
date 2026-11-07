@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { ArrowUpRight } from 'lucide-react';
 import '@fontsource-variable/unbounded/index.css';
+import { categories } from '../(site)/content';
 import { contact } from '../(site)/dapper';
 import s from './chrome.module.css';
 
@@ -29,14 +30,19 @@ export function SiteFooter() {
             <a href="/terms-conditions">Terms &amp; conditions</a>
             <a href="/refund-and-cancellation">Refund &amp; cancellation</a>
           </p>
-          <nav className={s.fNav} aria-label="Footer">
-            <Link href="/">Home<ArrowUpRight size={13} aria-hidden="true" /></Link>
-            <Link href="/about-us">About us<ArrowUpRight size={13} aria-hidden="true" /></Link>
-            <Link href="/services">Our services<ArrowUpRight size={13} aria-hidden="true" /></Link>
-            <Link href="/portfolio">Portfolio<ArrowUpRight size={13} aria-hidden="true" /></Link>
-            <Link href="/contact-us">Contact us<ArrowUpRight size={13} aria-hidden="true" /></Link>
-            <Link href="/account">My account<ArrowUpRight size={13} aria-hidden="true" /></Link>
-          </nav>
+          <div className={s.fCols}>
+            <nav aria-label="Services">
+              <h2>Services</h2>
+              <div className={s.fTwo}>{categories.map((c) => <Link key={c.key} href={'/' + c.slug}>{c.short}</Link>)}</div>
+            </nav>
+            <nav aria-label="Company">
+              <h2>Company</h2>
+              <Link href="/portfolio">Portfolio</Link>
+              <Link href="/about-us">About us</Link>
+              <Link href="/contact-us">Contact us</Link>
+              <Link href="/account">My account</Link>
+            </nav>
+          </div>
         </div>
       </div>
       <p className={s.mark} aria-hidden="true"><span>Dapper</span> <span>Detailing</span></p>

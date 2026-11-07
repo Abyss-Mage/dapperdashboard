@@ -62,7 +62,7 @@
 @keyframes sheet{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:none}}
 @keyframes fade{from{opacity:0}to{opacity:1}}
 @media(prefers-reduced-motion:reduce){.dialog[open],.dialog[open]::backdrop{animation:none}.nav a::after{transition:none}}
-@media(pointer:coarse){.fLink,.fNav a,.fCopy a{display:inline-flex;align-items:center;min-height:44px}}
+@media(pointer:coarse){.fLink,.fCols a,.fCopy a{display:inline-flex;align-items:center;min-height:44px}}
 /* Services mega menu: a full-width panel under the header listing every service */
 .navItem{position:relative;display:flex;align-items:center;gap:4px}
 .megaBtn{display:grid;place-items:center;width:28px;height:28px;border:0;border-radius:50%;background:transparent;color:#a9a69e;cursor:pointer}
@@ -101,11 +101,12 @@
 @media(min-width:900px){.fRight{justify-items:end;text-align:right}}
 .fCopy{display:grid;gap:4px;margin:0;color:#a9a69e;font-size:13px;line-height:1.5}
 .fCopy a{color:var(--bone);text-decoration:underline;text-underline-offset:.25em;text-decoration-color:#ffffff59}
-.fNav{display:flex;flex-wrap:wrap;gap:6px clamp(16px,2vw,30px)}
-@media(min-width:900px){.fNav{justify-content:flex-end}}
-.fNav a{display:inline-flex;align-items:center;gap:5px;color:var(--bone);text-decoration:none;font:600 15px/1.4 'Manrope',sans-serif}
-.fNav svg{opacity:.7}
-@media(hover:hover) and (pointer:fine){.fLink:hover,.fNav a:hover,.fSmall a:hover,.fCopy a:hover{color:#fff}.fLink:hover svg,.fNav a:hover svg{opacity:1;transform:translate(2px,-2px)}.fLink svg,.fNav svg{transition:transform .2s,opacity .2s}}
+@media(hover:hover) and (pointer:fine){.fLink:hover,.fCols a:hover,.fSmall a:hover,.fCopy a:hover{color:#fff}.fLink:hover svg{opacity:1;transform:translate(2px,-2px)}.fLink svg{transition:transform .2s,opacity .2s}}
 /* White space all round the footer, so its edges and the cut show on every page */
 .footWrap{background:#fff;padding:clamp(10px,1.6vw,24px)}
 @media(max-width:899px){.footWrap{padding-bottom:calc(88px + env(safe-area-inset-bottom))}}
+.fCols{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:clamp(24px,3vw,48px);text-align:left;width:100%;max-width:520px}
+.fCols nav{display:grid;gap:10px;align-content:start}
+.fCols h2{margin:0 0 6px;font:500 13px/1 'Unbounded Variable','Unbounded',sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#a9a69e}
+.fCols a{color:var(--bone);text-decoration:none;font:600 15px/1.4 'Manrope',sans-serif}
+.fTwo{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 20px}
