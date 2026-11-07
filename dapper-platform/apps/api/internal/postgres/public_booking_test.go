@@ -192,9 +192,20 @@ func verifyPublicBookFlow(t *testing.T, ctx context.Context, s *Store, a Scope, 
 	}
 	start := avail.Days[0].Starts[2]
 	in := PublicBookingInput{RequestKey: "public-booking-key-0001", ResourceID: res.ID, RuleID: rule.ID, RuleVersion: rule.Version, Start: start, AddonIDs: []string{addon.ID}, Name: "Synthetic Web Guest", Email: "web.guest@example.invalid", Phone: "+1 705 555 0166", Notes: "Vehicle: Sedan"}
+	// With the automatic draft on (as in the live app) the website invoice must still end up issued, so a card can be charged against it.
+	autoInvoiceEnabled = true
 	got, err := s.PublicBook(ctx, slug, in)
+	autoInvoiceEnabled = false
 	if err != nil {
 		t.Fatal("public booking failed", err)
+	}
+	var issuedStatus string
+	var liveInvoices int
+	if err = s.pool.QueryRow(ctx, `SELECT status FROM invoices WHERE id=$1`, got.InvoiceID).Scan(&issuedStatus); err != nil || issuedStatus != "issued" {
+		t.Fatal("the website booking's invoice was not issued", issuedStatus, err)
+	}
+	if err = s.pool.QueryRow(ctx, `SELECT count(*) FROM invoices WHERE booking_id=$1 AND status<>'void'`, got.BookingID).Scan(&liveInvoices); err != nil || liveInvoices != 1 {
+		t.Fatal("a website booking should leave exactly one live invoice", liveInvoices, err)
 	}
 	if got.TotalCents != 28250 || !strings.HasPrefix(got.InvoiceNumber, "T") && !strings.Contains(got.InvoiceNumber, "-") {
 		t.Fatalf("totals wrong (want 28250 total, 8475 deposit): %+v", got)

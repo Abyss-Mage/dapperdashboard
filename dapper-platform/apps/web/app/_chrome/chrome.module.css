@@ -25,9 +25,9 @@
   .header{position:absolute}
   .nav,.actions{display:none}
   .menuBtn{display:grid}
-  .dock{display:grid;grid-template-columns:1fr 1.5fr 1fr 1fr;gap:4px;position:fixed;z-index:70;left:10px;right:10px;bottom:max(10px,env(safe-area-inset-bottom));padding:6px;border-radius:22px;background:#0b0b0cf2;color:var(--bone);box-shadow:0 14px 40px #0008;font-family:'Manrope',sans-serif}
+  .dock{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;position:fixed;z-index:70;left:10px;right:10px;bottom:max(10px,env(safe-area-inset-bottom));padding:6px;border-radius:22px;background:#0b0b0cf2;color:var(--bone);box-shadow:0 14px 40px #0008;font-family:'Manrope',sans-serif}
   .dock a,.dock button{display:grid;justify-items:center;align-content:center;gap:3px;min-height:52px;border:0;border-radius:16px;background:transparent;color:#cfcbc2;font:700 11px/1 'Manrope',sans-serif;text-decoration:none;cursor:pointer}
-  .dock .dockBook{background:var(--red);color:#fff;grid-auto-flow:column;gap:8px;font-size:14px}
+  .dock .dockBook svg{color:var(--red)}
   .dock a:active,.dock button:active{transform:scale(.96)}
 }
 

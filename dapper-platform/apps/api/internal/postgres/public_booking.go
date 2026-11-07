@@ -237,12 +237,27 @@ func (s *Store) PublicBook(ctx context.Context, slug string, in PublicBookingInp
 	// The same request sent twice (a double click, a slow network): hand back the invoice that already exists for this booking.
 	var invID, invNumber string
 	var invTotal int64
-	err = s.pool.QueryRow(ctx, `SELECT id::text,invoice_number,total_cents FROM invoices WHERE organization_id=$1 AND location_id=$2 AND booking_id=$3 AND status<>'void' ORDER BY created_at LIMIT 1`, scope.OrganizationID, scope.LocationID, bookingID).Scan(&invID, &invNumber, &invTotal)
+	// The booking itself raises a draft invoice at catalogue prices ("Created automatically…"); that is not an earlier attempt of this request.
+	err = s.pool.QueryRow(ctx, `SELECT id::text,invoice_number,total_cents FROM invoices WHERE organization_id=$1 AND location_id=$2 AND booking_id=$3 AND status<>'void' AND notes NOT LIKE 'Created automatically with the booking%' ORDER BY created_at LIMIT 1`, scope.OrganizationID, scope.LocationID, bookingID).Scan(&invID, &invNumber, &invTotal)
 	if err == nil {
 		return PublicBookingResult{BookingID: bookingID, InvoiceID: invID, InvoiceNumber: invNumber, TotalCents: invTotal, ServiceName: serviceName}, nil
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return out, err
+	}
+	// Replace the automatic draft with the website invoice, which is priced from the package and coupon the customer chose and then issued.
+	if rows, qerr := s.pool.Query(ctx, `SELECT id::text FROM invoices WHERE organization_id=$1 AND location_id=$2 AND booking_id=$3 AND status='draft' AND notes LIKE 'Created automatically with the booking%'`, scope.OrganizationID, scope.LocationID, bookingID); qerr == nil {
+		var drafts []string
+		for rows.Next() {
+			var d string
+			if rows.Scan(&d) == nil {
+				drafts = append(drafts, d)
+			}
+		}
+		rows.Close()
+		for _, d := range drafts {
+			_, _ = s.VoidInvoice(context.WithoutCancel(ctx), scope, d, "Replaced by the website invoice")
+		}
 	}
 	inv, err := s.CreateInvoice(ctx, scope, CreateInvoiceInput{CustomerID: customerID, BookingID: &bookingID, TaxCents: tax, Notes: "Booked on the website", Items: items})
 	if err != nil {
