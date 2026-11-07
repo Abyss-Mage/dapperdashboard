@@ -32,6 +32,8 @@ export function SiteHeader() {
   const [hidden, setHidden] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const lastY = useRef(0);
+  const openedAt = useRef(0);
+  const openMega = () => { setMega((m) => { if (!m) openedAt.current = Date.now(); return true; }); };
   const onVehicle = categories.some((c) => '/' + c.slug === pathname);
 
   useEffect(() => { setOpen(false); setMega(false); setSvcOpen(false); }, [pathname]);
@@ -64,9 +66,9 @@ export function SiteHeader() {
           <Link href="/" className={s.brand} aria-label="Dapper Detailing Pros, home"><img src="/site/assets/logo.webp" alt="" width={46} height={46} /></Link>
           <nav className={s.nav} aria-label="Main">
             {links.map((l) => l.href === '/services'
-              ? <span key={l.href} className={s.navItem + (mega ? ' ' + s.navOpen : '')} onMouseEnter={() => setMega(true)}>
+              ? <span key={l.href} className={s.navItem + (mega ? ' ' + s.navOpen : '')} onMouseEnter={openMega}>
                   <Link href={l.href} aria-current={current(l.href)}>{l.label}</Link>
-                  <button type="button" className={s.megaBtn} aria-expanded={mega} aria-controls="mega-services" aria-label={mega ? 'Close the services menu' : 'Open the services menu'} onClick={() => setMega((m) => !m)}><ChevronDown size={15} aria-hidden="true" /></button>
+                  <button type="button" className={s.megaBtn} aria-expanded={mega} aria-controls="mega-services" aria-label={mega ? 'Close the services menu' : 'Open the services menu'} onClick={() => { if (Date.now() - openedAt.current < 400) { setMega(true); return; } setMega((m) => !m); }}><ChevronDown size={15} aria-hidden="true" /></button>
                 </span>
               : <Link key={l.href} href={l.href} aria-current={current(l.href)} onMouseEnter={() => setMega(false)} onFocus={() => setMega(false)}>{l.label}</Link>)}
           </nav>
@@ -125,7 +127,7 @@ export function SiteHeader() {
       </div>
 
       {/* The booking pages have their own bar at the bottom of the screen, so the quick-action bar steps aside there. */}
-      {!pathname.startsWith('/booking') && <nav className={s.dock} aria-label="Quick actions">
+      {!pathname.startsWith('/booking') && !open && <nav className={s.dock} aria-label="Quick actions">
         <a href="/services"><Wrench size={20} aria-hidden="true" />Services</a>
         <a className={s.dockBook} href="/booking"><CalendarCheck size={20} aria-hidden="true" />Book now</a>
         <a href={'tel:' + contact.tel}><Phone size={20} aria-hidden="true" />Call</a>

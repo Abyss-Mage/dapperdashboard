@@ -15,7 +15,7 @@
 .v-price small{font:500 13px/1 var(--cd);letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
 .v-price b{font:500 clamp(28px,3vw,48px)/.9 var(--cd);color:var(--bone);font-variant-numeric:tabular-nums}
 .v-price--ask b{font-size:clamp(18px,1.9vw,28px);line-height:1}
-.v-hero .s-tile__tag{top:calc(72px + 12px);right:var(--cg);left:auto;bottom:auto}
+.v-hero .s-tile__tag{top:104px;right:var(--cg);left:auto;bottom:auto}
 @media(max-width:700px){.v-buy{flex-direction:column;align-items:stretch}.v-buy .s-btn{justify-content:center}.v-buy .s-close__call{text-align:center}}
 
 /* Sections */

@@ -82,7 +82,7 @@
 .footer{position:relative;isolation:isolate;overflow:hidden;display:block;gap:0;font-size:16px;line-height:1.5;--red:#e4202e;--bone:#efece4;background:#0b0b0c;color:var(--bone);clip-path:polygon(0 0,100% 0,100% 100%,40px 100%,0 calc(100% - 40px));padding:clamp(40px,5vw,72px) clamp(22px,3.6vw,64px) 0;font-family:'Manrope','Helvetica Neue',Arial,sans-serif}
 /* The big name, with a light that sweeps across the letters, and a soft red glow behind the footer that slowly breathes */
 .footer::before{content:'';position:absolute;z-index:-1;left:-10%;right:-10%;top:-30%;height:80%;background:radial-gradient(55% 60% at 30% 0%,#e4202e38,transparent 70%);pointer-events:none;animation:footGlow 7s ease-in-out infinite alternate}
-.mark{margin:clamp(28px,5vw,72px) 0 -.17em;overflow:hidden;font:500 clamp(22px,6.5vw,150px)/1 'Unbounded Variable','Unbounded',sans-serif;letter-spacing:-.04em;text-transform:uppercase;white-space:nowrap;text-align:center;user-select:none;color:transparent;background:linear-gradient(100deg,#1a1a1e 0%,#1a1a1e 38%,#8a8a92 46%,#f2efe7 50%,#8a8a92 54%,#1a1a1e 62%,#1a1a1e 100%) 0 0/260% 100%;-webkit-background-clip:text;background-clip:text;animation:markSweep 7s ease-in-out infinite}
+.mark{margin:clamp(28px,5vw,72px) 0 -.17em;overflow:hidden;font:500 clamp(22px,7.6vw,170px)/1 'Unbounded Variable','Unbounded',sans-serif;letter-spacing:-.04em;text-transform:uppercase;white-space:nowrap;text-align:center;user-select:none;color:transparent;background:linear-gradient(100deg,#1a1a1e 0%,#1a1a1e 38%,#8a8a92 46%,#f2efe7 50%,#8a8a92 54%,#1a1a1e 62%,#1a1a1e 100%) 0 0/260% 100%;-webkit-background-clip:text;background-clip:text;animation:markSweep 7s ease-in-out infinite}
 @keyframes markSweep{0%{background-position:100% 0}60%,100%{background-position:0 0}}
 @keyframes footGlow{from{opacity:.5}to{opacity:1}}
 @media(prefers-reduced-motion:reduce){.footer::before{animation:none}.mark{animation:none;background:linear-gradient(100deg,#1a1a1e,#2a2a30)0 0/100% 100%;-webkit-background-clip:text;background-clip:text}}
@@ -135,3 +135,4 @@
 .fCols h2{margin:0 0 6px;font:500 13px/1 'Unbounded Variable','Unbounded',sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#a9a69e}
 .fCols a{color:var(--bone);text-decoration:none;font:600 15px/1.4 'Manrope',sans-serif}
 .fTwo{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 20px}
+@media(max-width:600px){.fCols{grid-template-columns:1fr}}
