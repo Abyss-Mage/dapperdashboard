@@ -14,7 +14,7 @@ import (
 // wrongly: completed to cancelled releases its time slot, and reopening a cancelled booking detaches its released slot
 // (the booking stays on the books without holding capacity; move it to hold a new time). Every change is recorded in
 // the booking history.
-func (s *Store) CorrectBookingStatus(ctx context.Context, scope Scope, id, toStatus, reason, notes string, versions ...int) (Booking, error) {
+func (s *Store) correctBookingStatus(ctx context.Context, scope Scope, id, toStatus, reason, notes string, versions ...int) (Booking, error) {
 	toStatus = strings.TrimSpace(toStatus)
 	reason = strings.TrimSpace(reason)
 	notes = strings.TrimSpace(notes)
@@ -107,4 +107,13 @@ updated_at=now() WHERE organization_id=$2 AND location_id=$3 AND id=$4`, toStatu
 	}
 	updated.PaymentNotice = notice
 	return updated, nil
+}
+
+// CorrectBookingStatus is the staff status change; a cancellation is announced so the customer can be emailed.
+func (s *Store) CorrectBookingStatus(ctx context.Context, scope Scope, id, toStatus, reason, notes string, versions ...int) (Booking, error) {
+	b, err := s.correctBookingStatus(ctx, scope, id, toStatus, reason, notes, versions...)
+	if err == nil && toStatus == "cancelled" {
+		s.emitBooking(ctx, "booking_cancelled", id)
+	}
+	return b, err
 }

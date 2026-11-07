@@ -6,7 +6,7 @@ import EmailTemplates from './EmailTemplates';
 import ConfirmDialog from '../workspace/ConfirmDialog';
 
 type View = {
-  smtp: { host: string; port: number; username: string; fromAddress: string; fromName: string; passwordSet: boolean; saved: boolean };
+  smtp: { host: string; port: number; username: string; fromAddress: string; fromName: string; notifyEmail: string; passwordSet: boolean; saved: boolean };
   sms: { accountSid: string; from: string; tokenSet: boolean; saved: boolean };
   emailSource: '' | 'saved' | 'server';
   emailWorking: boolean;
@@ -23,7 +23,7 @@ async function readJson(r: Response) {
 export default function MessagingSettings({ organizationId, revision }: { organizationId: string; revision: number }) {
   const url = `/api/v1/organizations/${organizationId}/messaging`;
   const [view, setView] = useState<View | null>(null);
-  const [host, setHost] = useState(''), [port, setPort] = useState('587'), [user, setUser] = useState(''), [pass, setPass] = useState(''), [from, setFrom] = useState(''), [fromName, setFromName] = useState('');
+  const [host, setHost] = useState(''), [port, setPort] = useState('587'), [user, setUser] = useState(''), [pass, setPass] = useState(''), [from, setFrom] = useState(''), [fromName, setFromName] = useState(''), [notify, setNotify] = useState('');
   const [sid, setSid] = useState(''), [token, setToken] = useState(''), [num, setNum] = useState('');
   const [mailTo, setMailTo] = useState(''), [smsTo, setSmsTo] = useState('');
   const [busy, setBusy] = useState(''), [error, setError] = useState(''), [notice, setNotice] = useState('');
@@ -32,7 +32,7 @@ export default function MessagingSettings({ organizationId, revision }: { organi
   const load = useCallback(async () => {
     const v: View = await readJson(await fetch(url, { cache: 'no-store' }));
     setView(v);
-    setHost(v.smtp.host); setPort(String(v.smtp.port || 587)); setUser(v.smtp.username); setFrom(v.smtp.fromAddress); setFromName(v.smtp.fromName); setPass('');
+    setHost(v.smtp.host); setPort(String(v.smtp.port || 587)); setUser(v.smtp.username); setFrom(v.smtp.fromAddress); setFromName(v.smtp.fromName); setNotify(v.smtp.notifyEmail ?? ''); setPass('');
     setSid(v.sms.accountSid); setNum(v.sms.from); setToken('');
   }, [url]);
   useEffect(() => { setError(''); load().catch((e) => setError(e.message)); }, [load, revision]);
@@ -43,7 +43,7 @@ export default function MessagingSettings({ organizationId, revision }: { organi
     catch (e) { setError(e instanceof Error ? e.message : 'That could not be done.'); }
     finally { setBusy(''); }
   }
-  const saveSmtp = (e: React.FormEvent) => { e.preventDefault(); void act('smtp', async () => { await readJson(await fetch(url + '/smtp', send('PUT', { host, port: Number(port), username: user, password: pass, fromAddress: from, fromName }))); return 'Email settings saved and in use now.'; }); };
+  const saveSmtp = (e: React.FormEvent) => { e.preventDefault(); void act('smtp', async () => { await readJson(await fetch(url + '/smtp', send('PUT', { host, port: Number(port), username: user, password: pass, fromAddress: from, fromName, notifyEmail: notify }))); return 'Email settings saved and in use now.'; }); };
   const testMail = () => void act('mail-test', async () => { await readJson(await fetch(url + '/smtp/test', send('POST', { to: mailTo }))); return 'Test email sent to ' + mailTo + '. Check that inbox (and spam).'; });
   const saveSms = (e: React.FormEvent) => { e.preventDefault(); void act('sms', async () => { await readJson(await fetch(url + '/sms', send('PUT', { accountSid: sid, authToken: token, from: num }))); return 'Twilio settings saved.'; }); };
   const checkSms = () => void act('sms-check', async () => { await readJson(await fetch(url + '/sms/test', send('POST', { to: '' }))); return 'Twilio accepted the Account SID and Auth Token.'; });
@@ -79,6 +79,7 @@ export default function MessagingSettings({ organizationId, revision }: { organi
             </div>
             <div className={styles.inlineForm}>
               <label className="form-field">From address<input type="email" value={from} onChange={(e) => setFrom(e.target.value)} placeholder="hello@yourbusiness.com" maxLength={254} required disabled={!!busy} /></label>
+              <label className="form-field">Send new-booking alerts to<input type="email" value={notify} onChange={(e) => setNotify(e.target.value)} placeholder="Blank: the From address" maxLength={254} disabled={!!busy} /></label>
               <label className="form-field">From name<input value={fromName} onChange={(e) => setFromName(e.target.value)} placeholder="Dapper Detailing" maxLength={120} disabled={!!busy} /></label>
             </div>
             <p className={styles.footnote}>Port 587 (STARTTLS) is the usual choice. Port 465 also works. The connection must be encrypted.</p>

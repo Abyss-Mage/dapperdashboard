@@ -139,6 +139,43 @@ func registerBookingRoutes(mux *http.ServeMux, store *postgres.Store) {
 		}
 		reply(w, 200, options)
 	})
+	// What a coupon would take off a booking staff are making, so the price on screen matches the invoice.
+	mux.HandleFunc("POST "+base+"/coupon-check", func(w http.ResponseWriter, r *http.Request) {
+		org, loc := r.PathValue("organization"), r.PathValue("location")
+		if !uuid(org) || !uuid(loc) {
+			reply(w, 400, map[string]string{"error": "Valid organization/location selectors required"})
+			return
+		}
+		scope, err := store.ResolveScope(r.Context(), requestSession(r).principalID, org, loc, "bookings.create")
+		if err != nil {
+			failure(w, err)
+			return
+		}
+		var in struct {
+			Code          string `json:"code"`
+			ServiceID     string `json:"serviceId"`
+			CustomerID    string `json:"customerId"`
+			SubtotalCents int64  `json:"subtotalCents"`
+		}
+		if !decode(w, r, &in) {
+			return
+		}
+		if !uuid(in.ServiceID) || in.SubtotalCents <= 0 || in.SubtotalCents > 100000000 {
+			reply(w, 422, map[string]string{"error": "Choose the service first."})
+			return
+		}
+		out, err := store.CheckCoupon(r.Context(), scope, in.Code, in.CustomerID, &in.ServiceID, in.SubtotalCents)
+		var bad postgres.CouponInvalid
+		if errors.As(err, &bad) {
+			reply(w, 422, map[string]string{"error": bad.Reason})
+			return
+		}
+		if err != nil {
+			bookingFailure(w, err)
+			return
+		}
+		reply(w, 200, map[string]any{"code": out.Code, "discountCents": out.DiscountCents})
+	})
 	mux.HandleFunc("POST "+base+"/reserve", func(w http.ResponseWriter, r *http.Request) {
 		org, loc := r.PathValue("organization"), r.PathValue("location")
 		if !uuid(org) || !uuid(loc) {
@@ -194,7 +231,7 @@ func registerBookingRoutes(mux *http.ServeMux, store *postgres.Store) {
 		}
 		if coupon != "" {
 			if err := store.InvoiceStaffBooking(r.Context(), scope, input, booking.ID, coupon); err != nil {
-				_, _ = store.UpdateBookingStatus(context.WithoutCancel(r.Context()), scope, booking.ID, "cancelled", "The coupon could not be applied", "")
+				_, _ = store.UpdateBookingStatus(postgres.QuietBookingEvents(context.WithoutCancel(r.Context())), scope, booking.ID, "cancelled", "The coupon could not be applied", "")
 				if !couponFailed(err) {
 					bookingFailure(w, err)
 				}

@@ -1,4 +1,5 @@
 'use client';
+import { WhyStack } from '../_components/WhyStack';
 import { CtaBand } from '../_components/CtaBand';
 import { FilmCarousel } from '../_components/FilmCarousel';
 import { useFilms } from '../_components/useFilms';
@@ -267,22 +268,7 @@ export default function HomePage() {
       </section>
 
       {/* H6 Why trust Dapper: six reasons, word for word from the current site */}
-      <section className="h-why h-light" aria-labelledby="h-why-title">
-        <div className="h-why__side">
-          <p className="h-tag">Why choose us</p>
-          <h2 id="h-why-title" className="s-h2" data-head>Why owners <em>trust Dapper.</em></h2>
-        </div>
-        <ol className="h-steps">
-          <span className="h-steps__line" aria-hidden="true"><i /></span>
-          {why.map((w) => (
-            <li key={w.title} className="h-step">
-              <span className="h-step__dot" aria-hidden="true"><Check size={20} strokeWidth={3} /></span>
-              <h3>{w.title}</h3>
-              <p>{w.text}</p>
-            </li>
-          ))}
-        </ol>
-      </section>
+      <WhyStack id="h-why-title" />
 
       {/* H7 Reviews: what clients say, one at a time, in their own words */}
       <section className="h-rev" aria-labelledby="h-rev-title" onMouseEnter={() => hold(true)} onMouseLeave={() => hold(false)} onFocus={() => hold(true)} onBlur={() => hold(false)}>

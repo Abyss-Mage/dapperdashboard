@@ -1,9 +1,6 @@
 'use client';
 
 import {useEffect, useState} from 'react';
-import CustomerAvailabilityBrowser from './CustomerAvailabilityBrowser';
-import CustomerBookingRequestList from './CustomerBookingRequestList';
-import CustomerQuoteList from './CustomerQuoteList';
 import InvoicePaymentForm from './InvoicePaymentForm';
 import Select from '../GlassSelect';
 import { SignInDetails } from '../workspace/AccountSecurity';
@@ -21,7 +18,7 @@ type Records = {
   account: Account;
   vehicles: {id: string; description: string; categoryDescription: string; identifier: string}[];
   bookings: {id: string; serviceName: string; status: string; bookingTime: string}[];
-  invoices: {id: string; number: string; status: string; currency: string; totalCents: number; dueCents: number}[];
+  invoices: {id: string; number: string; status: string; currency: string; totalCents: number; dueCents: number; bookingId: string}[];
   addresses: SavedAddress[];
   hasAvatar: boolean;
   limit: number;
@@ -67,11 +64,7 @@ export default function CustomerAccount() {
       .then((body) => fillInvoiceWindow(w, body, DEFAULT_PRINT_TEMPLATE))
       .catch((err) => { w.close(); setError(err instanceof Error ? err.message : 'The invoice could not be opened.'); });
   }
-  const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('');
-  const [identifier, setIdentifier] = useState('');
   const [notice, setNotice] = useState('');
-  const [requestRevision,setRequestRevision]=useState(0);
 
   async function loadAccounts() {
     const response = await fetch('/api/v1/portal/accounts', {cache: 'no-store'});
@@ -117,18 +110,6 @@ export default function CustomerAccount() {
     return () => {current = false;};
   }, [selected, signedIn, revision]);
 
-  async function addEquipment(event: React.FormEvent) {
-    event.preventDefault();
-    if (!selected || busy) return;
-    setBusy(true); setError(''); setNotice('');
-    try {
-      const response = await fetch(`/api/v1/portal/accounts/${encodeURIComponent(selected)}/vehicles`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({description, categoryDescription: category, identifier})});
-      if (response.status === 401) {setSignedIn(false); setRecords(null); setAccounts([]); setSelected(''); throw new Error('Your session expired. Please sign in again.');}
-      if (!response.ok) throw new Error(response.status === 403 ? 'Customer access is no longer available. Your input is preserved.' : 'Could not add equipment. Check the fields and retry; your input is preserved.');
-      setDescription(''); setCategory(''); setIdentifier(''); setNotice('Equipment added to your customer account.'); setRevision((value) => value + 1);
-    } catch (err) {setError(err instanceof Error ? err.message : 'Equipment could not be saved.');}
-    finally {setBusy(false);}
-  }
 
   async function signIn(event: React.FormEvent) {
     event.preventDefault();
@@ -155,7 +136,7 @@ export default function CustomerAccount() {
 
   if (!checking && !signedIn) {
     return (
-      <AuthShell kind="Customer account" title="Sign in to your account" lead="Your vehicles, appointments and invoices in one place.">
+      <AuthShell kind="Customer account" title="Sign in to your account" lead="Your bookings and invoices in one place.">
         {error && <p className="field-error" role="alert">{error}</p>}
         {notice && <p role="status">{notice}</p>}
         {!ready && <p>Secure sign-in is unavailable at this address. Please use the configured Dapper customer account address.</p>}
@@ -184,11 +165,11 @@ export default function CustomerAccount() {
         {records && <div className={a.avatar}><Avatar customerId={selected} name={records.account.name} has={records.hasAvatar} version={revision} size={72} /></div>}
         <p className={a.kicker}>Your account</p>
         <h1 id="acct-title">{records ? <>Hello, <em>{firstName}.</em></> : <>Your <em>account.</em></>}</h1>
-        <p className={a.sub}>Your vehicles, appointments and invoices in one place.</p>
+        <p className={a.sub}>Your bookings and invoices in one place.</p>
         {records && <div className={a.stats}>
           <div><small>Upcoming bookings</small><b>{upcoming}</b></div>
           <div><small>Balance due</small><b>{amount(owing, currency)}</b></div>
-          <div><small>Vehicles</small><b>{records.vehicles.length}</b></div>
+          <div><small>Bookings</small><b>{records.bookings.length}</b></div>
         </div>}
         <div className={a.actions}>
           <a className={a.book} href="/booking">Book a detail</a>
@@ -200,7 +181,7 @@ export default function CustomerAccount() {
         {!records && !error && <p role="status">Loading your records…</p>}
         {records && <>
           <nav className={a.tabs} aria-label="Account sections">
-            <a href="#profile">Profile</a><a href="#book">Book a time</a><a href="#bookings">Bookings</a><a href="#invoices">Invoices</a><a href="#vehicles">Vehicles</a><a href="#payment">Payment</a>
+            <a href="#profile">Profile</a><a href="#bookings">Bookings</a><a href="#invoices">Invoices</a><a href="#payment">Payment</a>
           </nav>
           <div id="profile" className={a.sec}>
             <AccountProfile customerId={selected} name={records.account.name} email={records.account.email} hasAvatar={records.hasAvatar} addresses={records.addresses} onChanged={() => setRevision((v) => v + 1)} />
@@ -214,12 +195,8 @@ export default function CustomerAccount() {
           </form>
             <section className="panel detail-card"><h3>Email and password</h3><SignInDetails email={records.account.email} /></section>
           </div>
-          <div id="book" className={a.sec}>
-            <CustomerAvailabilityBrowser key={selected+'-availability'} customerId={selected} vehicles={records.vehicles} onSubmitted={()=>setRequestRevision(current=>current+1)}/>
-            <CustomerBookingRequestList key={selected+'-requests'} endpoint={`/api/v1/portal/accounts/${encodeURIComponent(selected)}/booking-requests`} revision={requestRevision}/>
-          </div>
           <div id="bookings" className={a.sec}>
-            <BookingHistory bookings={records.bookings} />
+            <BookingHistory bookings={records.bookings} invoices={records.invoices} onInvoice={openInvoice} />
           </div>
           <div id="invoices" className={a.sec}>
           <section className="panel detail-card">
@@ -251,17 +228,6 @@ export default function CustomerAccount() {
               <p>No issued invoices recorded.</p>
             )}
           </section>
-            <CustomerQuoteList key={selected+'-quotes'} customerId={selected} revision={requestRevision}/>
-          </div>
-          <div id="vehicles" className={a.sec}>
-            <section className="panel detail-card"><h3>Your vehicles and equipment</h3>{records.vehicles.length ? records.vehicles.map((v) => <p key={v.id}>{v.description} · {v.categoryDescription || 'Category not provided'}{v.identifier ? ` · ${v.identifier}` : ''}</p>) : <p>No equipment recorded.</p>}</section>
-          <form className="panel detail-card" onSubmit={addEquipment}>
-            <h3>Add your vehicle or equipment</h3>
-            <label className="form-field">Description<input required minLength={2} maxLength={120} value={description} onChange={(e) => setDescription(e.target.value)} disabled={busy} /></label>
-            <label className="form-field">Category (optional)<input maxLength={60} value={category} onChange={(e) => setCategory(e.target.value)} disabled={busy} /></label>
-            <label className="form-field">Identifier (optional)<input maxLength={60} value={identifier} onChange={(e) => setIdentifier(e.target.value)} disabled={busy} /></label>
-            <button className="primary" disabled={busy}>{busy ? 'Saving…' : 'Add equipment'}</button>
-          </form>
           </div>
           <div id="payment" className={a.sec}>
             <section className="panel detail-card">

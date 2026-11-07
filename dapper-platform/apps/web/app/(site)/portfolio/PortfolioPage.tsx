@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, ArrowUpRight, Play, X } from 'lucide-react';
 import { contact, cta, portfolio, transformations } from '../dapper';
 import { FilmCarousel } from '../_components/FilmCarousel';
 import { useFilms } from '../_components/useFilms';
+import { useHidden } from '../_components/useHidden';
 import { gsap, ScrollTrigger, SplitText, useGSAP } from '../_components/gsapContact';
 
 /* Portfolio, built section by section with the owner's approval of each. Same paper system as Contact and About (../paper.css).
@@ -38,7 +39,8 @@ export default function PortfolioPage() {
       .catch(() => undefined);
     return () => { live = false; };
   }, []);
-  const photos: Shot[] = uploaded ?? portfolio.map((ph) => ({ src: ph.src, caption: ph.caption, alt: '', ratio: ratio(ph.src) }));
+  const isHidden = useHidden();
+  const photos: Shot[] = uploaded ?? portfolio.filter((ph) => !isHidden(ph.src)).map((ph) => ({ src: ph.src, caption: ph.caption, alt: '', ratio: ratio(ph.src) }));
   // Two rows of photographs drift in opposite directions behind the hero headline (each row is listed twice so the loop has no seam).
   const rowOf = (r: number) => photos.filter((_, i) => i % 2 === r).slice(0, 9);
   // The strip's length depends on the photos, so the scroll positions are measured again when they change.

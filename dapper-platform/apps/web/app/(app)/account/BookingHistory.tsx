@@ -6,7 +6,9 @@ type B = { id: string; serviceName: string; status: string; bookingTime: string 
 const when = (iso: string) => new Intl.DateTimeFormat('en-CA', { dateStyle: 'full', timeStyle: 'short' }).format(new Date(iso));
 
 /* Coming up (soonest first) and previous bookings (latest first), with Book again on the ones that are over. */
-export default function BookingHistory({ bookings }: { bookings: B[] }) {
+type Inv = { id: string; number: string; bookingId: string };
+
+export default function BookingHistory({ bookings, invoices = [], onInvoice }: { bookings: B[]; invoices?: Inv[]; onInvoice?: (id: string) => void }) {
   const now = Date.now();
   const live = (b: B) => new Date(b.bookingTime).getTime() > now && !/cancel|complete|no_show/i.test(b.status);
   const upcoming = bookings.filter(live).sort((a, b) => +new Date(a.bookingTime) - +new Date(b.bookingTime));
@@ -16,6 +18,7 @@ export default function BookingHistory({ bookings }: { bookings: B[] }) {
       <div><strong>{b.serviceName}</strong><p>{when(b.bookingTime)}</p></div>
       <div className={p.row}>
         <span className={p.tag + ' ' + p.plain}>{b.status.replaceAll('_', ' ')}</span>
+        {(() => { const inv = invoices.find((x) => x.bookingId === b.id); return inv && onInvoice ? <button type="button" className={p.ghost} onClick={() => onInvoice(inv.id)}>Invoice</button> : <span className={p.empty}>No invoice yet</span>; })()}
         {again && <a href="/booking" className={p.ghost + ' ' + p.link}>Book again</a>}
       </div>
     </li>

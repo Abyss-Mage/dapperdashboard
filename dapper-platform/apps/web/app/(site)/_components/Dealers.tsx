@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { gsap, ScrollTrigger, useGSAP } from './gsapContact';
 import { partners } from '../dapper';
 import { mediaUrl } from './usePublished';
+import { useHidden } from './useHidden';
 import './dealers.css';
 
 /* The dealerships as an interlocking lattice of small white diamonds (an inverted triangle on a wide screen). Used wherever the site shows the
@@ -30,7 +31,8 @@ function layout(n: number) {
 
 export function Dealers() {
   const root = useRef<HTMLDivElement>(null);
-  const [dealers, setDealers] = useState<Dealer[]>(partners);
+  const isHidden = useHidden();
+  const [dealers, setDealers] = useState<Dealer[] | null>(null);
 
   // The published dealers from the dashboard replace the built-in list when there are any.
   useEffect(() => {
@@ -42,7 +44,8 @@ export function Dealers() {
     return () => { off = true; };
   }, []);
 
-  const L = layout(dealers.length);
+  const shown: Dealer[] = dealers ?? partners.filter((p) => !p.src || !isHidden(p.src));
+  const L = layout(shown.length);
 
   useGSAP(() => {
     const mm = gsap.matchMedia();
@@ -56,13 +59,13 @@ export function Dealers() {
       return () => { enter.kill(); tiles.forEach((t) => gsap.killTweensOf(t)); gsap.set(tiles, { clearProps: 'transform,scale,opacity,transformOrigin' }); };
     });
     return () => mm.revert();
-  }, { scope: root, dependencies: [dealers] });
+  }, { scope: root, dependencies: [shown.length] });
 
   return (
     <div className="dl" ref={root}>
-      <ul className="dl__sr">{dealers.map((p) => <li key={p.name}>{p.name}</li>)}</ul>
+      <ul className="dl__sr">{shown.map((p) => <li key={p.name}>{p.name}</li>)}</ul>
       <div className="dl__lat" aria-hidden="true" style={{ ['--wcols' as string]: L.k, ['--wrows' as string]: L.wideRows, ['--nrows' as string]: L.narrowRows }}>
-        {dealers.map((p, i) => {
+        {shown.map((p, i) => {
           const n = L.narrow[i] ?? [0, 0], w = L.wide[i] ?? [0, 0];
           return (
             <div className="dl__dia" key={p.name + i} style={{ ['--mc' as string]: n[0], ['--mr' as string]: n[1], ['--wc' as string]: w[0], ['--wr' as string]: w[1] }}>

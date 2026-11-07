@@ -165,3 +165,55 @@ func (s *Store) PublicFilms(ctx context.Context) ([]string, error) {
 	}
 	return out, rows.Err()
 }
+
+// SetSiteAssetHidden takes a built-in file off the website (hide=true) or puts it back.
+func (s *Store) SetSiteAssetHidden(ctx context.Context, scope Scope, path string, hide bool) error {
+	path, ok := cleanAssetPath(path)
+	if !ok {
+		return ErrSiteAsset
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	if err = authorizeTransaction(ctx, tx, scope, "content.manage"); err != nil {
+		return err
+	}
+	if hide {
+		_, err = tx.Exec(ctx, `INSERT INTO site_asset_hidden(organization_id,location_id,path) VALUES($1,$2,$3) ON CONFLICT DO NOTHING`, scope.OrganizationID, scope.LocationID, path)
+	} else {
+		_, err = tx.Exec(ctx, `DELETE FROM site_asset_hidden WHERE organization_id=$1 AND location_id=$2 AND path=$3`, scope.OrganizationID, scope.LocationID, path)
+	}
+	if err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+func (s *Store) hiddenPaths(ctx context.Context, q string, args ...any) ([]string, error) {
+	rows, err := s.pool.Query(ctx, q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []string{}
+	for rows.Next() {
+		var p string
+		if err = rows.Scan(&p); err != nil {
+			return nil, err
+		}
+		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
+// HiddenSiteAssets lists what this location has taken off the website (for the dashboard).
+func (s *Store) HiddenSiteAssets(ctx context.Context, scope Scope) ([]string, error) {
+	return s.hiddenPaths(ctx, `SELECT path FROM site_asset_hidden WHERE organization_id=$1 AND location_id=$2 ORDER BY path`, scope.OrganizationID, scope.LocationID)
+}
+
+// PublicHiddenSiteAssets lists what the main site no longer shows.
+func (s *Store) PublicHiddenSiteAssets(ctx context.Context) ([]string, error) {
+	return s.hiddenPaths(ctx, `SELECT a.path FROM site_asset_hidden a`+onMainSite+`ORDER BY a.path`, mainSiteSlug())
+}

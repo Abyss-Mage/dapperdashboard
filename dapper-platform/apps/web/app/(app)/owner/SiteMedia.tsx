@@ -20,6 +20,7 @@ export default function SiteMedia({ base }: { base: string }) {
   const root = `${base}/site-assets`;
   const [built, setBuilt] = useState<Built[] | null>(null);
   const [mine, setMine] = useState<Mine[]>([]);
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(''), [error, setError] = useState(''), [notice, setNotice] = useState('');
   const [bump, setBump] = useState(0);
   const target = useRef('');
@@ -28,7 +29,7 @@ export default function SiteMedia({ base }: { base: string }) {
 
   const load = useCallback(async () => {
     const [b, m] = await Promise.all([fetch('/site-assets', { cache: 'no-store' }).then(readJson), fetch(root, { cache: 'no-store' }).then(readJson)]);
-    setBuilt(b.items ?? []); setMine(m.items ?? []);
+    setBuilt(b.items ?? []); setMine(m.items ?? []); setHidden(new Set<string>(m.hidden ?? []));
   }, [root]);
   useEffect(() => { load().catch((e) => setError(e.message)); }, [load]);
 
@@ -46,6 +47,14 @@ export default function SiteMedia({ base }: { base: string }) {
     catch (e) { setError(e instanceof Error ? e.message : 'The change could not be saved.'); }
     finally { setBusy(''); }
   }
+  // Some pictures can be taken off the website altogether (the photos, the dealer logos, the built-in films); the file stays and can come back.
+  async function setShown(path: string, show: boolean) {
+    setBusy(path); setError(''); setNotice('');
+    try { await readJson(await fetch(`${root}/hidden?path=${encodeURIComponent(path)}`, { method: show ? 'DELETE' : 'PUT' })); setNotice(show ? 'It is back on the website.' : 'It is off the website.'); await load(); }
+    catch (e) { setError(e instanceof Error ? e.message : 'The change could not be saved.'); }
+    finally { setBusy(''); }
+  }
+  const removable = (group: string) => ['portfolio', 'partners', 'transformations'].includes(group);
   function open(path: string, kind: 'image' | 'video') { target.current = path; setAccept(kind === 'video' ? 'video/mp4,video/webm' : 'image/jpeg,image/png,image/webp'); setTimeout(() => pick.current?.click(), 0); }
   function onFile(files: FileList | null) {
     const f = files?.[0];
@@ -79,10 +88,10 @@ export default function SiteMedia({ base }: { base: string }) {
         </div>
         <p className={styles.personSub}>{films.length ? `The website shows these ${films.length} film${films.length === 1 ? '' : 's'}, in this order.` : 'No films added yet, so the website shows its own five films. Add a film and your films are shown instead.'}</p>
         {films.length > 0 && (
-          <ul className={styles.people} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
+          <ul className={styles.smGrid}>
             {films.map((f) => (
-              <li key={f.path} className={styles.person} style={{ display: 'grid', gap: 8 }}>
-                <video src={src(f.path)} muted playsInline controls preload="metadata" style={{ width: '100%', aspectRatio: '9 / 16', objectFit: 'cover', borderRadius: 10, background: '#000' }} />
+              <li key={f.path} className={styles.smCard}>
+                <video src={src(f.path)} muted playsInline controls preload="metadata" className={styles.smFilm} />
                 <span className={styles.personSub}>{mb(f.bytes)}</span>
                 <button type="button" className="secondary" disabled={!!busy} onClick={() => void remove(f.path, 'Film removed.')}>Remove</button>
               </li>
@@ -96,16 +105,19 @@ export default function SiteMedia({ base }: { base: string }) {
       {[...groups.entries()].map(([group, list]) => (
         <section key={group} className={styles.resource} aria-label={nice(group)}>
           <h3 style={{ margin: 0 }}>{nice(group)}</h3>
-          <ul className={styles.people} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 12 }}>
+          <ul className={styles.smGrid}>
             {list.map((b) => (
-              <li key={b.path} className={styles.person} style={{ display: 'grid', gap: 8, alignContent: 'start' }}>
+              <li key={b.path} className={styles.smCard} data-off={hidden.has(b.path) || undefined}>
                 {b.kind === 'video'
-                  ? <video src={src(b.path)} muted playsInline controls preload="metadata" style={{ width: '100%', height: 130, objectFit: 'cover', borderRadius: 10, background: '#000' }} />
-                  : /* eslint-disable-next-line @next/next/no-img-element */ <img src={src(b.path)} alt="" loading="lazy" style={{ width: '100%', height: 130, objectFit: 'cover', borderRadius: 10, background: '#8884' }} />}
-                <span className={styles.personSub} style={{ overflowWrap: 'anywhere' }}>{b.path.split('/').pop()}{replaced.has(b.path) ? ' · replaced' : ''}</span>
+                  ? <video src={src(b.path)} muted playsInline controls preload="metadata" className={styles.smThumb} />
+                  : /* eslint-disable-next-line @next/next/no-img-element */ <img src={src(b.path)} alt="" loading="lazy" className={styles.smThumb} />}
+                <span className={styles.smName}>{b.path.split('/').pop()}{replaced.has(b.path) ? ' · replaced' : ''}{hidden.has(b.path) ? ' · off the website' : ''}</span>
                 <div className={styles.svcActions}>
                   <button type="button" className="secondary" disabled={!!busy} onClick={() => open(b.path, b.kind)}>{busy === b.path ? 'Saving…' : 'Replace'}</button>
                   {replaced.has(b.path) && <button type="button" className="secondary" disabled={!!busy} onClick={() => void remove(b.path, 'The original is back.')}>Put the original back</button>}
+                  {removable(group) && (hidden.has(b.path)
+                    ? <button type="button" className="secondary" disabled={!!busy} onClick={() => void setShown(b.path, true)}>Show again</button>
+                    : <button type="button" className="secondary" disabled={!!busy} onClick={() => void setShown(b.path, false)}>Remove</button>)}
                 </div>
               </li>
             ))}

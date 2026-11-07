@@ -73,6 +73,7 @@ type PortalInvoice struct {
 	TotalCents int64  `json:"totalCents"`
 	PaidCents  int64  `json:"paidCents"`
 	DueCents   int64  `json:"dueCents"`
+	BookingID  string `json:"bookingId"`
 }
 type PortalRecords struct {
 	Account  PortalAccount   `json:"account"`
@@ -167,13 +168,13 @@ func (s *Store) CustomerRecords(ctx context.Context, actor, customer string) (Po
 	if err != nil {
 		return PortalRecords{}, err
 	}
-	rows, err = tx.Query(ctx, `SELECT id::text,invoice_number,status,currency,total_cents,paid_cents,due_cents FROM invoices WHERE organization_id=$1 AND location_id=$2 AND customer_id=$3 AND status IN ('issued','partially_paid','paid','void') ORDER BY created_at DESC,id LIMIT 100`, org, loc, customer)
+	rows, err = tx.Query(ctx, `SELECT id::text,invoice_number,status,currency,total_cents,paid_cents,due_cents,COALESCE(booking_id::text,'') FROM invoices WHERE organization_id=$1 AND location_id=$2 AND customer_id=$3 AND status IN ('issued','partially_paid','paid','void') ORDER BY created_at DESC,id LIMIT 100`, org, loc, customer)
 	if err != nil {
 		return PortalRecords{}, err
 	}
 	for rows.Next() {
 		var i PortalInvoice
-		if err = rows.Scan(&i.ID, &i.Number, &i.Status, &i.Currency, &i.TotalCents, &i.PaidCents, &i.DueCents); err != nil {
+		if err = rows.Scan(&i.ID, &i.Number, &i.Status, &i.Currency, &i.TotalCents, &i.PaidCents, &i.DueCents, &i.BookingID); err != nil {
 			rows.Close()
 			return PortalRecords{}, err
 		}

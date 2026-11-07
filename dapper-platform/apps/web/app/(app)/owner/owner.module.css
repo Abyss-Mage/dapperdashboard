@@ -965,3 +965,23 @@
 .enqChips a:hover { text-decoration: underline; }
 .enqMsg { margin: 0; padding: 12px 14px; border-radius: 12px; background: color-mix(in srgb, currentColor 5%, transparent); font-size: 15px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
 .enqAct { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+
+/* Email wording: the list of emails on the left, the editor and preview on the right */
+.tplWrap { display: grid; grid-template-columns: minmax(170px, 230px) minmax(0, 1fr); gap: clamp(14px, 2vw, 24px); align-items: start; }
+.tplList { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.tplList button { position: relative; width: 100%; text-align: left; padding: 11px 14px; border-radius: 12px; border: 1px solid var(--border, #00000018); background: transparent; color: inherit; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.tplList button[aria-pressed="true"] { background: var(--red, #d22b2b); border-color: var(--red, #d22b2b); color: #fff; }
+.tplList button i { position: absolute; right: 12px; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: currentColor; opacity: .6; }
+.tplEdit { display: grid; gap: 12px; min-width: 0; }
+.tplText { width: 100%; min-height: 280px; resize: vertical; line-height: 1.5; }
+.tplPreview { display: grid; gap: 6px; padding: 12px; border-radius: 12px; border: 1px solid var(--border, #00000018); background: #fff; color: #111; }
+.tplPreview iframe { width: 100%; height: 260px; border: 0; background: #fff; }
+@media (max-width: 760px) { .tplWrap { grid-template-columns: minmax(0, 1fr); } .tplList { grid-auto-flow: column; grid-auto-columns: max-content; overflow-x: auto; } }
+
+/* Website pictures and films: cards in a grid, the name under the picture, the buttons under that */
+.smGrid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+.smCard { display: grid; gap: 10px; align-content: start; min-width: 0; padding: 10px; border-radius: 14px; border: 1px solid var(--border, #00000014); background: var(--surface, #fff); }
+.smCard[data-off] { opacity: .55; }
+.smThumb { display: block; width: 100%; height: 140px; object-fit: cover; border-radius: 10px; background: #8884; }
+.smFilm { display: block; width: 100%; aspect-ratio: 9 / 16; object-fit: cover; border-radius: 10px; background: #000; }
+.smName { font-size: 12px; color: var(--text-muted); overflow-wrap: anywhere; }

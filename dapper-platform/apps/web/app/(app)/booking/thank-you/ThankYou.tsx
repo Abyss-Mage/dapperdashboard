@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { CalendarCheck } from 'lucide-react';
 import styles from '../booking.module.css';
 
-type Booked = { bookingId: string; invoiceNumber: string; totalCents: number; paidCents: number; paymentPending?: boolean; serviceName: string; pack: string; start: string; name: string; email: string; phone: string; address: string; notes: string };
+type Booked = { bookingId: string; invoiceNumber: string; totalCents: number; paidCents: number; paymentPending?: boolean; serviceName: string; pack: string; start: string; name: string; email: string; phone: string; address: string; shop?: string; notes: string };
 type Win = Window & { dataLayer?: unknown[]; fbq?: (...a: unknown[]) => void };
 
 const money = (c: number) => new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(c / 100);
@@ -33,8 +33,8 @@ export default function ThankYou() {
     const paid = mine.paidCents >= mine.totalCents;
     const item = { item_id: mine.bookingId, item_name: mine.pack || mine.serviceName, price: value, quantity: 1 };
     w.dataLayer.push(paid
-      ? { event: 'purchase', ecommerce: { transaction_id: mine.invoiceNumber || id, value, currency: 'CAD', items: [item] } }
-      : { event: 'generate_lead', value, currency: 'CAD', transaction_id: mine.invoiceNumber || id, items: [item] });
+      ? { event: 'purchase', ecommerce: { transaction_id: mine.bookingId || id, value, currency: 'CAD', items: [item] } }
+      : { event: 'generate_lead', value, currency: 'CAD', transaction_id: mine.bookingId || id, items: [item] });
     // The Meta Pixel is loaded by the page's tag loader a moment after the page opens, so wait for it (up to ten seconds).
     let tries = 0;
     const t = setInterval(() => {
@@ -49,11 +49,10 @@ export default function ThankYou() {
   const rows: [string, string][] = b ? ([
     ['Service', b.pack || b.serviceName],
     ['When', when],
-    ['Where', b.address ? b.address : 'At the Dapper shop'],
+    ['Where', b.address ? b.address : b.shop ? 'At the Dapper shop, ' + b.shop : 'At the Dapper shop'],
     ['Name', b.name],
     ['Phone', b.phone],
     ['Email', b.email],
-    ['Reference', b.invoiceNumber],
     ['Total, tax included', money(b.totalCents)],
     ['Payment', b.paidCents >= b.totalCents ? `Paid in full online (${money(b.paidCents)})` : b.paymentPending ? 'Card payment is being confirmed. The Dapper team will follow up if anything is needed.' : 'Pay on the day'],
   ] as [string, string][]).filter((r) => !!r[1]) : [];

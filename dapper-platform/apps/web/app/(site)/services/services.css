@@ -137,3 +137,8 @@ body:has(.s-page),html:has(.s-page){background:#0b0b0c}
 .s-rev .srow{margin-top:clamp(32px,4vw,56px);color:var(--bone)}
 .s-rev__row.srow__track{margin:0;padding:0 0 4px}
 .s-light .s-rev__row li{background:#f3f3f3;width:clamp(280px,32vw,440px);scroll-margin-left:0;clip-path:polygon(0 0,100% 0,100% 100%,18px 100%,0 calc(100% - 18px))}
+
+/* The rolling label on buttons: only the first line takes room, the second waits below it, so the label can never show twice */
+.s-roll{position:relative;white-space:nowrap}
+.s-roll>span:first-child{display:block}
+.s-roll>span:last-child{position:absolute;left:0;top:100%}

@@ -94,6 +94,18 @@ func registerPublicBookingRoutes(mux *http.ServeMux, store *postgres.Store, send
 			reply(w, 500, map[string]string{"error": "Something went wrong on our side. Nothing was charged. Please try again."})
 		}
 	}
+	mux.HandleFunc("GET /api/v1/public/booking-locations", func(w http.ResponseWriter, r *http.Request) {
+		if limited(w, r, browse) {
+			return
+		}
+		items, err := store.PublicBookingLocations(r.Context())
+		if err != nil {
+			reply(w, 503, map[string]string{"error": "Online booking is not available right now."})
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		reply(w, 200, map[string]any{"items": items})
+	})
 	mux.HandleFunc("GET "+base+"/options", func(w http.ResponseWriter, r *http.Request) {
 		if limited(w, r, browse) {
 			return
@@ -250,15 +262,12 @@ func registerPublicBookingRoutes(mux *http.ServeMux, store *postgres.Store, send
 				return
 			}
 		}
-		// The confirmation email, in the owner's wording. It is sent in the background and only when outgoing email works.
-		if emailReady(sender) && res.NewCustomer {
-			go func(name, to string, start time.Time, paid, pending bool) {
-				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		// Emails, in the owner's wording, sent in the background and only when outgoing email works: the customer's confirmation (only when this
+		// booking created the customer, since a typed address might not be theirs) and the alert to the business (always).
+		if emailReady(sender) {
+			go func(name, to, phone, address string, start time.Time, paid, pending, newCustomer bool) {
+				ctx, cancel := context.WithTimeout(context.Background(), 40*time.Second)
 				defer cancel()
-				zone, err := time.LoadLocation("America/Toronto")
-				if err != nil {
-					zone = time.UTC
-				}
 				payment := "Pay on the day"
 				switch {
 				case paid:
@@ -266,14 +275,25 @@ func registerPublicBookingRoutes(mux *http.ServeMux, store *postgres.Store, send
 				case pending:
 					payment = "Card payment is being confirmed"
 				}
-				subject, body, text := store.RenderEmail(ctx, "booking_confirmation", map[string]string{
-					"name": name, "service": res.ServiceName, "when": start.In(zone).Format("Monday, January 2 at 3:04 PM"),
-					"total": fmt.Sprintf("$%.2f", float64(res.TotalCents)/100), "payment": payment, "reference": res.InvoiceNumber,
-				})
-				if _, err := sender.SendEmail(ctx, to, subject, body, text); err != nil {
-					log.Print("The booking confirmation email could not be sent")
+				where := "At the Dapper shop"
+				if address != "" {
+					where = address
 				}
-			}(in.Name, in.Email, in.Start, paid, pending)
+				vars := map[string]string{"name": name, "phone": phone, "email": to, "service": res.ServiceName, "when": whenText(start), "where": where,
+					"total": fmt.Sprintf("$%.2f", float64(res.TotalCents)/100), "payment": payment}
+				if newCustomer {
+					subject, body, text := store.RenderEmail(ctx, "booking_confirmation", vars)
+					if _, err := sender.SendEmail(ctx, to, subject, body, text); err != nil {
+						log.Print("The booking confirmation email could not be sent")
+					}
+				}
+				if admin := store.AdminNotifyEmail(ctx); admin != "" {
+					subject, body, text := store.RenderEmail(ctx, "booking_admin", vars)
+					if _, err := sender.SendEmail(ctx, admin, subject, body, text); err != nil {
+						log.Print("The new-booking alert could not be sent")
+					}
+				}
+			}(in.Name, in.Email, in.Phone, in.ServiceAddress, in.Start, paid, pending, res.NewCustomer)
 		}
 		reply(w, 201, map[string]any{"bookingId": res.BookingID, "invoiceNumber": res.InvoiceNumber, "totalCents": res.TotalCents, "depositPaid": paid, "paymentPending": pending, "paidCents": map[bool]int64{true: res.TotalCents, false: 0}[paid], "serviceName": res.ServiceName})
 	})

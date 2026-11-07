@@ -39,6 +39,11 @@ export type WizardProps = {
   /** Checks a coupon code against the main service and the subtotal; resolves with what it takes off, or throws the reason it cannot be used. */
   /** Staff booking: show the coupon box (the code is checked when the booking is made). */
   allowCoupon?: boolean;
+  /** The customer chose where to book on an earlier screen (counted in the step numbers); this adds Back on the first step. */
+  extraSteps?: number;
+  onBack?: () => void;
+  /** The shop's name and address, shown under "In the shop". */
+  shopAddress?: string;
   checkCoupon?: (code: string, serviceId: string, subtotalCents: number) => Promise<{ code: string; discountCents: number }>;
   /** Wording for the final screen; staff see a default that mentions taking payment later. */
   doneNote?: (b: { name: string; pack: string; when: string; deposit?: 'card' | 'cash' }) => WizardDone;
@@ -332,8 +337,8 @@ export default function BookingWizard(p: WizardProps) {
   return (
     <div className={styles.wiz}>
       <div className={styles.top}>
-        <p className={styles.kicker}>Step {step + 1} of {steps.length} · {name}</p>
-        <div className={styles.bar} aria-hidden="true">{steps.map((_, i) => <i key={i} className={i <= step ? styles.on : ''} />)}</div>
+        <p className={styles.kicker}>Step {step + 1 + (p.extraSteps ?? 0)} of {steps.length + (p.extraSteps ?? 0)} · {name}</p>
+        <div className={styles.bar} aria-hidden="true">{[...Array(p.extraSteps ?? 0).keys()].map((i) => <i key={'x' + i} className={styles.on} />)}{steps.map((_, i) => <i key={i} className={i <= step ? styles.on : ''} />)}</div>
       </div>
       <div className={styles.layout}>
       <section ref={panelRef} className={styles.panel}>
@@ -377,7 +382,7 @@ export default function BookingWizard(p: WizardProps) {
         {name === 'Where' && <>
           <h2 ref={topRef} tabIndex={-1} className={styles.title}>{cust ? 'Where would you like the work done?' : 'Where will the work happen?'}</h2>
           <div className={`${styles.choices} ${styles.two}`}>
-            {((cust ? [['shop', 'In the shop', 'You bring your vehicle to us'], ['mobile', 'We come to you', 'Our team travels to your address'], ['valet', 'Pick-up and drop-off', 'We collect your vehicle and bring it back']] : [['shop', 'In the shop', 'The customer brings the vehicle in'], ['mobile', 'We come to them', 'Our team travels to the customer'], ['valet', 'Valet', 'We pick up and drop off the vehicle']]) as [Where, string, string][]).map(([id, t, h]) => (
+            {((cust ? [['shop', 'In the shop', p.shopAddress ? `You bring your vehicle to ${p.shopAddress}` : 'You bring your vehicle to us'], ['mobile', 'We come to you', 'Our team travels to your address'], ['valet', 'Pick-up and drop-off', 'We collect your vehicle and bring it back']] : [['shop', 'In the shop', 'The customer brings the vehicle in'], ['mobile', 'We come to them', 'Our team travels to the customer'], ['valet', 'Valet', 'We pick up and drop off the vehicle']]) as [Where, string, string][]).map(([id, t, h]) => (
               <button key={id} type="button" className={styles.choice} aria-pressed={where === id} onClick={() => setWhere(id)}><span><strong>{t}</strong><small>{h}</small></span></button>
             ))}
           </div>
@@ -477,7 +482,7 @@ export default function BookingWizard(p: WizardProps) {
         </>}
         {error && <p role="alert" className={styles.err}>{error}</p>}
         <div className={styles.nav}>
-          {step > 0 ? <button type="button" className={styles.back} onClick={() => go(step - 1)} disabled={busy}>← Back</button> : <span />}
+          {step > 0 ? <button type="button" className={styles.back} onClick={() => go(step - 1)} disabled={busy}>← Back</button> : p.onBack ? <button type="button" className={styles.back} onClick={p.onBack} disabled={busy}>← Back</button> : <span />}
           {subtotalNote(name, rule, subtotal, total)}
           {step < steps.length - 1
             ? <button type="button" className={styles.next} disabled={!stepOk} onClick={() => go(step + 1)}>{name === 'Welcome' ? 'I’m new, let’s start' : name === 'Extras' && !picked.length ? 'Skip' : 'Continue'} →</button>

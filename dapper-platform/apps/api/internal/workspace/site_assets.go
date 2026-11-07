@@ -45,7 +45,12 @@ func registerSiteAssetRoutes(mux *http.ServeMux, store *postgres.Store) {
 			fail(w, err)
 			return
 		}
-		reply(w, 200, map[string]any{"items": items})
+		hidden, err := store.HiddenSiteAssets(r.Context(), scope)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		reply(w, 200, map[string]any{"items": items, "hidden": hidden})
 	})
 	mux.HandleFunc("PUT "+base, func(w http.ResponseWriter, r *http.Request) {
 		scope, ok := scopeFor(w, r)
@@ -80,6 +85,37 @@ func registerSiteAssetRoutes(mux *http.ServeMux, store *postgres.Store) {
 		reply(w, 200, map[string]bool{"removed": true})
 	})
 
+	mux.HandleFunc("PUT "+base+"/hidden", func(w http.ResponseWriter, r *http.Request) {
+		scope, ok := scopeFor(w, r)
+		if !ok {
+			return
+		}
+		if err := store.SetSiteAssetHidden(r.Context(), scope, r.URL.Query().Get("path"), true); err != nil {
+			fail(w, err)
+			return
+		}
+		reply(w, 200, map[string]bool{"hidden": true})
+	})
+	mux.HandleFunc("DELETE "+base+"/hidden", func(w http.ResponseWriter, r *http.Request) {
+		scope, ok := scopeFor(w, r)
+		if !ok {
+			return
+		}
+		if err := store.SetSiteAssetHidden(r.Context(), scope, r.URL.Query().Get("path"), false); err != nil {
+			fail(w, err)
+			return
+		}
+		reply(w, 200, map[string]bool{"hidden": false})
+	})
+	mux.HandleFunc("GET /api/v1/public/site-assets-hidden", func(w http.ResponseWriter, r *http.Request) {
+		paths, err := store.PublicHiddenSiteAssets(r.Context())
+		if err != nil {
+			reply(w, 503, map[string]string{"error": "unavailable"})
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		reply(w, 200, map[string]any{"paths": paths})
+	})
 	mux.HandleFunc("GET /api/v1/public/site-asset", func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Query().Get("path")
 		kind, at, err := store.PublicSiteAssetVersion(r.Context(), path)

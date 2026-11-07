@@ -152,7 +152,11 @@ func (s *SMTPSender) SendEmail(ctx context.Context, recipient, subject, bodyHTML
 	}
 
 	if s.username != "" {
-		auth := smtp.PlainAuth("", s.username, s.password, s.host)
+		// Use what the server offers: Microsoft 365 and Outlook accept only LOGIN (and XOAUTH2), most others accept PLAIN.
+		auth := smtp.Auth(smtp.PlainAuth("", s.username, s.password, s.host))
+		if offered, mechs := c.Extension("AUTH"); offered && !strings.Contains(strings.ToUpper(mechs), "PLAIN") && strings.Contains(strings.ToUpper(mechs), "LOGIN") {
+			auth = loginAuth{s.username, s.password}
+		}
 		if err = c.Auth(auth); err != nil {
 			return "", fmt.Errorf("%w: authentication failed: %v", ErrSMTPSend, err)
 		}
@@ -193,4 +197,27 @@ func encodeBody(value string) string {
 	_, _ = writer.Write([]byte(value))
 	_ = writer.Close()
 	return out.String()
+}
+
+// loginAuth is the "LOGIN" sign-in some providers (Microsoft 365, Outlook) require instead of PLAIN. It only ever runs over an encrypted connection.
+type loginAuth struct{ username, password string }
+
+func (a loginAuth) Start(si *smtp.ServerInfo) (string, []byte, error) {
+	if !si.TLS {
+		return "", nil, errors.New("login needs an encrypted connection")
+	}
+	return "LOGIN", nil, nil
+}
+
+func (a loginAuth) Next(prompt []byte, more bool) ([]byte, error) {
+	if !more {
+		return nil, nil
+	}
+	switch strings.ToLower(strings.TrimSpace(string(prompt))) {
+	case "username:":
+		return []byte(a.username), nil
+	case "password:":
+		return []byte(a.password), nil
+	}
+	return nil, errors.New("unexpected sign-in prompt from the mail server")
 }

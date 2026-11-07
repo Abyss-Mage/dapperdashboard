@@ -350,7 +350,7 @@ FROM booking_events WHERE organization_id=$1 AND location_id=$2 AND booking_id=$
 	return booking, events, nil
 }
 
-func (s *Store) UpdateBookingStatus(ctx context.Context, scope Scope, id string, toStatus, cancellationReason, notes string, reservationVersions ...int) (Booking, error) {
+func (s *Store) updateBookingStatus(ctx context.Context, scope Scope, id string, toStatus, cancellationReason, notes string, reservationVersions ...int) (Booking, error) {
 	toStatus = strings.TrimSpace(toStatus)
 	cancellationReason = strings.TrimSpace(cancellationReason)
 	notes = strings.TrimSpace(notes)
@@ -440,4 +440,13 @@ WHERE b.id=$1`, id)
 		return Booking{}, bookingWriteError(err)
 	}
 	return updated, nil
+}
+
+// UpdateBookingStatus changes a booking's status; a cancellation is announced so the customer can be emailed.
+func (s *Store) UpdateBookingStatus(ctx context.Context, scope Scope, id string, toStatus, cancellationReason, notes string, reservationVersions ...int) (Booking, error) {
+	b, err := s.updateBookingStatus(ctx, scope, id, toStatus, cancellationReason, notes, reservationVersions...)
+	if err == nil && strings.TrimSpace(toStatus) == "cancelled" {
+		s.emitBooking(ctx, "booking_cancelled", id)
+	}
+	return b, err
 }

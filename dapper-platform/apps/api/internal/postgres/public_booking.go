@@ -231,7 +231,7 @@ func (s *Store) PublicBook(ctx context.Context, slug string, in PublicBookingInp
 		return out, err
 	}
 	release := func() {
-		_, _ = s.UpdateBookingStatus(context.WithoutCancel(ctx), scope, booking.ID, "cancelled", "The online booking could not be completed", "")
+		_, _ = s.UpdateBookingStatus(QuietBookingEvents(context.WithoutCancel(ctx)), scope, booking.ID, "cancelled", "The online booking could not be completed", "")
 	}
 	bookingID := booking.ID
 	// The same request sent twice (a double click, a slow network): hand back the invoice that already exists for this booking.
@@ -355,7 +355,7 @@ func (s *Store) PublicBookingAbort(ctx context.Context, slug, bookingID, invoice
 	if err != nil {
 		return
 	}
-	c := context.WithoutCancel(ctx)
+	c := QuietBookingEvents(context.WithoutCancel(ctx))
 	_, _ = s.VoidInvoice(c, scope, invoiceID, "The deposit was not paid")
 	_, _ = s.UpdateBookingStatus(c, scope, bookingID, "cancelled", "The deposit was not paid", "")
 }
@@ -493,6 +493,33 @@ func (s *Store) ReturningCustomers(ctx context.Context, slug, phone, token strin
 			return nil, err
 		}
 		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+// BookingLocation is one place a customer can book at.
+type BookingLocation struct {
+	Slug    string `json:"slug"`
+	Name    string `json:"name"`
+	Address string `json:"address"`
+}
+
+// PublicBookingLocations lists the published locations, the main website's first, with the address from the franchise's invoice details.
+func (s *Store) PublicBookingLocations(ctx context.Context) ([]BookingLocation, error) {
+	rows, err := s.pool.Query(ctx, `SELECT ps.slug,l.name,coalesce(ii.address,'') FROM public_sites ps JOIN locations l ON l.organization_id=ps.organization_id AND l.id=ps.location_id
+ LEFT JOIN location_invoice_issuers li ON li.organization_id=ps.organization_id AND li.location_id=ps.location_id LEFT JOIN invoice_issuers ii ON ii.id=li.issuer_id
+ WHERE ps.published ORDER BY (ps.slug=$1) DESC, l.name`, mainSiteSlug())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []BookingLocation{}
+	for rows.Next() {
+		var b BookingLocation
+		if err = rows.Scan(&b.Slug, &b.Name, &b.Address); err != nil {
+			return nil, err
+		}
+		out = append(out, b)
 	}
 	return out, rows.Err()
 }

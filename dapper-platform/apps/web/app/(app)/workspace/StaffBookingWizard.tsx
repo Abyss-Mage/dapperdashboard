@@ -31,6 +31,7 @@ export default function StaffBookingWizard(props: StaffBookingWizardProps) {
     <BookingWizard
       timezone={props.timezone}
       allowCoupon={!employee}
+      checkCoupon={employee ? undefined : async (code, serviceId, subtotalCents) => json(await fetch(`${base}/bookings/coupon-check`, post({ code, serviceId, subtotalCents })))}
       loadOptions={async () => (employee ? json<{ rules: WizardRule[] }>(await fetch('/api/v1/employee/walk-in/options', { cache: 'no-store' })) : json<{ rules: WizardRule[] }>(await fetch(`${base}/bookings/reservation-options`, { cache: 'no-store' })))}
       loadServices={async () => (await json<{ items: WizardService[] }>(await fetch(employee ? '/api/v1/employee/services' : `${base}/services`, { cache: 'no-store' }))).items}
       loadTaxes={async (): Promise<WizardTaxes> => {

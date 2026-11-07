@@ -192,11 +192,12 @@ func registerMessagingRoutes(mux *http.ServeMux, store *postgres.Store, sender p
 		var in struct {
 			Subject string `json:"subject"`
 			Body    string `json:"body"`
+			IsHTML  bool   `json:"isHtml"`
 		}
 		if !decodeLimited(w, r, &in, 16*1024) {
 			return
 		}
-		if err := store.SaveEmailTemplate(r.Context(), requestSession(r).principalID, id, r.PathValue("key"), in.Subject, in.Body); err != nil {
+		if err := store.SaveEmailTemplate(r.Context(), requestSession(r).principalID, id, r.PathValue("key"), in.Subject, in.Body, in.IsHTML); err != nil {
 			if errors.Is(err, postgres.ErrEmailTemplate) {
 				reply(w, 422, map[string]string{"error": "The subject and text are required, and a reset or invitation email must keep its {{link}}."})
 				return

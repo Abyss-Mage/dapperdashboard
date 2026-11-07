@@ -288,6 +288,23 @@ func verifyPublicBookFlow(t *testing.T, ctx context.Context, s *Store, a Scope, 
 	if kind, _, err := s.PublicSiteAssetVersion(ctx, "zz-test/ping.png"); err != nil || kind != "image/png" {
 		t.Fatal("the main site's own file was not served", kind, err)
 	}
+	// Taking a built-in picture off the website, and putting it back.
+	if err = s.SetSiteAssetHidden(ctx, a, "portfolio/zz-test.jpg", true); err != nil {
+		t.Fatal(err)
+	}
+	if hid, err := s.PublicHiddenSiteAssets(ctx); err != nil || len(hid) != 1 || hid[0] != "portfolio/zz-test.jpg" {
+		t.Fatal("hidden picture not listed", hid, err)
+	}
+	if err = s.SetSiteAssetHidden(ctx, a, "portfolio/zz-test.jpg", false); err != nil {
+		t.Fatal(err)
+	}
+	// A booking is told "cancelled" once, however many code paths report it.
+	if first, err := s.ClaimBookingEmail(ctx, staffBooking.ID, "booking_cancelled"); err != nil || !first {
+		t.Fatal("first claim refused", first, err)
+	}
+	if again, err := s.ClaimBookingEmail(ctx, staffBooking.ID, "booking_cancelled"); err != nil || again {
+		t.Fatal("a second cancelled email was allowed", again, err)
+	}
 	// A failed deposit releases the time.
 	s.PublicBookingAbort(ctx, slug, got.BookingID, got.InvoiceID)
 	var invStatus string
