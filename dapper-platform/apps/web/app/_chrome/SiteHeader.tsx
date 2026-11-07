@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import { ArrowRight, ArrowUpRight, CalendarCheck, ChevronDown, Mail, MapPin, Menu, Phone, UserRound, Wrench, X } from 'lucide-react';
+import { ArrowRight, Bike, Bus, CalendarCheck, Car, CarFront, ChevronDown, Menu, Phone, Plane, Sailboat, Shield, Sparkles, Sun, Truck, UserRound, Wrench, X } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import '@fontsource-variable/unbounded/index.css';
 import { categories } from '../(site)/content';
 import { contact } from '../(site)/dapper';
@@ -17,10 +18,10 @@ const links = [
   { href: '/contact-us', label: 'Contact' },
 ];
 
-/* The one header of the customer site.
-   Wide screens: a slim info strip (directions, phone, email, account) over the main bar (logo, centred links, call, Book now). The header slides
-   away while you scroll down and comes back as soon as you scroll up. Services opens a two-part menu: the list on the left, a photo preview of
-   the one you point at on the right.
+const icons: Record<string, LucideIcon> = { '2-wheeler': Bike, hatchback: Car, sedan: Car, suv: CarFront, pickup: Truck, van: Bus, ceramic: Sparkles, ppf: Shield, aircraft: Plane, 'window-tint': Sun, boat: Sailboat };
+
+/* The one header of the customer site: a white bar floating at the top (logo, centred links, Book now) that slides away while you scroll down
+   and comes back as soon as you scroll up. Services opens a white panel under it with every service, its icon and a short line, and a help card.
    Phones: logo and menu button; the menu lists the services, and a bar along the bottom keeps Services, Book now, Call and Account in reach.
    Every "Book now" goes to the booking page, so the ad tags can follow the visit through to the thank-you page. */
 export function SiteHeader() {
@@ -28,12 +29,10 @@ export function SiteHeader() {
   const [open, setOpen] = useState(false);
   const [mega, setMega] = useState(false);
   const [svcOpen, setSvcOpen] = useState(false);
-  const [pick, setPick] = useState(categories[0].key);
   const [hidden, setHidden] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const lastY = useRef(0);
   const onVehicle = categories.some((c) => '/' + c.slug === pathname);
-  const shown = categories.find((c) => c.key === pick) ?? categories[0];
 
   useEffect(() => { setOpen(false); setMega(false); setSvcOpen(false); }, [pathname]);
   useEffect(() => {
@@ -60,53 +59,49 @@ export function SiteHeader() {
 
   return (
     <>
-      <header className={cls} onMouseLeave={(e) => { if (!(e.relatedTarget instanceof Node) || !document.getElementById('mega-services')?.contains(e.relatedTarget)) setMega(false); }}>
-        <div className={s.strip}>
-          <span className={s.stripNote}>Mobile and in-shop detailing</span>
-          <a href={contact.directions} target="_blank" rel="noopener noreferrer"><MapPin size={14} aria-hidden="true" />Get directions</a>
-          <span className={s.stripEnd}>
-            <a href={'mailto:' + contact.email}><Mail size={14} aria-hidden="true" />{contact.email}</a>
-            <Link href="/account"><UserRound size={14} aria-hidden="true" />My account</Link>
-          </span>
-        </div>
+      <header className={cls} onMouseLeave={() => setMega(false)}>
         <div className={s.bar}>
-          <Link href="/" className={s.brand} aria-label="Dapper Detailing Pros, home"><img src="/site/assets/logo.webp" alt="" width={52} height={52} /></Link>
+          <Link href="/" className={s.brand} aria-label="Dapper Detailing Pros, home"><img src="/site/assets/logo.webp" alt="" width={46} height={46} /></Link>
           <nav className={s.nav} aria-label="Main">
             {links.map((l) => l.href === '/services'
-              ? <span key={l.href} className={s.navItem} onMouseEnter={() => setMega(true)}>
+              ? <span key={l.href} className={s.navItem + (mega ? ' ' + s.navOpen : '')} onMouseEnter={() => setMega(true)}>
                   <Link href={l.href} aria-current={current(l.href)}>{l.label}</Link>
-                  <button type="button" className={s.megaBtn} aria-expanded={mega} aria-controls="mega-services" aria-label={mega ? 'Close the services menu' : 'Open the services menu'} onClick={() => setMega((m) => !m)}><ChevronDown size={16} aria-hidden="true" /></button>
+                  <button type="button" className={s.megaBtn} aria-expanded={mega} aria-controls="mega-services" aria-label={mega ? 'Close the services menu' : 'Open the services menu'} onClick={() => setMega((m) => !m)}><ChevronDown size={15} aria-hidden="true" /></button>
                 </span>
               : <Link key={l.href} href={l.href} aria-current={current(l.href)} onMouseEnter={() => setMega(false)} onFocus={() => setMega(false)}>{l.label}</Link>)}
           </nav>
           <div className={s.actions}>
-            <a className={s.callBtn} href={'tel:' + contact.tel}><Phone size={16} aria-hidden="true" />{contact.phone}</a>
+            <a className={s.callBtn} href={'tel:' + contact.tel}><Phone size={15} aria-hidden="true" />{contact.phone}</a>
             <a className={s.book} href="/booking">Book now<ArrowRight size={16} aria-hidden="true" /></a>
           </div>
           <button type="button" className={s.menuBtn} aria-expanded={open} aria-controls="site-menu" aria-label={open ? 'Close menu' : 'Open menu'} onClick={() => setOpen((o) => !o)}>
-            {open ? <X size={26} aria-hidden="true" /> : <Menu size={26} aria-hidden="true" />}
+            {open ? <X size={24} aria-hidden="true" /> : <Menu size={24} aria-hidden="true" />}
           </button>
         </div>
         {mega && <div id="mega-services" className={s.mega}>
-          <ul className={s.megaList}>
-            {categories.map((c) => <li key={c.key}>
-              <Link href={'/' + c.slug} aria-current={pathname === '/' + c.slug ? 'page' : undefined} className={c.key === shown.key ? s.megaOn : undefined} onMouseEnter={() => setPick(c.key)} onFocus={() => setPick(c.key)} onClick={() => setMega(false)}>
-                <span>{c.title}</span><small>{c.from ? 'From $' + c.from : 'Ask for a price'}</small>
-              </Link>
-            </li>)}
-          </ul>
-          <div className={s.megaPreview}>
-            <img key={shown.key} src={shown.image} alt="" width={720} height={450} />
-            <div className={s.megaCopy}>
-              <strong>{shown.title}</strong>
-              <p>{shown.summary}</p>
-              <span className={s.megaActs}>
-                <Link href={'/' + shown.slug} onClick={() => setMega(false)}>View packages<ArrowUpRight size={15} aria-hidden="true" /></Link>
-                <a className={s.book} href={'/booking?category=' + shown.key}>Book {shown.short.toLowerCase()}<ArrowRight size={16} aria-hidden="true" /></a>
-              </span>
-            </div>
+          <div className={s.megaMain}>
+            <p className={s.megaLabel}>Our services</p>
+            <ul className={s.megaList}>
+              {categories.map((c) => {
+                const Icon = icons[c.key] ?? Car;
+                return <li key={c.key}>
+                  <Link href={'/' + c.slug} aria-current={pathname === '/' + c.slug ? 'page' : undefined} onClick={() => setMega(false)}>
+                    <Icon size={18} aria-hidden="true" />
+                    <span><strong>{c.title}</strong><small>{c.from ? 'From $' + c.from + ' · ' : ''}{c.summary}</small></span>
+                  </Link>
+                </li>;
+              })}
+            </ul>
           </div>
-          <div className={s.megaFoot}><Link href="/services" onClick={() => setMega(false)}>See all services<ArrowUpRight size={15} aria-hidden="true" /></Link><span>Not sure what you need? Call <a href={'tel:' + contact.tel}>{contact.phone}</a></span></div>
+          <aside className={s.megaSide}>
+            <p className={s.megaLabel}>Need a hand?</p>
+            <div className={s.megaCard}>
+              <strong>Not sure which package?</strong>
+              <p>Tell us what you drive and how it looks today. We will recommend the right service and give you a price.</p>
+              <a href={'tel:' + contact.tel}>Call {contact.phone}<ArrowRight size={14} aria-hidden="true" /></a>
+              <Link href="/services" onClick={() => setMega(false)}>See all services<ArrowRight size={14} aria-hidden="true" /></Link>
+            </div>
+          </aside>
         </div>}
       </header>
 
@@ -114,7 +109,7 @@ export function SiteHeader() {
         <nav className={s.menuNav} aria-label="Menu">
           {links.map((l) => l.href === '/services'
             ? <div key={l.href} className={s.menuSvc}>
-                <button type="button" aria-expanded={svcOpen} onClick={() => setSvcOpen((v) => !v)}>Services<ChevronDown size={26} aria-hidden="true" /></button>
+                <button type="button" aria-expanded={svcOpen} onClick={() => setSvcOpen((v) => !v)}>Services<ChevronDown size={24} aria-hidden="true" /></button>
                 {svcOpen && <div className={s.menuSvcList}>
                   {categories.map((c) => <Link key={c.key} href={'/' + c.slug}>{c.title}</Link>)}
                   <Link href="/services">All services</Link>
