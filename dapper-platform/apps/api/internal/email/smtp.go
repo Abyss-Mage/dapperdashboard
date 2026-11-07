@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -69,7 +70,22 @@ func NewSMTPSender(cfg Config) (*SMTPSender, error) {
 	}, nil
 }
 
+// Attachment is a file sent along with an email, such as an invoice PDF.
+type Attachment struct {
+	Name        string
+	ContentType string
+	Data        []byte
+}
+
 func (s *SMTPSender) SendEmail(ctx context.Context, recipient, subject, bodyHTML, bodyText string) (string, error) {
+	return s.SendEmailWithAttachment(ctx, recipient, subject, bodyHTML, bodyText, nil)
+}
+
+// SendEmailWithAttachment sends the email with a file attached; a nil attachment sends it plain.
+func (s *SMTPSender) SendEmailWithAttachment(ctx context.Context, recipient, subject, bodyHTML, bodyText string, att *Attachment) (string, error) {
+	if att != nil && (att.Name == "" || strings.ContainsAny(att.Name, "\r\n\"") || strings.ContainsAny(att.ContentType, "\r\n")) {
+		return "", ErrInvalidEmail
+	}
 	recipient = strings.TrimSpace(recipient)
 	if !validMailbox(recipient) || strings.ContainsAny(subject, "\r\n") {
 		return "", ErrInvalidEmail
@@ -91,6 +107,11 @@ func (s *SMTPSender) SendEmail(ctx context.Context, recipient, subject, bodyHTML
 	msg.WriteString(fmt.Sprintf("Message-ID: %s\r\n", messageID))
 	msg.WriteString(fmt.Sprintf("Date: %s\r\n", time.Now().UTC().Format(time.RFC1123Z)))
 	msg.WriteString("MIME-Version: 1.0\r\n")
+	if att != nil {
+		// The text and HTML bodies go in their own part, next to the file.
+		msg.WriteString(fmt.Sprintf("Content-Type: multipart/mixed; boundary=\"%s_mixed\"\r\n\r\n", boundary))
+		msg.WriteString(fmt.Sprintf("--%s_mixed\r\n", boundary))
+	}
 	msg.WriteString(fmt.Sprintf("Content-Type: multipart/alternative; boundary=\"%s\"\r\n", boundary))
 	msg.WriteString("\r\n")
 
@@ -111,6 +132,23 @@ func (s *SMTPSender) SendEmail(ctx context.Context, recipient, subject, bodyHTML
 	}
 
 	msg.WriteString(fmt.Sprintf("--%s--\r\n", boundary))
+	if att != nil {
+		contentType := att.ContentType
+		if contentType == "" {
+			contentType = "application/octet-stream"
+		}
+		msg.WriteString(fmt.Sprintf("\r\n--%s_mixed\r\n", boundary))
+		msg.WriteString(fmt.Sprintf("Content-Type: %s; name=\"%s\"\r\n", contentType, att.Name))
+		msg.WriteString(fmt.Sprintf("Content-Disposition: attachment; filename=\"%s\"\r\n", att.Name))
+		msg.WriteString("Content-Transfer-Encoding: base64\r\n\r\n")
+		enc := base64.StdEncoding.EncodeToString(att.Data)
+		for len(enc) > 76 {
+			msg.WriteString(enc[:76] + "\r\n")
+			enc = enc[76:]
+		}
+		msg.WriteString(enc + "\r\n")
+		msg.WriteString(fmt.Sprintf("--%s_mixed--\r\n", boundary))
+	}
 
 	addr := fmt.Sprintf("%s:%d", s.host, s.port)
 	d := net.Dialer{Timeout: 10 * time.Second}
