@@ -199,10 +199,6 @@
 .v-faq__item p{margin:0;padding:0 clamp(18px,2.4vw,32px) clamp(18px,2.2vw,28px);max-width:70ch;color:var(--mute);font-size:clamp(15px,1.15vw,18px);text-wrap:pretty}
 @media(hover:hover) and (pointer:fine){.v-faq__item summary:hover{color:var(--red)}}
 
-/* The bar under the hero: the price at the left, the booking button and the number together in the middle of the bar */
-@media(min-width:701px){
-  .v-buy{display:grid;grid-template-columns:1fr auto auto 1fr;align-items:center;column-gap:clamp(16px,2.4vw,40px)}
-  .v-buy .v-price{grid-column:1;justify-self:start;margin-right:0}
-  .v-buy .s-btn{grid-column:2}
-  .v-buy .s-close__call{grid-column:3}
-}
+/* The bar under the hero: the price at the left, the button and the number at the right, all on one line through the middle of the bar */
+.v-buy{display:flex;align-items:center}
+.v-buy .v-price{margin-right:auto}
