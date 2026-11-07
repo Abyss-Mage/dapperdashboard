@@ -16,3 +16,11 @@
 .dl__s:has(img.is-wide){padding:0}
 /* On the dark Services page the glow is white */
 .s-par .dl__dia{filter:drop-shadow(0 0 8px rgba(255,255,255,.45)) drop-shadow(0 10px 18px rgba(255,255,255,.28))}
+
+/* Phones: bigger diamonds and bigger logos in them */
+@media(max-width:1023px){
+  .dl__lat{--d:min(31vw,210px)}
+  .dl__s{padding:0 15%;transform:scale(.9)}
+  .dl__s img{max-height:62%}
+  .dl__s img.is-wide{width:86%}
+}

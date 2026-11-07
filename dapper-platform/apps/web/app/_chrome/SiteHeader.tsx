@@ -3,9 +3,10 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { ArrowRight, Menu, UserRound, X } from 'lucide-react';
+import { ArrowRight, CalendarCheck, Menu, Phone, UserRound, Wrench, X } from 'lucide-react';
 import '@fontsource-variable/unbounded/index.css';
 import { categories } from '../(site)/content';
+import { contact } from '../(site)/dapper';
 import s from './chrome.module.css';
 
 const links = [
@@ -36,7 +37,6 @@ export function SiteHeader() {
           <Link href="/account" className={s.account}><UserRound size={18} aria-hidden="true" />Account</Link>
           <a className={s.book} href="/booking">Book now<ArrowRight size={16} aria-hidden="true" /></a>
         </div>
-        <a className={s.bookMini} href="/booking">Book now</a>
         <button type="button" className={s.menuBtn} aria-expanded={open} aria-controls="site-menu" aria-label={open ? 'Close menu' : 'Open menu'} onClick={() => setOpen((o) => !o)}>
           {open ? <X size={26} aria-hidden="true" /> : <Menu size={26} aria-hidden="true" />}
         </button>
@@ -46,6 +46,12 @@ export function SiteHeader() {
         <Link href="/account">My account</Link>
         <a className={s.book + ' ' + s.menuBook} href="/booking">Book now<ArrowRight size={18} aria-hidden="true" /></a>
       </div>
+      <nav className={s.dock} aria-label="Quick actions">
+        <Link href="/services"><Wrench size={20} aria-hidden="true" />Services</Link>
+        <a className={s.dockBook} href="/booking"><CalendarCheck size={20} aria-hidden="true" />Book now</a>
+        <a href={'tel:' + contact.tel}><Phone size={20} aria-hidden="true" />Call</a>
+        <Link href="/account"><UserRound size={20} aria-hidden="true" />Account</Link>
+      </nav>
     </>
   );
 }
