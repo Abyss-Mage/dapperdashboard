@@ -1,0 +1,36 @@
+{
+  "productionReady": false,
+  "changedFiles": [
+    {
+      "path": "dapper-platform/apps/web/app/ThemeToggle.tsx",
+      "sha256": "F66DF89800E4F9D49DE012D08B67991728E23339E90FCBC614FA622ABB6FA0E1"
+    },
+    {
+      "path": "dapper-platform/apps/web/app/page.tsx",
+      "sha256": "F857FE6EF272EE3BB59D7FAAB142B00E9A5E4D2AD3067077ED21E21CC20A7A89"
+    },
+    {
+      "path": "dapper-platform/apps/web/app/workspace/page.tsx",
+      "sha256": "818F981F0600CF71BF667D3864FFF9DCC2A2486CB5A22193E0448A04C1C9F6BD"
+    },
+    {
+      "path": "dapper-platform/apps/web/app/globals.css",
+      "sha256": "DDEF5A6465F7109F9721355129120F05194784D0FC11490157BB5AF7AC20D021"
+    },
+    {
+      "path": "Dapper Detailing Knowledge/04 Delivery/SOW_DELIVERY_AUDIT.md",
+      "sha256": "4B5AB09A80A86BE96281FED7A7CBD8589EE6A4507ABF938C3360D25B42C7187E"
+    }
+  ],
+  "synthetic": true,
+  "verifiedAt": "2026-10-22T05:37:36.7921268Z",
+  "build": "pass",
+  "browserCases": [
+    "workspace dark toggle",
+    "saved dark after reload",
+    "desktop visual inspection",
+    "phone390x844 no horizontal overflow"
+  ],
+  "launchGates": 15,
+  "deliverableRows": 27
+}

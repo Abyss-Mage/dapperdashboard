@@ -1,10 +1,11 @@
 package workspace
 
 import (
-	"strconv"
+	"context"
 	"dapper.local/platform/internal/postgres"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -16,6 +17,10 @@ func bookingFailure(w http.ResponseWriter, err error) {
 	}
 	if errors.Is(err, postgres.ErrBookingNotFound) {
 		reply(w, 404, map[string]string{"error": "Booking not found in this scope"})
+		return
+	}
+	if errors.Is(err, postgres.ErrEmployeeStatusRule) {
+		reply(w, 403, map[string]string{"error": err.Error()})
 		return
 	}
 	if errors.Is(err, postgres.ErrBookingTransition) {
@@ -48,6 +53,39 @@ func registerBookingRoutes(mux *http.ServeMux, store *postgres.Store) {
 			return
 		}
 		reply(w, 200, choices)
+	})
+	mux.HandleFunc("POST "+base+"/{booking}/move", func(w http.ResponseWriter, r *http.Request) {
+		org, loc, id := r.PathValue("organization"), r.PathValue("location"), r.PathValue("booking")
+		if !uuid(org) || !uuid(loc) || !uuid(id) {
+			reply(w, 400, map[string]string{"error": "Valid scoped booking selectors required"})
+			return
+		}
+		scope, err := store.ResolveScope(r.Context(), requestSession(r).principalID, org, loc, "bookings.manage")
+		if err != nil {
+			failure(w, err)
+			return
+		}
+		var input struct {
+			BookingTime string `json:"bookingTime"`
+		}
+		if !decode(w, r, &input) {
+			return
+		}
+		to, perr := time.Parse(time.RFC3339Nano, input.BookingTime)
+		if perr != nil {
+			reply(w, 422, map[string]any{"errors": map[string]string{"bookingTime": "Provide a timestamp with an explicit UTC offset"}})
+			return
+		}
+		if err = store.CheckEmployeeBookingStatus(r.Context(), scope, id, "rescheduled"); err != nil {
+			bookingFailure(w, err)
+			return
+		}
+		booking, err := store.MoveUnreservedBooking(r.Context(), scope, id, to)
+		if err != nil {
+			bookingFailure(w, err)
+			return
+		}
+		reply(w, 200, booking)
 	})
 	mux.HandleFunc("POST "+base+"/{booking}/reschedule", func(w http.ResponseWriter, r *http.Request) {
 		org, loc, id := r.PathValue("organization"), r.PathValue("location"), r.PathValue("booking")
@@ -101,6 +139,43 @@ func registerBookingRoutes(mux *http.ServeMux, store *postgres.Store) {
 		}
 		reply(w, 200, options)
 	})
+	// What a coupon would take off a booking staff are making, so the price on screen matches the invoice.
+	mux.HandleFunc("POST "+base+"/coupon-check", func(w http.ResponseWriter, r *http.Request) {
+		org, loc := r.PathValue("organization"), r.PathValue("location")
+		if !uuid(org) || !uuid(loc) {
+			reply(w, 400, map[string]string{"error": "Valid organization/location selectors required"})
+			return
+		}
+		scope, err := store.ResolveScope(r.Context(), requestSession(r).principalID, org, loc, "bookings.create")
+		if err != nil {
+			failure(w, err)
+			return
+		}
+		var in struct {
+			Code          string `json:"code"`
+			ServiceID     string `json:"serviceId"`
+			CustomerID    string `json:"customerId"`
+			SubtotalCents int64  `json:"subtotalCents"`
+		}
+		if !decode(w, r, &in) {
+			return
+		}
+		if !uuid(in.ServiceID) || in.SubtotalCents <= 0 || in.SubtotalCents > 100000000 {
+			reply(w, 422, map[string]string{"error": "Choose the service first."})
+			return
+		}
+		out, err := store.CheckCoupon(r.Context(), scope, in.Code, in.CustomerID, &in.ServiceID, in.SubtotalCents)
+		var bad postgres.CouponInvalid
+		if errors.As(err, &bad) {
+			reply(w, 422, map[string]string{"error": bad.Reason})
+			return
+		}
+		if err != nil {
+			bookingFailure(w, err)
+			return
+		}
+		reply(w, 200, map[string]any{"code": out.Code, "discountCents": out.DiscountCents})
+	})
 	mux.HandleFunc("POST "+base+"/reserve", func(w http.ResponseWriter, r *http.Request) {
 		org, loc := r.PathValue("organization"), r.PathValue("location")
 		if !uuid(org) || !uuid(loc) {
@@ -112,13 +187,34 @@ func registerBookingRoutes(mux *http.ServeMux, store *postgres.Store) {
 			failure(w, err)
 			return
 		}
-		var input postgres.ReserveBookingInput
-		if !decode(w, r, &input) {
+		var body struct {
+			postgres.ReserveBookingInput
+			CouponCode string `json:"couponCode"`
+		}
+		if !decode(w, r, &body) {
 			return
 		}
+		input, coupon := body.ReserveBookingInput, strings.TrimSpace(body.CouponCode)
 		if !uuid(input.CustomerID) || !uuid(input.ResourceID) || !uuid(input.RuleID) || (input.VehicleID != nil && !uuid(*input.VehicleID)) {
 			reply(w, 422, map[string]string{"error": "Valid scoped customer, owned equipment, resource and rule selectors required"})
 			return
+		}
+		// A coupon is checked before anything is held; a booking with a coupon is invoiced at once so the discount is on the books.
+		couponFailed := func(err error) bool {
+			var bad postgres.CouponInvalid
+			if errors.As(err, &bad) {
+				reply(w, 422, map[string]string{"error": bad.Reason})
+				return true
+			}
+			return false
+		}
+		if coupon != "" {
+			if err := store.CheckStaffCoupon(r.Context(), scope, input, coupon); err != nil {
+				if !couponFailed(err) {
+					bookingFailure(w, err)
+				}
+				return
+			}
 		}
 		booking, err := store.ReserveBooking(r.Context(), scope, input)
 		if errors.Is(err, postgres.ErrReservationConflict) || errors.Is(err, postgres.ErrSchedulingRuleConflict) {
@@ -132,6 +228,15 @@ func registerBookingRoutes(mux *http.ServeMux, store *postgres.Store) {
 		if err != nil {
 			bookingFailure(w, err)
 			return
+		}
+		if coupon != "" {
+			if err := store.InvoiceStaffBooking(r.Context(), scope, input, booking.ID, coupon); err != nil {
+				_, _ = store.UpdateBookingStatus(postgres.QuietBookingEvents(context.WithoutCancel(r.Context())), scope, booking.ID, "cancelled", "The coupon could not be applied", "")
+				if !couponFailed(err) {
+					bookingFailure(w, err)
+				}
+				return
+			}
 		}
 		reply(w, 201, booking)
 	})
@@ -189,16 +294,17 @@ func registerBookingRoutes(mux *http.ServeMux, store *postgres.Store) {
 			return
 		}
 		var input struct {
-			CustomerID    string   `json:"customerId"`
-			VehicleID     *string  `json:"vehicleId"`
-			ServiceID     *string  `json:"serviceId"`
-			ServiceName   string   `json:"serviceName"`
-			AddonIDs      []string `json:"addonIds"`
-			ReservationID *string  `json:"reservationId"`
-			Channel       string   `json:"channel"`
-			Status        string   `json:"status"`
-			BookingTime   string   `json:"bookingTime"`
-			Notes         string   `json:"notes"`
+			CustomerID     string   `json:"customerId"`
+			VehicleID      *string  `json:"vehicleId"`
+			ServiceID      *string  `json:"serviceId"`
+			ServiceName    string   `json:"serviceName"`
+			AddonIDs       []string `json:"addonIds"`
+			ReservationID  *string  `json:"reservationId"`
+			Channel        string   `json:"channel"`
+			Status         string   `json:"status"`
+			BookingTime    string   `json:"bookingTime"`
+			Notes          string   `json:"notes"`
+			ServiceAddress string   `json:"serviceAddress"`
 		}
 		if !decode(w, r, &input) {
 			return
@@ -236,16 +342,17 @@ func registerBookingRoutes(mux *http.ServeMux, store *postgres.Store) {
 		}
 
 		item, err := store.CreateBooking(r.Context(), scope, postgres.Booking{
-			CustomerID:    input.CustomerID,
-			VehicleID:     input.VehicleID,
-			ServiceID:     input.ServiceID,
-			ServiceName:   input.ServiceName,
-			AddonIDs:      input.AddonIDs,
-			ReservationID: input.ReservationID,
-			Channel:       input.Channel,
-			Status:        input.Status,
-			BookingTime:   t,
-			Notes:         input.Notes,
+			CustomerID:     input.CustomerID,
+			VehicleID:      input.VehicleID,
+			ServiceID:      input.ServiceID,
+			ServiceName:    input.ServiceName,
+			AddonIDs:       input.AddonIDs,
+			ReservationID:  input.ReservationID,
+			Channel:        input.Channel,
+			Status:         input.Status,
+			BookingTime:    t,
+			Notes:          input.Notes,
+			ServiceAddress: input.ServiceAddress,
 		})
 		if err != nil {
 			bookingFailure(w, err)
@@ -346,14 +453,18 @@ func registerBookingRoutes(mux *http.ServeMux, store *postgres.Store) {
 		}
 		var item postgres.Booking
 		input.ToStatus = strings.TrimSpace(input.ToStatus)
+		if err = store.CheckEmployeeBookingStatus(r.Context(), scope, id, input.ToStatus); err != nil {
+			bookingFailure(w, err)
+			return
+		}
 		if input.ToStatus == "cancelled" {
 			if input.ReservationVersion == nil || *input.ReservationVersion < 0 {
 				reply(w, 422, map[string]string{"error": "Provide the observed reservationVersion, or0 for an unreserved booking"})
 				return
 			}
-			item, err = store.UpdateBookingStatus(r.Context(), scope, id, input.ToStatus, input.CancellationReason, input.Notes, *input.ReservationVersion)
+			item, err = store.CorrectBookingStatus(r.Context(), scope, id, input.ToStatus, input.CancellationReason, input.Notes, *input.ReservationVersion)
 		} else {
-			item, err = store.UpdateBookingStatus(r.Context(), scope, id, input.ToStatus, input.CancellationReason, input.Notes)
+			item, err = store.CorrectBookingStatus(r.Context(), scope, id, input.ToStatus, input.CancellationReason, input.Notes)
 		}
 		if errors.Is(err, postgres.ErrReservationConflict) {
 			reply(w, 409, map[string]string{"error": "Reservation changed; refresh the booking before cancelling"})

@@ -1,0 +1,214 @@
+/* Vehicle pages: extends the Services "hard" direction (services.css supplies tokens, buttons and the closing band). */
+
+/* V1 Hero: one photograph edge to edge, the title bottom-left over it, the price and booking call on a bar along the bottom */
+.v-hero{position:relative;display:grid;grid-template-rows:1fr auto;min-height:min(100svh,940px);overflow:hidden;background:var(--bk)}
+.v-hero__img{position:absolute;inset:-6% 0;width:100%;height:112%;object-fit:cover;filter:contrast(1.05) brightness(.8)}
+.v-hero__scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,11,12,.55) 0,rgba(11,11,12,0) 28%,rgba(11,11,12,.15) 52%,rgba(11,11,12,.92) 100%)}
+.v-hero__copy{position:relative;align-self:end;display:flex;flex-direction:column;gap:clamp(14px,1.8vw,24px);padding:calc(72px + 24px) var(--cg) clamp(24px,3vw,44px);max-width:min(100%,1100px)}
+.v-crumb{display:flex;gap:10px;align-items:center;margin:0;font:500 14px/1 var(--cd);letter-spacing:.12em;text-transform:uppercase;color:#d6d3cc}
+.v-crumb a{color:#d6d3cc;border-bottom:1px solid #ffffff55;padding-bottom:2px}
+.v-crumb span{color:var(--red)}
+.v-h1{font-size:clamp(34px,6.4vw,108px);line-height:.92;max-width:14ch}
+.v-lede{margin:0;max-width:52ch;color:#d6d3cc;font-size:clamp(16px,1.35vw,20px);text-wrap:pretty}
+.v-buy{position:relative;display:flex;align-items:center;flex-wrap:wrap;gap:clamp(16px,2.4vw,40px);padding:clamp(16px,1.8vw,26px) var(--cg);background:var(--bk)}
+.v-price{margin:0;display:grid;gap:6px;margin-right:auto}
+.v-price small{font:500 13px/1 var(--cd);letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
+.v-price b{font:500 clamp(28px,3vw,48px)/.9 var(--cd);color:var(--bone);font-variant-numeric:tabular-nums}
+.v-price--ask b{font-size:clamp(18px,1.9vw,28px);line-height:1}
+.v-hero .s-tile__tag{top:calc(72px + 12px);right:var(--cg);left:auto;bottom:auto}
+@media(max-width:700px){.v-buy{flex-direction:column;align-items:stretch}.v-buy .s-btn{justify-content:center}.v-buy .s-close__call{text-align:center}}
+
+/* Sections */
+.v-sec{padding:clamp(72px,9vw,140px) var(--cg)}
+.v-sec--alt{background:var(--bk2);border-top:1px solid var(--line)}
+.v-sec__head{display:flex;align-items:flex-end;justify-content:space-between;gap:clamp(20px,4vw,64px);flex-wrap:wrap;margin-bottom:clamp(32px,4vw,64px)}
+.v-sec__head p{margin:0;max-width:40ch;color:var(--mute);font-size:clamp(16px,1.3vw,20px);padding-bottom:.4em;text-wrap:pretty}
+
+/* V2 Packages: each one a row of type, the name large, the summary beside it, a link at the end */
+.v-pkgs{margin:0;padding:0;list-style:none;display:grid;gap:clamp(10px,1.2vw,18px)}
+.v-row{position:relative;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1.3fr) auto;align-items:center;gap:clamp(16px,3vw,56px);padding:clamp(22px,2.6vw,40px) clamp(20px,2.6vw,40px);background:var(--bk2);clip-path:polygon(0 0,100% 0,100% 100%,18px 100%,0 calc(100% - 18px));transition:background-color .25s}
+.v-row::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--red);transform:scaleY(0);transform-origin:top;transition:transform .35s var(--ease)}
+.v-row h3{font-size:clamp(18px,2vw,32px);line-height:1}
+.v-row p{margin:0;color:var(--mute);text-wrap:pretty}
+.v-row__end{display:grid;gap:10px;justify-items:end}
+.v-row__price{display:grid;justify-items:end;gap:2px}
+.v-row__price small{color:var(--red);font:500 13px/1 var(--cd)}
+.v-row__price b{font:500 clamp(22px,2vw,34px)/1 var(--cd);letter-spacing:-.02em}
+.v-row__go{display:inline-flex;align-items:center;gap:10px;font:500 14px/1 var(--cd);letter-spacing:.08em;text-transform:uppercase;color:var(--bone);white-space:nowrap}
+.v-row__go svg{transition:transform .3s var(--ease)}
+@media(hover:hover) and (pointer:fine){.v-row:hover{background:#1c1c1f}.v-row:hover::before{transform:scaleY(1)}.v-row:hover .v-row__go svg{transform:translateX(5px)}}
+@media(max-width:820px){.v-row{grid-template-columns:minmax(0,1fr)}.v-row__end,.v-row__price{justify-items:start}}
+.v-note{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;margin:0;padding:clamp(22px,2.6vw,36px);background:var(--bk2);border-left:3px solid var(--red);color:var(--mute)}
+.v-note b{display:block;margin-bottom:6px;font:500 clamp(16.8px,1.6vw,24px)/1 var(--cd);text-transform:uppercase;color:var(--bone)}
+.v-note--big span{max-width:52ch}
+.v-ghost{display:inline-flex;align-items:center;min-height:52px;padding:0 24px;border:1px solid #ffffff55;background:transparent;color:var(--bone);font:500 18px/1 var(--cd);letter-spacing:.14em;text-transform:uppercase;cursor:pointer;transition:background-color .2s,border-color .2s}
+@media(hover:hover) and (pointer:fine){.v-ghost:hover{background:var(--red);border-color:var(--red)}}
+
+/* V3 What is in every job */
+/* The standard: the line fills and each point is ticked as the scroll reaches it; the heading holds on the left from 1024px */
+.v-inc{display:grid;grid-template-columns:minmax(0,1fr);gap:clamp(28px,4vw,56px)}
+.v-steps{position:relative;margin:0;padding:0 0 0 clamp(52px,5vw,76px);list-style:none;display:grid;gap:clamp(32px,5vh,64px)}
+.v-steps__line{position:absolute;left:17px;top:18px;bottom:18px;width:3px;background:#efece426;border-radius:2px;overflow:hidden}
+.v-steps__line i{display:block;width:100%;height:100%;background:var(--red);transform:scaleY(0);transform-origin:top}
+.v-step{position:relative}
+.v-step__dot{position:absolute;left:calc(clamp(52px,5vw,76px) * -1);top:.1em;display:grid;place-items:center;width:38px;height:38px;border-radius:50%;background:var(--bk);color:var(--mute);border:2px solid #efece440;transition:background-color .35s var(--ease),color .35s,border-color .35s,transform .5s var(--ease)}
+.v-step.is-done .v-step__dot{background:var(--red);border-color:var(--red);color:#fff;transform:scale(1.08)}
+.v-step h3{margin:0 0 8px;font:500 clamp(20px,2vw,32px)/1 var(--cd);text-transform:uppercase;letter-spacing:-.02em}
+.v-step p{margin:0;max-width:52ch;color:var(--mute);font-size:clamp(15px,1.15vw,17px);text-wrap:pretty}
+@media(min-width:1024px){.v-inc{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}.v-inc .v-sec__head{position:sticky;top:calc(72px + 40px)}}
+@media(prefers-reduced-motion:reduce){.v-step__dot{background:var(--red);border-color:var(--red);color:#fff}.v-steps__line i{transform:none}}
+
+/* Closing call: the finished car from the film behind the headline and the booking call */
+.v-end{position:relative;isolation:isolate;overflow:hidden;min-height:min(80vh,700px);display:grid;align-items:end;padding:clamp(72px,9vw,140px) var(--cg) clamp(40px,5vw,72px);background:var(--bk);color:var(--bone)}
+.v-end__img{position:absolute;inset:-6% 0;z-index:-2;width:100%;height:112%;object-fit:cover;object-position:60% 50%}
+.v-end::after{content:'';position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(11,11,12,.25),rgba(11,11,12,.88))}
+.v-end__in{display:grid;gap:clamp(20px,2.6vw,36px);max-width:1100px}
+.v-end .s-h2{font-size:clamp(32px,5.4vw,92px);line-height:.98;max-width:17ch;color:var(--bone)}
+.v-end__lede{margin:0;max-width:52ch;color:#d4d1ca;font-size:clamp(16px,1.3vw,19px);text-wrap:pretty}
+.v-end__act{display:flex;align-items:center;gap:clamp(16px,2vw,32px);flex-wrap:wrap}
+.v-end__call{color:var(--bone);font:500 clamp(15px,1.2vw,18px)/1 var(--cd)}
+.v-end__call span{border-bottom:2px solid var(--red);padding-bottom:3px}
+
+/* V4 What to expect. Default (phone, reduced motion): each step a photograph with its text. Wide screens pin it (.is-pinned) and play it with the scroll. */
+.v-exp__list{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:clamp(22px,3vw,40px) clamp(14px,1.6vw,24px)}
+.v-exp__item{display:grid;gap:10px;align-content:start}
+.v-exp__m{display:block;aspect-ratio:4/3;background-size:cover;background-position:center;filter:brightness(.85);clip-path:polygon(0 0,100% 0,100% 100%,18px 100%,0 calc(100% - 18px));margin-bottom:6px}
+.v-exp__item h3{font-size:clamp(18px,1.6vw,24px);line-height:1.05}
+.v-exp__item p{margin:0;color:var(--mute);text-wrap:pretty}
+
+/* V5 Reviews. Default: a row you swipe. On a wide screen the section pins and the scroll pulls the row sideways. */
+.v-rev{padding-inline:0}
+.v-rev .v-sec__head{padding-inline:var(--cg)}
+.v-rating{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font:500 clamp(17px,1.4vw,20px)/1 var(--cd)!important;letter-spacing:.12em;text-transform:uppercase}
+.v-rating b{color:var(--bone);font-weight:700}
+.v-stars{display:inline-flex;gap:2px;color:var(--red)}
+.v-htrack{display:flex;gap:clamp(12px,1.4vw,20px);width:max-content;padding-inline:var(--cg)}
+.v-quote{position:relative;margin:0;scroll-snap-align:start;flex:0 0 clamp(290px,34vw,500px);min-height:clamp(300px,42vh,430px);display:flex;flex-direction:column;justify-content:space-between;gap:24px;padding:clamp(24px,2.4vw,38px);background:var(--bk2);clip-path:polygon(0 0,100% 0,100% 100%,20px 100%,0 calc(100% - 20px))}
+.v-quote__mark{font:500 clamp(64px,7vw,110px)/.7 var(--cd);color:var(--red)}
+.v-quote blockquote{margin:0;font-size:clamp(16px,1.35vw,21px);line-height:1.5;color:var(--bone);text-wrap:pretty}
+.v-quote figcaption{font:500 16px/1 var(--cd);letter-spacing:.14em;text-transform:uppercase;color:var(--mute)}
+
+/* The closing band follows the review lanes directly */
+.v-page .s-close{border-top:0}
+
+/* Light sections: the page alternates black and white. A .v-light section redefines the tokens, so everything inside follows. */
+.v-light{--bk:#f5f2eb;--bk2:#ebe7dd;--bone:#0b0b0c;--mute:#55524b;--line:#0b0b0c26;background:var(--bk);color:var(--bone)}
+.v-light ::selection{background:var(--red);color:#fff}
+.v-light .v-sec__head p{color:var(--mute)}
+
+/* Packages: name and price, what is included, and Book now */
+.v-row{grid-template-columns:minmax(0,.9fr) minmax(0,1.5fr) auto;align-items:start}
+.v-light .v-row{background:#fff;box-shadow:0 1px 0 var(--line)}
+.v-light .v-row h3{color:var(--bone)}
+.v-row__main{display:grid;gap:14px;align-content:start}
+.v-row__price{display:grid;justify-items:start;gap:4px;margin:0}
+.v-row__price small{color:var(--red);font:500 12px/1 var(--cd);letter-spacing:.08em;text-transform:uppercase}
+.v-row__price b{font:500 clamp(26px,2.6vw,40px)/1 var(--cd);letter-spacing:-.02em;color:var(--bone)}
+.v-row__inc small{display:block;margin-bottom:10px;font:500 12px/1 var(--cd);letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+.v-row__inc ul{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px 20px}
+.v-row__inc li{display:flex;align-items:flex-start;gap:10px;color:var(--bone);font-size:clamp(15px,1.1vw,17px);line-height:1.35}
+.v-row__inc li svg{flex:none;margin-top:3px;color:var(--red)}
+.v-row__inc p{margin:0;color:var(--mute)}
+.v-row__book{align-self:center;display:inline-flex;align-items:center;justify-content:center;gap:12px;min-height:56px;padding:0 26px;background:var(--red);color:#fff;font:500 15px/1 var(--cd);letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;clip-path:polygon(0 0,100% 0,100% 100%,12px 100%,0 calc(100% - 12px));transition:background-color .2s,transform .16s var(--ease)}
+.v-row__book:active{transform:scale(.97)}
+.v-row__book svg{transition:transform .3s var(--ease)}
+@media(hover:hover) and (pointer:fine){.v-light .v-row:hover{background:#fff}.v-row__book:hover{background:#c4121f}.v-row__book:hover svg{transform:translateX(4px)}}
+@media(max-width:900px){.v-row{grid-template-columns:minmax(0,1fr)}.v-row__book{justify-self:stretch}}
+.v-light .v-note{background:#fff;color:var(--mute)}
+.v-light .v-ghost{border-color:#0b0b0c55;color:var(--bone)}
+
+/* What to expect: four cards, the photograph first (no pinning, so nothing overlaps) */
+.v-exp .v-exp__list{grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr))}
+.v-exp__item h3{color:var(--bone)}
+.v-exp__item p{color:var(--mute)}
+
+/* Something else in the garage: a card for each other ride, picture, name, line, starting price and a button */
+.v-cards{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,290px),1fr));gap:clamp(12px,1.4vw,20px)}
+.v-card{display:flex;flex-direction:column;background:#fff;box-shadow:0 1px 0 var(--line);clip-path:polygon(0 0,100% 0,100% 100%,18px 100%,0 calc(100% - 18px))}
+.v-card__img{display:block;aspect-ratio:16/10;overflow:hidden;background:var(--bk2)}
+.v-card__img span{display:block;width:100%;height:100%;background-size:cover;background-position:center;transition:transform .7s var(--ease)}
+.v-card__body{display:flex;flex-direction:column;gap:10px;flex:1;padding:clamp(18px,1.8vw,26px)}
+.v-card h3{font-size:clamp(18px,1.6vw,24px);line-height:1.05;color:var(--bone)}
+.v-card p{margin:0;color:var(--mute);font-size:15px;line-height:1.45;text-wrap:pretty;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.v-card__foot{margin-top:auto;padding-top:14px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.v-card__from{display:grid;gap:4px}
+.v-card__from small{font:500 11px/1 var(--cd);letter-spacing:.08em;text-transform:uppercase;color:var(--red)}
+.v-card__from b{font:500 clamp(20px,1.8vw,28px)/1 var(--cd);letter-spacing:-.02em;color:var(--bone)}
+.v-card__go{display:inline-flex;align-items:center;gap:10px;min-height:48px;padding:0 20px;background:var(--bone);color:#fff;font:500 13px/1 var(--cd);letter-spacing:.04em;text-transform:uppercase;transition:background-color .2s}
+.v-card__go svg{transition:transform .3s var(--ease)}
+@media(hover:hover) and (pointer:fine){.v-card:hover .v-card__img span{transform:scale(1.05)}.v-card__go:hover{background:var(--red)}.v-card__go:hover svg{transform:translateX(4px)}}
+/* The old garage list styles matched every link in the section; the cards set their own */
+.v-more .v-card__go{padding:0 20px;font:500 13px/1 var(--cd);letter-spacing:.04em;color:#fff;justify-content:flex-start}
+.v-more .v-card__img{padding:0;display:block;font-size:0}
+@media(hover:hover) and (pointer:fine){.v-more .v-card__go:hover{color:#fff}}
+
+/* ---- Round 3: pure white (no cream), red prices, tabs, centred bar, richer What to expect, carousels, FAQ ---- */
+.v-light{--bk:#fff;--bk2:#f3f3f3;--line:#0b0b0c1f;background:#fff}
+.v-light .v-row{background:#fff;box-shadow:none;border:1px solid #0b0b0c1f;clip-path:polygon(0 0,100% 0,100% 100%,18px 100%,0 calc(100% - 18px))}
+.v-row__price b{color:var(--red)}
+.v-row__price{margin:0}
+
+/* Choose the vehicle, then its packages open (paint protection film) */
+.v-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 clamp(18px,2vw,28px)}
+.v-tabs button{min-height:52px;padding:0 24px;border:1px solid #0b0b0c40;background:transparent;color:var(--bone);font:500 14px/1 var(--cd);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;clip-path:polygon(0 0,100% 0,100% 100%,12px 100%,0 calc(100% - 12px));transition:background-color .2s,color .2s,border-color .2s,transform .16s var(--ease)}
+.v-tabs button:active{transform:scale(.97)}
+.v-tabs button.is-on{background:var(--red);border-color:var(--red);color:#fff}
+@media(hover:hover) and (pointer:fine){.v-tabs button:not(.is-on):hover{border-color:var(--red);color:var(--red)}}
+
+/* The bar under the hero: the price on the left, the booking button and the number centred on one line */
+.v-buy{align-items:center}
+.v-buy .s-btn,.v-buy .s-close__call{align-self:center}
+.v-buy .s-close__call{display:inline-flex;align-items:center;min-height:60px;line-height:1}
+.v-buy .s-close__call span{border-bottom:0;padding:0 0 0 .45em;text-decoration:underline;text-decoration-color:var(--red);text-underline-offset:.3em;text-decoration-thickness:2px}
+
+/* What to expect: four tall photo cards with the step over the picture */
+.v-exp .v-exp__list{grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:clamp(12px,1.4vw,20px)}
+.v-exp .v-exp__item{position:relative;isolation:isolate;display:flex;flex-direction:column;justify-content:flex-end;gap:10px;min-height:clamp(360px,34vw,480px);padding:clamp(20px,2vw,28px);overflow:hidden;color:#fff;clip-path:polygon(0 0,100% 0,100% 100%,22px 100%,0 calc(100% - 22px))}
+.v-exp .v-exp__m{position:absolute;inset:0;z-index:-2;aspect-ratio:auto;margin:0;filter:none;clip-path:none;transition:transform .8s var(--ease)}
+.v-exp .v-exp__item::after{content:'';position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(11,11,12,0) 30%,rgba(11,11,12,.9) 100%)}
+.v-exp .v-exp__item h3{color:#fff;font-size:clamp(20px,1.8vw,28px);line-height:1.02}
+.v-exp .v-exp__item h3::before{content:'';display:block;width:34px;height:4px;margin-bottom:14px;background:var(--red)}
+.v-exp .v-exp__item p{color:#e4e1da;font-size:clamp(14px,1.05vw,16px)}
+@media(hover:hover) and (pointer:fine){.v-exp .v-exp__item:hover .v-exp__m{transform:scale(1.06)}}
+
+/* Reviews: a carousel on black; drag it, step it with the arrows or let it move on its own */
+.v-rev__row{padding-inline:var(--cg)}
+.v-rev .srow{color:var(--bone)}
+.v-htrack.srow__track{width:auto;padding-inline:0}
+.v-htrack>li{flex:0 0 clamp(290px,32vw,470px)}
+.v-htrack .v-quote{flex:initial;height:100%;min-height:clamp(280px,36vh,400px)}
+
+/* Something else in the garage: a carousel of cards, the heading centred */
+.v-more .v-sec__head{flex-direction:column;align-items:center;text-align:center}
+.v-more .v-sec__head p{margin-inline:auto;text-align:center;max-width:46ch}
+.srow__track.v-cards{display:flex;padding-bottom:6px}
+.v-cards>li{flex:0 0 clamp(260px,24vw,310px);display:flex}
+.v-cards .v-card{width:100%}
+.v-more .srow{color:var(--bone)}
+.v-more .srow__ctrl{justify-content:center}
+.v-light .v-card{border:1px solid #0b0b0c1f;box-shadow:none}
+
+/* Questions */
+.v-faq .v-sec__head{margin-bottom:clamp(24px,3vw,44px)}
+.v-faq__list{display:grid;gap:8px;max-width:960px}
+.v-faq__item{background:var(--bk2);clip-path:polygon(0 0,100% 0,100% 100%,16px 100%,0 calc(100% - 16px))}
+.v-faq__item summary{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:clamp(18px,2vw,26px) clamp(18px,2.4vw,32px);cursor:pointer;list-style:none;font:500 clamp(15px,1.4vw,20px)/1.25 var(--cd);letter-spacing:-.005em;text-transform:uppercase;color:var(--bone)}
+.v-faq__item summary::-webkit-details-marker{display:none}
+.v-faq__item summary svg{flex:none;color:var(--red);transition:transform .3s var(--ease)}
+.v-faq__item[open] summary svg{transform:rotate(45deg)}
+.v-faq__item p{margin:0;padding:0 clamp(18px,2.4vw,32px) clamp(18px,2.2vw,28px);max-width:70ch;color:var(--mute);font-size:clamp(15px,1.15vw,18px);text-wrap:pretty}
+@media(hover:hover) and (pointer:fine){.v-faq__item summary:hover{color:var(--red)}}
+
+/* The bar under the hero: the price at the left, the button and the number at the right, all on one line through the middle of the bar */
+.v-buy{display:flex;align-items:center}
+.v-buy .v-price{margin-right:auto}
+
+/* Phones: the picture is dimmed enough for the white text to read, and everything under it lines up on the left */
+@media(max-width:700px){
+  .v-hero__scrim{background:linear-gradient(180deg,rgba(11,11,12,.62) 0,rgba(11,11,12,.55) 30%,rgba(11,11,12,.86) 62%,#0b0b0c 100%)}
+  .v-h1,.v-lede,.v-crumb{text-shadow:0 2px 18px rgba(0,0,0,.7)}
+  .v-lede{color:#efece4}
+  .v-buy{align-items:flex-start}
+  .v-buy .s-btn{justify-content:flex-start}
+  .v-buy .s-close__call{text-align:left;min-height:0}
+}

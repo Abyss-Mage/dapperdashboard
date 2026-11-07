@@ -1,0 +1,13 @@
+/* Closing call band, shared by Home, Services, every vehicle page and Portfolio */
+.cta{background:#fff;color:#0b0b0c;text-align:center;padding:clamp(80px,10vw,160px) clamp(16px,3.6vw,56px)}
+.cta h2.cta__h,.s-page .cta h2{margin:0 auto;max-width:none;font:500 clamp(26px,4.4vw,72px)/1 'Unbounded Variable','Arial Narrow',sans-serif;letter-spacing:-.02em;text-transform:uppercase;text-wrap:balance;color:#0b0b0c!important}
+.cta h2 em,.s-page .cta h2 em{display:block;font-style:normal;color:#e3172b}
+.cta__lede{margin:clamp(18px,2vw,28px) auto 0;max-width:46ch;font:400 clamp(16px,1.4vw,21px)/1.5 Manrope,system-ui,sans-serif;color:#55524b;text-wrap:pretty}
+.cta__act{display:flex;align-items:center;justify-content:center;gap:clamp(16px,2.4vw,36px);flex-wrap:wrap;margin-top:clamp(24px,3vw,40px)}
+.cta__btn{display:inline-flex;align-items:center;gap:14px;min-height:60px;padding:0 28px;background:#e3172b;color:#fff;font:500 15px/1 'Unbounded Variable','Arial Narrow',sans-serif;letter-spacing:.04em;text-transform:uppercase;clip-path:polygon(0 0,100% 0,100% 100%,14px 100%,0 calc(100% - 14px));transition:background-color .2s,transform .16s cubic-bezier(.23,1,.32,1)}
+.cta__btn:active{transform:scale(.97)}
+.cta__btn svg{transition:transform .3s cubic-bezier(.23,1,.32,1)}
+.cta__call{font:500 clamp(15px,1.3vw,19px)/1 Manrope,system-ui,sans-serif;color:#55524b}
+.cta__call span{color:#c4121f;text-decoration:underline;text-underline-offset:.22em;text-decoration-thickness:1px;font-variant-numeric:tabular-nums}
+@media(hover:hover) and (pointer:fine){.cta__btn:hover{background:#c4121f}.cta__btn:hover svg{transform:translateX(4px)}}
+.cta :focus-visible{outline:2px solid #e3172b;outline-offset:3px}

@@ -129,9 +129,8 @@ func (s *Store) MFAStatus(ctx context.Context, principal string) (MFAStatus, err
 	}
 	out.Enabled = err == nil && enabled != nil
 	out.SetupStarted = err == nil && enabled == nil
-	if out.Required, err = isAdministrator(ctx, s.pool, principal); err != nil {
-		return out, err
-	}
+	// Two-factor authentication is optional for everyone, administrators included (out.Required stays false).
+	err = nil
 	if out.Enabled {
 		err = s.pool.QueryRow(ctx, `SELECT count(*) FROM member_mfa_recovery_codes WHERE principal_id=$1 AND used_at IS NULL`, principal).Scan(&out.RecoveryRemaining)
 	}
@@ -301,14 +300,11 @@ func (s *Store) VerifyMFALogin(ctx context.Context, principal, code string) (req
 	return true, tx.Commit(ctx)
 }
 
-// DisableMFA turns MFA off after a valid code. Administrators cannot: their MFA is mandatory.
+// DisableMFA turns MFA off after a valid code.
 func (s *Store) DisableMFA(ctx context.Context, principal, code string) error {
 	st, err := s.MFAStatus(ctx, principal)
 	if err != nil {
 		return err
-	}
-	if st.Required {
-		return ErrMFAAdminRequired
 	}
 	if !st.Enabled {
 		return ErrMFAState

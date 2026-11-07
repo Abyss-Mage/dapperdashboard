@@ -51,10 +51,10 @@ dl{display:grid;grid-template-columns:150px 1fr;gap:6px 12px;margin:0;font-size:
 <section id="view"></section>
 </main>
 <script>
-const STEPS=['Welcome','Database','Site','Email','Owner','Install'];
+const STEPS=['Welcome','Database','Site','Email','Owner','Franchise','Install'];
 const S={step:0,code:sessionStorage.getItem('dapperCode')||'',db:{host:'localhost',port:5432,name:'dapper',user:'',password:'',sslMode:'disable'},report:null,createDb:false,
  site:{name:'',url:'https://localhost:8443',timezone:Intl.DateTimeFormat().resolvedOptions().timeZone||'America/Toronto',listen:'127.0.0.1:8443',tls:{mode:'self-signed',certFile:'',keyFile:''}},
- mail:{host:'',port:587,username:'',password:'',fromAddress:'',fromName:''},owner:{email:'',password:'',confirm:''},done:false};
+ mail:{host:'',port:587,username:'',password:'',fromAddress:'',fromName:''},owner:{email:'',password:'',confirm:''},franchise:{name:'',code:'',street:'',city:'',region:'',postalCode:'',country:'',phone:''},done:false};
 const $=(s,r=document)=>r.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 async function api(path,body){
@@ -129,16 +129,27 @@ const views=[
   <div class="actions"><button id="back">Back</button><button class="primary" id="next">Continue</button></div>`;
   bind('oe',o,'email');bind('op',o,'password');bind('oc',o,'confirm'); $('#back').onclick=()=>go(3);
   $('#next').onclick=()=>{ if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(o.email))return note($('#msg'),'bad','Enter a valid email address.'); if(o.password.length<15)return note($('#msg'),'bad','The password needs at least 15 characters.'); if(o.password!==o.confirm)return note($('#msg'),'bad','The two passwords do not match.'); go(5) } },
- // 5 install
+ // 5 first franchise
+ ()=>{ const f=S.franchise; if(!f.name)f.name=S.site.name; $('#view').innerHTML=`<h2>First franchise</h2><p class="lead">Your first location. The owner you just entered becomes <b>Super Admin</b> for everything, and this franchise gets its public website entry so portfolio photos can be published later.</p>
+  <div class="row">${field('fn','Franchise name',f.name,'text','placeholder="Your business, your city"')}${field('fc','Short code',f.code,'text','placeholder="DDP" maxlength="12" style="text-transform:uppercase"')}</div>
+  ${field('fs','Street address',f.street)}
+  <div class="row">${field('fy','City',f.city)}${field('fr','Province or state',f.region)}</div>
+  <div class="row">${field('fp','Postal code',f.postalCode)}${field('fo','Country',f.country)}</div>
+  ${field('fh','Phone (optional)',f.phone,'tel')}
+  <div class="sub" style="margin-top:8px">The short code is 2 to 12 letters, digits or dashes. It names the franchise in reports and in its website address.</div><div id="msg" class="note hidden"></div>
+  <div class="actions"><button id="back">Back</button><button class="primary" id="next">Continue</button></div>`;
+  bind('fn',f,'name');bind('fc',f,'code');bind('fs',f,'street');bind('fy',f,'city');bind('fr',f,'region');bind('fp',f,'postalCode');bind('fo',f,'country');bind('fh',f,'phone'); $('#back').onclick=()=>go(4);
+  $('#next').onclick=()=>{ f.code=f.code.trim().toUpperCase(); if(f.name.trim().length<2)return note($('#msg'),'bad','Enter the franchise name.'); if(!/^[A-Z0-9-]{2,12}$/.test(f.code))return note($('#msg'),'bad','The short code is 2 to 12 letters, digits or dashes, for example DDP.'); if(!f.street.trim()||!f.city.trim()||!f.region.trim()||!f.postalCode.trim()||!f.country.trim())return note($('#msg'),'bad','Enter the street, city, province or state, postal code and country.'); go(6) } },
+ // 6 install
  ()=>{ const t=S.site,d=S.db;
-  $('#view').innerHTML=`<h2>Ready to install</h2><p class="lead">Check the summary, then install. This creates the tables, the owner account and your private configuration file. It cannot be run twice.</p>
+  $('#view').innerHTML=`<h2>Ready to install</h2><p class="lead">Check the summary, then install. This creates the tables, the owner account (Super Admin), the first franchise and your private configuration file. It cannot be run twice.</p>
   <dl><dt>Business</dt><dd>${esc(t.name)}</dd><dt>Site address</dt><dd>${esc(t.url)}</dd><dt>Timezone</dt><dd>${esc(t.timezone)}</dd><dt>HTTPS</dt><dd>${esc({'self-signed':'Self-signed certificate','files':'Your certificate','proxy':'Reverse proxy'}[t.tls.mode])}</dd>
-  <dt>Database</dt><dd>${esc(d.user)}@${esc(d.host)}:${d.port}/${esc(d.name)}${S.createDb?' (will be created)':''}</dd><dt>Email</dt><dd>${S.mail.host?esc(S.mail.host+':'+S.mail.port):'Skipped'}</dd><dt>Owner</dt><dd>${esc(S.owner.email)}</dd></dl>
+  <dt>Database</dt><dd>${esc(d.user)}@${esc(d.host)}:${d.port}/${esc(d.name)}${S.createDb?' (will be created)':''}</dd><dt>Email</dt><dd>${S.mail.host?esc(S.mail.host+':'+S.mail.port):'Skipped'}</dd><dt>Owner</dt><dd>${esc(S.owner.email)} (Super Admin)</dd><dt>First franchise</dt><dd>${esc(S.franchise.name)} (${esc(S.franchise.code)})</dd></dl>
   <div id="msg" class="note hidden"></div><ul class="checks" id="out"></ul>
   <div class="actions"><button id="back">Back</button><button class="primary" id="go">Install Dapper</button></div>`;
-  $('#back').onclick=()=>go(4);
+  $('#back').onclick=()=>go(5);
   $('#go').onclick=async()=>{ $('#go').disabled=true;$('#back').disabled=true; note($('#msg'),'info','Installing… this takes a few seconds.');
-   const r=await api('install',{site:S.site,db:S.db,createDb:S.createDb,mail:S.mail,owner:{email:S.owner.email,password:S.owner.password}});
+   const r=await api('install',{site:S.site,db:S.db,createDb:S.createDb,mail:S.mail,owner:{email:S.owner.email,password:S.owner.password},franchise:S.franchise});
    $('#out').innerHTML=(r.steps||[]).map(i=>`<li><span class="dot ${i.ok?'ok':'bad'}"></span><div><b>${esc(i.step)}</b><div class="sub">${esc(i.detail||'')}</div></div></li>`).join('');
    if(!r.ok){note($('#msg'),'bad',r.error||'Installation failed.');$('#go').disabled=false;$('#back').disabled=false;return}
    S.owner.password=S.owner.confirm=S.db.password=S.mail.password=''; sessionStorage.removeItem('dapperCode');

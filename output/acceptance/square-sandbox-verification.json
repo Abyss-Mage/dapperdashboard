@@ -1,0 +1,35 @@
+{
+  "checkedAt": "2026-10-24T15:05:26Z",
+  "checks": [
+    {
+      "name": "location_identity_cad_card_processing",
+      "passed": true
+    },
+    {
+      "name": "wrong_merchant_rejected",
+      "passed": true
+    },
+    {
+      "name": "test_card_payment_completed",
+      "passed": true,
+      "detail": " status=COMPLETED"
+    },
+    {
+      "name": "idempotent_replay_same_payment",
+      "passed": true
+    },
+    {
+      "name": "retrieve_matches_charge",
+      "passed": true
+    },
+    {
+      "name": "declined_test_card_not_success",
+      "passed": true,
+      "detail": "square payment processing failed: Authorization error: 'GENERIC_DECLINE' (GENERIC_DECLINE)"
+    }
+  ],
+  "environment": "sandbox",
+  "passed": true,
+  "provider": "square",
+  "sandboxPaymentId": "2SoQ9Y49hzc3MctRBf2sP9Co6fPZY"
+}

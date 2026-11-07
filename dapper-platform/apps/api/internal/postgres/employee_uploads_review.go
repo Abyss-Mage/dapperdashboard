@@ -1,6 +1,10 @@
 package postgres
 
 import (
+	"bytes"
+	"image"
+	"image/color"
+	"image/jpeg"
 	"context"
 	"errors"
 	"os"
@@ -138,4 +142,72 @@ func (s *Store) ListUploadViews(ctx context.Context, scope Scope) ([]UploadView,
 		out = append(out, v)
 	}
 	return out, rows.Err()
+}
+
+// ReviewUploadThumbnail returns a small preview of a photo for the review gallery. It needs the same access as opening
+// the photo but is not written to the viewing log: only opening the full photo is logged.
+func (s *Store) ReviewUploadThumbnail(ctx context.Context, scope Scope, photo string) ([]byte, error) {
+	if s.uploadDir == "" {
+		return nil, ErrUploadsUnavailable
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+	if err = authorizeTransaction(ctx, tx, scope, "attendance.read"); err != nil {
+		return nil, err
+	}
+	var key string
+	err = tx.QueryRow(ctx, `SELECT f.storage_key FROM employee_upload_photos f JOIN employee_upload_posts p ON p.id=f.post_id WHERE f.id=$1 AND p.organization_id=$2 AND p.location_id=$3`, photo, scope.OrganizationID, scope.LocationID).Scan(&key)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrUploadNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	data, err := os.ReadFile(filepath.Join(s.uploadDir, key))
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, ErrUploadNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return shrinkJPEG(data, 360)
+}
+
+// shrinkJPEG scales a JPEG down so its longer side is at most max pixels (box average), and re-encodes it.
+func shrinkJPEG(data []byte, max int) ([]byte, error) {
+	src, err := jpeg.Decode(bytes.NewReader(data))
+	if err != nil {
+		return nil, ErrUploadNotFound
+	}
+	b := src.Bounds()
+	w, h := b.Dx(), b.Dy()
+	step := 1
+	for w/step > max || h/step > max {
+		step++
+	}
+	nw, nh := w/step, h/step
+	if nw < 1 || nh < 1 {
+		nw, nh, step = w, h, 1
+	}
+	dst := image.NewRGBA(image.Rect(0, 0, nw, nh))
+	for y := 0; y < nh; y++ {
+		for x := 0; x < nw; x++ {
+			var r, g, bl, n uint32
+			for dy := 0; dy < step; dy++ {
+				for dx := 0; dx < step; dx++ {
+					pr, pg, pb, _ := src.At(b.Min.X+x*step+dx, b.Min.Y+y*step+dy).RGBA()
+					r, g, bl, n = r+pr, g+pg, bl+pb, n+1
+				}
+			}
+			dst.SetRGBA(x, y, color.RGBA{uint8(r / n >> 8), uint8(g / n >> 8), uint8(bl / n >> 8), 255})
+		}
+	}
+	var out bytes.Buffer
+	if err = jpeg.Encode(&out, dst, &jpeg.Options{Quality: 72}); err != nil {
+		return nil, err
+	}
+	return out.Bytes(), nil
 }

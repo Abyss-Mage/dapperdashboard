@@ -144,6 +144,15 @@ func TestOwnerWaveFeatures(t *testing.T) {
 		if dealer.PerCarRateCents == nil || *dealer.PerCarRateCents != 4500 || len(dealer.Contacts) != 2 || dealer.ContactName != "Synthetic Sales" || dealer.TaxExempt || dealer.BillingTermsDays != 30 {
 			t.Fatalf("dealership not saved as expected: %+v", dealer)
 		}
+		if listed, derr := s.CustomerDirectory(ctx, scope); derr != nil {
+			t.Fatal(derr)
+		} else {
+			for _, c := range listed {
+				if c.ID == customer.ID {
+					t.Fatal("a dealership's customer record appears in the customers list")
+				}
+			}
+		}
 		if _, err = s.CreateDealershipAccount(ctx, scope, CreateDealershipInput{CustomerID: customer.ID, AccountName: "Synthetic No Contact", AccountCode: "NOCON", AccountType: "dealership"}); err == nil {
 			t.Fatal("a dealership with no contact person was accepted")
 		}

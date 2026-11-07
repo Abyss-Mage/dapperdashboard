@@ -1,0 +1,27 @@
+/* The signed-in customer account: the site's header and footer, a greeting with three numbers, section chips, and the existing panels
+   restyled to the site's dark look. Phone first: one column, big tap targets, chips that scroll sideways. */
+.page{min-height:100svh;padding-top:72px;background:#0b0b0c;color:#efece4}
+.wait{max-width:640px;margin:12vh auto;padding:0 clamp(16px,3.4vw,56px)}
+.hello{max-width:1100px;margin:0 auto;padding:clamp(28px,5vw,72px) clamp(16px,3.4vw,56px) clamp(16px,2vw,28px)}
+.kicker{margin:0 0 14px;padding-left:12px;border-left:3px solid #e3172b;font:500 12px/1 'Unbounded Variable','Arial Narrow',sans-serif;letter-spacing:.12em;text-transform:uppercase}
+.hello h1{margin:0;font:500 clamp(34px,6vw,84px)/.98 'Unbounded Variable','Arial Narrow',sans-serif;letter-spacing:-.03em;text-transform:uppercase;text-wrap:balance}
+.hello h1 em{font-style:normal;color:#e3172b}
+.sub{margin:14px 0 0;max-width:46ch;color:#b9b6ae;font-size:clamp(15px,1.3vw,18px)}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:clamp(20px,3vw,32px)}
+.stats div{display:grid;gap:6px;padding:clamp(14px,2vw,22px);border-radius:18px;background:#151517}
+.stats small{color:#a9a69e;font-size:13px}
+.stats b{font:500 clamp(20px,3vw,38px)/1 'Unbounded Variable','Arial Narrow',sans-serif;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:clamp(18px,2.4vw,28px)}
+.book{display:inline-flex;align-items:center;justify-content:center;min-height:52px;padding:0 26px;background:#e3172b;color:#fff;text-decoration:none;font:700 14px/1 'Unbounded Variable','Arial Narrow',sans-serif;letter-spacing:.05em;text-transform:uppercase;clip-path:polygon(0 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%)}
+.out{min-height:52px;padding:0 22px;border:0;border-radius:999px;background:#ffffff14;color:#efece4;font:600 15px/1 'Manrope',sans-serif;cursor:pointer}
+.body{max-width:1100px;margin:0 auto;padding:0 clamp(16px,3.4vw,56px) clamp(48px,6vw,96px);display:grid;gap:clamp(14px,2vw,22px)}
+.tabs{position:sticky;top:72px;z-index:5;display:flex;gap:8px;overflow-x:auto;padding:10px 0;margin:0 calc(clamp(16px,3.4vw,56px) * -1);padding-inline:clamp(16px,3.4vw,56px);background:#0b0b0c;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tabs a{flex:none;display:inline-flex;align-items:center;min-height:44px;padding:0 18px;border-radius:999px;background:#17171a;color:#efece4;text-decoration:none;font:600 14px/1 'Manrope',sans-serif}
+.sec{display:grid;gap:14px;scroll-margin-top:140px}
+.page :global(.panel),.page :global(.detail-card){background:#151517;border:0;border-radius:20px;color:#efece4;box-shadow:none}
+.page :global(.detail-card){padding:clamp(18px,2.4vw,30px)}
+.page :global(.form-field input),.page :global(.form-field select),.page :global(.form-field textarea){min-height:48px}
+.page :global(.primary),.page :global(.secondary){min-height:48px}
+@media(max-width:700px){.stats b{font-size:clamp(17px,5vw,24px)}.stats div{padding:12px}}
+.avatar{margin-bottom:14px}

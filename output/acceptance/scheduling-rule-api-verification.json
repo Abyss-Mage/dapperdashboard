@@ -1,0 +1,24 @@
+{
+  "positiveLiveRuleVerified": false,
+  "positiveEvidence": "real HTTP handler and isolated PostgreSQL",
+  "changedFiles": [
+    {
+      "sha256": "5EE350B3DE7BEB3380DEB288387C901C41C8A0BA45C8DA176E2503A18EE07386",
+      "file": "dapper-platform/apps/api/internal/postgres/scheduling_rules.go"
+    },
+    {
+      "sha256": "6B9C7E765C3C23EFE913CAC0B5F32033F3C35C586711C33E98AEA854DC2857CE",
+      "file": "dapper-platform/apps/api/internal/workspace/scheduling_rules.go"
+    },
+    {
+      "sha256": "00C0E07B4F6F1680C14629CB876E22C475B4BB31E214044BFEC2DBDB2A2D76B9",
+      "file": "dapper-platform/apps/api/internal/workspace/scheduling_rules_test.go"
+    }
+  ],
+  "liveHttpsGroups": 11,
+  "runtimeMigration": 15,
+  "browserRuleVerified": false,
+  "restoreTableCount": 21,
+  "productionReady": false,
+  "verifiedAt": "2026-10-22T05:56:48.8448461Z"
+}

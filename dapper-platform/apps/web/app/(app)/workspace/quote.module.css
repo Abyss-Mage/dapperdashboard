@@ -1,0 +1,27 @@
+.form { border: 1px solid var(--border); border-radius: 18px; padding: 22px; margin: 16px 0; display: grid; gap: 20px; background: color-mix(in srgb, var(--surface-alt) 70%, transparent); }
+.form h4 { margin: 0; font-size: 18.9px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; }
+.summary { display: flex; flex-wrap: wrap; gap: 18px 28px; justify-content: space-between; align-items: flex-start; }
+.taxField { width: 170px; flex: none; }
+.field { display: grid; gap: 6px; font-size: 13.6px; font-weight: 650; color: var(--text-muted); min-width: 0; }
+.field input, .field textarea { width: 100%; min-width: 0; box-sizing: border-box; }
+.hint { font-size: 12.6px; font-weight: 400; color: var(--text-muted); }
+.picked { display: grid; gap: 2px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); font-size: 14.7px; }
+.picked span { color: var(--text-muted); font-size: 13.6px; }
+.lines { display: grid; gap: 8px; }
+.lineHead, .line { display: grid; grid-template-columns: minmax(0, 1fr) 136px 184px 100px 44px; gap: 10px; align-items: center; }
+.lineHead { font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); padding: 0 2px; }
+.line input { width: 100%; min-width: 0; box-sizing: border-box; }
+.lineTotal { text-align: right; font-variant-numeric: tabular-nums; font-weight: 650; }
+.remove { min-height: 40px; padding: 0; }
+.totals { margin-left: auto; width: min(320px, 100%); display: grid; gap: 6px; font-size: 14.7px; font-variant-numeric: tabular-nums; }
+.totals div { display: flex; justify-content: space-between; gap: 16px; }
+.totals .grand { border-top: 1px solid var(--border); padding-top: 8px; font-size: 16.8px; font-weight: 800; }
+.actions { display: flex; gap: 10px; flex-wrap: wrap; }
+@media (max-width: 760px) {
+  .lineHead { display: none; }
+  .line { grid-template-columns: 1fr 1fr; }
+  .line > :first-child { grid-column: 1 / -1; }
+  .lineTotal { text-align: left; }
+}

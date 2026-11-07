@@ -90,15 +90,20 @@ type Quote struct {
 	BookingID       *string          `json:"bookingId,omitempty"`
 	CreatedAt       time.Time        `json:"createdAt"`
 	UpdatedAt       time.Time        `json:"updatedAt"`
+	CustomerName    string           `json:"customerName"`
 	Items           []QuoteItem      `json:"items"`
 	Events          []QuoteEvent     `json:"events,omitempty"`
 	Acceptance      *QuoteAcceptance `json:"acceptance,omitempty"`
 }
 
 type CreateQuoteInput struct {
-	RequestID     string           `json:"requestId"`
-	CustomerID    string           `json:"customerId"`
-	VehicleID     string           `json:"vehicleId"`
+	RequestID  string `json:"requestId"`
+	CustomerID string `json:"customerId"`
+	VehicleID  string `json:"vehicleId"`
+	// Staff can quote a client by name instead of a booking request: the name (with optional phone and email) finds or adds the customer.
+	ClientName    string           `json:"clientName"`
+	ClientPhone   string           `json:"clientPhone"`
+	ClientEmail   string           `json:"clientEmail"`
 	Items         []QuoteItemInput `json:"items"`
 	TaxCents      int64            `json:"taxCents"`
 	DepositCents  int64            `json:"depositCents"`
@@ -146,7 +151,7 @@ type FulfillQuoteResult struct {
 	Booking Booking `json:"booking"`
 }
 
-const quoteColumns = `q.id::text, q.organization_id::text, q.location_id::text, q.request_id::text, q.customer_id::text, q.vehicle_id::text, q.reference_number, q.status, q.version, q.currency, q.subtotal_cents, q.tax_cents, q.deposit_cents, q.total_cents, q.internal_notes, q.customer_note, q.expires_at, q.issued_at, q.issued_by::text, q.decided_at, q.booking_id::text, q.created_at, q.updated_at`
+const quoteColumns = `q.id::text, q.organization_id::text, q.location_id::text, COALESCE(q.request_id::text,''), q.customer_id::text, COALESCE(q.vehicle_id::text,''), q.reference_number, q.status, q.version, q.currency, q.subtotal_cents, q.tax_cents, q.deposit_cents, q.total_cents, q.internal_notes, q.customer_note, q.expires_at, q.issued_at, q.issued_by::text, q.decided_at, q.booking_id::text, q.created_at, q.updated_at, COALESCE((SELECT c.name FROM customers c WHERE c.organization_id=q.organization_id AND c.location_id=q.location_id AND c.id=q.customer_id),'')`
 
 func scanQuote(row pgx.Row) (Quote, error) {
 	var q Quote
@@ -159,7 +164,7 @@ func scanQuote(row pgx.Row) (Quote, error) {
 		&q.SubtotalCents, &q.TaxCents, &q.DepositCents, &q.TotalCents,
 		&q.InternalNotes, &q.CustomerNote,
 		&q.ExpiresAt, &q.IssuedAt, &issuedBy, &q.DecidedAt,
-		&bookingID, &q.CreatedAt, &q.UpdatedAt,
+		&bookingID, &q.CreatedAt, &q.UpdatedAt, &q.CustomerName,
 	)
 	if err != nil {
 		return Quote{}, err
@@ -221,7 +226,15 @@ func validateQuoteItems(items []QuoteItemInput) error {
 func (s *Store) CreateQuote(ctx context.Context, scope Scope, input CreateQuoteInput) (Quote, error) {
 	input.InternalNotes = strings.TrimSpace(input.InternalNotes)
 	input.CustomerNote = strings.TrimSpace(input.CustomerNote)
-	if !uuid(input.RequestID) || !uuid(input.CustomerID) || !uuid(input.VehicleID) {
+	input.ClientName, input.ClientPhone, input.ClientEmail = strings.TrimSpace(input.ClientName), strings.TrimSpace(input.ClientPhone), strings.TrimSpace(input.ClientEmail)
+	withRequest := input.RequestID != "" || input.VehicleID != ""
+	if withRequest && (!uuid(input.RequestID) || !uuid(input.CustomerID) || !uuid(input.VehicleID)) {
+		return Quote{}, ErrQuoteInput
+	}
+	if !withRequest && !uuid(input.CustomerID) && utf8.RuneCountInString(input.ClientName) < 2 {
+		return Quote{}, ErrQuoteInput
+	}
+	if utf8.RuneCountInString(input.ClientName) > 100 || len(input.ClientEmail) > 254 || utf8.RuneCountInString(input.ClientPhone) > 30 {
 		return Quote{}, ErrQuoteInput
 	}
 	if err := validateQuoteItems(input.Items); err != nil {
@@ -263,18 +276,41 @@ func (s *Store) CreateQuote(ctx context.Context, scope Scope, input CreateQuoteI
 		return Quote{}, err
 	}
 
-	var reqOrg, reqLoc string
-	err = tx.QueryRow(ctx, `SELECT organization_id::text, location_id::text FROM customer_booking_requests WHERE organization_id=$1 AND location_id=$2 AND id=$3 AND customer_id=$4 AND vehicle_id=$5 FOR SHARE`,
-		scope.OrganizationID, scope.LocationID, input.RequestID, input.CustomerID, input.VehicleID).Scan(&reqOrg, &reqLoc)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Quote{}, ErrQuoteInput
+	if !withRequest && !uuid(input.CustomerID) {
+		if err = authorizeTransaction(ctx, tx, scope, "customers.create"); err != nil {
+			return Quote{}, err
+		}
+		found, ferr := existingCustomer(ctx, tx, scope.OrganizationID, scope.LocationID, input.ClientEmail, input.ClientPhone)
+		if ferr != nil {
+			return Quote{}, ferr
+		}
+		if found == "" {
+			if err = tx.QueryRow(ctx, `INSERT INTO customers(organization_id,location_id,name,email,phone) VALUES($1,$2,$3,$4,$5) RETURNING id::text`, scope.OrganizationID, scope.LocationID, input.ClientName, input.ClientEmail, input.ClientPhone).Scan(&found); err != nil {
+				return Quote{}, customerUniqueness(err)
+			}
+		}
+		input.CustomerID = found
+	} else if !withRequest {
+		var known bool
+		if err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM customers WHERE organization_id=$1 AND location_id=$2 AND id=$3 AND removed_at IS NULL)`, scope.OrganizationID, scope.LocationID, input.CustomerID).Scan(&known); err != nil || !known {
+			return Quote{}, ErrQuoteInput
+		}
 	}
-	if err != nil {
-		return Quote{}, err
+
+	var reqOrg, reqLoc string
+	if withRequest {
+		err = tx.QueryRow(ctx, `SELECT organization_id::text, location_id::text FROM customer_booking_requests WHERE organization_id=$1 AND location_id=$2 AND id=$3 AND customer_id=$4 AND vehicle_id=$5 FOR SHARE`,
+			scope.OrganizationID, scope.LocationID, input.RequestID, input.CustomerID, input.VehicleID).Scan(&reqOrg, &reqLoc)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Quote{}, ErrQuoteInput
+		}
+		if err != nil {
+			return Quote{}, err
+		}
 	}
 
 	var quoteID string
-	err = tx.QueryRow(ctx, `INSERT INTO scoped_quotations(organization_id,location_id,request_id,customer_id,vehicle_id,currency,status,subtotal_cents,tax_cents,deposit_cents,reference_number,internal_notes,customer_note,expires_at) VALUES($1,$2,$3,$4,$5,'CAD','draft',$6,$7,$8,$9,$10,$11,$12) RETURNING id::text`,
+	err = tx.QueryRow(ctx, `INSERT INTO scoped_quotations(organization_id,location_id,request_id,customer_id,vehicle_id,currency,status,subtotal_cents,tax_cents,deposit_cents,reference_number,internal_notes,customer_note,expires_at) VALUES($1,$2,NULLIF($3,'')::uuid,$4,NULLIF($5,'')::uuid,'CAD','draft',$6,$7,$8,$9,$10,$11,$12) RETURNING id::text`,
 		scope.OrganizationID, scope.LocationID, input.RequestID, input.CustomerID, input.VehicleID,
 		subtotal, input.TaxCents, input.DepositCents, refNum,
 		input.InternalNotes, input.CustomerNote, input.ExpiresAt,
@@ -934,7 +970,7 @@ func (s *Store) FulfillQuote(ctx context.Context, scope Scope, input FulfillQuot
 	var version int
 	var depositCents, totalCents int64
 	var expiresAt *time.Time
-	err = tx.QueryRow(ctx, `SELECT id::text, request_id::text, customer_id::text, vehicle_id::text, status, version, deposit_cents, total_cents, currency, expires_at FROM scoped_quotations WHERE organization_id=$1 AND location_id=$2 AND id=$3 FOR UPDATE`,
+	err = tx.QueryRow(ctx, `SELECT id::text, COALESCE(request_id::text,''), customer_id::text, COALESCE(vehicle_id::text,''), status, version, deposit_cents, total_cents, currency, expires_at FROM scoped_quotations WHERE organization_id=$1 AND location_id=$2 AND id=$3 FOR UPDATE`,
 		scope.OrganizationID, scope.LocationID, input.QuoteID).
 		Scan(&quoteID, &requestID, &customerID, &vehicleID, &status, &version, &depositCents, &totalCents, &currency, &expiresAt)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -1121,7 +1157,7 @@ func buildQuoteContentJSON(ctx context.Context, tx pgx.Tx, org, loc, quoteID str
 		Items           []canonItem `json:"items"`
 	}
 	var cq canonQuote
-	err := tx.QueryRow(ctx, `SELECT id::text, request_id::text, reference_number, version, currency, subtotal_cents, tax_cents, deposit_cents, total_cents, customer_note, issued_at FROM scoped_quotations WHERE organization_id=$1 AND location_id=$2 AND id=$3`,
+	err := tx.QueryRow(ctx, `SELECT id::text, COALESCE(request_id::text,''), reference_number, version, currency, subtotal_cents, tax_cents, deposit_cents, total_cents, customer_note, issued_at FROM scoped_quotations WHERE organization_id=$1 AND location_id=$2 AND id=$3`,
 		org, loc, quoteID).Scan(&cq.ID, &cq.RequestID, &cq.ReferenceNumber, &cq.Version, &cq.Currency, &cq.SubtotalCents, &cq.TaxCents, &cq.DepositCents, &cq.TotalCents, &cq.CustomerNote, &cq.IssuedAt)
 	if err != nil {
 		return nil, err

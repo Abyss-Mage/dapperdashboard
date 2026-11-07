@@ -1,0 +1,76 @@
+{
+  "sourceHashes": [
+    {
+      "sha256": "3BC855EBC6FD0E9CDA0F14659900869EA0B6CEC8FF4C453CEB83DC12BACAD163",
+      "path": "dapper-platform/apps/api/internal/postgres/booking_offers.go"
+    },
+    {
+      "sha256": "5111A91DBBA14C4AFC2B84076DD5DEDF8B8D65211B2C15E4DB2AAF80F3390D98",
+      "path": "dapper-platform/apps/api/internal/postgres/booking_offers.sql"
+    },
+    {
+      "sha256": "D90BF86102A1C14EE0527022EEA9C646AC8D4AA1C337CD6E5FF5C49D04DFCC83",
+      "path": "dapper-platform/apps/api/internal/postgres/booking_offers_test.go"
+    },
+    {
+      "sha256": "71E5575CAB89BC6FB4150B25CCA6E0E61BDFD0EA5A72C534446E56C207DAFDC2",
+      "path": "dapper-platform/apps/api/internal/postgres/store.go"
+    },
+    {
+      "sha256": "136A7EC21455A83FBAC561D62854231E8A3E5CFFB0F0E6D7C4EBA8DEB097A27B",
+      "path": "dapper-platform/apps/api/internal/postgres/store_test.go"
+    },
+    {
+      "sha256": "F6DAF21943D739C73066A019FFBADF8FABC90B3FBB9716BD9512A4A2507D0BE1",
+      "path": "dapper-platform/apps/api/internal/postgres/booking_capacity_options.go"
+    },
+    {
+      "sha256": "BEE2CD2C949231465D44C00AF946E78F0C18AEAC84284D17DF09C4D997602746",
+      "path": "dapper-platform/apps/api/internal/workspace/booking_offers.go"
+    },
+    {
+      "sha256": "54EC9AA24F9A2ED4B8E4CD5635C4320B6EFABEB0ADC3AC0CCA6856FE493842FD",
+      "path": "dapper-platform/apps/api/internal/workspace/booking_offers_test.go"
+    },
+    {
+      "sha256": "A0FB877CE1CA5FACF4050AF330883A25E157E7764CAB0FDE1CC2418509544A62",
+      "path": "dapper-platform/apps/api/internal/workspace/handler.go"
+    },
+    {
+      "sha256": "A0C0CD7E7100799309AB5A5425DE08AA292660A14EF2F57140DBDCBD57665A0B",
+      "path": "dapper-platform/apps/api/internal/workspace/handler_test.go"
+    },
+    {
+      "sha256": "439F8A47FF8FD1904BEC02E0E3D94DFD64E9B41B3948003C33043CBEB9161FF0",
+      "path": "dapper-platform/apps/api/internal/workspace/invoice_browser_test.go"
+    },
+    {
+      "sha256": "A2A2704FC5AB3F97BEFE3DEB4B4B0FD28F4C365B314606169CE77EA6142B4877",
+      "path": "dapper-platform/apps/web/app/workspace/BookingOfferManager.tsx"
+    },
+    {
+      "sha256": "04CE1EA7422163E392369348AE2D069FCD598136CC0204E12A1A0375AB00EAFB",
+      "path": "dapper-platform/apps/web/app/workspace/page.tsx"
+    },
+    {
+      "sha256": "D4E76D60ADB818F0A4EF1039C0CA6EEE44833DFCA83DA5379F91F69B435D9449",
+      "path": "dapper-platform/tests/invoice-browser/app/page.tsx"
+    },
+    {
+      "sha256": "250A96391C92D8342647852F32F5A2B0B17DC59DB2BD8DC17D51C8911BE01492",
+      "path": "scripts/test-invoice-browser.ps1"
+    }
+  ],
+  "deployment": "PASS encrypted restore/count, migration, restart",
+  "isolatedBrowser": "PASS draft/review/publish/reload/withdraw; terminal verifier+cleanup",
+  "goVet": "PASS",
+  "nativePostgresHTTP": "PASS full suite",
+  "frontendBuildTypecheck": "PASS",
+  "quotaRemainingPercent": 70,
+  "ingress": "PASS 5 verified TLS",
+  "applicationOffers": 0,
+  "checkedAt": "2026-10-23T08:33:43.3996892Z",
+  "schema": 36,
+  "actualAuthenticatedBrowserAcceptance": "NOT_RUN",
+  "productionAccepted": false
+}

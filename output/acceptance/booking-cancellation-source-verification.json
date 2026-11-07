@@ -1,0 +1,55 @@
+{
+  "nativePostgresHTTP": "PASS final full suite process exit0",
+  "checkedAt": "2026-10-22T23:32:08.6589585+00:00",
+  "deployment": "NOT_RUN quota threshold reached before guarded restart",
+  "sourceHashes": [
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/booking_cancellation.go",
+      "sha256": "2535e5534478ae93f15efe095894e0c7e53f4ddf22e849bac72e1d77100ca7e7"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/bookings.go",
+      "sha256": "56a414c65351064505673ebb553d2675f4445eb31ad026fcbd58a6468aae4079"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/booking_capacity.go",
+      "sha256": "d2a51e0136d1c014500a280dedfd5327a955d58ee4a38b06d164c2da4aee39b5"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/booking_capacity_test.go",
+      "sha256": "b934201d83df9a07bf79a90e0beeb9b1bf07a116fcbd319a7f82c80ba1a0cfc5"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/booking_jobs.go",
+      "sha256": "7b49a3759b99cc47ebf2aede8d47176189aa7a588d7d79ef5f46fdce3da08a82"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/reservation_release.go",
+      "sha256": "26c332f4ff30f0bc453f29e049bc835b80f451bb579ba7a73b0445a89828e060"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/workspace/bookings.go",
+      "sha256": "518ad1a9b2c23376f6df652d2a2a2e3fc031454543ba456bd68f43eba5dbf1db"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/workspace/booking_capacity_test.go",
+      "sha256": "453f03a35d310e8746b3d39f3ff9f31b100de8b0a208e0041094590ff62fa4a4"
+    },
+    {
+      "path": "dapper-platform/apps/web/app/workspace/BookingManager.tsx",
+      "sha256": "ccb5e6bfc0fbcc3066e759d23945f6cc542f8ca779fd837e931127d8f8366435"
+    }
+  ],
+  "browserAcceptance": "NOT_RUN",
+  "frontendBuildTypecheck": "PASS",
+  "schemaVersion": 34,
+  "actualOperationalRecordsChanged": 0,
+  "productionAccepted": false,
+  "quota": {
+    "resetUnix": 1792725257,
+    "remainingPercent": 5,
+    "resetIST": "2026-10-23 08:44:17 +05:30",
+    "usedPercent": 95
+  },
+  "goVet": "PASS"
+}

@@ -899,7 +899,14 @@ function frame(now) {
   renderer.render(scene, camera);
   schedule();
 }
-function schedule() { if (!running && visible && !document.hidden) { running = true; requestAnimationFrame(frame); } }
+let disposed = false;
+function schedule() { if (!disposed && !running && visible && !document.hidden) { running = true; requestAnimationFrame(frame); } }
+// The Next.js home page unmounts the story on client navigation; it sends dapper:dispose so the GPU context is released.
+window.addEventListener('dapper:dispose', () => {
+  disposed = true; visible = false;
+  document.removeEventListener('visibilitychange', schedule); window.removeEventListener('dapper:home', schedule);
+  if (renderer) { renderer.dispose(); renderer.forceContextLoss(); renderer.domElement.remove(); }
+}, {once: true});
 function resize() {
   const w = Math.max(stage.clientWidth, 1), h = Math.max(stage.clientHeight, 1);
   renderer.setPixelRatio(Math.min(devicePixelRatio, small() ? 1.25 : 1.6)); renderer.setSize(w, h, false);

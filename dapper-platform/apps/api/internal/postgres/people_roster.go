@@ -1,28 +1,35 @@
 package postgres
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 // PersonRow is one organization member as an administrator needs to see them: who they are, where they work and
 // what is left of onboarding. It never carries secrets (no MFA secret, recovery codes or document contents).
 type PersonRow struct {
-	PrincipalID      string   `json:"principalId"`
-	Email            string   `json:"email"`
-	Active           bool     `json:"active"`
-	FullName         string   `json:"fullName"`
-	Phone            string   `json:"phone"`
-	ProfileComplete  bool     `json:"profileComplete"`
-	Administrator    bool     `json:"administrator"`
-	MFAEnabled       bool     `json:"mfaEnabled"`
-	MFASetupStarted  bool     `json:"mfaSetupStarted"`
-	LocationID       string   `json:"locationId"`
-	LocationName     string   `json:"locationName"`
-	LocationCode     string   `json:"locationCode"`
-	DealershipName   string   `json:"dealershipName"`
-	Roles            []string `json:"roles"`
-	DocumentsTotal   int      `json:"documentsTotal"`
-	DocumentsAcked   int      `json:"documentsAcknowledged"`
-	OnboardingStatus string   `json:"onboardingStatus"` // complete | incomplete | not_assigned | inactive
-	Missing          []string `json:"missing"`          // details, mfa, documents, franchise
+	PrincipalID     string   `json:"principalId"`
+	Email           string   `json:"email"`
+	Active          bool     `json:"active"`
+	FullName        string   `json:"fullName"`
+	Phone           string   `json:"phone"`
+	ProfileComplete bool     `json:"profileComplete"`
+	Administrator   bool     `json:"administrator"`
+	MFAEnabled      bool     `json:"mfaEnabled"`
+	MFASetupStarted bool     `json:"mfaSetupStarted"`
+	LocationID      string   `json:"locationId"`
+	LocationName    string   `json:"locationName"`
+	LocationCode    string   `json:"locationCode"`
+	DealershipName  string   `json:"dealershipName"`
+	Roles           []string `json:"roles"`
+	DocumentsTotal  int      `json:"documentsTotal"`
+	DocumentsAcked  int      `json:"documentsAcknowledged"`
+	// Scope says where someone with roles works when they have no employee franchise assignment: "All franchises" or "Selected franchises".
+	Scope string `json:"scope"`
+	// LastSignIn is the most recent successful sign-in (empty if the person has not signed in since the activity log began).
+	LastSignIn       *time.Time `json:"lastSignIn"`
+	OnboardingStatus string     `json:"onboardingStatus"` // complete | incomplete | not_assigned | inactive
+	Missing          []string   `json:"missing"`          // details, mfa, documents, franchise
 }
 
 // PeopleRoster lists up to 200 members of the organization with onboarding state. Requires the same
@@ -42,6 +49,8 @@ func (s *Store) PeopleRoster(ctx context.Context, actor, org string) ([]PersonRo
  COALESCE(mfa.enabled_at IS NOT NULL,false), mfa.principal_id IS NOT NULL,
  COALESCE(w.location_id::text,''), COALESCE(l.name,''), COALESCE(l.code,''), COALESCE(da.account_name,''),
  COALESCE((SELECT array_agg(DISTINCT r.name ORDER BY r.name) FROM member_role_assignments a JOIN roles r ON r.id=a.role_id WHERE a.organization_id=$1 AND a.principal_id=p.id),'{}'),
+ COALESCE((SELECT CASE WHEN bool_or(a.scope_type='organization') THEN 'All franchises' ELSE 'Selected franchises' END FROM member_role_assignments a WHERE a.organization_id=$1 AND a.principal_id=p.id HAVING count(*)>0),''),
+ (SELECT max(at) FROM activity_log al WHERE al.principal_id=p.id AND al.kind='sign_in'),
  (SELECT count(*) FROM sop_documents d WHERE d.organization_id=$1 AND NOT d.archived),
  (SELECT count(*) FROM sop_acknowledgments k JOIN sop_documents d ON d.id=k.sop_document_id AND NOT d.archived WHERE d.organization_id=$1 AND k.employee_id=p.id AND k.location_id=w.location_id AND k.training_track=$2)
 FROM organization_memberships m
@@ -59,12 +68,11 @@ ORDER BY c.email, p.id LIMIT 200`, org, employeeAckTrack)
 	}
 	defer rows.Close()
 	out := []PersonRow{}
-	mfaOn := s.MFAConfigured()
 	for rows.Next() {
 		var r PersonRow
 		var hasMFARow bool
 		if err = rows.Scan(&r.PrincipalID, &r.Email, &r.Active, &r.FullName, &r.Phone, &r.ProfileComplete, &r.Administrator,
-			&r.MFAEnabled, &hasMFARow, &r.LocationID, &r.LocationName, &r.LocationCode, &r.DealershipName, &r.Roles,
+			&r.MFAEnabled, &hasMFARow, &r.LocationID, &r.LocationName, &r.LocationCode, &r.DealershipName, &r.Roles, &r.Scope, &r.LastSignIn,
 			&r.DocumentsTotal, &r.DocumentsAcked); err != nil {
 			return nil, err
 		}
@@ -73,17 +81,14 @@ ORDER BY c.email, p.id LIMIT 200`, org, employeeAckTrack)
 		switch {
 		case !r.Active:
 			r.OnboardingStatus = "inactive"
-		case r.LocationID == "":
+		case r.LocationID == "" && r.Scope == "" && !r.Administrator:
 			r.OnboardingStatus = "not_assigned"
 			r.Missing = append(r.Missing, "franchise")
 		default:
 			if !r.ProfileComplete {
 				r.Missing = append(r.Missing, "details")
 			}
-			if mfaOn && r.Administrator && !r.MFAEnabled {
-				r.Missing = append(r.Missing, "mfa")
-			}
-			if r.DocumentsAcked < r.DocumentsTotal {
+			if r.LocationID != "" && r.DocumentsAcked < r.DocumentsTotal {
 				r.Missing = append(r.Missing, "documents")
 			}
 			r.OnboardingStatus = "complete"

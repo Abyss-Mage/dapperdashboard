@@ -155,3 +155,26 @@ func (s *Store) SetCustomerAccountLink(ctx context.Context, scope Scope, custome
 	}
 	return tx.Commit(ctx)
 }
+
+// LinkedAccountEmail is the sign-in email of an account that is linked to a customer at this location, for staff who hand that
+// customer a password reset link. It needs the same grant as managing customer accounts.
+func (s *Store) LinkedAccountEmail(ctx context.Context, scope Scope, principal string) (string, error) {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return "", err
+	}
+	defer tx.Rollback(ctx)
+	if err = customerAccountManagementGrant(ctx, tx, scope); err != nil {
+		return "", err
+	}
+	// The linked accounts are organization members, staff included, so a reset link for one is a way into that account: owners only.
+	if err = s.messagingManager(ctx, tx, scope.ActorID, scope.OrganizationID); err != nil {
+		return "", err
+	}
+	var email string
+	err = tx.QueryRow(ctx, `SELECT pc.email FROM customer_account_links a JOIN password_credentials pc ON pc.principal_id=a.principal_id JOIN principals p ON p.id=a.principal_id WHERE a.organization_id=$1 AND a.location_id=$2 AND a.principal_id::text=$3 AND p.active LIMIT 1`, scope.OrganizationID, scope.LocationID, principal).Scan(&email)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", ErrCustomerNotFound
+	}
+	return email, err
+}

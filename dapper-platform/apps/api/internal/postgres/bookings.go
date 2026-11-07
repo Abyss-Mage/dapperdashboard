@@ -19,8 +19,12 @@ var (
 )
 
 type Booking struct {
-	ReservationVersion *int       `json:"reservationVersion,omitempty"`
-	ID                 string     `json:"id"`
+	// PaymentNotice says what happened to money when the booking was moved back out of Completed (set on that response only).
+	PaymentNotice      string `json:"paymentNotice,omitempty"`
+	ReservationVersion *int   `json:"reservationVersion,omitempty"`
+	ID                 string `json:"id"`
+	// Number is the short booking number staff and customers see (one sequence per organization; imported bookings keep the old site's ID).
+	Number             int64      `json:"number"`
 	OrganizationID     string     `json:"organizationId"`
 	LocationID         string     `json:"locationId"`
 	CustomerID         string     `json:"customerId"`
@@ -34,6 +38,7 @@ type Booking struct {
 	Status             string     `json:"status"`
 	BookingTime        time.Time  `json:"bookingTime"`
 	Notes              string     `json:"notes"`
+	ServiceAddress     string     `json:"serviceAddress,omitempty"`
 	CancellationReason string     `json:"cancellationReason"`
 	CreatedAt          time.Time  `json:"createdAt"`
 	UpdatedAt          time.Time  `json:"updatedAt"`
@@ -57,7 +62,7 @@ type BookingEvent struct {
 const bookingColumns = `b.id::text, b.organization_id::text, b.location_id::text, b.customer_id::text,
 b.vehicle_id::text, b.service_id::text, b.service_name, b.addons, b.reservation_id::text,
 b.channel, b.status, b.booking_time, b.notes, b.cancellation_reason, b.created_at, b.updated_at,
-c.name, c.email, c.phone,(SELECT r.version FROM capacity_reservations r WHERE r.organization_id=b.organization_id AND r.location_id=b.location_id AND r.id=b.reservation_id)`
+c.name, c.email, c.phone,(SELECT r.version FROM capacity_reservations r WHERE r.organization_id=b.organization_id AND r.location_id=b.location_id AND r.id=b.reservation_id), b.service_address, b.number`
 
 func scanBooking(row pgx.Row) (Booking, error) {
 	var b Booking
@@ -82,6 +87,8 @@ func scanBooking(row pgx.Row) (Booking, error) {
 		&b.CustomerEmail,
 		&b.CustomerPhone,
 		&b.ReservationVersion,
+		&b.ServiceAddress,
+		&b.Number,
 	)
 	return b, err
 }
@@ -104,7 +111,8 @@ func (s *Store) CreateBooking(ctx context.Context, scope Scope, input Booking) (
 func (s *Store) createBookingInTransaction(ctx context.Context, tx pgx.Tx, scope Scope, input Booking) (Booking, error) {
 	input.ServiceName = strings.TrimSpace(input.ServiceName)
 	input.Notes = strings.TrimSpace(input.Notes)
-	if input.CustomerID == "" || input.BookingTime.IsZero() || utf8.RuneCountInString(input.Notes) > 2000 {
+	input.ServiceAddress = strings.TrimSpace(input.ServiceAddress)
+	if input.CustomerID == "" || input.BookingTime.IsZero() || utf8.RuneCountInString(input.Notes) > 2000 || utf8.RuneCountInString(input.ServiceAddress) > 300 {
 		return Booking{}, ErrBookingInput
 	}
 	switch input.Channel {
@@ -113,7 +121,7 @@ func (s *Store) createBookingInTransaction(ctx context.Context, tx pgx.Tx, scope
 		return Booking{}, ErrBookingInput
 	}
 	if input.Status == "" {
-		input.Status = "pending"
+		input.Status = "confirmed"
 	}
 	switch input.Status {
 	case "pending", "awaiting_payment", "confirmed", "scheduled", "in_progress", "completed", "cancelled":
@@ -176,10 +184,10 @@ func (s *Store) createBookingInTransaction(ctx context.Context, tx pgx.Tx, scope
 			return Booking{}, ErrBookingInput
 		}
 		var name string
-		err = tx.QueryRow(ctx, `SELECT name FROM catalog_services WHERE organization_id=$1 AND location_id=$2 AND id=$3 AND kind='addon' AND parent_id=$4 AND NOT archived FOR SHARE`,
+		err = tx.QueryRow(ctx, `SELECT name FROM catalog_services WHERE organization_id=$1 AND location_id=$2 AND id=$3 AND kind='addon' AND catalog_addon_offered_with(id,$4) AND NOT archived FOR SHARE`,
 			scope.OrganizationID, scope.LocationID, addonID, *input.ServiceID).Scan(&name)
 		if errors.Is(err, pgx.ErrNoRows) {
-			err = tx.QueryRow(ctx, `SELECT name FROM central_catalog_services WHERE organization_id=$1 AND id=$2 AND kind='addon' AND parent_id=$3 AND NOT archived FOR SHARE`,
+			err = tx.QueryRow(ctx, `SELECT name FROM central_catalog_services WHERE organization_id=$1 AND id=$2 AND kind='addon' AND central_addon_offered_with(id,$3) AND NOT archived FOR SHARE`,
 				scope.OrganizationID, addonID, *input.ServiceID).Scan(&name)
 		}
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -203,13 +211,20 @@ func (s *Store) createBookingInTransaction(ctx context.Context, tx pgx.Tx, scope
 	}
 
 	var newID string
-	err = tx.QueryRow(ctx, `INSERT INTO bookings(organization_id, location_id, customer_id, vehicle_id, service_id, service_name, addons, reservation_id, channel, status, booking_time, notes)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+	err = tx.QueryRow(ctx, `INSERT INTO bookings(organization_id, location_id, customer_id, vehicle_id, service_id, service_name, addons, reservation_id, channel, status, booking_time, notes, service_address)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 RETURNING id::text`,
 		scope.OrganizationID, scope.LocationID, input.CustomerID, input.VehicleID, input.ServiceID, input.ServiceName,
-		input.Addons, input.ReservationID, input.Channel, input.Status, input.BookingTime, input.Notes).Scan(&newID)
+		input.Addons, input.ReservationID, input.Channel, input.Status, input.BookingTime, input.Notes, input.ServiceAddress).Scan(&newID)
 	if err != nil {
 		return Booking{}, err
+	}
+
+	// A service address (mobile booking) is also remembered on the customer for next time.
+	if input.ServiceAddress != "" {
+		if _, err = tx.Exec(ctx, `UPDATE customers SET address=$4 WHERE organization_id=$1 AND location_id=$2 AND id=$3`, scope.OrganizationID, scope.LocationID, input.CustomerID, input.ServiceAddress); err != nil {
+			return Booking{}, err
+		}
 	}
 
 	// Record creation event
@@ -335,7 +350,7 @@ FROM booking_events WHERE organization_id=$1 AND location_id=$2 AND booking_id=$
 	return booking, events, nil
 }
 
-func (s *Store) UpdateBookingStatus(ctx context.Context, scope Scope, id string, toStatus, cancellationReason, notes string, reservationVersions ...int) (Booking, error) {
+func (s *Store) updateBookingStatus(ctx context.Context, scope Scope, id string, toStatus, cancellationReason, notes string, reservationVersions ...int) (Booking, error) {
 	toStatus = strings.TrimSpace(toStatus)
 	cancellationReason = strings.TrimSpace(cancellationReason)
 	notes = strings.TrimSpace(notes)
@@ -384,13 +399,13 @@ func (s *Store) UpdateBookingStatus(ctx context.Context, scope Scope, id string,
 	validTransition := false
 	switch currentStatus {
 	case "pending":
-		validTransition = (toStatus == "confirmed" || toStatus == "awaiting_payment" || toStatus == "cancelled")
+		validTransition = (toStatus == "confirmed" || toStatus == "awaiting_payment" || toStatus == "completed" || toStatus == "cancelled")
 	case "awaiting_payment":
-		validTransition = (toStatus == "confirmed" || toStatus == "cancelled")
+		validTransition = (toStatus == "confirmed" || toStatus == "completed" || toStatus == "cancelled")
 	case "confirmed":
-		validTransition = (toStatus == "scheduled" || toStatus == "in_progress" || toStatus == "cancelled")
+		validTransition = (toStatus == "scheduled" || toStatus == "in_progress" || toStatus == "completed" || toStatus == "cancelled")
 	case "scheduled":
-		validTransition = (toStatus == "in_progress" || toStatus == "cancelled")
+		validTransition = (toStatus == "in_progress" || toStatus == "completed" || toStatus == "cancelled")
 	case "in_progress":
 		validTransition = (toStatus == "completed" || toStatus == "cancelled")
 	}
@@ -400,10 +415,9 @@ func (s *Store) UpdateBookingStatus(ctx context.Context, scope Scope, id string,
 
 	_, err = tx.Exec(ctx, `UPDATE bookings
 SET status=$1, cancellation_reason=CASE WHEN $1='cancelled' THEN $2 ELSE cancellation_reason END,
-    notes=CASE WHEN $3='' THEN notes WHEN notes='' THEN $3 ELSE notes || ' | ' || $3 END,
     updated_at=now()
-WHERE organization_id=$4 AND location_id=$5 AND id=$6`,
-		toStatus, cancellationReason, notes, scope.OrganizationID, scope.LocationID, id)
+WHERE organization_id=$3 AND location_id=$4 AND id=$5`,
+		toStatus, cancellationReason, scope.OrganizationID, scope.LocationID, id)
 	if err != nil {
 		return Booking{}, err
 	}
@@ -426,4 +440,13 @@ WHERE b.id=$1`, id)
 		return Booking{}, bookingWriteError(err)
 	}
 	return updated, nil
+}
+
+// UpdateBookingStatus changes a booking's status; a cancellation is announced so the customer can be emailed.
+func (s *Store) UpdateBookingStatus(ctx context.Context, scope Scope, id string, toStatus, cancellationReason, notes string, reservationVersions ...int) (Booking, error) {
+	b, err := s.updateBookingStatus(ctx, scope, id, toStatus, cancellationReason, notes, reservationVersions...)
+	if err == nil && strings.TrimSpace(toStatus) == "cancelled" {
+		s.emitBooking(ctx, "booking_cancelled", id)
+	}
+	return b, err
 }

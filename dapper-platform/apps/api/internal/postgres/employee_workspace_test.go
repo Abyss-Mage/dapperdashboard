@@ -309,3 +309,15 @@ func siteAssignmentWeek(t *testing.T, actor string, s *Store, ctx context.Contex
 	}
 	return d.Availability.WeekStart
 }
+
+func TestEmployeeChoosesTheWeek(t *testing.T) {
+	now := time.Date(2026, 10, 28, 15, 0, 0, 0, time.UTC) // a Wednesday
+	for _, c := range []struct {
+		week string
+		ok   bool
+	}{{"2026-10-26", true}, {"2026-11-02", true}, {"2027-01-11", true}, {"2027-01-18", true}, {"2026-10-19", false}, {"2026-10-27", false}, {"2027-01-25", false}, {"not-a-date", false}} {
+		if err := validEmployeeWeek(now, "America/Toronto", c.week); (err == nil) != c.ok {
+			t.Fatalf("week %s: ok=%v err=%v", c.week, c.ok, err)
+		}
+	}
+}

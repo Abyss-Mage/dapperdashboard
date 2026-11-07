@@ -1,0 +1,89 @@
+/* Portfolio: only what differs from the shared paper system in ../paper.css. */
+.ph{background:var(--ink)}
+.ph__stage{position:relative;isolation:isolate;display:flex;flex-direction:column;justify-content:flex-end;min-height:100svh;padding-top:76px;background:var(--ink);color:#f6f4f0;overflow:hidden}
+.ph__rows{position:absolute;top:76px;left:0;right:0;height:clamp(300px,54svh,580px);z-index:-2;display:grid;grid-template-rows:1fr 1fr;gap:8px}
+.ph__row{overflow:hidden;min-height:0}
+.ph__track{display:flex;height:100%;width:max-content;animation:ph-run 80s linear infinite}
+.ph__row--rev .ph__track{animation-direction:reverse}
+.ph__track img{flex:none;height:100%;width:auto;margin-right:8px;object-fit:cover}
+@keyframes ph-run{to{transform:translateX(-50%)}}
+.ph__scrim{display:none}
+.ph__copy{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,.9fr);gap:clamp(24px,4vw,64px);align-items:end;padding:clamp(40px,6vw,96px) var(--cg) clamp(36px,5vw,72px)}
+.ph .p-h1{font-size:clamp(30px,4.6vw,72px);line-height:.98;font-weight:500;letter-spacing:-.03em;color:#fff}
+.ph__aside{display:grid;gap:clamp(18px,2vw,28px);justify-items:start}
+.ph__aside p{font:300 clamp(17px,1.5vw,22px)/1.5 var(--cb);color:#f1eee8;max-width:44ch}
+@media(max-width:1023px){.ph__copy{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:720px){.ph .p-h1{font-size:clamp(28px,8.4vw,48px)}}
+@media(prefers-reduced-motion:reduce){.ph__track{animation:none}}
+
+/* P2 Gallery: a swipeable row by default; a pinned strip that slides sideways on desktop with motion (.is-gallery) */
+.p-after{position:relative;z-index:2;background:var(--paper)}
+.p-gallery{position:relative;padding:clamp(64px,8vw,120px) 0;border-top:1px solid var(--rule)}
+.p-gallery__head{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:clamp(20px,4vw,64px);align-items:end;padding:0 var(--cg);margin-bottom:clamp(28px,4vw,52px)}
+.p-gallery__head h2{font-size:clamp(29.6px,4vw,68.1px);line-height:.98;letter-spacing:-.03em}
+.p-gallery__head p{font:300 clamp(18px,1.6vw,26px)/1.35 var(--cb);color:var(--ink-2);max-width:42ch}
+.p-strip{overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:thin;scrollbar-color:var(--edge) transparent;padding-bottom:12px}
+.p-strip__list{margin:0;padding:0 var(--cg);list-style:none;display:flex;gap:clamp(14px,1.6vw,24px);width:max-content}
+.p-strip__list li{flex:none;scroll-snap-align:start;scroll-margin-left:var(--cg)}
+.p-photo{display:block;height:clamp(280px,56vh,600px);padding:0;border:0;border-radius:0;overflow:hidden;background:#ddd9d2;cursor:zoom-in}
+.p-photo img{width:100%;height:100%;object-fit:cover;transition:transform .6s var(--ease)}
+@media(hover:hover) and (pointer:fine){.p-photo:hover img{transform:scale(1.04)}}
+.p-gallery__bar{display:none}
+.is-gallery .p-gallery{height:100svh;padding:76px 0 0;overflow:hidden;display:flex;flex-direction:column;justify-content:center;border-top:0}
+.is-gallery .p-gallery__head{margin-bottom:clamp(20px,3.4vh,44px)}
+.is-gallery .p-gallery__head h2{font-size:clamp(26.6px,3.4vw,57.7px)}
+.is-gallery .p-strip{overflow:visible;padding-bottom:0}
+.is-gallery .p-photo{height:clamp(260px,50vh,560px)}
+.is-gallery .p-gallery__bar{display:block;margin:clamp(20px,3.6vh,40px) var(--cg);height:2px;background:var(--rule)}
+.is-gallery .p-gallery__bar i{display:block;height:100%;background:var(--red);transform:scaleX(0);transform-origin:left}
+@media(max-width:1023px){.p-gallery__head{grid-template-columns:minmax(0,1fr)}}
+
+/* Full-size viewer */
+.p-viewer{position:fixed;inset:0;width:100%;height:100%;max-width:none;max-height:none;margin:0;padding:clamp(56px,7vw,88px) clamp(16px,6vw,96px);border:0;background:#121212f5;color:#f3f2ee;display:none;place-items:center;opacity:0;transition:opacity .25s ease-out,display .25s allow-discrete,overlay .25s allow-discrete}
+.p-viewer[open]{display:grid;opacity:1}
+@starting-style{.p-viewer[open]{opacity:0}}
+.p-viewer::backdrop{background:transparent}
+.p-viewer img{max-width:100%;max-height:calc(100svh - clamp(140px,16vw,200px));width:auto;height:auto;object-fit:contain}
+.p-viewer__cap{position:absolute;left:clamp(16px,6vw,96px);right:clamp(16px,6vw,96px);bottom:clamp(16px,2.4vw,32px);display:flex;justify-content:space-between;gap:16px;font-size:15px;color:#c9c6bf}
+.p-viewer__cap span{font-variant-numeric:tabular-nums}
+.p-viewer__btn{position:absolute;display:grid;place-items:center;width:52px;height:52px;border:1px solid #ffffff40;border-radius:0;background:transparent;color:#fff;cursor:pointer;transition:background-color .2s,transform .16s var(--ease)}
+.p-viewer__btn:active{transform:scale(.95)}
+@media(hover:hover) and (pointer:fine){.p-viewer__btn:hover{background:var(--red);border-color:var(--red)}}
+.p-viewer__close{top:clamp(12px,2vw,24px);right:clamp(12px,2vw,24px)}
+.p-viewer__prev{left:clamp(8px,1.6vw,24px);top:50%;translate:0 -50%}
+.p-viewer__next{right:clamp(8px,1.6vw,24px);top:50%;translate:0 -50%}
+@media(prefers-reduced-motion:reduce){.p-viewer,.p-photo img{transition-duration:.01ms}}
+
+/* P3 Films: five portrait films on an ink band; a swipeable row on small screens, five drifting columns on desktop */
+.p-films{background:var(--ink);color:#f3f2ee;padding:clamp(72px,9vw,140px) var(--cg) clamp(96px,11vw,170px);overflow:clip}
+.p-films .fc-sec__text p{font:300 clamp(18px,1.6vw,26px)/1.35 var(--cb);color:#c9c6bf}
+.p-viewer--film video{aspect-ratio:9/16;height:calc(100svh - clamp(140px,16vw,200px));max-width:100%;width:auto;background:#000}
+
+/* P4 Follow the work: two large link rows on paper */
+.p-social{padding:clamp(72px,9vw,140px) var(--cg)}
+.p-social__head{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:clamp(20px,4vw,64px);align-items:end;margin-bottom:clamp(36px,5vw,72px)}
+.p-social__head h2{font-size:clamp(34px,4.7vw,79.9px);line-height:.98;letter-spacing:-.035em}
+.p-social__head p{font:300 clamp(18px,1.6vw,26px)/1.35 var(--cb);color:var(--ink-2)}
+.p-social__list{margin:0;padding:0;list-style:none;border-top:1px solid var(--ink)}
+.p-social__list li{border-bottom:1px solid var(--rule)}
+.p-social__list a{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:clamp(16px,3vw,48px);padding:clamp(24px,3vw,44px) 0;color:var(--ink);transition:color .25s}
+.p-social__name{font:500 clamp(29.6px,4.4vw,74px)/1 var(--ch);letter-spacing:-.03em}
+.p-social__handle{font:400 clamp(16px,1.4vw,21px)/1.2 var(--cb);color:var(--ink-2);text-align:right}
+.p-social__list a svg{flex:none;transition:transform .35s var(--ease)}
+@media(hover:hover) and (pointer:fine){.p-social__list a:hover{color:var(--red-ink)}.p-social__list a:hover svg{transform:translate(6px,-6px)}}
+@media(max-width:1023px){.p-social__head{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:720px){.p-social__list a{grid-template-columns:minmax(0,1fr) auto}.p-social__handle{grid-column:1;grid-row:2;text-align:left}.p-social__list a svg{grid-row:1 / span 2;grid-column:2}}
+
+/* P5 Closing band: type only */
+.p-close{text-align:center;padding:clamp(88px,11vw,170px) var(--cg)}
+.p-close h2{font-size:clamp(30px,4.6vw,76px);line-height:1;max-width:18ch;margin-inline:auto}
+.p-close__lede{margin:clamp(18px,2vw,28px) auto 0;font-size:clamp(17px,1.5vw,22px);line-height:1.5}
+.p-close__actions{display:flex;align-items:center;justify-content:center;gap:clamp(16px,2vw,32px);flex-wrap:wrap;margin-top:clamp(24px,3vw,40px)}
+.p-close__call{font-size:clamp(17px,1.4vw,21px);color:var(--ink-2)}
+.p-close__call span{color:var(--red-ink);text-decoration:underline;text-underline-offset:.22em;text-decoration-thickness:1px;font-variant-numeric:tabular-nums}
+@media(max-width:720px){.p-close h2{font-size:clamp(22px,6.2vw,28px)}}
+.p-films h2{color:#f3f2ee;font-size:clamp(34px,4.7vw,79.9px);line-height:.98;letter-spacing:-.035em}
+/* Phones: the headline sits on a dark fade so it never fights the photographs behind it */
+@media(max-width:720px){.ph__scrim{background:linear-gradient(180deg,rgba(11,11,12,.1) 0,rgba(11,11,12,.55) 38%,rgba(11,11,12,.96) 62%)}}
+/* Phones: the photographs stay in a band at the top and the headline starts below them, so nothing overlaps */
+@media(max-width:720px){.ph__rows{height:38svh}.ph__copy{padding-top:calc(76px + 38svh + 28px)}}

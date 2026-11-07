@@ -1,5 +1,7 @@
 # Dapper public website
 
+**2026-10-28:** the public pages are now real Next.js routes in `dapper-platform/apps/web/app/(site)` (50/50 tape-line design, GSAP + Lenis). This folder still supplies the home story renderer (`home-stage.js`, `home-frames.js`, `home-scene.js`), the runtime assets copied by `build-pages.py`, and the static `/studio` page. The static Services/Portfolio/About/Contact documents generated below are no longer served. See `Dapper Detailing Knowledge/03 Engineering/PUBLIC_SITE_NEXT_REBUILD_2026-10-28.md`.
+
 Updated 2026-10-24. This is the production public website implementation for the existing Go/PostgreSQL/Next.js application. The Porsche studio is the homepage; Services (ten category pages), Portfolio, About Us and Contact Us preserve the current public page structure. Account and appointment entry use the existing authenticated customer application.
 
 Shared central-to-location services and public descriptions use operational IDs. The shared dashboard service editors link to `/content` for permission-controlled service presentation and portfolio uploads/edits/order/publication. Both public galleries use the same database projection. Eighteen original public-site photos are staged for reviewed import through protected Go routes; no source-photo archive is served from the production public asset tree.

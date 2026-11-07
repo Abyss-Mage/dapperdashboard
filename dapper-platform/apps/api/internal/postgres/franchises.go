@@ -77,12 +77,15 @@ func structureGrant(ctx context.Context, tx pgx.Tx, actor, org, action string) e
 	if action != "structure.read" && action != "structure.manage" {
 		return ErrForbidden
 	}
-	var id string
-	err := tx.QueryRow(ctx, `SELECT p.id::text FROM principals p JOIN organization_grants g ON g.principal_id=p.id WHERE p.id=$1 AND p.active AND g.organization_id=$2 AND g.action=$3 FOR SHARE OF p,g`, actor, org, action).Scan(&id)
-	if errors.Is(err, pgx.ErrNoRows) {
+	// held directly or through an organization-wide role such as Super Admin or Owner
+	ok, err := actorHasOrgCapability(ctx, tx, actor, org, action)
+	if err != nil {
+		return err
+	}
+	if !ok {
 		return ErrForbidden
 	}
-	return err
+	return nil
 }
 func structureAudit(ctx context.Context, tx pgx.Tx, actor, org, action, id string) error {
 	_, err := tx.Exec(ctx, `INSERT INTO organization_audit_events(organization_id,actor_id,action,entity_id) VALUES($1,$2,$3,$4)`, org, actor, action, id)

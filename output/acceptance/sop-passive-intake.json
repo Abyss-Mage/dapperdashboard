@@ -1,0 +1,60 @@
+{
+  "scope": "top-level document actions/name trees and page additional actions only; not a full PDF security audit",
+  "documents": [
+    {
+      "file": "addon_services_sop.pdf",
+      "pages": 6,
+      "flags": {
+        "documentOpenAction": false,
+        "documentAdditionalActions": false,
+        "javascriptNameTree": false,
+        "embeddedFiles": false,
+        "pageAdditionalActions": false
+      }
+    },
+    {
+      "file": "ceramic_coating_sop.pdf",
+      "pages": 5,
+      "flags": {
+        "documentOpenAction": false,
+        "documentAdditionalActions": false,
+        "javascriptNameTree": false,
+        "embeddedFiles": false,
+        "pageAdditionalActions": false
+      }
+    },
+    {
+      "file": "full_body_detail_sop.pdf",
+      "pages": 6,
+      "flags": {
+        "documentOpenAction": false,
+        "documentAdditionalActions": false,
+        "javascriptNameTree": false,
+        "embeddedFiles": false,
+        "pageAdditionalActions": false
+      }
+    },
+    {
+      "file": "interior_detail_sop.pdf",
+      "pages": 7,
+      "flags": {
+        "documentOpenAction": false,
+        "documentAdditionalActions": false,
+        "javascriptNameTree": false,
+        "embeddedFiles": false,
+        "pageAdditionalActions": false
+      }
+    },
+    {
+      "file": "onboarding_policy.pdf",
+      "pages": 6,
+      "flags": {
+        "documentOpenAction": false,
+        "documentAdditionalActions": false,
+        "javascriptNameTree": false,
+        "embeddedFiles": false,
+        "pageAdditionalActions": false
+      }
+    }
+  ]
+}

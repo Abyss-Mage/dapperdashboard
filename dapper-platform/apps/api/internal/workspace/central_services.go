@@ -63,8 +63,9 @@ func registerCentralServiceRoutes(mux *http.ServeMux, store *postgres.Store) {
 			var input struct {
 				Name     string  `json:"name"`
 				Kind     string  `json:"kind"`
-				ParentID *string `json:"parentId"`
-				Version  int     `json:"version"`
+				ParentID  *string  `json:"parentId"`
+				ParentIDs []string `json:"parentIds"`
+				Version   int      `json:"version"`
 				// Price is optional: absent = leave unchanged, null = clear, number = set (whole cents, CAD, before tax).
 				Price json.RawMessage `json:"priceCents"`
 				// Duration is optional like the price: absent = leave unchanged, null = clear, number = minutes to complete.
@@ -81,11 +82,23 @@ func registerCentralServiceRoutes(mux *http.ServeMux, store *postgres.Store) {
 			if input.Kind != "main" && input.Kind != "addon" {
 				fields["kind"] = "Kind must be main or addon"
 			}
-			if input.Kind == "main" && input.ParentID != nil {
+			if input.Kind == "main" && (input.ParentID != nil || len(input.ParentIDs) > 0) {
 				fields["parentId"] = "Main services cannot have a parent"
 			}
-			if input.Kind == "addon" && (input.ParentID == nil || !uuid(*input.ParentID) || *input.ParentID == id) {
-				fields["parentId"] = "Choose an active central main service"
+			if input.Kind == "addon" {
+				ids := input.ParentIDs
+				if len(ids) == 0 && input.ParentID != nil {
+					ids = []string{*input.ParentID}
+				}
+				okIDs := len(ids) > 0 && len(ids) <= 200
+				for _, p := range ids {
+					if !uuid(p) || p == id {
+						okIDs = false
+					}
+				}
+				if !okIDs {
+					fields["parentId"] = "Choose at least one active central main service"
+				}
 			}
 			if r.Method == "PUT" && input.Version <= 0 {
 				fields["version"] = "Send current service version"
@@ -129,6 +142,7 @@ func registerCentralServiceRoutes(mux *http.ServeMux, store *postgres.Store) {
 				Name:            input.Name,
 				Kind:            input.Kind,
 				ParentID:        input.ParentID,
+				ParentIDs:       input.ParentIDs,
 				Version:         input.Version,
 				PriceSet:        price.PriceSet,
 				PriceCents:      price.PriceCents,

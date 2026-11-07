@@ -52,6 +52,7 @@ func (s *Store) OwnerInsights(ctx context.Context, scope Scope, section, from, t
 	if section != "finance" && section != "work" && section != "customers" {
 		return OwnerInsights{}, ErrTrendsInput
 	}
+	tz = canonicalZone(tz)
 	if _, err := time.LoadLocation(tz); err != nil || tz == "" || tz == "Local" {
 		return OwnerInsights{}, ErrTrendsInput
 	}
@@ -202,7 +203,7 @@ func (s *Store) OwnerInsights(ctx context.Context, scope Scope, section, from, t
 		if err = rows.Err(); err != nil {
 			return OwnerInsights{}, err
 		}
-		if err = tx.QueryRow(ctx, `SELECT count(*) FROM customers WHERE organization_id=$1 AND location_id=$2 AND removed_at IS NULL`, org, loc).Scan(&c.Total); err != nil {
+		if err = tx.QueryRow(ctx, `SELECT count(*) FROM customers WHERE organization_id=$1 AND location_id=$2 AND removed_at IS NULL AND NOT EXISTS(SELECT 1 FROM dealership_accounts d WHERE d.organization_id=customers.organization_id AND d.location_id=customers.location_id AND d.customer_id=customers.id)`, org, loc).Scan(&c.Total); err != nil {
 			return OwnerInsights{}, err
 		}
 		if ok, err = allowed("vehicles.read"); err != nil {

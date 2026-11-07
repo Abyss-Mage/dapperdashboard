@@ -64,7 +64,7 @@ func (s *Store) bookingCapacityChoices(ctx context.Context, scope Scope, actions
  COALESCE((SELECT jsonb_agg(jsonb_build_object('serviceId',a.id::text,'name',a.name) ORDER BY a.id) FROM catalog_services a WHERE a.organization_id=sr.organization_id AND a.location_id=sr.location_id AND sr.addon_ids ? a.id::text),'[]'::jsonb)
  FROM service_scheduling_rules sr JOIN catalog_services c ON (c.organization_id,c.location_id,c.id)=(sr.organization_id,sr.location_id,sr.service_id)
  WHERE sr.organization_id=$1 AND sr.location_id=$2 AND c.kind='main' AND NOT c.archived
- AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements_text(sr.addon_ids) aid(value) WHERE NOT EXISTS(SELECT 1 FROM catalog_services a WHERE a.organization_id=sr.organization_id AND a.location_id=sr.location_id AND a.id::text=aid.value AND a.kind='addon' AND a.parent_id=sr.service_id AND NOT a.archived))
+ AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements_text(sr.addon_ids) aid(value) WHERE NOT EXISTS(SELECT 1 FROM catalog_services a WHERE a.organization_id=sr.organization_id AND a.location_id=sr.location_id AND a.id::text=aid.value AND a.kind='addon' AND catalog_addon_offered_with(a.id,sr.service_id) AND NOT a.archived))
  ORDER BY c.name,sr.id LIMIT 100`, scope.OrganizationID, scope.LocationID)
 	if err != nil {
 		return result, err
@@ -83,7 +83,7 @@ func (s *Store) bookingCapacityChoices(ctx context.Context, scope Scope, actions
 		return result, err
 	}
 	children := map[string][]JobAddon{}
-	arows, err := tx.Query(ctx, `SELECT parent_id::text,id::text,name FROM catalog_services WHERE organization_id=$1 AND location_id=$2 AND kind='addon' AND NOT archived AND parent_id IS NOT NULL ORDER BY name,id LIMIT 1000`, scope.OrganizationID, scope.LocationID)
+	arows, err := tx.Query(ctx, `SELECT l.main_id::text,a.id::text,a.name FROM catalog_addon_parents l JOIN catalog_services a ON a.id=l.addon_id WHERE a.organization_id=$1 AND a.location_id=$2 AND a.kind='addon' AND NOT a.archived ORDER BY a.name,a.id,l.main_id LIMIT 5000`, scope.OrganizationID, scope.LocationID)
 	if err != nil {
 		return result, err
 	}

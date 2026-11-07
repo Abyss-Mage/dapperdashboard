@@ -1,0 +1,84 @@
+{
+  "assessmentTimestamp": "2026-10-23T14:17:53.405914+00:00",
+  "deliverable": "DEL-22 Live BookingPress Plugin Export Assessment",
+  "provenance": {
+    "export_sha256": "E7CA26002A4A8151113F4E599272E5FE03674142FFAE65B546C66F79C5D2C4FE",
+    "export_bytes": 19451569,
+    "site_url": "https://dapperdetailing.ca",
+    "export_key": "3_1792764764",
+    "export_site_key": "4_1781083616",
+    "active_addons": [
+      "bookingpress_lite",
+      "bookingpress_pro",
+      "coupons_module",
+      "service_extra_module",
+      "tip_addon",
+      "tax_addon",
+      "invoice_addon",
+      "conversion_tracking_addon"
+    ]
+  },
+  "entityInventory": {
+    "categoriesCount": 12,
+    "servicesCount": 79,
+    "extrasCount": 228,
+    "totalCustomersCount": 453,
+    "validUniqueCustomersCount": 453,
+    "totalAppointmentsCount": 584,
+    "couponsCount": 18,
+    "notificationTemplatesCount": 32
+  },
+  "appointmentMetrics": {
+    "earliestDate": "2024-06-21",
+    "latestDate": "2026-10-29",
+    "statusDistribution": {
+      "completed": 364,
+      "declined": 76,
+      "cancelled": 1,
+      "confirmed": 143
+    },
+    "currencyDistribution": {
+      "CAD": 584
+    },
+    "financialReconciliation": {
+      "totalPaidCents": 17238515,
+      "totalPaidFormatted": "CAD $172,385.15",
+      "totalDueCents": 1688662,
+      "totalDueFormatted": "CAD $16,886.62",
+      "totalAmountCents": 17262368,
+      "totalAmountFormatted": "CAD $172,623.68"
+    },
+    "paymentGateways": {
+      "on-site": 486,
+      "manual": 58,
+      "square": 38,
+      "-": 2
+    }
+  },
+  "serviceLinkageAnalysis": {
+    "appointmentsLinkedToActiveServices": 479,
+    "appointmentsReferencingRetiredServices": 105,
+    "retiredServicesBreakdown": {
+      "ID_7: Sedan - Luxury Full Body Detail": 5,
+      "ID_9: SUV - VIP Interior Detail": 28,
+      "ID_6: Sedan - VIP Interior Detail": 23,
+      "ID_12: Pickup - VIP Interior Detail": 6,
+      "ID_13: Pickup - Luxury Full Body Detail": 11,
+      "ID_10: SUV - Luxury Full Body Detail": 15,
+      "ID_14: Pet Hairs": 6,
+      "ID_3: HatchBack - VIP Interior Detail": 6,
+      "ID_15: Winter Salt Water": 2,
+      "ID_47: Pickup - VIP Interior Detail - Toronto": 1,
+      "ID_41: Sedan - VIP Interior Detail - Toronto": 1,
+      "ID_45: SUV - Luxury Full Body Detail - Toronto": 1
+    },
+    "serviceIntegrityNotice": "Retired service appointments retain historical name, duration, price, and payment snapshots on the appointment record itself."
+  },
+  "reconciliationSafeguards": {
+    "zeroDatabasePollution": true,
+    "zeroPIIExposed": true,
+    "provenanceVerified": true,
+    "exactMoneyMathUsed": true,
+    "historicalSnapshotsPreserved": true
+  }
+}

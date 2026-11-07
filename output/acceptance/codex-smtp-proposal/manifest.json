@@ -1,0 +1,42 @@
+{
+  "status": "REVIEW_ONLY_NOT_INTEGRATED",
+  "checks": "5 isolated tests PASS; no external providers or shared runtime changes",
+  "sourceOriginalSha256": "E1A8CA83333B2D4C793B7E22C9259773E92359A2AFC5F9D6504CE5BD0B504793",
+  "files": [
+    {
+      "file": "go.mod",
+      "sha256": "75F4AF8764D2DAE8CB3D7592BF2439F97E3DEB20E8900C7938CEF22B425F931D"
+    },
+    {
+      "file": "smtp_codex_test.go",
+      "sha256": "FD538D2C0A9D29A1C9D644E2CB8514703564ADA5B9F02B0524579BE30A835824"
+    },
+    {
+      "file": "smtp_headers_codex_test.go",
+      "sha256": "7AE10CA7A8078608BAB0C6F394F4BC52FA0CCFDCC7DCF26056939EFC59420E2F"
+    },
+    {
+      "file": "smtp_positive_codex_test.go",
+      "sha256": "B5365A859DC739C1508660F0FD03FC899113DD260333BE10DF3BF533AE1089C8"
+    },
+    {
+      "file": "smtp_tls_codex_test.go",
+      "sha256": "D2D1136FEA66CAA7F4E256E2AA3B2820372A557AF55A60766E28C43E4FE404B6"
+    },
+    {
+      "file": "smtp_unicode_codex_test.go",
+      "sha256": "09C98A1CB0A67CC6755E6B7A9D2F9C16F64650B62D403E939C4587BB22200989"
+    },
+    {
+      "file": "smtp.go",
+      "sha256": "9EF1375B3A3224DE4DAAF127C1E43FCA4DD155976ED693BC22C119B82FDC9356"
+    }
+  ],
+  "integrationRequirements": [
+    "Confirm ownership of email files.",
+    "Check current source against baseline; preserve later changes.",
+    "Replace plaintext happy-path test with verified STARTTLS positive fixture.",
+    "Run product package tests and guarded deployment through runtime owner."
+  ],
+  "remaining": "Authenticated SMTP and provider delivery acceptance pending credentials; no real message sent."
+}

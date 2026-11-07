@@ -34,6 +34,8 @@ type EmployeeWalkInInput struct {
 	AddonIDs []string `json:"addonIds"`
 	// Notes carry the vehicle, where the work happens, any referral and the customer's own notes (shown to staff on the booking).
 	Notes string `json:"notes"`
+	// ServiceAddress is where mobile or valet work happens (empty for in-shop work).
+	ServiceAddress string `json:"serviceAddress"`
 }
 
 func normalizeEmployeeContact(name, email, phone string) (string, string, string, error) {
@@ -200,14 +202,14 @@ func (s *Store) CreateEmployeeWalkIn(ctx context.Context, actor string, input Em
 		seen := map[string]bool{}
 		for _, id := range input.AddonIDs {
 			var ok bool
-			if seen[id] || tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM catalog_services WHERE organization_id=$1 AND location_id=$2 AND id::text=$3 AND kind='addon' AND parent_id::text=$4 AND NOT archived)`, a.OrganizationID, a.LocationID, id, rule.ServiceID).Scan(&ok) != nil || !ok {
+			if seen[id] || tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM catalog_services WHERE organization_id=$1 AND location_id=$2 AND id::text=$3 AND kind='addon' AND catalog_addon_offered_with(id,$4::uuid) AND NOT archived)`, a.OrganizationID, a.LocationID, id, rule.ServiceID).Scan(&ok) != nil || !ok {
 				return Booking{}, ErrBookingInput
 			}
 			seen[id] = true
 		}
 		addons = append([]string{}, input.AddonIDs...)
 	}
-	b, err := s.createBookingInTransaction(ctx, tx, scope, Booking{CustomerID: customer, ServiceID: &rule.ServiceID, AddonIDs: addons, ReservationID: &reservation.ID, Channel: "walk_in", Status: "pending", BookingTime: start, Notes: input.Notes})
+	b, err := s.createBookingInTransaction(ctx, tx, scope, Booking{CustomerID: customer, ServiceID: &rule.ServiceID, AddonIDs: addons, ReservationID: &reservation.ID, Channel: "walk_in", Status: "confirmed", BookingTime: start, Notes: input.Notes, ServiceAddress: strings.TrimSpace(input.ServiceAddress)})
 	if err != nil {
 		return Booking{}, bookingWriteError(err)
 	}

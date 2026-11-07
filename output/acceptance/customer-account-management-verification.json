@@ -1,0 +1,89 @@
+{
+  "productionAccepted": false,
+  "checkedAt": "2026-10-22T23:00:25.4372732+00:00",
+  "goVet": "PASS",
+  "schemaVersion": 33,
+  "frontendBuildTypecheck": "PASS",
+  "browser": {
+    "desktopScreenshot": "output/acceptance/customer-account-granted.png",
+    "checks": [
+      "blank selectors, no inferred link",
+      "review required before grant",
+      "persisted explicit link visible after reload",
+      "review checkbox reset after write",
+      "revoke removes link"
+    ],
+    "cleanup": "PASS disposable schema cleaned and frontend tree stopped",
+    "scope": "Synthetic disposable PostgreSQL schema; actual management component and Go API, separate ports3007/8444",
+    "phone": {
+      "independentChecker": "ERROR local certificate not trusted; no bypass",
+      "reportLink": "https://doesitfit.lol/app#url=127.0.0.1:8444/acceptance-session&s=iphone-14",
+      "visualAcceptance": "UNVERIFIED screenshot inconsistent with DOM layout after viewport resizing",
+      "domMetrics": {
+        "documentWidth": 390,
+        "height": 844,
+        "width": 390,
+        "panelWidth": 358
+      }
+    },
+    "finalVerifier": "PASS: isolated PostgreSQL customer ownership grant=1 revoke=1 remaining_links=0 portal_access=denied"
+  },
+  "nativeGoPostgresHTTP": "PASS",
+  "actualApplicationAccountsLinks": "NONE aggregate counts zero; no credentials/permissions fabricated",
+  "actualAuthenticatedBrowserAcceptance": "NOT_RUN first real administrator initialization pending",
+  "sourceHashes": [
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/customer_account_management.sql",
+      "sha256": "7e3c2c6e1c5e23382378ba8607d2db29285b324db8d992482e15128ccc5e0098"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/customer_account_management.go",
+      "sha256": "cacf467b6f97bab0e0e17df9a9e91e58a7a2531f9bcca2e04cab24d496062a95"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/customer_account_management_test.go",
+      "sha256": "679c89276ee479893c18d9ea6a44c12d717b9ee00cbc5b37e9b7fcb420c41889"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/access_management.go",
+      "sha256": "c0dfefc1318fa72d649e417e8a5ca84c6c0b84fd62fd081f3f3611e83596a0e5"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/authorization.go",
+      "sha256": "117a0d947893130b6ad3f7feefc8f43899e8c8306a169978ff9b7f12f172e989"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/workspace/customer_account_management.go",
+      "sha256": "8a17a2144b03916fc323b7417103df35b4e10a8d9f4ae876cac934e06ce69ee6"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/workspace/customer_account_management_test.go",
+      "sha256": "6edd23aa10eaa15625d236f7bf13ec26f66f0b5ecb599ca3fd0a1bcd652eba82"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/workspace/invoice_browser_test.go",
+      "sha256": "f6fbe1b5f5a4054d4d20e5a85d9bef8a848071d454bfb25ebb58f54b1d8359b3"
+    },
+    {
+      "path": "dapper-platform/apps/web/app/workspace/CustomerAccountManager.tsx",
+      "sha256": "af18da8ab22ea9b77989596b08baf9ba22c294810b8abd14b16219cb80c66bf2"
+    },
+    {
+      "path": "dapper-platform/apps/web/app/workspace/AccessManager.tsx",
+      "sha256": "a8bf5c69f661120ba7731c5caae4dc919939a58da91cd6b5cf3e960797786269"
+    },
+    {
+      "path": "dapper-platform/apps/web/app/workspace/page.tsx",
+      "sha256": "648ae32f1745591a509d52c238de8fd9c4ba23b79e1aa4f8f8683c3dfdeae231"
+    },
+    {
+      "path": "dapper-platform/tests/invoice-browser/app/page.tsx",
+      "sha256": "271e8346aac190199eecc211b316defd15f5c48d0065ed56ed290ef06dd15d5b"
+    },
+    {
+      "path": "scripts/test-invoice-browser.ps1",
+      "sha256": "43743ecf56ada0dca1d6ba8f7212edc3812bfd81c1b3da8aa4a7ddbf4b7bb18f"
+    }
+  ],
+  "applicationTLSIngress": "PASS_5_OF_5"
+}

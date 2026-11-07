@@ -101,6 +101,12 @@ const schedule = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; 
 
 stage.style.setProperty('--frames', '1'); story?.classList.add('has-frames');
 canvas.style.cssText = 'display:block;width:100%;height:100%';
-new ResizeObserver(resize).observe(stage);
+const observer = new ResizeObserver(resize); observer.observe(stage);
 window.addEventListener('dapper:home', schedule); window.addEventListener('dapper:step', schedule);
+// Sent by the Next.js home page when the story unmounts on client navigation.
+window.addEventListener('dapper:dispose', () => {
+  observer.disconnect(); cancelAnimationFrame(raf); raf = 1; queue.length = 0;
+  window.removeEventListener('dapper:home', schedule); window.removeEventListener('dapper:step', schedule);
+  frames.clear(); tints.clear(); canvas.remove();
+}, {once: true});
 resize(); plan();

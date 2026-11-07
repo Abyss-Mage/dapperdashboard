@@ -1,0 +1,44 @@
+/* The site footer: black on every page, a booking call, the studio details and a wordmark that fills the width. */
+.f-foot{--bk:#0b0b0c;--bone:#efede8;--mute:#a8a59e;--red:#e3172b;--line:#ffffff24;--cd:'Unbounded Variable','Arial Narrow',sans-serif;--ease:cubic-bezier(.23,1,.32,1);
+  background:var(--bk);color:var(--bone);padding:clamp(56px,7vw,110px) clamp(16px,3.6vw,56px) 24px;overflow:hidden}
+.f-foot a{color:var(--bone);transition:color .2s}
+@media(hover:hover) and (pointer:fine){.f-foot a:not(.f-btn):hover{color:var(--red)}}
+.f-foot :focus-visible{outline:2px solid var(--red);outline-offset:3px;border-radius:0}
+.f-foot__cta{display:flex;align-items:flex-end;justify-content:space-between;gap:clamp(24px,4vw,64px);flex-wrap:wrap;padding-bottom:clamp(36px,5vw,72px);border-bottom:1px solid var(--line)}
+.f-foot__lead{margin:0;font:500 clamp(24px,3.6vw,60px)/.92 var(--cd);text-transform:uppercase;max-width:20ch;text-wrap:balance}
+.f-foot__lead em{font-style:normal;color:var(--red)}
+.f-foot__act{display:flex;align-items:center;gap:clamp(16px,2.4vw,36px);flex-wrap:wrap}
+.f-btn{display:inline-flex;align-items:center;gap:14px;background:var(--red);color:#fff!important;min-height:60px;padding:0 32px;font:500 22px/1 var(--cd);letter-spacing:.14em;text-transform:uppercase;clip-path:polygon(0 0,100% 0,100% 100%,14px 100%,0 calc(100% - 14px));transition:background-color .2s,transform .16s var(--ease)}
+.f-btn:active{transform:scale(.97)}
+.f-btn svg{transition:transform .3s var(--ease)}
+.f-roll{display:inline-block;overflow:hidden;height:1.1em;line-height:1.1em;vertical-align:bottom}
+.f-roll>span{display:block;transition:transform .35s var(--ease)}
+@media(hover:hover) and (pointer:fine){.f-btn:hover{background:#c4121f}.f-btn:hover svg{transform:translateX(4px)}.f-btn:hover .f-roll>span{transform:translateY(-100%)}}
+.f-foot__call{font:500 clamp(18px,1.5vw,22px)/1 var(--cd);letter-spacing:.12em;text-transform:uppercase;color:var(--mute)!important}
+.f-foot__call span{color:var(--bone);border-bottom:2px solid var(--red);padding-bottom:2px;font-variant-numeric:tabular-nums}
+.f-foot__cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(24px,4vw,64px);padding:clamp(32px,4vw,56px) 0}
+.f-foot__cols>div{display:grid;gap:8px;align-content:start;font-size:16px}
+.f-foot__cols p{margin:0;color:var(--mute)}
+.f-foot__cols a{width:fit-content}
+.f-foot h2{margin:0 0 8px;font:500 15px/1 var(--cd);letter-spacing:.18em;text-transform:uppercase;color:var(--mute);border-left:3px solid var(--red);padding-left:10px}
+.f-foot__social{display:flex;gap:18px;margin-top:6px}
+.f-foot__mark{margin:0;font:500 clamp(72px,20.1vw,456px)/.74 var(--cd);letter-spacing:-.01em;text-transform:uppercase;color:#ffffff12;white-space:nowrap;user-select:none;margin-inline:-.03em}
+.f-foot__legal{display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-top:clamp(20px,2.4vw,32px);padding-top:20px;border-top:1px solid var(--line);font-size:13px;color:var(--mute)}
+.f-foot__legal span:last-child{display:flex;gap:18px;flex-wrap:wrap}
+.f-foot__legal a{color:var(--mute)}
+@media(max-width:800px){.f-foot__cols{grid-template-columns:minmax(0,1fr)}.f-foot{padding-bottom:96px}}
+
+/* One button across the whole site: red, square, the bottom-left corner cut, capitals in Unbounded, an arrow that nudges on hover. */
+body .c-btn,body .d-btn,body .s-btn,body .f-btn{display:inline-flex;align-items:center;justify-content:center;gap:14px;min-height:56px;padding:0 28px;border:0;border-radius:0;box-shadow:none;
+  font:600 15px/1 'Unbounded Variable','Arial Narrow',sans-serif;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;
+  clip-path:polygon(0 0,100% 0,100% 100%,14px 100%,0 calc(100% - 14px))}
+body .d-btn--sm{min-height:46px;padding:0 22px;font-size:13px}
+body .d-nav--paper .d-btn,body .d-nav--dark .d-btn{min-height:46px;padding:0 22px;font-size:13px;letter-spacing:.06em}
+body .f-btn{font-size:16px;min-height:60px;padding:0 32px}
+body .c-btn:focus-visible,body .d-btn:focus-visible,body .s-btn:focus-visible,body .f-btn:focus-visible{outline-offset:-5px;outline-color:#fff}
+@media(max-width:560px){body .c-btn,body .d-btn,body .s-btn,body .f-btn{white-space:normal;text-align:center;font-size:14px}}
+
+/* Touch: text links and small buttons get a finger-sized target (44px) without changing how they look. */
+@media(pointer:coarse){
+  .h-end__call,.v-end__call,.h-hs__all,.h-deck__all,.h-deck__now a,.h-hcard__go,.h-card__go,.s-close__call,.v-row__go,.h-dcard>a{display:inline-flex;align-items:center;min-height:44px}
+}

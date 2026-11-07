@@ -135,6 +135,42 @@ var dealershipB2BSchema string
 //go:embed marketing_popups.sql
 var marketingPopupsSchema string
 
+//go:embed quote_templates.sql
+var quoteTemplatesSchema string
+
+//go:embed outlet_templates.sql
+var outletTemplatesSchema string
+
+//go:embed legacy_import_map.sql
+var legacyImportMapSchema string
+
+//go:embed legacy_billing.sql
+var legacyBillingSchema string
+
+//go:embed booking_numbers.sql
+var bookingNumbersSchema string
+
+//go:embed website_dealers.sql
+var websiteDealersSchema string
+
+//go:embed portal_profile.sql
+var portalProfileSchema string
+
+//go:embed window_tint_category.sql
+var windowTintCategorySchema string
+
+//go:embed email_templates.sql
+var emailTemplatesSchema string
+
+//go:embed site_assets.sql
+var siteAssetsSchema string
+
+//go:embed email_templates_more.sql
+var emailTemplatesMoreSchema string
+
+//go:embed site_assets_hidden.sql
+var siteAssetsHiddenSchema string
+
 //go:embed payment_refund_accounting.sql
 var paymentRefundAccountingSchema string
 
@@ -207,13 +243,64 @@ var customerUniqueAvailabilityReviewSchema string
 //go:embed owner_wave_2026_10.sql
 var ownerWave202610Schema string
 
+//go:embed dashboard_batch_c.sql
+var dashboardBatchCSchema string
+
+//go:embed account_recovery.sql
+var accountRecoverySchema string
+
+//go:embed addon_links.sql
+var addonLinksSchema string
+
+//go:embed clean_status_notes.sql
+var cleanStatusNotesSchema string
+
+//go:embed employee_role.sql
+var employeeRoleSchema string
+
+//go:embed messaging_settings.sql
+var messagingSettingsSchema string
+
+//go:embed portfolio_dimensions.sql
+var portfolioDimensionsSchema string
+
+//go:embed service_slots.sql
+var serviceSlotsSchema string
+
+//go:embed custom_scripts.sql
+var customScriptsSchema string
+
+//go:embed website_tracking.sql
+var websiteTrackingSchema string
+
+//go:embed calendar_feeds.sql
+var calendarFeedsSchema string
+
+//go:embed location_invoice_templates.sql
+var locationInvoiceTemplatesSchema string
+
+//go:embed website_enquiries.sql
+var websiteEnquiriesSchema string
+
+//go:embed location_logos.sql
+var locationLogosSchema string
+
+//go:embed approve_pending_bookings.sql
+var approvePendingBookingsSchema string
+
+//go:embed activity_log.sql
+var activityLogSchema string
+
+//go:embed coupons.sql
+var couponsSchema string
+
 type migration struct {
 	version int
 	sql     string
 }
 
 func migrations() []migration {
-	return []migration{{1, schema}, {2, authorizationSchema}, {3, vehicleGrantSchema}, {4, sessionSchema}, {5, sessionInvalidationSchema}, {6, oidcIdentitySchema}, {7, passwordCredentialSchema}, {8, jobSchema}, {9, serviceSchema}, {10, franchiseSchema}, {11, jobServiceSchema}, {12, jobAddonSchema}, {13, reservationSchema}, {14, reservationReleaseSchema}, {15, schedulingRuleSchema}, {16, reservationRuleSchema}, {17, reservationHistorySchema}, {18, schedulingReadSchema}, {19, jobContributorSchema}, {20, centralCatalogueSchema}, {21, attendanceSchema}, {22, bookingSchema}, {23, invoiceSchema}, {24, sopDocumentSchema}, {25, bookingVehicleOwnershipSchema}, {26, customerAccountSchema}, {27, bookingJobRequestSchema}, {28, initialAdministratorSchema}, {29, accessGrantEventsSchema}, {30, invoiceIssuanceSchema}, {31, invoiceDraftRevisionSchema}, {32, memberInvitationSchema}, {33, customerAccountManagementSchema}, {34, bookingCapacityRequestSchema}, {35, bookingRescheduleRequestSchema}, {36, bookingOfferSchema}, {37, customerBookingRequestSchema}, {38, scopedQuotationSchema}, {39, dealershipB2BSchema}, {40, marketingPopupsSchema}, {41, paymentRefundAccountingSchema}, {43, publicContentSchema}, {44, rolesAndScopedAssignmentsSchema}, {45, centralServiceLinksSchema}, {46, employeeWorkspaceSchema}, {47, gpsTrackingSchema}, {48, squarePaymentIntentsSchema}, {49, employeeUploadsSchema}, {50, employeeUploadViewsSchema}, {51, employeeUploadBookingSchema}, {52, employeeWorksiteLocationSchema}, {53, franchiseSiteSchema}, {54, employeeUploadRetentionSchema}, {55, accountSecuritySchema}, {56, schedulingWeeklyHoursSchema}, {57, franchiseTaxesSchema}, {58, schedulingWorkingTimeSchema}, {59, bookingCapacityWorkingTimeSchema}, {60, servicePricesSchema}, {61, invoicePrintTemplateSchema}, {62, invoiceOnePerBookingSchema}, {63, publicBookingSchema}, {64, customerUniqueAvailabilityReviewSchema}, {65, ownerWave202610Schema}}
+	return []migration{{1, schema}, {2, authorizationSchema}, {3, vehicleGrantSchema}, {4, sessionSchema}, {5, sessionInvalidationSchema}, {6, oidcIdentitySchema}, {7, passwordCredentialSchema}, {8, jobSchema}, {9, serviceSchema}, {10, franchiseSchema}, {11, jobServiceSchema}, {12, jobAddonSchema}, {13, reservationSchema}, {14, reservationReleaseSchema}, {15, schedulingRuleSchema}, {16, reservationRuleSchema}, {17, reservationHistorySchema}, {18, schedulingReadSchema}, {19, jobContributorSchema}, {20, centralCatalogueSchema}, {21, attendanceSchema}, {22, bookingSchema}, {23, invoiceSchema}, {24, sopDocumentSchema}, {25, bookingVehicleOwnershipSchema}, {26, customerAccountSchema}, {27, bookingJobRequestSchema}, {28, initialAdministratorSchema}, {29, accessGrantEventsSchema}, {30, invoiceIssuanceSchema}, {31, invoiceDraftRevisionSchema}, {32, memberInvitationSchema}, {33, customerAccountManagementSchema}, {34, bookingCapacityRequestSchema}, {35, bookingRescheduleRequestSchema}, {36, bookingOfferSchema}, {37, customerBookingRequestSchema}, {38, scopedQuotationSchema}, {39, dealershipB2BSchema}, {40, marketingPopupsSchema}, {41, paymentRefundAccountingSchema}, {43, publicContentSchema}, {44, rolesAndScopedAssignmentsSchema}, {45, centralServiceLinksSchema}, {46, employeeWorkspaceSchema}, {47, gpsTrackingSchema}, {48, squarePaymentIntentsSchema}, {49, employeeUploadsSchema}, {50, employeeUploadViewsSchema}, {51, employeeUploadBookingSchema}, {52, employeeWorksiteLocationSchema}, {53, franchiseSiteSchema}, {54, employeeUploadRetentionSchema}, {55, accountSecuritySchema}, {56, schedulingWeeklyHoursSchema}, {57, franchiseTaxesSchema}, {58, schedulingWorkingTimeSchema}, {59, bookingCapacityWorkingTimeSchema}, {60, servicePricesSchema}, {61, invoicePrintTemplateSchema}, {62, invoiceOnePerBookingSchema}, {63, publicBookingSchema}, {64, customerUniqueAvailabilityReviewSchema}, {65, ownerWave202610Schema}, {66, dashboardBatchCSchema}, {67, accountRecoverySchema}, {68, websiteTrackingSchema}, {69, calendarFeedsSchema}, {70, locationInvoiceTemplatesSchema}, {71, websiteEnquiriesSchema}, {72, locationLogosSchema}, {73, approvePendingBookingsSchema}, {74, activityLogSchema}, {75, couponsSchema}, {76, customScriptsSchema}, {77, serviceSlotsSchema}, {78, portfolioDimensionsSchema}, {79, messagingSettingsSchema}, {80, employeeRoleSchema}, {81, cleanStatusNotesSchema}, {82, addonLinksSchema}, {83, quoteTemplatesSchema}, {84, outletTemplatesSchema}, {85, legacyImportMapSchema}, {86, legacyBillingSchema}, {87, bookingNumbersSchema}, {88, websiteDealersSchema}, {89, portalProfileSchema}, {90, windowTintCategorySchema}, {91, emailTemplatesSchema}, {92, siteAssetsSchema}, {93, emailTemplatesMoreSchema}, {94, siteAssetsHiddenSchema}}
 }
 
 // ValidateSchema is read-only. Runtime startup never applies migrations.
@@ -245,6 +332,7 @@ type Store struct {
 	sopDir               string
 	mfaKey               []byte
 	phoneVerifier        PhoneVerifier
+	bookingHook          func(BookingEmailEvent)
 }
 type Scope struct{ OrganizationID, LocationID, ActorID string }
 type Customer struct {

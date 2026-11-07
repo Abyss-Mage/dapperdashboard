@@ -41,6 +41,8 @@ type ReserveBookingInput struct {
 	Start       time.Time `json:"start"`
 	Channel     string    `json:"channel"`
 	Notes       string    `json:"notes"`
+	// ServiceAddress is where mobile or valet work happens (empty for in-shop work).
+	ServiceAddress string `json:"serviceAddress"`
 	// AddonIDs attach add-ons to a base rule (a rule that already lists its add-ons cannot take more).
 	AddonIDs []string `json:"addonIds"`
 }
@@ -117,14 +119,14 @@ func (s *Store) ReserveBooking(ctx context.Context, scope Scope, input ReserveBo
 		seen := map[string]bool{}
 		for _, id := range input.AddonIDs {
 			var ok bool
-			if seen[id] || tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM catalog_services WHERE organization_id=$1 AND location_id=$2 AND id::text=$3 AND kind='addon' AND parent_id::text=$4 AND NOT archived)`, scope.OrganizationID, scope.LocationID, id, rule.ServiceID).Scan(&ok) != nil || !ok {
+			if seen[id] || tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM catalog_services WHERE organization_id=$1 AND location_id=$2 AND id::text=$3 AND kind='addon' AND catalog_addon_offered_with(id,$4::uuid) AND NOT archived)`, scope.OrganizationID, scope.LocationID, id, rule.ServiceID).Scan(&ok) != nil || !ok {
 				return Booking{}, ErrBookingInput
 			}
 			seen[id] = true
 		}
 		addons = append([]string{}, input.AddonIDs...)
 	}
-	booking, err := s.createBookingInTransaction(ctx, tx, scope, Booking{CustomerID: input.CustomerID, VehicleID: input.VehicleID, ServiceID: &rule.ServiceID, AddonIDs: addons, ReservationID: &reservation.ID, Channel: input.Channel, Status: "pending", BookingTime: reservation.Request.Start, Notes: input.Notes})
+	booking, err := s.createBookingInTransaction(ctx, tx, scope, Booking{CustomerID: input.CustomerID, VehicleID: input.VehicleID, ServiceID: &rule.ServiceID, AddonIDs: addons, ReservationID: &reservation.ID, Channel: input.Channel, Status: "confirmed", BookingTime: reservation.Request.Start, Notes: input.Notes, ServiceAddress: input.ServiceAddress})
 	if err != nil {
 		return Booking{}, bookingWriteError(err)
 	}

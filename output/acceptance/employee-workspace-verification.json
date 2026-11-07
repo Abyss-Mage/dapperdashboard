@@ -1,0 +1,147 @@
+{
+  "timestamp": "2026-10-23T23:33:40.194611+00:00",
+  "scope": "employee-workspace-local-increment",
+  "buildId": "FfztZLxs066PkE_-c71ql",
+  "migrationMax": 46,
+  "migrationCount": 45,
+  "operationalEmployeeTableCounts": {
+    "assignments": 0,
+    "availability": 0,
+    "bookingLinks": 0
+  },
+  "fullNativePackages": "9 PASS",
+  "focusedEmployeeGuardTests": "PASS",
+  "goVet": "PASS",
+  "frontendBuild": "PASS11routes",
+  "helperTests": "6/6 PASS",
+  "isolatedBrowserPersistence": "closedShift1 availability1 cashReceipt1 invoiceDue0 walkinCapacity1 dealershipLink1",
+  "runtimeIngress": "7 checks PASS",
+  "assets": "Workspace2CSS8JS and Master2CSS7JS all200 with expected MIME",
+  "productionAccepted": false,
+  "unverified": [
+    "ongoing native GPS",
+    "physical Square Reader Android/iOS",
+    "automatic invoice issuance",
+    "actual printer/PDF",
+    "physical mobile acceptance",
+    "full dark-theme/accessibility review"
+  ],
+  "files": [
+    {
+      "path": "PRODUCT.md",
+      "sha256": "db2210affb8f80e69957f2df626180104281e97d88e12dfb1a086b6ea2cf9351"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/employee_workspace.sql",
+      "sha256": "9fdda11f62443ddb627131f7b24054c30f95fb82bb3dd2386854b6507a779d27"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/employee_workspace.go",
+      "sha256": "727a51a62939e7106d76cbecd05f47cb5bc7241d7fe8c65c5ff7173f26e6dedf"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/employee_checkout.go",
+      "sha256": "90bbeb9dc806c86fad0c5a5c01a01a90026e21607fd165c8e595976339f86e2a"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/employee_walkin.go",
+      "sha256": "5a71d261893a6da47920cc34cfd5b2c65ab419a58cc87a8474bdf3e1b8fdf782"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/employee_calendar.go",
+      "sha256": "b3da94de8c534ee1db39d8e85185fa9424427cdf74efee69d71bd27c8a3a41ab"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/employee_workspace_test.go",
+      "sha256": "145daea0aa5ed3a26e1e121a61092f20378bbda4850e3186508008772c1ec116"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/employee_walkin_test.go",
+      "sha256": "52ae3c06a318d2d8c83b0a3b288d3d80cec78f24c8485a39967cf209deb8b2d2"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/store.go",
+      "sha256": "1d6416f8c46c7a38e10341be7b567f6e3278ee3965e0b936bdef15b268c8d134"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/franchises.go",
+      "sha256": "597e930ce3263d21710744f4559d71b87eaff2350e2a63d71f1ec82432708eaf"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/workspace/employee_workspace.go",
+      "sha256": "17765a28e0ecc01f8c3a3102edf1f9fdcab5a80b39d5de5b3abc6f9468ea7175"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/workspace/employee_workspace_test.go",
+      "sha256": "7656d8759d2e640660498e375d16e25209066ba9f8e44b1db36bce74f0dc2049"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/workspace/employee_browser_test.go",
+      "sha256": "20ac9187b276a1b6b729821491e2dddfc7698bd8322775d7c973ace61eeff918"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/workspace/handler.go",
+      "sha256": "11f2d4c48501d9ba01b62d118ae535654adbf8c35763b45e609779536997dbd9"
+    },
+    {
+      "path": "dapper-platform/apps/web/app/workspace/EmployeeWorkspace.tsx",
+      "sha256": "2f85db2956363a5e7b5c37d081a7f4285ab6592fa1cd8c55c47e134c4e3d77ce"
+    },
+    {
+      "path": "dapper-platform/apps/web/app/workspace/EmployeeCalendar.tsx",
+      "sha256": "dccd4f9222176627c32ea7726341bd003a4a8dc8475844eac33c643d6c8ea9b7"
+    },
+    {
+      "path": "dapper-platform/apps/web/app/workspace/employee.module.css",
+      "sha256": "5096576036be6bc93d3e4ce8a71771eebe7dc95774d31f35afde9c96417241fd"
+    },
+    {
+      "path": "dapper-platform/apps/web/app/workspace/employee_helpers.ts",
+      "sha256": "ecfb50da0ec636df5dac51ef7199c412a35214f008473d5c0e655b1aea1a89b1"
+    },
+    {
+      "path": "dapper-platform/apps/web/app/workspace/page.tsx",
+      "sha256": "b20605de2a69bbb95fb5a8d50fdf11a6fe66e29cfdbe75a5523e7cf6eb9c3bde"
+    },
+    {
+      "path": "dapper-platform/apps/web/app/workspace/DESIGN.md",
+      "sha256": "3c9c099135bad59cb8bd31b3b867b8e13b8fc844b06b62ada923fe2a3dd7911b"
+    },
+    {
+      "path": "dapper-platform/apps/web/app/workspace/workspace.surface.md",
+      "sha256": "905339c0751e8f955872bddb6fa035a69b069eab498c384b1384b7a0ecf0603b"
+    },
+    {
+      "path": "dapper-platform/apps/web/app/owner/EmployeeAssignments.tsx",
+      "sha256": "1681dc459fccfb6e972b9b2039c500d63f0b144e2d89152537cd94c78db83b00"
+    },
+    {
+      "path": "dapper-platform/apps/web/app/owner/OwnerDashboardClient.tsx",
+      "sha256": "32dfb4c64d06faf04517830502b4d4a1f6549a2f69c11fef307fbbd2dd7fbb57"
+    },
+    {
+      "path": "dapper-platform/apps/web/package.json",
+      "sha256": "aa12170359262a4669352765b3646678b4e6aa78631883c14e7c464de6a4ebe0"
+    },
+    {
+      "path": "dapper-platform/apps/web/package-lock.json",
+      "sha256": "d714da14e0d26a5f1b3294f81e6fdfff69562ef07413d00b57402c676e03527d"
+    },
+    {
+      "path": "scripts/test-employee-workspace.mjs",
+      "sha256": "777bcd69a199be9dbc0b4f79e4ed5f735f988f233ac94608732aa89f42ea589e"
+    },
+    {
+      "path": "scripts/start-employee-review.ps1",
+      "sha256": "5634317b9c0a17ff2f4784a98e1b0ecb76f0e73e3745a6e4ad2bfcfce1c62f92"
+    },
+    {
+      "path": "scripts/finish-employee-review.ps1",
+      "sha256": "4ed82480d60d6a5549686fba114afa0f071edc6f44a18e9695daf7d78925ce6f"
+    },
+    {
+      "path": "scripts/verify-application-runtime.py",
+      "sha256": "43cf1a66e97267ebc0e95f682fef3b8e8406164e8be3f03d4b8245fb18e431a1"
+    }
+  ]
+}

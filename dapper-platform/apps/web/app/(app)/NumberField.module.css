@@ -1,0 +1,25 @@
+.wrap {
+  display: flex; align-items: stretch; width: 100%; min-width: 0; min-height: 44px; border-radius: 12px; overflow: hidden;
+  border: 1px solid var(--glass-line, var(--border, rgba(128, 128, 128, .35)));
+  background: var(--glass-strong, color-mix(in srgb, var(--surface, #fff) 72%, transparent));
+  transition: border-color .2s ease, box-shadow .25s ease;
+}
+.wrap:hover:not(.disabled) { border-color: color-mix(in srgb, var(--brand, #fb1a2b) 55%, var(--glass-line, rgba(128, 128, 128, .35))); }
+.wrap:focus-within { border-color: var(--brand, #fb1a2b); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand, #fb1a2b) 22%, transparent); }
+.disabled { opacity: .55; }
+/* The inner input drops its own border, background and focus ring: the whole control carries them. */
+.wrap .input {
+  flex: 1; min-width: 0; width: 100%; min-height: 0; margin: 0; padding: 0 6px; border: 0; border-radius: 0; outline: 0; box-shadow: none;
+  background: transparent !important; border: 0 !important; box-shadow: none !important; color: var(--text, inherit); font: inherit; font-size: 14.7px; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums;
+}
+.wrap .input:focus, .wrap .input:focus-visible { outline: 0; box-shadow: none; }
+.btn {
+  flex: none; width: 40px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 0; background: transparent; color: var(--text-muted, currentColor);
+  cursor: pointer; transition: background-color .2s ease, color .2s ease, transform .2s ease; -webkit-tap-highlight-color: transparent;
+}
+.btn:hover:not(:disabled) { background: color-mix(in srgb, var(--brand, #fb1a2b) 14%, transparent); color: var(--brand, #fb1a2b); }
+.btn:active:not(:disabled) { transform: scale(.88); }
+.btn:disabled { opacity: .35; cursor: not-allowed; }
+@media (max-width: 640px) { .btn { width: 46px; } }
+.wrap .btn { border: 0 !important; border-radius: 0 !important; background: transparent !important; min-height: 0 !important; height: auto !important; box-shadow: none !important; width: 40px; padding: 0 !important; }
+.wrap .btn:hover:not(:disabled) { background: color-mix(in srgb, var(--brand, #fb1a2b) 14%, transparent) !important; }

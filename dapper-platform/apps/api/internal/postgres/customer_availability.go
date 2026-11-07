@@ -114,21 +114,27 @@ func (s *Store) CustomerOfferAvailability(ctx context.Context, actor, customer, 
 		}
 		return result, nil
 	}
-	request := scheduling.Request{Duration: time.Duration(rule.DurationMinutes) * time.Minute, Before: time.Duration(rule.BeforeMinutes) * time.Minute, After: time.Duration(rule.AfterMinutes) * time.Minute, Units: rule.Units, WorkingTime: rule.WorkingTime}
+	request := scheduling.Request{Duration: time.Duration(rule.DurationMinutes) * time.Minute, Before: time.Duration(rule.BeforeMinutes) * time.Minute, After: time.Duration(rule.AfterMinutes) * time.Minute, Units: 1, WorkingTime: rule.WorkingTime}
+	plan.Capacity = rule.Slots // each service has its own number of slots
 	reach := request.Duration + request.After
 	if request.WorkingTime {
 		reach = 30 * 24 * time.Hour // a working-time job can span many days
 	}
-	rows, err := tx.Query(ctx, `SELECT occupied_start,occupied_end,units FROM capacity_reservations WHERE organization_id=$1 AND location_id=$2 AND resource_id=$3 AND cancelled_at IS NULL AND occupied_start<$5 AND occupied_end>$4 LIMIT 1001`, org, loc, resource, from.Add(-request.Before), to.Add(reach))
+	rows, err := tx.Query(ctx, `SELECT occupied_start,occupied_end,units,COALESCE(rule_snapshot->>'serviceId','') FROM capacity_reservations WHERE organization_id=$1 AND location_id=$2 AND resource_id=$3 AND cancelled_at IS NULL AND occupied_start<$5 AND occupied_end>$4 LIMIT 1001`, org, loc, resource, from.Add(-request.Before), to.Add(reach))
 	if err != nil {
 		return result, err
 	}
 	for rows.Next() {
 		var allocation scheduling.Allocation
-		if err = rows.Scan(&allocation.Start, &allocation.End, &allocation.Units); err != nil {
+		var service string
+		if err = rows.Scan(&allocation.Start, &allocation.End, &allocation.Units, &service); err != nil {
 			rows.Close()
 			return result, err
 		}
+		if service != rule.ServiceID {
+			continue
+		}
+		allocation.Units = 1
 		plan.Existing = append(plan.Existing, allocation)
 	}
 	err = rows.Err()

@@ -1,0 +1,61 @@
+{
+  "nativeFailedTestRetry": "PASS session63627 12.508s GOMAXPROCS2 unchanged30s deadline",
+  "isolatedBrowser": "PASS published terms/capacity/closed day/refresh/native date; terminal Go no-write verifier+cleanup",
+  "localDeployment": "PASS guarded restart and matching final assets",
+  "goVet": "PASS session50202",
+  "nativeEarlierFullRun": "PASS session25881 before final date assertions",
+  "schema": 36,
+  "frontendBuildTypecheck": "PASS session41742 final date fix",
+  "productionAccepted": false,
+  "checkedAt": "2026-10-23T09:23:54.4267845Z",
+  "nativeFinalAggregate": "FAIL session15641 shared30s context at existing setup/store_test.go98 before availability helper; HTTP and pure packages PASS",
+  "ingress": "PASS 5 verified CA+hostname",
+  "actualAuthenticatedApplicationAcceptance": "NOT_RUN",
+  "quotaRemainingPercent": 35,
+  "sourceHashes": [
+    {
+      "sha256": "B37741EEB0A83490C47D10B02C748EEEE7BD8E11C8312D71BD1FBE2CB5A4AFC9",
+      "path": "dapper-platform/apps/api/internal/scheduling/starts.go"
+    },
+    {
+      "sha256": "FFA79E42E5767711A6CDFF8FFA32B80E7EDC419E73815900066E0C83FF72670C",
+      "path": "dapper-platform/apps/api/internal/scheduling/starts_test.go"
+    },
+    {
+      "sha256": "D18D9B4411043E13F7456049DEC45A994E46C93A870B20470EE1D5C7609F7412",
+      "path": "dapper-platform/apps/api/internal/postgres/customer_availability.go"
+    },
+    {
+      "sha256": "5509B0535B32F09812A8EA8EAE02D6DF379A9865F9A782515D18F03CDD251AEE",
+      "path": "dapper-platform/apps/api/internal/postgres/booking_offers_test.go"
+    },
+    {
+      "sha256": "4CC9724E4F6B0BD092FDDB1035474B8E179E6FB5349048FA99953229EF790347",
+      "path": "dapper-platform/apps/api/internal/workspace/booking_offers.go"
+    },
+    {
+      "sha256": "1DD832A1499B67CE5D12862D1488EECD7504C14493621243700C013391371334",
+      "path": "dapper-platform/apps/api/internal/workspace/booking_offers_test.go"
+    },
+    {
+      "sha256": "4412D1714D02183A18789AD5AB20AED4B12D85BFF8F4B6D6C8D61E0BAC6DC5C4",
+      "path": "dapper-platform/apps/api/internal/workspace/invoice_browser_test.go"
+    },
+    {
+      "sha256": "1EC2C408842636E7C30CDDB8706F233763CEADBF27BF178F6C6C0548EF9B115B",
+      "path": "dapper-platform/apps/web/app/account/CustomerAvailabilityBrowser.tsx"
+    },
+    {
+      "sha256": "203C062C9EF9F5F489C736ACE720E11213AFE7B65B3D6BF13D74249657CA8948",
+      "path": "dapper-platform/apps/web/app/account/page.tsx"
+    },
+    {
+      "sha256": "9F879D6945F42D78E85C992543C268472591C3383A18740EBB78C01965E16365",
+      "path": "dapper-platform/tests/invoice-browser/app/page.tsx"
+    },
+    {
+      "sha256": "9D39201F6A77295CDFE529D9E4A27D41A53A2B73332DDF748C0DEACF570EB66E",
+      "path": "scripts/test-invoice-browser.ps1"
+    }
+  ]
+}

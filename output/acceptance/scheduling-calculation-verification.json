@@ -1,0 +1,27 @@
+{
+  "changedFiles": [
+    {
+      "sha256": "E021A5E184BFBB2FDC1B88433073292E1B996694F9D6296BF04265219084097D",
+      "file": "dapper-platform/apps/api/internal/scheduling/availability.go"
+    },
+    {
+      "sha256": "1083825AF111B0FD8B5772790D17567619218DE6486F451924062C1603D06A09",
+      "file": "dapper-platform/apps/api/internal/scheduling/availability_test.go"
+    }
+  ],
+  "reservationConcurrencyVerified": false,
+  "cases": [
+    "half-open adjacency",
+    "peak simultaneous capacity",
+    "buffers and closures",
+    "contiguous openings vs gaps",
+    "invalid inputs fail closed",
+    "Toronto fall-back repeated time",
+    "Toronto spring-forward elapsed duration"
+  ],
+  "productionReady": false,
+  "runtimeDeployed": false,
+  "verifiedAt": "2026-10-22T05:40:17.8058502Z",
+  "evidenceLevel": "source-and-local-tests",
+  "fullNativeSuite": "pass"
+}

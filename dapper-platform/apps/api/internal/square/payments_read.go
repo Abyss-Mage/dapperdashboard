@@ -40,6 +40,7 @@ func (c *squareClient) GetPayment(ctx context.Context, id string) (PaymentRespon
 		Payment struct {
 			ID          string `json:"id"`
 			ReferenceID string `json:"reference_id"`
+			Note        string `json:"note"`
 			LocationID  string `json:"location_id"`
 			Status      string `json:"status"`
 			Amount      struct {
@@ -60,5 +61,5 @@ func (c *squareClient) GetPayment(ctx context.Context, id string) (PaymentRespon
 	if payment.ID != id || payment.Amount.Amount <= 0 || payment.Status == "" || payment.Refunded.Amount != 0 {
 		return PaymentResponse{}, ErrSquarePaymentFailed
 	}
-	return PaymentResponse{ID: payment.ID, ReferenceID: payment.ReferenceID, LocationID: payment.LocationID, Status: payment.Status, AmountCents: payment.Amount.Amount, Currency: payment.Amount.Currency}, nil
+	return PaymentResponse{ID: payment.ID, ReferenceID: payment.ReferenceID, Note: payment.Note, LocationID: payment.LocationID, Status: payment.Status, AmountCents: payment.Amount.Amount, Currency: payment.Amount.Currency}, nil
 }

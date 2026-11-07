@@ -1,0 +1,89 @@
+/* About: only what differs from the shared paper system in ../paper.css. */
+/* A1 Hero: one photograph edge to edge, the headline over it */
+.ah{background:var(--ink)}
+.ah__stage{position:relative;isolation:isolate;display:flex;flex-direction:column;justify-content:flex-end;min-height:100svh;padding-top:76px;background:var(--ink);color:#f6f4f0;overflow:hidden}
+.ah__img{position:absolute;inset:0;z-index:-2;width:100%;height:100%;object-fit:cover;object-position:50% 58%}
+.ah__scrim{position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,#12121233 0%,#12121200 28%,#121212d6 100%)}
+.ah__copy{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,.9fr);gap:clamp(24px,4vw,64px);align-items:end;padding:clamp(40px,6vw,96px) var(--cg) clamp(36px,5vw,72px)}
+.ah .c-h1{color:#fff;padding:0}
+.a-h1{font-size:clamp(30px,4.6vw,72px)}
+.ah__aside{display:grid;gap:clamp(18px,2vw,28px);justify-items:start}
+.ah__aside p{font:300 clamp(17px,1.5vw,22px)/1.5 var(--cb);color:#f1eee8;max-width:44ch}
+@media(max-width:1023px){.ah__copy{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:720px){.a-h1{font-size:clamp(28px,8.4vw,48px)}}
+
+/* A2 Our story: stacked by default; a pinned sideways strip on desktop with motion (.is-pinned is set by the page script) */
+.a-story{position:relative;padding:clamp(72px,9vw,140px) var(--cg);border-top:1px solid var(--rule)}
+.a-story__head h2{font-size:clamp(34px,4.7vw,77px);line-height:.98}
+.a-story__head .c-sub{margin-top:clamp(14px,1.6vw,24px)}
+.a-story__items{margin:clamp(40px,6vw,80px) 0 0;padding:0;list-style:none;display:grid;gap:clamp(36px,5vw,64px)}
+.a-story__item{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:0 clamp(20px,4vw,56px);align-items:start;padding-top:clamp(20px,2.4vw,32px);border-top:1px solid var(--rule)}
+.a-story__year{grid-row:span 2;font:500 clamp(53.3px,13.3vw,111px)/.82 var(--ch);letter-spacing:-.03em;color:var(--ink);font-variant-numeric:tabular-nums}
+.a-story__item:last-child .a-story__year{color:var(--red)}
+.a-story__item h3{font-size:clamp(19.2px,2.2vw,29.6px);line-height:1.05}
+.a-story__item p{margin-top:12px;color:var(--ink-2);max-width:40ch}
+.a-story__bar{display:none}
+.is-pinned .a-story{height:100svh;padding:76px 0 0;overflow:hidden;border-top:0;display:flex;align-items:center}
+.is-pinned .a-story__strip{display:flex;align-items:flex-end;gap:clamp(56px,7vw,120px);width:max-content;padding:0 var(--cg) clamp(48px,7vh,88px)}
+.is-pinned .a-story__head{flex:none;width:min(44vw,700px);align-self:center}
+.is-pinned .a-story__items{margin:0;display:flex;gap:clamp(56px,7vw,120px)}
+.is-pinned .a-story__item{display:block;flex:none;min-width:clamp(360px,30vw,520px);border-top:0;padding-top:0}
+.is-pinned .a-story__year{display:block;white-space:nowrap;font-size:clamp(96.2px,11.1vw,185px);margin-bottom:clamp(14px,2vw,30px)}
+.is-pinned .a-story__bar{display:block;position:absolute;left:var(--cg);right:var(--cg);bottom:clamp(24px,4.5vh,52px);height:2px;background:var(--rule)}
+.is-pinned .a-story__bar i{display:block;height:100%;background:var(--red);transform:scaleX(0);transform-origin:left}
+@media(max-width:720px){.a-story__item{grid-template-columns:minmax(0,1fr)}.a-story__year{grid-row:auto;margin-bottom:12px}}
+
+/* A3 The founders: a portrait each */
+.af{padding:clamp(72px,9vw,140px) var(--cg)}
+.af h2{font-size:clamp(30px,4.2vw,68px);line-height:1}
+.af-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(20px,3vw,48px);margin-top:clamp(36px,5vw,72px)}
+.af-card{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:end;gap:clamp(18px,2.2vw,32px)}
+.af-frame{width:clamp(130px,15vw,240px);aspect-ratio:3/4;background:var(--ink);overflow:hidden;display:grid;place-items:center;clip-path:polygon(0 0,100% 0,100% 100%,14px 100%,0 calc(100% - 14px))}
+.af-frame img{width:100%;height:100%;object-fit:cover}
+.af-mono{font:500 clamp(44px,6vw,96px)/1 var(--ch);letter-spacing:-.04em;color:var(--red)}
+.af-role{margin:0;font:500 clamp(40px,5.4vw,88px)/.9 var(--ch);letter-spacing:-.03em;color:var(--ink)}
+.af-role span{display:inline-block}
+.af-text h3{margin-top:clamp(12px,1.4vw,20px);font-size:clamp(20px,2.2vw,34px);line-height:1.05}
+.af-text .c-muted{margin-top:10px;font-size:clamp(17px,1.4vw,21px)}
+@media(max-width:720px){.af-grid{grid-template-columns:minmax(0,1fr)}.af-frame{width:clamp(110px,34vw,170px)}.af-role{font-size:clamp(24px,7vw,32px);line-height:1}.af-text h3{font-size:clamp(16px,4.6vw,19px)}.af-text .c-muted{font-size:15px}.af-mono{font-size:clamp(34px,10vw,48px)}}
+
+/* A4 Core values: ink band */
+.a-values{background:var(--ink);color:#f3f2ee;padding:clamp(72px,9vw,140px) var(--cg)}
+.a-values h2{color:#f3f2ee;font-size:clamp(34px,4.7vw,77px);line-height:.98;max-width:16ch}
+.a-values__word{margin:clamp(36px,5vw,72px) 0;font:500 clamp(32.6px,6.2vw,103.6px)/1 var(--ch);letter-spacing:-.03em;color:var(--red);min-height:2.05em;overflow-wrap:anywhere}
+.a-values__list{display:none;margin:clamp(28px,4vw,48px) 0;padding:0;list-style:none;gap:8px 28px;flex-wrap:wrap;font:500 clamp(17.8px,2.2vw,32.6px)/1.1 var(--ch);letter-spacing:-.03em;color:var(--red)}
+.a-values__foot{display:grid;grid-template-columns:minmax(0,1.3fr) auto;gap:clamp(24px,4vw,64px);align-items:end;padding-top:clamp(24px,3vw,40px);border-top:1px solid #ffffff2e}
+.a-values__foot p{max-width:60ch;color:#c9c6bf;font-size:clamp(17px,1.4vw,21px)}
+@media(prefers-reduced-motion:reduce){.a-values__word{display:none}.a-values__list{display:flex}}
+@media(max-width:720px){.a-values__foot{grid-template-columns:minmax(0,1fr);align-items:start}}
+
+/* A5 Why vehicle owners trust Dapper: six panels, one open at a time */
+.aw{padding:clamp(72px,9vw,140px) var(--cg);background:#efede7}
+.aw h2{font-size:clamp(30px,4vw,64px);line-height:1;max-width:20ch}
+.aw-stack{margin-top:clamp(32px,5vw,64px);display:block}
+.aw-card{display:grid;gap:clamp(12px,1.6vw,20px);padding:clamp(24px,4vw,56px) clamp(24px,4vw,56px) clamp(24px,4vw,56px) clamp(30px,4.4vw,64px);background:var(--ink);color:#f6f4f0;box-shadow:inset 6px 0 0 var(--red);transform-origin:50% 0;position:sticky;top:calc(64px + 12px + var(--i) * 14px);margin-bottom:12vh}
+.aw-card:last-child{margin-bottom:0}
+.aw-card h3{margin:0;font:500 clamp(26px,3.4vw,56px)/1 var(--ch);letter-spacing:-.03em;color:#fff}
+.aw-card p{margin:0;max-width:54ch;font:300 clamp(16px,1.3vw,20px)/1.5 var(--cb);color:#d4d1ca;text-wrap:pretty}
+@media(min-width:1024px){
+  .aw-stack{display:block}
+  .aw-card{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:center;column-gap:clamp(32px,5vw,96px);position:sticky;top:calc(72px + 16px + var(--i) * 20px);height:min(50vh,440px);margin-bottom:18vh}
+  .aw-card:last-child{margin-bottom:0}
+}
+
+/* A6 Partners: ink band with the shared dealer lattice */
+.a-partners{background:var(--ink);color:#f3f2ee;padding:clamp(72px,9vw,140px) var(--cg);display:grid;gap:clamp(36px,5vw,72px)}
+.a-partners h2{color:#f3f2ee;font-size:clamp(28px,4vw,64px);line-height:1;max-width:22ch}
+
+
+/* A7 Closing band: type only */
+.a-close{text-align:center;padding:clamp(88px,11vw,170px) var(--cg)}
+.a-close h2{font-size:clamp(30px,4.6vw,76px);line-height:1;max-width:16ch;margin-inline:auto}
+.a-close__lede{margin:clamp(18px,2vw,28px) auto 0;font-size:clamp(17px,1.5vw,22px);line-height:1.5}
+.a-close__actions{display:flex;align-items:center;justify-content:center;gap:clamp(16px,2vw,32px);flex-wrap:wrap;margin-top:clamp(24px,3vw,40px)}
+.a-close__call{font-size:clamp(17px,1.4vw,21px);color:var(--ink-2)}
+.a-close__call span{color:var(--red-ink);text-decoration:underline;text-underline-offset:.22em;text-decoration-thickness:1px;font-variant-numeric:tabular-nums}
+@media(max-width:720px){.a-values h2,.a-partners h2,.af h2,.aw h2{font-size:clamp(22px,6.4vw,30px)}.a-close h2{font-size:clamp(22px,6.6vw,30px)}}
+.aw-card::after{content:'';position:absolute;inset:0;background:#000;opacity:var(--dim,0);pointer-events:none}
+/* Phones: the same pinned sideways strip as desktop, sized to the screen */
+@media(max-width:720px){.is-pinned .a-story__head{width:80vw}.is-pinned .a-story__items,.is-pinned .a-story__strip{gap:44px}.is-pinned .a-story__item{min-width:74vw}.is-pinned .a-story__year{font-size:clamp(76px,26vw,120px)}.is-pinned .a-story{padding-top:64px}}

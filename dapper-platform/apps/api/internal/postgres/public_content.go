@@ -46,11 +46,14 @@ type PortfolioImage struct {
 	Published      bool   `json:"published"`
 	Version        int    `json:"version"`
 	RightsReviewed bool   `json:"rightsReviewed"`
+	Width          int    `json:"width"`
+	Height         int    `json:"height"`
 }
 type PublishedContent struct {
 	Site      PublicSite           `json:"site"`
 	Services  []ServicePublication `json:"services"`
 	Portfolio []PortfolioImage     `json:"portfolio"`
+	Dealers   []WebsiteDealer      `json:"dealers"`
 	Limit     int                  `json:"limit"`
 }
 
@@ -60,7 +63,7 @@ func validContentText(value string, min, max int) bool {
 }
 func validServiceCategory(value string) bool {
 	switch value {
-	case "2-wheeler", "hatchback", "sedan", "suv", "pickup", "van", "ceramic", "ppf", "aircraft", "boat":
+	case "2-wheeler", "hatchback", "sedan", "suv", "pickup", "van", "ceramic", "ppf", "aircraft", "boat", "window-tint":
 		return true
 	}
 	return false
@@ -166,6 +169,7 @@ func (s *Store) ContentForManagement(ctx context.Context, scope Scope) (Publishe
 	}
 	if !contentAllowed {
 		out.Portfolio = []PortfolioImage{}
+		out.Dealers = []WebsiteDealer{}
 	}
 	return out, tx.Commit(ctx)
 }
@@ -193,7 +197,7 @@ func (s *Store) PublicContent(ctx context.Context, slug string) (PublishedConten
 	return out, tx.Commit(ctx)
 }
 func readSiteContent(ctx context.Context, tx pgx.Tx, org, loc string, public bool) (PublishedContent, error) {
-	out := PublishedContent{Services: []ServicePublication{}, Portfolio: []PortfolioImage{}, Limit: 200}
+	out := PublishedContent{Services: []ServicePublication{}, Portfolio: []PortfolioImage{}, Dealers: []WebsiteDealer{}, Limit: 200}
 	err := tx.QueryRow(ctx, `SELECT slug,name,published,version FROM public_sites WHERE organization_id=$1 AND location_id=$2`, org, loc).Scan(&out.Site.Slug, &out.Site.Name, &out.Site.Published, &out.Site.Version)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return out, nil
@@ -201,7 +205,7 @@ func readSiteContent(ctx context.Context, tx pgx.Tx, org, loc string, public boo
 	if err != nil {
 		return out, err
 	}
-	rows, err := tx.Query(ctx, `SELECT s.id::text,s.name,s.kind,s.parent_id::text,s.version,coalesce(p.category,''),coalesce(p.summary,''),coalesce(p.published,false),coalesce(p.version,0) FROM catalog_services s LEFT JOIN service_publications p ON (p.organization_id,p.location_id,p.service_id)=(s.organization_id,s.location_id,s.id) WHERE s.organization_id=$1 AND s.location_id=$2 AND NOT s.archived AND (NOT $3::boolean OR p.published) AND (NOT $3::boolean OR s.kind='main' OR EXISTS(SELECT 1 FROM catalog_services parent JOIN service_publications pub ON pub.service_id=parent.id WHERE parent.id=s.parent_id AND NOT parent.archived AND pub.published)) ORDER BY s.name,s.id LIMIT 200`, org, loc, public)
+	rows, err := tx.Query(ctx, `SELECT s.id::text,s.name,s.kind,s.parent_id::text,s.version,coalesce(p.category,''),coalesce(p.summary,''),coalesce(p.published,false),coalesce(p.version,0) FROM catalog_services s LEFT JOIN service_publications p ON (p.organization_id,p.location_id,p.service_id)=(s.organization_id,s.location_id,s.id) WHERE s.organization_id=$1 AND s.location_id=$2 AND NOT s.archived AND (NOT $3::boolean OR p.published) AND (NOT $3::boolean OR s.kind='main' OR EXISTS(SELECT 1 FROM catalog_addon_parents l JOIN catalog_services parent ON parent.id=l.main_id JOIN service_publications pub ON pub.service_id=parent.id WHERE l.addon_id=s.id AND NOT parent.archived AND pub.published)) ORDER BY s.name,s.id LIMIT 200`, org, loc, public)
 	if err != nil {
 		return out, err
 	}
@@ -217,19 +221,35 @@ func readSiteContent(ctx context.Context, tx pgx.Tx, org, loc string, public boo
 	if err = rows.Err(); err != nil {
 		return out, err
 	}
-	rows, err = tx.Query(ctx, `SELECT id::text,media_id::text,title,alt,category,sort_order,published,version FROM portfolio_images WHERE organization_id=$1 AND location_id=$2 AND (NOT $3::boolean OR published) ORDER BY sort_order,id LIMIT 200`, org, loc, public)
+	rows, err = tx.Query(ctx, `SELECT p.id::text,p.media_id::text,p.title,p.alt,p.category,p.sort_order,p.published,p.version,m.width,m.height FROM portfolio_images p JOIN content_media m ON m.id=p.media_id WHERE p.organization_id=$1 AND p.location_id=$2 AND (NOT $3::boolean OR p.published) ORDER BY p.sort_order,p.id LIMIT 200`, org, loc, public)
 	if err != nil {
 		return out, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var item PortfolioImage
-		if err = rows.Scan(&item.ID, &item.MediaID, &item.Title, &item.Alt, &item.Category, &item.SortOrder, &item.Published, &item.Version); err != nil {
+		if err = rows.Scan(&item.ID, &item.MediaID, &item.Title, &item.Alt, &item.Category, &item.SortOrder, &item.Published, &item.Version, &item.Width, &item.Height); err != nil {
 			return out, err
 		}
 		out.Portfolio = append(out.Portfolio, item)
 	}
-	return out, rows.Err()
+	if err = rows.Err(); err != nil {
+		return out, err
+	}
+	rows.Close()
+	dealers, err := tx.Query(ctx, `SELECT d.id::text,d.media_id::text,d.name,d.sort_order,d.published,d.version,m.width,m.height FROM website_dealers d JOIN content_media m ON m.id=d.media_id WHERE d.organization_id=$1 AND d.location_id=$2 AND (NOT $3::boolean OR d.published) ORDER BY d.sort_order,d.id LIMIT 60`, org, loc, public)
+	if err != nil {
+		return out, err
+	}
+	defer dealers.Close()
+	for dealers.Next() {
+		var item WebsiteDealer
+		if err = dealers.Scan(&item.ID, &item.MediaID, &item.Name, &item.SortOrder, &item.Published, &item.Version, &item.Width, &item.Height); err != nil {
+			return out, err
+		}
+		out.Dealers = append(out.Dealers, item)
+	}
+	return out, dealers.Err()
 }
 
 // Re-encode raster uploads to remove EXIF and active/polyglot payloads. No SVG/remote fetch.
@@ -274,7 +294,11 @@ func (s *Store) UploadContentImage(ctx context.Context, scope Scope, data []byte
 		return "", err
 	}
 	var id string
-	err = tx.QueryRow(ctx, `INSERT INTO content_media(organization_id,location_id,content_type,data) VALUES($1,$2,$3,$4) RETURNING id::text`, scope.OrganizationID, scope.LocationID, mime, normalized).Scan(&id)
+	var width, height int
+	if config, _, e := image.DecodeConfig(bytes.NewReader(normalized)); e == nil {
+		width, height = config.Width, config.Height
+	}
+	err = tx.QueryRow(ctx, `INSERT INTO content_media(organization_id,location_id,content_type,data,width,height) VALUES($1,$2,$3,$4,$5,$6) RETURNING id::text`, scope.OrganizationID, scope.LocationID, mime, normalized, width, height).Scan(&id)
 	if err != nil {
 		return "", err
 	}
@@ -329,7 +353,7 @@ func (s *Store) SavePortfolioImage(ctx context.Context, scope Scope, input Portf
 func (s *Store) PublicImage(ctx context.Context, id string) ([]byte, string, error) {
 	var data []byte
 	var mime string
-	err := s.pool.QueryRow(ctx, `SELECT m.data,m.content_type FROM content_media m WHERE m.id=$1 AND EXISTS(SELECT 1 FROM portfolio_images p JOIN public_sites s ON (s.organization_id,s.location_id)=(p.organization_id,p.location_id) WHERE p.media_id=m.id AND p.published AND s.published)`, id).Scan(&data, &mime)
+	err := s.pool.QueryRow(ctx, `SELECT m.data,m.content_type FROM content_media m WHERE m.id=$1 AND (EXISTS(SELECT 1 FROM portfolio_images p JOIN public_sites s ON (s.organization_id,s.location_id)=(p.organization_id,p.location_id) WHERE p.media_id=m.id AND p.published AND s.published) OR EXISTS(SELECT 1 FROM website_dealers d JOIN public_sites s ON (s.organization_id,s.location_id)=(d.organization_id,d.location_id) WHERE d.media_id=m.id AND d.published AND s.published))`, id).Scan(&data, &mime)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, "", ErrContentNotFound
 	}

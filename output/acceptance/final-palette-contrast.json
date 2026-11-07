@@ -1,0 +1,11 @@
+{
+  "light muted/surface": 6.85,
+  "light button": 5.53,
+  "light hover": 8.02,
+  "light chip": 6.63,
+  "dark muted/surface": 6.98,
+  "dark button": 4.56,
+  "dark hover": 3.51,
+  "dark chip": 7.41,
+  "brand/white": 3.97
+}

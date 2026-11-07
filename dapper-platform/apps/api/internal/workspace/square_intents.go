@@ -92,6 +92,49 @@ func registerSquareIntentRoutes(mux *http.ServeMux, store *postgres.Store) {
 		}
 		reply(w, 200, map[string]any{"version": saved.Version, "environment": saved.Environment, "merchantId": saved.MerchantID, "squareLocationId": saved.SquareLocationID})
 	})
+	mux.HandleFunc("POST "+base+"/invoices/{invoice}/square-reader", func(w http.ResponseWriter, r *http.Request) {
+		org, loc, ok := selectors(w, r)
+		if !ok {
+			return
+		}
+		invoice := r.PathValue("invoice")
+		if !uuid(invoice) {
+			reply(w, 400, map[string]string{"error": "Valid invoice required"})
+			return
+		}
+		scope, err := store.ResolveScope(r.Context(), requestSession(r).principalID, org, loc, "payments.record")
+		if err != nil {
+			failure(w, err)
+			return
+		}
+		var input struct {
+			RequestKey  string `json:"requestKey"`
+			AmountCents int64  `json:"amountCents"`
+		}
+		if !decode(w, r, &input) {
+			return
+		}
+		prepareSquareReader(w, r, store, scope, invoice, input.RequestKey, input.AmountCents)
+	})
+	mux.HandleFunc("POST "+base+"/square-reader/{intent}/complete", func(w http.ResponseWriter, r *http.Request) {
+		org, loc, ok := selectors(w, r)
+		if !ok {
+			return
+		}
+		intent := r.PathValue("intent")
+		var input struct {
+			PaymentID string `json:"paymentId"`
+		}
+		if !uuid(intent) || !decode(w, r, &input) {
+			return
+		}
+		scope, err := store.ResolveScope(r.Context(), requestSession(r).principalID, org, loc, "payments.record")
+		if err != nil {
+			failure(w, err)
+			return
+		}
+		completeSquareReader(w, r, store, scope, intent, input.PaymentID)
+	})
 	mux.HandleFunc("POST "+base+"/invoices/{invoice}/square-payments", func(w http.ResponseWriter, r *http.Request) {
 		org, loc, ok := selectors(w, r)
 		if !ok {
@@ -165,4 +208,53 @@ func squareIntentFailure(w http.ResponseWriter, err error, intent string) {
 	default:
 		failure(w, err)
 	}
+}
+
+// prepareSquareReader starts a payment that will be taken on the Square Reader (in the Square Point of Sale app on a phone or tablet): it records the
+// request and gives the browser what it needs to open that app. The payment is settled afterwards by completeSquareReader.
+func prepareSquareReader(w http.ResponseWriter, r *http.Request, store *postgres.Store, scope postgres.Scope, invoice, requestKey string, amountCents int64) {
+	if store.SquareCredentialResolver() == nil {
+		reply(w, 503, map[string]string{"error": "Square payments are not configured on the server"})
+		return
+	}
+	binding, err := store.CurrentSquareMerchantBinding(r.Context(), scope, "payments.record")
+	if err != nil {
+		if errors.Is(err, postgres.ErrSquareBinding) {
+			reply(w, 409, map[string]string{"error": "An administrator must review and save the Square merchant for this location first"})
+			return
+		}
+		failure(w, err)
+		return
+	}
+	appID := store.SquareApplicationID(binding.Environment)
+	if appID == "" {
+		reply(w, 409, map[string]string{"error": "The Square application ID is not set"})
+		return
+	}
+	attempt, err := store.PrepareSquareInvoiceIntent(r.Context(), scope, postgres.PrepareSquareInvoiceIntentInput{InvoiceID: invoice, BindingVersion: binding.Version, RequestKey: requestKey, AmountCents: amountCents})
+	if err != nil {
+		squareIntentFailure(w, err, "")
+		return
+	}
+	if _, err = store.ClaimSquarePaymentIntent(r.Context(), scope, attempt.ID); err != nil {
+		squareIntentFailure(w, err, attempt.ID)
+		return
+	}
+	reply(w, 201, map[string]any{"intentId": attempt.ID, "applicationId": appID, "environment": binding.Environment, "amountCents": attempt.AmountCents, "currency": attempt.Currency, "note": "Dapper " + attempt.ID})
+}
+
+// completeSquareReader settles a reader payment once the Square app has handed back its payment id. The server reads the payment from Square itself
+// and only accepts it when the amount, the location, its note and its status all match the request.
+func completeSquareReader(w http.ResponseWriter, r *http.Request, store *postgres.Store, scope postgres.Scope, intent, paymentID string) {
+	resolve := store.SquareCredentialResolver()
+	if resolve == nil {
+		reply(w, 503, map[string]string{"error": "Square payments are not configured on the server"})
+		return
+	}
+	allocation, err := store.RecoverSquareInvoiceIntent(r.Context(), scope, intent, paymentID, resolve)
+	if err != nil {
+		squareIntentFailure(w, err, intent)
+		return
+	}
+	reply(w, 200, map[string]any{"intentId": allocation.IntentID, "paymentId": allocation.PaymentID, "invoiceId": allocation.InvoiceID, "status": "settled"})
 }

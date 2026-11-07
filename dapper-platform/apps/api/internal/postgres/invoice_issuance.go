@@ -53,13 +53,17 @@ type InvoiceConfiguration struct {
 	Bindings  []InvoiceIssuerBinding `json:"bindings"`
 }
 
+// financeConfigurationGrant: invoice business details need invoices.configure, held directly or through an organization-wide role such
+// as Super Admin or Owner.
 func financeConfigurationGrant(ctx context.Context, tx pgx.Tx, actor, org string) error {
-	var id string
-	err := tx.QueryRow(ctx, `SELECT p.id::text FROM principals p JOIN organization_memberships m ON m.principal_id=p.id AND m.organization_id=$2 JOIN organization_grants g ON g.principal_id=p.id AND g.organization_id=m.organization_id AND g.action='invoices.configure' WHERE p.id=$1 AND p.active FOR SHARE OF p,m,g`, actor, org).Scan(&id)
-	if errors.Is(err, pgx.ErrNoRows) {
+	ok, err := actorHasOrgCapability(ctx, tx, actor, org, "invoices.configure")
+	if err != nil {
+		return err
+	}
+	if !ok {
 		return ErrForbidden
 	}
-	return err
+	return nil
 }
 
 const invoiceIssuerColumns = `id::text,legal_name,address,tax_registration,currency,number_prefix,version,next_number`
@@ -334,7 +338,7 @@ func (s *Store) IssueInvoice(ctx context.Context, scope Scope, id string, review
 	if err = tx.QueryRow(ctx, `SELECT coalesce(sum(total_price_cents),0),count(*) FROM invoice_items WHERE organization_id=$1 AND location_id=$2 AND invoice_id=$3`, scope.OrganizationID, scope.LocationID, id).Scan(&lineSubtotal, &lineCount); err != nil {
 		return Invoice{}, ErrInvoiceInput
 	}
-	if lineCount == 0 || lineSubtotal != inv.SubtotalCents || inv.SubtotalCents > math.MaxInt64-inv.TaxCents || inv.TotalCents != inv.SubtotalCents+inv.TaxCents || inv.PaidCents != 0 || inv.DueCents != inv.TotalCents {
+	if lineCount == 0 || lineSubtotal != inv.SubtotalCents || inv.SubtotalCents > math.MaxInt64-inv.TaxCents || inv.TotalCents != inv.SubtotalCents-inv.DiscountCents+inv.TaxCents || inv.PaidCents != 0 || inv.DueCents != inv.TotalCents {
 		return Invoice{}, ErrInvoiceInput
 	}
 	var customer InvoiceCustomerSnapshot

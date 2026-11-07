@@ -1,0 +1,216 @@
+{
+  "assessmentTimestamp": "2026-10-23T14:07:50.775036+00:00",
+  "deliverable": "DEL-22 BookingPress Migration Assessment",
+  "provenance": {
+    "catalogue_source": "https://dapperdetailing.ca/wp-json/dapper-export/v1/catalogue",
+    "catalogue_sha256": "6f897a2cfdbb3cf4d9f935c2fd4991e9fa7bf09f8b29a3461df8bc7ec1d12f64",
+    "catalogue_captured_at": "2026-10-21T19:28:40+00:00",
+    "timezone": "America/Toronto",
+    "extras_source_sha256": "0e2d4922f468ae0a205fcf7422752b5834bbe359c6d4834f0f14af9f63594fc0"
+  },
+  "catalogueSummary": {
+    "categoriesCount": 12,
+    "servicesCount": 79,
+    "extrasCount": 228,
+    "oneMinuteDurationReviewCount": 3
+  },
+  "issueSummary": {
+    "totalFlaggedEntities": 236,
+    "sampleIssues": [
+      {
+        "entity": "service",
+        "sourceId": "16",
+        "name": "Headlight Restoration",
+        "issues": [
+          "one_minute_duration_review"
+        ]
+      },
+      {
+        "entity": "service",
+        "sourceId": "18",
+        "name": "Claybar Wax and Polish",
+        "issues": [
+          "one_minute_duration_review"
+        ]
+      },
+      {
+        "entity": "service",
+        "sourceId": "60",
+        "name": "Fabric Guard",
+        "issues": [
+          "one_minute_duration_review"
+        ]
+      },
+      {
+        "entity": "service",
+        "sourceId": "113",
+        "name": "Hatchback - Full PPF",
+        "issues": [
+          "multi_day_duration_review"
+        ]
+      },
+      {
+        "entity": "service",
+        "sourceId": "114",
+        "name": "Sedan - Full PPF",
+        "issues": [
+          "multi_day_duration_review"
+        ]
+      },
+      {
+        "entity": "service",
+        "sourceId": "115",
+        "name": "SUV - Full PPF",
+        "issues": [
+          "multi_day_duration_review"
+        ]
+      },
+      {
+        "entity": "service",
+        "sourceId": "116",
+        "name": "Pickup - Full PPF",
+        "issues": [
+          "multi_day_duration_review"
+        ]
+      },
+      {
+        "entity": "service",
+        "sourceId": "117",
+        "name": "VAN - Full PPF",
+        "issues": [
+          "multi_day_duration_review"
+        ]
+      },
+      {
+        "entity": "extra",
+        "sourceId": "1",
+        "name": "Pet hairs",
+        "issues": [
+          "one_minute_duration_review"
+        ]
+      },
+      {
+        "entity": "extra",
+        "sourceId": "2",
+        "name": "Winter Salt Removal",
+        "issues": [
+          "one_minute_duration_review"
+        ]
+      },
+      {
+        "entity": "extra",
+        "sourceId": "3",
+        "name": "Headlight Restoration",
+        "issues": [
+          "one_minute_duration_review"
+        ]
+      },
+      {
+        "entity": "extra",
+        "sourceId": "4",
+        "name": "Ceramic Coating",
+        "issues": [
+          "one_minute_duration_review"
+        ]
+      },
+      {
+        "entity": "extra",
+        "sourceId": "5",
+        "name": "Claybar",
+        "issues": [
+          "one_minute_duration_review"
+        ]
+      },
+      {
+        "entity": "extra",
+        "sourceId": "6",
+        "name": "Wax",
+        "issues": [
+          "one_minute_duration_review"
+        ]
+      },
+      {
+        "entity": "extra",
+        "sourceId": "7",
+        "name": "Pet hairs",
+        "issues": [
+          "one_minute_duration_review"
+        ]
+      },
+      {
+        "entity": "extra",
+        "sourceId": "8",
+        "name": "Winter Salt Removal",
+        "issues": [
+          "one_minute_duration_review"
+        ]
+      },
+      {
+        "entity": "extra",
+        "sourceId": "9",
+        "name": "Headlight Restoration",
+        "issues": [
+          "one_minute_duration_review"
+        ]
+      },
+      {
+        "entity": "extra",
+        "sourceId": "11",
+        "name": "Claybar",
+        "issues": [
+          "one_minute_duration_review"
+        ]
+      },
+      {
+        "entity": "extra",
+        "sourceId": "12",
+        "name": "Wax",
+        "issues": [
+          "one_minute_duration_review"
+        ]
+      },
+      {
+        "entity": "extra",
+        "sourceId": "13",
+        "name": "Pet hairs",
+        "issues": [
+          "one_minute_duration_review"
+        ]
+      }
+    ]
+  },
+  "bookingSummary": {
+    "totalAppointmentsScanned": 3,
+    "validAppointmentsCount": 1,
+    "flaggedAppointmentsCount": 2,
+    "uniqueCustomersIdentified": 2,
+    "flaggedDetails": [
+      {
+        "sourceAppointmentId": "1002",
+        "customerEmail": "invalid-email",
+        "customerName": "Ghost Client",
+        "serviceId": "19",
+        "targetStatus": "pending",
+        "issues": [
+          "invalid_or_missing_customer_email"
+        ]
+      },
+      {
+        "sourceAppointmentId": "1003",
+        "customerEmail": "client2@example.ca",
+        "customerName": "Alice Wong",
+        "serviceId": "99999",
+        "targetStatus": "cancelled",
+        "issues": [
+          "service_id_99999_not_found_in_catalogue"
+        ]
+      }
+    ]
+  },
+  "reconciliationSafeguards": {
+    "zeroDatabasePollution": true,
+    "provenancePreserved": true,
+    "sourceIdMappingPreserved": true,
+    "transactionExecutionDisabled": true
+  }
+}

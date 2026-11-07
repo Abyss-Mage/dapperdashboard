@@ -14,6 +14,10 @@ type StaffWorkDay struct {
 	Date    string `json:"date"`
 	Minutes int    `json:"minutes"`
 	Shifts  int    `json:"shifts"`
+	// ClockIn is the first clock-in of the day and ClockOut the last clock-out (empty while a shift is still open).
+	ClockIn  *time.Time `json:"clockIn"`
+	ClockOut *time.Time `json:"clockOut"`
+	Open     bool       `json:"open"`
 }
 type StaffWorkTotal struct {
 	PrincipalID  string         `json:"principalId"`
@@ -36,12 +40,12 @@ func (s *Store) AttendanceTotals(ctx context.Context, scope Scope, from, to, zon
 		return out, err
 	}
 	rows, err := s.pool.Query(ctx, `WITH shifts AS (
- SELECT a.principal_id, (a.clock_in_at AT TIME ZONE $5)::date AS day, a.clock_out_at IS NULL AS open,
+ SELECT a.principal_id, (a.clock_in_at AT TIME ZONE $5)::date AS day, a.clock_in_at, a.clock_out_at, a.clock_out_at IS NULL AS open,
   GREATEST(0, floor(extract(epoch FROM (COALESCE(a.clock_out_at, now()) - a.clock_in_at)) / 60)::int - a.total_break_minutes
    - CASE WHEN a.clock_out_at IS NULL AND a.current_break_start IS NOT NULL THEN floor(extract(epoch FROM (now() - a.current_break_start)) / 60)::int ELSE 0 END) AS minutes
  FROM employee_attendance a
  WHERE a.organization_id=$1 AND a.location_id=$2 AND (a.clock_in_at AT TIME ZONE $5)::date BETWEEN $3::date AND $4::date)
-SELECT sh.principal_id::text, COALESCE(NULLIF(mp.full_name,''), NULLIF(pc.email,''), p.external_subject), COALESCE(pc.email,''), sh.day::text, sum(sh.minutes)::int, count(*)::int, bool_or(sh.open)
+SELECT sh.principal_id::text, COALESCE(NULLIF(mp.full_name,''), NULLIF(pc.email,''), p.external_subject), COALESCE(pc.email,''), sh.day::text, sum(sh.minutes)::int, count(*)::int, min(sh.clock_in_at), CASE WHEN bool_or(sh.open) THEN NULL ELSE max(sh.clock_out_at) END, bool_or(sh.open)
 FROM shifts sh JOIN principals p ON p.id=sh.principal_id
 LEFT JOIN member_profiles mp ON mp.principal_id=p.id LEFT JOIN password_credentials pc ON pc.principal_id=p.id
 GROUP BY 1,2,3,4 ORDER BY 2,4`, scope.OrganizationID, scope.LocationID, from, to, zone)
@@ -54,7 +58,7 @@ GROUP BY 1,2,3,4 ORDER BY 2,4`, scope.OrganizationID, scope.LocationID, from, to
 		var id, name, email string
 		var d StaffWorkDay
 		var open bool
-		if err = rows.Scan(&id, &name, &email, &d.Date, &d.Minutes, &d.Shifts, &open); err != nil {
+		if err = rows.Scan(&id, &name, &email, &d.Date, &d.Minutes, &d.Shifts, &d.ClockIn, &d.ClockOut, &open); err != nil {
 			return out, err
 		}
 		i, ok := index[id]
@@ -63,6 +67,7 @@ GROUP BY 1,2,3,4 ORDER BY 2,4`, scope.OrganizationID, scope.LocationID, from, to
 			index[id] = i
 			out = append(out, StaffWorkTotal{PrincipalID: id, Name: name, Email: email, Days: []StaffWorkDay{}})
 		}
+		d.Open = open
 		out[i].Days = append(out[i].Days, d)
 		out[i].TotalMinutes += d.Minutes
 		out[i].ClockedIn = out[i].ClockedIn || open

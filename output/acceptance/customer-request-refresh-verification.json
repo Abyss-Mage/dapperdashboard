@@ -1,0 +1,22 @@
+{
+  "recordedAt": "2026-10-23T15:30:42.2415997+05:30",
+  "changes": [
+    "Clear old availability when beginning a new search; disable pagination during request submission.",
+    "Ignore superseded or unmounted request-history fetch results."
+  ],
+  "sourceHashes": [
+    {
+      "path": "dapper-platform/apps/web/app/account/CustomerAvailabilityBrowser.tsx",
+      "sha256": "4C5363020491A882F57CB8BA09FADE310FA3A571D2450A51363FD2654D31BBCC"
+    },
+    {
+      "path": "dapper-platform/apps/web/app/account/CustomerBookingRequestList.tsx",
+      "sha256": "2542145A5F54D96B7265B4B016D94295FCFC57AE251974EA184B10397DBE5042"
+    }
+  ],
+  "frontendBuild": "PASS: production build/typecheck session36398 exit0",
+  "runtime": "PASS: guarded start exit0 and pinned TLS ingress 5/5 session59150 exit0",
+  "browserForTheseExactRaceChanges": "NOT_RUN",
+  "schema": 37,
+  "businessPolicyChanges": false
+}

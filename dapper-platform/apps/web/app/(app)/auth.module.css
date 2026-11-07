@@ -1,0 +1,27 @@
+/* Sign-in pages: the website's film frame on the left half, the form on the right half. */
+.wrap{min-height:100svh;display:grid;grid-template-columns:minmax(0,1fr);background:var(--bg);color:var(--text)}
+.art{position:relative;isolation:isolate;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;min-height:190px;padding:clamp(18px,3vw,40px);background:#0b0b0c;color:#efede8}
+.art::before{content:'';position:absolute;inset:0;z-index:-2;background:url(/site/assets/frames/mobile/0287.webp) 60% 50%/cover no-repeat;transform:scale(1.08);animation:a-settle 2.2s cubic-bezier(.23,1,.32,1) forwards}
+.art::after{content:'';position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(11,11,12,.55),rgba(11,11,12,.2) 40%,rgba(11,11,12,.85))}
+.brand{font:500 clamp(20px,1.8vw,26px)/1 'Unbounded Variable','Arial Narrow',sans-serif;letter-spacing:.04em;text-transform:uppercase;color:#efede8;text-decoration:none}
+.line{margin:0;font:500 clamp(22px,4.4vw,64px)/1 'Unbounded Variable','Arial Narrow',sans-serif;letter-spacing:-.02em;text-transform:uppercase;max-width:12ch;text-wrap:balance}
+.line em{font-style:normal;color:#e3172b}
+.panel{display:flex;flex-direction:column;min-height:0;padding:clamp(18px,3vw,40px)}
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.back{color:var(--muted,inherit);font-size:14px;text-decoration:none;opacity:.8;transition:opacity .2s}
+@media(hover:hover) and (pointer:fine){.back:hover{opacity:1;text-decoration:underline}}
+.theme{background:transparent!important;border:0!important;padding:6px!important;min-width:0!important;color:inherit!important}
+.card{width:100%;max-width:440px;margin:auto;padding:clamp(28px,5vw,48px) 0;animation:a-rise .8s cubic-bezier(.23,1,.32,1) both}
+.kind{margin:0 0 14px;padding-left:12px;border-left:3px solid #e3172b;font:500 12px/1 'Unbounded Variable','Arial Narrow',sans-serif;letter-spacing:.12em;text-transform:uppercase}
+.card h1{margin:0;font:500 clamp(28px,3.2vw,44px)/1.04 'Unbounded Variable','Arial Narrow',sans-serif;letter-spacing:-.02em;text-transform:uppercase;text-wrap:balance}
+.lead{margin:14px 0 0;font-size:16px;line-height:1.55;opacity:.8;text-wrap:pretty}
+.body{margin-top:clamp(22px,3vw,32px);display:grid;gap:14px}
+.foot{margin:0;font-size:13px;opacity:.6}
+@media(min-width:960px){
+  .wrap{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .art{min-height:100svh;position:sticky;top:0;height:100svh}
+  .art::before{background-image:url(/site/assets/frames/desktop/0287.webp)}
+}
+@keyframes a-settle{to{transform:scale(1)}}
+@keyframes a-rise{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.art::before{animation:none;transform:none}.card{animation:none}}

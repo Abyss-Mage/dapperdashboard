@@ -83,7 +83,7 @@ func (s *Store) RegisterSOPDocument(ctx context.Context, actorID, orgID string, 
 			$1, $2, $3, $4, $5, $6, $7
 		)
 		ON CONFLICT (organization_id, file_name, version) DO UPDATE
-		SET title=EXCLUDED.title, category=EXCLUDED.category, sha256_hash=EXCLUDED.sha256_hash, page_count=EXCLUDED.page_count
+		SET title=EXCLUDED.title, category=EXCLUDED.category, sha256_hash=EXCLUDED.sha256_hash, page_count=EXCLUDED.page_count, archived=false
 		RETURNING id::text, organization_id::text, title, category, file_name, sha256_hash, version, page_count,
 			effective_date::text, archived, created_at
 	`, orgID, title, category, fileName, hash, version, doc.PageCount)

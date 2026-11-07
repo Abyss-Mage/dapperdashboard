@@ -9,8 +9,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"html"
 	"net/url"
 	"strings"
 	"time"
@@ -363,9 +361,7 @@ func (s *InvitationService) ProcessDeliveries(ctx context.Context, sender EmailS
 		}
 		clear(plain)
 
-		subject := fmt.Sprintf("Set up your %s account", payload.Organization)
-		bodyText := fmt.Sprintf("You have been invited to join %s.\n\nChoose your password here: %s\n\nAfter you sign in you will confirm your name and mobile phone, add an authenticator app for two-factor sign-in (required for administrators, optional for employees), and read and acknowledge your company documents before you start.\n\nThis link works once and expires soon. If you were not expecting it, ignore this email.", payload.Organization, payload.EnrollmentURL)
-		bodyHTML := fmt.Sprintf("<p>You have been invited to join <strong>%s</strong>.</p><p><a href=\"%s\">Choose your password</a></p><p>After you sign in you will confirm your name and mobile phone, add an authenticator app for two-factor sign-in (required for administrators, optional for employees), and read and acknowledge your company documents before you start.</p><p>This link works once and expires soon. If you were not expecting it, ignore this email.</p>", html.EscapeString(payload.Organization), html.EscapeString(payload.EnrollmentURL))
+		subject, bodyHTML, bodyText := s.store.RenderEmail(ctx, "invitation", map[string]string{"organization": payload.Organization, "link": payload.EnrollmentURL})
 
 		providerRef, err := sender.SendEmail(ctx, payload.Recipient, subject, bodyHTML, bodyText)
 		if err != nil || strings.TrimSpace(providerRef) == "" {

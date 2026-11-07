@@ -67,6 +67,7 @@ func (s *Store) OwnerTrends(ctx context.Context, scope Scope, from, to, tz, chan
 	if err := scope.validate(); err != nil {
 		return OwnerTrends{}, err
 	}
+	tz = canonicalZone(tz)
 	if _, err := time.LoadLocation(tz); err != nil || tz == "" || tz == "Local" || !trendChannels[channel] {
 		return OwnerTrends{}, ErrTrendsInput
 	}

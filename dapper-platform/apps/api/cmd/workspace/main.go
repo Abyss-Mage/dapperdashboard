@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 )
@@ -114,7 +115,12 @@ func main() {
 			time.Sleep(6 * time.Hour)
 		}
 	}()
-	store.SetSOPDirectory(os.Getenv("DAPPER_SOP_DIR"))
+	sopDir := os.Getenv("DAPPER_SOP_DIR")
+	if sopDir == "" && uploadDir != "" {
+		// Policy PDFs added from the dashboard live beside the uploads folder.
+		sopDir = filepath.Join(filepath.Dir(uploadDir), "sops")
+	}
+	store.SetSOPDirectory(sopDir)
 	store.SetSquareApplicationIDs(map[string]string{
 		"sandbox":    os.Getenv("DAPPER_SQUARE_SANDBOX_APPLICATION_ID"),
 		"production": os.Getenv("DAPPER_SQUARE_PRODUCTION_APPLICATION_ID"),
@@ -137,25 +143,34 @@ func main() {
 			time.Sleep(6 * time.Hour)
 		}
 	}()
-	var emailSender postgres.EmailSender
+	// Outgoing email. The server's own settings (DAPPER_SMTP_*) are the starting point; settings saved in the dashboard replace them.
+	var envSMTP *email.Config
 	if smtpHost := os.Getenv("DAPPER_SMTP_HOST"); smtpHost != "" {
 		smtpPort := 587
 		if p, err := strconv.Atoi(os.Getenv("DAPPER_SMTP_PORT")); err == nil && p > 0 {
 			smtpPort = p
 		}
-		var err error
-		emailSender, err = email.NewSMTPSender(email.Config{
+		envSMTP = &email.Config{
 			Host:        smtpHost,
 			Port:        smtpPort,
 			Username:    os.Getenv("DAPPER_SMTP_USERNAME"),
 			Password:    os.Getenv("DAPPER_SMTP_PASSWORD"),
 			FromAddress: os.Getenv("DAPPER_SMTP_FROM_ADDRESS"),
 			FromName:    os.Getenv("DAPPER_SMTP_FROM_NAME"),
-		})
-		if err != nil {
-			log.Fatal("SMTP email sender initialization failed")
 		}
 	}
+	liveEmail, err := email.NewLive(envSMTP)
+	if err != nil {
+		log.Fatal("SMTP email sender initialization failed")
+	}
+	if saved, found, e := store.SavedSMTP(context.Background()); e != nil {
+		log.Print("Saved email settings could not be loaded")
+	} else if found {
+		if e = liveEmail.Set(email.Config{Host: saved.Host, Port: saved.Port, Username: saved.Username, Password: saved.Password, FromAddress: saved.FromAddress, FromName: saved.FromName}); e != nil {
+			log.Print("Saved email settings are not usable")
+		}
+	}
+	var emailSender postgres.EmailSender = liveEmail
 	sqWebhookURL := os.Getenv("DAPPER_SQUARE_WEBHOOK_URL")
 	sqSignatureKey := os.Getenv("DAPPER_SQUARE_WEBHOOK_SIGNATURE_KEY")
 

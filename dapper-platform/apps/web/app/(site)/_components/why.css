@@ -1,0 +1,15 @@
+/* Why vehicle owners trust Dapper: copied from the About page so the two look exactly alike */
+.ws{--ink:#121212;--red:#e3172b;--ch:'Unbounded Variable','Arial Narrow',sans-serif;--cb:Manrope,system-ui,sans-serif;padding:clamp(72px,9vw,140px) clamp(16px,4.4vw,72px);background:#efede7;color:var(--ink)}
+.ws .ws__h{margin:0;font:500 clamp(30px,4vw,64px)/1 var(--ch);letter-spacing:-.03em;max-width:20ch;text-wrap:balance;color:var(--ink);text-transform:none}
+.ws .ws__h em{font-style:normal;color:var(--red)}
+.ws-stack{margin-top:clamp(32px,5vw,64px);display:block}
+.ws-card{display:grid;gap:clamp(12px,1.6vw,20px);padding:clamp(24px,4vw,56px) clamp(24px,4vw,56px) clamp(24px,4vw,56px) clamp(30px,4.4vw,64px);background:var(--ink);color:#f6f4f0;box-shadow:inset 6px 0 0 var(--red);transform-origin:50% 0;position:sticky;top:calc(64px + 12px + var(--i) * 14px);margin-bottom:12vh}
+.ws-card:last-child{margin-bottom:0}
+.ws .ws-card h3{margin:0;font:500 clamp(26px,3.4vw,56px)/1 var(--ch);letter-spacing:-.03em;color:#fff;text-transform:none}
+.ws-card p{margin:0;max-width:54ch;font:300 clamp(16px,1.3vw,20px)/1.5 var(--cb);color:#d4d1ca;text-wrap:pretty}
+.ws-card::after{content:'';position:absolute;inset:0;background:#000;opacity:var(--dim,0);pointer-events:none}
+@media(min-width:1024px){
+  .ws-card{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:center;column-gap:clamp(32px,5vw,96px);top:calc(72px + 16px + var(--i) * 20px);height:min(50vh,440px);margin-bottom:18vh}
+  .ws-card:last-child{margin-bottom:0}
+}
+@media(max-width:720px){.ws .ws__h{font-size:clamp(22px,6.4vw,30px)}}

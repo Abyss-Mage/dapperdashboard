@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"fmt"
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
@@ -28,8 +29,6 @@ var (
 	ErrPhoneVerificationLimit       = errors.New("too many attempts; try again later")
 )
 
-// DepositPercent is the share of the total taken as a card deposit when an online booking is made (owner decision, 2026-10-24).
-const DepositPercent = 30
 
 // PhoneVerifier delivers a one-time code by text message. No provider is wired up yet, so without one the site offers no
 // returning-customer lookup.
@@ -82,7 +81,6 @@ type PublicService struct {
 }
 type PublicBookingOptions struct {
 	Timezone          string                  `json:"timezone"`
-	DepositPercent    int                     `json:"depositPercent"`
 	PhoneVerification bool                    `json:"phoneVerification"`
 	Rules             []BookingRuleChoice     `json:"rules"`
 	Services          []PublicService         `json:"services"`
@@ -110,7 +108,7 @@ func (s *Store) PublicBookingOptions(ctx context.Context, slug string) (PublicBo
 			priced[v.ID] = PublicService{ID: v.ID, Name: v.Name, Kind: v.Kind, ParentID: v.ParentID, PriceCents: *v.PriceCents}
 		}
 	}
-	out := PublicBookingOptions{DepositPercent: DepositPercent, PhoneVerification: s.phoneVerifier != nil, Rules: []BookingRuleChoice{}, Services: []PublicService{}, Resources: choices.Resources}
+	out := PublicBookingOptions{PhoneVerification: s.phoneVerifier != nil, Rules: []BookingRuleChoice{}, Services: []PublicService{}, Resources: choices.Resources}
 	if len(choices.Resources) > 0 {
 		out.Timezone = choices.Resources[0].Timezone
 	}
@@ -160,14 +158,19 @@ type PublicBookingInput struct {
 	Email       string    `json:"email"`
 	Phone       string    `json:"phone"`
 	Notes       string    `json:"notes"`
+	// ServiceAddress is where mobile or valet work happens (empty for in-shop work).
+	ServiceAddress string `json:"serviceAddress"`
+	// CouponCode is an optional discount code; an invalid one stops the booking before anything is held.
+	CouponCode string `json:"couponCode"`
 }
 type PublicBookingResult struct {
 	BookingID     string `json:"bookingId"`
 	InvoiceID     string `json:"invoiceId"`
 	InvoiceNumber string `json:"invoiceNumber"`
 	TotalCents    int64  `json:"totalCents"`
-	DepositCents  int64  `json:"depositCents"`
 	ServiceName   string `json:"serviceName"`
+	// NewCustomer is true when this booking created the customer record (so the address typed is the only claim on it).
+	NewCustomer bool `json:"-"`
 }
 
 func phoneDigits(p string) string {
@@ -197,36 +200,9 @@ func (s *Store) PublicBook(ctx context.Context, slug string, in PublicBookingInp
 	if err != nil {
 		return out, err
 	}
-	// Prices come from the catalogue: the main service of this rule and each chosen add-on.
-	var serviceID, serviceName string
-	var mainPrice *int64
-	err = s.pool.QueryRow(ctx, `SELECT c.id::text,c.name,c.price_cents FROM service_scheduling_rules r JOIN catalog_services c ON c.id=r.service_id AND c.organization_id=r.organization_id AND c.location_id=r.location_id WHERE r.organization_id=$1 AND r.location_id=$2 AND r.id=$3 AND r.resource_id=$4 AND r.version=$5 AND c.kind='main' AND NOT c.archived`, scope.OrganizationID, scope.LocationID, in.RuleID, in.ResourceID, in.RuleVersion).Scan(&serviceID, &serviceName, &mainPrice)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return out, ErrPublicBookingInput
-	}
+	serviceID, serviceName, items, subtotal, err := s.priceBooking(ctx, scope, in.RuleID, in.ResourceID, in.RuleVersion, in.AddonIDs)
 	if err != nil {
 		return out, err
-	}
-	if mainPrice == nil {
-		return out, ErrPublicBookingPrice
-	}
-	items := []CreateInvoiceItemInput{{Description: serviceName, Quantity: 1, UnitPriceCents: *mainPrice}}
-	subtotal := *mainPrice
-	for _, id := range in.AddonIDs {
-		var name string
-		var price *int64
-		err = s.pool.QueryRow(ctx, `SELECT name,price_cents FROM catalog_services WHERE organization_id=$1 AND location_id=$2 AND id::text=$3 AND kind='addon' AND parent_id::text=$4 AND NOT archived`, scope.OrganizationID, scope.LocationID, id, serviceID).Scan(&name, &price)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return out, ErrPublicBookingInput
-		}
-		if err != nil {
-			return out, err
-		}
-		if price == nil {
-			return out, ErrPublicBookingPrice
-		}
-		items = append(items, CreateInvoiceItemInput{Description: name, Quantity: 1, UnitPriceCents: *price})
-		subtotal += *price
 	}
 	tax, _, err := s.taxOnSubtotal(ctx, scope, subtotal)
 	if err != nil {
@@ -234,21 +210,28 @@ func (s *Store) PublicBook(ctx context.Context, slug string, in PublicBookingInp
 	}
 	// The customer: reuse the one with this email at this location (their saved details are not changed by a stranger), else add one.
 	customerID, err := existingCustomer(ctx, s.pool, scope.OrganizationID, scope.LocationID, in.Email, in.Phone)
+	newCustomer := false
 	if err == nil && customerID == "" {
 		c, e := s.CreateCustomer(ctx, scope, in.Name, in.Email, in.Phone)
 		if e != nil {
 			return out, e
 		}
 		customerID = c.ID
+		newCustomer = true
 	} else if err != nil {
 		return out, err
 	}
-	booking, err := s.ReserveBooking(ctx, scope, ReserveBookingInput{RequestKey: in.RequestKey, CustomerID: customerID, ResourceID: in.ResourceID, RuleID: in.RuleID, RuleVersion: in.RuleVersion, Start: in.Start, Channel: "online", Notes: in.Notes, AddonIDs: in.AddonIDs})
+	if strings.TrimSpace(in.CouponCode) != "" {
+		if _, err = s.evaluateCoupon(ctx, s.pool, scope, in.CouponCode, customerID, &serviceID, subtotal); err != nil {
+			return out, err
+		}
+	}
+	booking, err := s.ReserveBooking(ctx, scope, ReserveBookingInput{RequestKey: in.RequestKey, CustomerID: customerID, ResourceID: in.ResourceID, RuleID: in.RuleID, RuleVersion: in.RuleVersion, Start: in.Start, Channel: "online", Notes: in.Notes, ServiceAddress: in.ServiceAddress, AddonIDs: in.AddonIDs})
 	if err != nil {
 		return out, err
 	}
 	release := func() {
-		_, _ = s.UpdateBookingStatus(context.WithoutCancel(ctx), scope, booking.ID, "cancelled", "The online booking could not be completed", "")
+		_, _ = s.UpdateBookingStatus(QuietBookingEvents(context.WithoutCancel(ctx)), scope, booking.ID, "cancelled", "The online booking could not be completed", "")
 	}
 	bookingID := booking.ID
 	// The same request sent twice (a double click, a slow network): hand back the invoice that already exists for this booking.
@@ -256,7 +239,7 @@ func (s *Store) PublicBook(ctx context.Context, slug string, in PublicBookingInp
 	var invTotal int64
 	err = s.pool.QueryRow(ctx, `SELECT id::text,invoice_number,total_cents FROM invoices WHERE organization_id=$1 AND location_id=$2 AND booking_id=$3 AND status<>'void' ORDER BY created_at LIMIT 1`, scope.OrganizationID, scope.LocationID, bookingID).Scan(&invID, &invNumber, &invTotal)
 	if err == nil {
-		return PublicBookingResult{BookingID: bookingID, InvoiceID: invID, InvoiceNumber: invNumber, TotalCents: invTotal, DepositCents: (invTotal*DepositPercent + 50) / 100, ServiceName: serviceName}, nil
+		return PublicBookingResult{BookingID: bookingID, InvoiceID: invID, InvoiceNumber: invNumber, TotalCents: invTotal, ServiceName: serviceName}, nil
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return out, err
@@ -266,14 +249,99 @@ func (s *Store) PublicBook(ctx context.Context, slug string, in PublicBookingInp
 		release()
 		return out, err
 	}
+	if strings.TrimSpace(in.CouponCode) != "" {
+		if _, err = s.ApplyCouponToInvoice(ctx, scope, inv.ID, in.CouponCode); err != nil {
+			_, _ = s.VoidInvoice(context.WithoutCancel(ctx), scope, inv.ID, "The coupon could not be applied")
+			release()
+			return out, err
+		}
+	}
 	issued, err := s.IssueInvoice(ctx, scope, inv.ID)
 	if err != nil {
 		_, _ = s.VoidInvoice(context.WithoutCancel(ctx), scope, inv.ID, "The online booking could not be completed")
 		release()
 		return out, err
 	}
-	out = PublicBookingResult{BookingID: bookingID, InvoiceID: issued.ID, InvoiceNumber: issued.InvoiceNumber, TotalCents: issued.TotalCents, DepositCents: (issued.TotalCents*DepositPercent + 50) / 100, ServiceName: serviceName}
+	out = PublicBookingResult{BookingID: bookingID, InvoiceID: issued.ID, InvoiceNumber: issued.InvoiceNumber, TotalCents: issued.TotalCents, ServiceName: serviceName, NewCustomer: newCustomer}
 	return out, nil
+}
+
+// PublicCouponPreview tells a visitor what a code would take off, before they book. The booking itself works the price out again on the server.
+func (s *Store) PublicCouponPreview(ctx context.Context, slug, code, mainServiceID string, subtotal int64) (CouponApplication, error) {
+	scope, err := s.websiteScope(ctx, slug)
+	if err != nil {
+		return CouponApplication{}, err
+	}
+	return s.evaluateCoupon(ctx, s.pool, scope, code, "", &mainServiceID, subtotal)
+}
+
+// priceBooking prices a rule's main service and each chosen add-on from the catalogue (never from what the browser says).
+func (s *Store) priceBooking(ctx context.Context, scope Scope, ruleID, resourceID string, ruleVersion int, addonIDs []string) (serviceID, serviceName string, items []CreateInvoiceItemInput, subtotal int64, err error) {
+	var mainPrice *int64
+	err = s.pool.QueryRow(ctx, `SELECT c.id::text,c.name,c.price_cents FROM service_scheduling_rules r JOIN catalog_services c ON c.id=r.service_id AND c.organization_id=r.organization_id AND c.location_id=r.location_id WHERE r.organization_id=$1 AND r.location_id=$2 AND r.id=$3 AND r.resource_id=$4 AND r.version=$5 AND c.kind='main' AND NOT c.archived`, scope.OrganizationID, scope.LocationID, ruleID, resourceID, ruleVersion).Scan(&serviceID, &serviceName, &mainPrice)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", "", nil, 0, ErrPublicBookingInput
+	}
+	if err != nil {
+		return "", "", nil, 0, err
+	}
+	if mainPrice == nil {
+		return "", "", nil, 0, ErrPublicBookingPrice
+	}
+	items = []CreateInvoiceItemInput{{Description: serviceName, Quantity: 1, UnitPriceCents: *mainPrice}}
+	subtotal = *mainPrice
+	for _, id := range addonIDs {
+		var name string
+		var price *int64
+		err = s.pool.QueryRow(ctx, `SELECT name,price_cents FROM catalog_services WHERE organization_id=$1 AND location_id=$2 AND id::text=$3 AND kind='addon' AND catalog_addon_offered_with(id,$4::uuid) AND NOT archived`, scope.OrganizationID, scope.LocationID, id, serviceID).Scan(&name, &price)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", "", nil, 0, ErrPublicBookingInput
+		}
+		if err != nil {
+			return "", "", nil, 0, err
+		}
+		if price == nil {
+			return "", "", nil, 0, ErrPublicBookingPrice
+		}
+		items = append(items, CreateInvoiceItemInput{Description: name, Quantity: 1, UnitPriceCents: *price})
+		subtotal += *price
+	}
+	return serviceID, serviceName, items, subtotal, nil
+}
+
+// InvoiceStaffBooking is for a booking staff made with a coupon: it prices the booking, applies the coupon and issues the invoice, so the
+// discount is on the books from the start. The coupon is checked first, so a bad code stops the booking before anything is held.
+func (s *Store) CheckStaffCoupon(ctx context.Context, scope Scope, in ReserveBookingInput, code string) error {
+	serviceID, _, _, subtotal, err := s.priceBooking(ctx, scope, in.RuleID, in.ResourceID, in.RuleVersion, in.AddonIDs)
+	if err != nil {
+		return err
+	}
+	_, err = s.evaluateCoupon(ctx, s.pool, scope, code, in.CustomerID, &serviceID, subtotal)
+	return err
+}
+
+func (s *Store) InvoiceStaffBooking(ctx context.Context, scope Scope, in ReserveBookingInput, bookingID, code string) error {
+	_, _, items, subtotal, err := s.priceBooking(ctx, scope, in.RuleID, in.ResourceID, in.RuleVersion, in.AddonIDs)
+	if err != nil {
+		return fmt.Errorf("price: %w", err)
+	}
+	tax, _, err := s.taxOnSubtotal(ctx, scope, subtotal)
+	if err != nil {
+		return fmt.Errorf("tax: %w", err)
+	}
+	inv, err := s.CreateInvoice(ctx, scope, CreateInvoiceInput{CustomerID: in.CustomerID, BookingID: &bookingID, TaxCents: tax, Notes: "Booked by staff", Items: items})
+	if err != nil {
+		return fmt.Errorf("invoice: %w", err)
+	}
+	if _, err = s.ApplyCouponToInvoice(ctx, scope, inv.ID, code); err != nil {
+		_, _ = s.VoidInvoice(context.WithoutCancel(ctx), scope, inv.ID, "The coupon could not be applied")
+		return fmt.Errorf("coupon: %w", err)
+	}
+	if _, err = s.IssueInvoice(ctx, scope, inv.ID); err != nil {
+		_, _ = s.VoidInvoice(context.WithoutCancel(ctx), scope, inv.ID, "The invoice could not be issued")
+		return fmt.Errorf("issue: %w", err)
+	}
+	return nil
 }
 
 // PublicBookingScope is the website's scope for a published site (used to take the deposit with the card processor).
@@ -287,7 +355,7 @@ func (s *Store) PublicBookingAbort(ctx context.Context, slug, bookingID, invoice
 	if err != nil {
 		return
 	}
-	c := context.WithoutCancel(ctx)
+	c := QuietBookingEvents(context.WithoutCancel(ctx))
 	_, _ = s.VoidInvoice(c, scope, invoiceID, "The deposit was not paid")
 	_, _ = s.UpdateBookingStatus(c, scope, bookingID, "cancelled", "The deposit was not paid", "")
 }
@@ -425,6 +493,33 @@ func (s *Store) ReturningCustomers(ctx context.Context, slug, phone, token strin
 			return nil, err
 		}
 		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+// BookingLocation is one place a customer can book at.
+type BookingLocation struct {
+	Slug    string `json:"slug"`
+	Name    string `json:"name"`
+	Address string `json:"address"`
+}
+
+// PublicBookingLocations lists the published locations, the main website's first, with the address from the franchise's invoice details.
+func (s *Store) PublicBookingLocations(ctx context.Context) ([]BookingLocation, error) {
+	rows, err := s.pool.Query(ctx, `SELECT ps.slug,l.name,coalesce(ii.address,'') FROM public_sites ps JOIN locations l ON l.organization_id=ps.organization_id AND l.id=ps.location_id
+ LEFT JOIN location_invoice_issuers li ON li.organization_id=ps.organization_id AND li.location_id=ps.location_id LEFT JOIN invoice_issuers ii ON ii.id=li.issuer_id
+ WHERE ps.published ORDER BY (ps.slug=$1) DESC, l.name`, mainSiteSlug())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []BookingLocation{}
+	for rows.Next() {
+		var b BookingLocation
+		if err = rows.Scan(&b.Slug, &b.Name, &b.Address); err != nil {
+			return nil, err
+		}
+		out = append(out, b)
 	}
 	return out, rows.Err()
 }

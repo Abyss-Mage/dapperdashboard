@@ -1,0 +1,8 @@
+{
+  "verification": "all public table counts; no row-content equality claim",
+  "backup": "639285546976741767.dump.dpapi",
+  "restore": "PASS",
+  "database": "dapper_application",
+  "timestamp": "2026-10-25T19:51:44.5896523Z",
+  "productionOffSiteRecovery": "NOT_QUALIFIED"
+}

@@ -1,0 +1,70 @@
+{
+  "frontendBuildTypecheck": "PASS",
+  "productionAccepted": false,
+  "nativePostgresAndHTTP": "PASS full suite",
+  "checkedAt": "2026-10-23T08:17:06.8635284Z",
+  "hashes": [
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/booking_reschedule.go",
+      "sha256": "FC433CEFCD0708111C367AA2AB283DD9E58C00FFB194292BED4D3279ECA86831"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/booking_reschedule_requests.sql",
+      "sha256": "212DF2AF71BC9FCC7C363A0D4EFB4B3E683847F45F31A733184E43A3AE0EC49F"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/booking_reschedule_test.go",
+      "sha256": "542E52E62E75DC898A3A0893959F69FDF92C71EE65E3495484074C6D1BD08893"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/store.go",
+      "sha256": "35254FA4B9493FD19B81D6C79D74F2237C7B0DB4F2D56AC987933DD1BE22DA1D"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/store_test.go",
+      "sha256": "493900DDA667B15AA3C33B1DE94475C00F01892F1EF1643235C5C826083D24FF"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/booking_capacity_options.go",
+      "sha256": "DD41F1C54B4FF816EA5AB11DC405BD3647CEAEABA4C277E3EE409FA7AE0E0B07"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/workspace/bookings.go",
+      "sha256": "597A28FF5EB503226925A1E38483F33BB95BC36CD644872876718AEF9BB5791C"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/workspace/booking_capacity_test.go",
+      "sha256": "3E45C3E23B5B99DF908F0F237586817D8F2FBD3CBF1885D59D9DDDA63A33045E"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/workspace/invoice_browser_test.go",
+      "sha256": "9758D9B0CA502AFB0C0D47235F16831A9CAAFBF98674B63139E43F81952CA78F"
+    },
+    {
+      "path": "dapper-platform/apps/web/app/workspace/BookingManager.tsx",
+      "sha256": "5280EE48E60E71BBFD5F241EE3E90B46C76727F742DDF08880EDF16C1623DA27"
+    },
+    {
+      "path": "dapper-platform/apps/web/app/workspace/BookingRescheduler.tsx",
+      "sha256": "7E223E2599BFAF6E055CB8CE215F5C69D52D6F2700A17A9D751A3BD86BDD16E2"
+    },
+    {
+      "path": "dapper-platform/apps/web/app/globals.css",
+      "sha256": "A2C06075B89160B52EE66F46A5CEE37966029E5653CC37F5280ED445635764F3"
+    },
+    {
+      "path": "dapper-platform/tests/invoice-browser/app/page.tsx",
+      "sha256": "D0220D69E5F5E7741FD94A694D4777C10C27A387A7BF43E2876F5FCA793CEA30"
+    },
+    {
+      "path": "scripts/test-invoice-browser.ps1",
+      "sha256": "834A5C37665FEB957D4611F00EF409A48D3F9FD71DE39C9631F9B65812EC91CE"
+    }
+  ],
+  "actualApplicationAuthenticatedAcceptance": "NOT_RUN",
+  "isolatedBrowser": "PASS conflict/preservation/save/reload/Escape; terminal Go verifier and cleanup",
+  "staticGo": "PASS",
+  "schema": 35,
+  "deployment": "PASS guarded migration/restore/restart",
+  "ingress": "PASS 5 CA+hostname validated"
+}

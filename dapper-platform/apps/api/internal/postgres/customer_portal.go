@@ -53,6 +53,10 @@ type PortalAccount struct {
 	CustomerID   string `json:"customerId"`
 	Name         string `json:"name"`
 	LocationName string `json:"locationName"`
+	// Filled in by CustomerRecords so the customer can see and correct their own details.
+	Email   string `json:"email,omitempty"`
+	Phone   string `json:"phone"`
+	Address string `json:"address"`
 }
 type PortalBooking struct {
 	ID          string    `json:"id"`
@@ -69,13 +73,17 @@ type PortalInvoice struct {
 	TotalCents int64  `json:"totalCents"`
 	PaidCents  int64  `json:"paidCents"`
 	DueCents   int64  `json:"dueCents"`
+	BookingID  string `json:"bookingId"`
 }
 type PortalRecords struct {
 	Account  PortalAccount   `json:"account"`
 	Vehicles []Vehicle       `json:"vehicles"`
 	Bookings []PortalBooking `json:"bookings"`
 	Invoices []PortalInvoice `json:"invoices"`
-	Limit    int             `json:"limit"`
+	// Saved addresses (default first) and whether the customer has a profile picture.
+	Addresses []PortalAddress `json:"addresses"`
+	HasAvatar bool            `json:"hasAvatar"`
+	Limit     int             `json:"limit"`
 }
 
 func (s *Store) CustomerAccounts(ctx context.Context, actor string) ([]PortalAccount, error) {
@@ -111,15 +119,15 @@ func (s *Store) CustomerRecords(ctx context.Context, actor, customer string) (Po
 		return PortalRecords{}, err
 	}
 	defer tx.Rollback(ctx)
-	result := PortalRecords{Vehicles: []Vehicle{}, Bookings: []PortalBooking{}, Invoices: []PortalInvoice{}, Limit: 100}
+	result := PortalRecords{Vehicles: []Vehicle{}, Bookings: []PortalBooking{}, Invoices: []PortalInvoice{}, Addresses: []PortalAddress{}, Limit: 100}
 	var org, loc string
 	// Hold the membership and active principal through the entire read, so link
 	// revocation/deactivation cannot race a separately authorized record query.
-	err = tx.QueryRow(ctx, `SELECT a.organization_id::text,a.location_id::text,c.id::text,c.name,l.name
+	err = tx.QueryRow(ctx, `SELECT a.organization_id::text,a.location_id::text,c.id::text,c.name,l.name,c.email,c.phone,c.address
  FROM customer_account_links a JOIN principals p ON p.id=a.principal_id AND p.active
  JOIN customers c ON (c.organization_id,c.location_id,c.id)=(a.organization_id,a.location_id,a.customer_id)
  JOIN locations l ON (l.organization_id,l.id)=(a.organization_id,a.location_id)
- WHERE a.principal_id=$1 AND a.customer_id=$2 FOR SHARE OF a,p`, actor, customer).Scan(&org, &loc, &result.Account.CustomerID, &result.Account.Name, &result.Account.LocationName)
+ WHERE a.principal_id=$1 AND a.customer_id=$2 FOR SHARE OF a,p`, actor, customer).Scan(&org, &loc, &result.Account.CustomerID, &result.Account.Name, &result.Account.LocationName, &result.Account.Email, &result.Account.Phone, &result.Account.Address)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return PortalRecords{}, ErrForbidden
 	}
@@ -160,13 +168,13 @@ func (s *Store) CustomerRecords(ctx context.Context, actor, customer string) (Po
 	if err != nil {
 		return PortalRecords{}, err
 	}
-	rows, err = tx.Query(ctx, `SELECT id::text,invoice_number,status,currency,total_cents,paid_cents,due_cents FROM invoices WHERE organization_id=$1 AND location_id=$2 AND customer_id=$3 AND status IN ('issued','partially_paid','paid','void') ORDER BY created_at DESC,id LIMIT 100`, org, loc, customer)
+	rows, err = tx.Query(ctx, `SELECT id::text,invoice_number,status,currency,total_cents,paid_cents,due_cents,COALESCE(booking_id::text,'') FROM invoices WHERE organization_id=$1 AND location_id=$2 AND customer_id=$3 AND status IN ('issued','partially_paid','paid','void') ORDER BY created_at DESC,id LIMIT 100`, org, loc, customer)
 	if err != nil {
 		return PortalRecords{}, err
 	}
 	for rows.Next() {
 		var i PortalInvoice
-		if err = rows.Scan(&i.ID, &i.Number, &i.Status, &i.Currency, &i.TotalCents, &i.PaidCents, &i.DueCents); err != nil {
+		if err = rows.Scan(&i.ID, &i.Number, &i.Status, &i.Currency, &i.TotalCents, &i.PaidCents, &i.DueCents, &i.BookingID); err != nil {
 			rows.Close()
 			return PortalRecords{}, err
 		}
@@ -175,6 +183,12 @@ func (s *Store) CustomerRecords(ctx context.Context, actor, customer string) (Po
 	err = rows.Err()
 	rows.Close()
 	if err != nil {
+		return PortalRecords{}, err
+	}
+	if result.Addresses, err = readPortalAddresses(ctx, tx, org, loc, customer); err != nil {
+		return PortalRecords{}, err
+	}
+	if err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM customer_avatars WHERE organization_id=$1 AND location_id=$2 AND customer_id=$3)`, org, loc, customer).Scan(&result.HasAvatar); err != nil {
 		return PortalRecords{}, err
 	}
 	if err = tx.Commit(ctx); err != nil {

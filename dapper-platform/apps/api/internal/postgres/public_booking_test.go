@@ -46,8 +46,8 @@ func verifyPublicBooking(t *testing.T, ctx context.Context, s *Store, a Scope) {
 	}
 	exec(`UPDATE public_sites SET published=true WHERE slug=$1`, slug)
 	opts, err := s.PublicBookingOptions(ctx, slug)
-	if err != nil || opts.DepositPercent != 30 || opts.PhoneVerification {
-		t.Fatal("public options wrong", opts.DepositPercent, opts.PhoneVerification, err)
+	if err != nil || opts.PhoneVerification {
+		t.Fatal("public options wrong", opts.PhoneVerification, err)
 	}
 	for _, r := range opts.Rules { // only priced services are offered
 		found := false
@@ -196,12 +196,12 @@ func verifyPublicBookFlow(t *testing.T, ctx context.Context, s *Store, a Scope, 
 	if err != nil {
 		t.Fatal("public booking failed", err)
 	}
-	if got.TotalCents != 28250 || got.DepositCents != 8475 || !strings.HasPrefix(got.InvoiceNumber, "T") && !strings.Contains(got.InvoiceNumber, "-") {
+	if got.TotalCents != 28250 || !strings.HasPrefix(got.InvoiceNumber, "T") && !strings.Contains(got.InvoiceNumber, "-") {
 		t.Fatalf("totals wrong (want 28250 total, 8475 deposit): %+v", got)
 	}
 	var status, channel string
-	if err = s.pool.QueryRow(ctx, `SELECT b.status,b.channel FROM bookings b WHERE b.id=$1`, got.BookingID).Scan(&status, &channel); err != nil || status != "pending" || channel != "online" {
-		t.Fatal("booking not recorded as a pending online booking", status, channel, err)
+	if err = s.pool.QueryRow(ctx, `SELECT b.status,b.channel FROM bookings b WHERE b.id=$1`, got.BookingID).Scan(&status, &channel); err != nil || status != "confirmed" || channel != "online" {
+		t.Fatal("booking not recorded as an approved online booking", status, channel, err)
 	}
 	// The same request again returns the same booking and invoice and does not cancel anything.
 	again, err := s.PublicBook(ctx, slug, in)
@@ -220,12 +220,90 @@ func verifyPublicBookFlow(t *testing.T, ctx context.Context, s *Store, a Scope, 
 	third.RequestKey = "public-booking-key-0003"
 	third.Start = avail.Days[0].Starts[4]
 	third.AddonIDs = nil
-	if _, err = s.PublicBook(ctx, slug, third); err != nil {
+	thirdRes, err := s.PublicBook(ctx, slug, third)
+	if err != nil {
 		t.Fatal("second booking for a returning email failed", err)
+	}
+	// Only a booking that made the customer earns the confirmation email; a returning address might not be the booker's.
+	if !got.NewCustomer || thirdRes.NewCustomer {
+		t.Fatal("new-customer flag wrong", got.NewCustomer, thirdRes.NewCustomer)
 	}
 	var customers int
 	if err = s.pool.QueryRow(ctx, `SELECT count(*) FROM customers WHERE organization_id=$1 AND location_id=$2 AND lower(email)='web.guest@example.invalid'`, a.OrganizationID, a.LocationID).Scan(&customers); err != nil || customers != 1 {
 		t.Fatal("a returning email created a second customer", customers, err)
+	}
+	// Coupons: the public preview and the staff invoice agree, tax comes off the reduced amount, and a bad code is refused before anything is held.
+	const couponCode = "SYNPUB10"
+	if _, err = s.SaveCoupon(ctx, a, "", CouponInput{Title: "Synthetic public coupon", Code: couponCode, Kind: "percent", Value: 10, Period: "never", Active: true}, 0); err != nil {
+		t.Fatal(err)
+	}
+	preview, err := s.PublicCouponPreview(ctx, slug, couponCode, main.ID, 20000)
+	if err != nil || preview.DiscountCents != 2000 {
+		t.Fatal("public coupon preview wrong", preview, err)
+	}
+	if _, err = s.PublicCouponPreview(ctx, slug, "NOPE99", main.ID, 20000); !errors.As(err, new(CouponInvalid)) {
+		t.Fatal("a code that does not exist was accepted", err)
+	}
+	var guest string
+	if err = s.pool.QueryRow(ctx, `SELECT id::text FROM customers WHERE organization_id=$1 AND location_id=$2 AND lower(email)='web.guest@example.invalid'`, a.OrganizationID, a.LocationID).Scan(&guest); err != nil {
+		t.Fatal(err)
+	}
+	staff := ReserveBookingInput{RequestKey: "staff-coupon-key-0001", CustomerID: guest, ResourceID: res.ID, RuleID: rule.ID, RuleVersion: rule.Version, Start: avail.Days[0].Starts[6], Channel: "walk_in"}
+	if err = s.CheckStaffCoupon(ctx, a, staff, "NOPE99"); !errors.As(err, new(CouponInvalid)) {
+		t.Fatal("staff booking accepted a bad coupon", err)
+	}
+	if err = s.CheckStaffCoupon(ctx, a, staff, couponCode); err != nil {
+		t.Fatal("staff booking refused a good coupon", err)
+	}
+	staffBooking, err := s.ReserveBooking(ctx, a, staff)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = s.InvoiceStaffBooking(ctx, a, staff, staffBooking.ID, couponCode); err != nil {
+		t.Fatal("staff coupon invoice failed", err)
+	}
+	var staffTotal int64
+	if err = s.pool.QueryRow(ctx, `SELECT total_cents FROM invoices WHERE booking_id=$1 AND status<>'void'`, staffBooking.ID).Scan(&staffTotal); err != nil || staffTotal != 20340 {
+		t.Fatalf("staff coupon invoice total wrong (want 20340 = 18000 + 13%% tax): %d %v", staffTotal, err)
+	}
+	// A customer's coupon on the website: the booking goes through and the invoice carries the discount (a coupon once made issuing fail).
+	withCoupon := third
+	withCoupon.RequestKey = "public-booking-key-0004"
+	withCoupon.Start = avail.Days[0].Starts[8]
+	withCoupon.CouponCode = couponCode
+	couponRes, err := s.PublicBook(ctx, slug, withCoupon)
+	if err != nil || couponRes.TotalCents != 20340 {
+		t.Fatalf("a website booking with a coupon failed or priced wrong (want 20340): %+v %v", couponRes, err)
+	}
+	// The website's pictures belong to the main site's location only.
+	png := []byte{0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0x0d, 'I', 'H', 'D', 'R', 0, 0, 0, 1, 0, 0, 0, 1, 8, 6, 0, 0, 0, 0x1f, 0x15, 0xc4, 0x89}
+	if err = s.SaveSiteAsset(ctx, a, "zz-test/ping.png", png); err != nil {
+		t.Fatal(err)
+	}
+	defer exec(`DELETE FROM site_assets WHERE path='zz-test/ping.png'`)
+	if _, _, err = s.PublicSiteAssetVersion(ctx, "zz-test/ping.png"); err == nil {
+		t.Fatal("a file from a location that is not the main site was served")
+	}
+	t.Setenv("DAPPER_SITE_SLUG", slug)
+	if kind, _, err := s.PublicSiteAssetVersion(ctx, "zz-test/ping.png"); err != nil || kind != "image/png" {
+		t.Fatal("the main site's own file was not served", kind, err)
+	}
+	// Taking a built-in picture off the website, and putting it back.
+	if err = s.SetSiteAssetHidden(ctx, a, "portfolio/zz-test.jpg", true); err != nil {
+		t.Fatal(err)
+	}
+	if hid, err := s.PublicHiddenSiteAssets(ctx); err != nil || len(hid) != 1 || hid[0] != "portfolio/zz-test.jpg" {
+		t.Fatal("hidden picture not listed", hid, err)
+	}
+	if err = s.SetSiteAssetHidden(ctx, a, "portfolio/zz-test.jpg", false); err != nil {
+		t.Fatal(err)
+	}
+	// A booking is told "cancelled" once, however many code paths report it.
+	if first, err := s.ClaimBookingEmail(ctx, staffBooking.ID, "booking_cancelled"); err != nil || !first {
+		t.Fatal("first claim refused", first, err)
+	}
+	if again, err := s.ClaimBookingEmail(ctx, staffBooking.ID, "booking_cancelled"); err != nil || again {
+		t.Fatal("a second cancelled email was allowed", again, err)
 	}
 	// A failed deposit releases the time.
 	s.PublicBookingAbort(ctx, slug, got.BookingID, got.InvoiceID)
@@ -289,7 +367,7 @@ func TestPublicBookingEndToEnd(t *testing.T) {
 	if _, err = s.pool.Exec(ctx, `INSERT INTO principals(id,external_subject) VALUES($1,'synthetic:public-admin')`, a.ActorID); err != nil {
 		t.Fatal(err)
 	}
-	for _, action := range []string{"customers.read", "customers.create", "catalogue.read", "catalogue.manage", "scheduling.manage", "scheduling.reserve", "scheduling.read", "scheduling.release", "bookings.create", "bookings.read", "bookings.manage", "invoices.read", "invoices.create", "invoices.issue", "invoices.manage", "payments.read", "payments.record"} {
+	for _, action := range []string{"customers.read", "customers.create", "catalogue.read", "catalogue.manage", "scheduling.manage", "scheduling.reserve", "scheduling.read", "scheduling.release", "bookings.create", "bookings.read", "bookings.manage", "invoices.read", "invoices.create", "invoices.issue", "invoices.manage", "payments.read", "payments.record", "marketing.manage", "content.manage"} {
 		if _, err = s.pool.Exec(ctx, `INSERT INTO location_grants(principal_id,organization_id,location_id,action) VALUES($1,$2,$3,$4)`, a.ActorID, org, loc, action); err != nil {
 			t.Fatal(err)
 		}

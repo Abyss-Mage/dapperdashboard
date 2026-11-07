@@ -1,0 +1,70 @@
+/* Appointments as a table with expandable rows: filters on top, one row per booking, details and actions when a row is opened. */
+.pageHead { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0 0 18px; }
+.pageHead h2 { margin: 0; font-size: 24px; }
+.headActions { display: flex; gap: 10px; flex-wrap: wrap; }
+:global(:root) .headActions .addNew, :global(:root) .filters2 .apply { border: 0; border-radius: 12px; padding: 11px 20px; font: inherit; font-weight: 700; color: #06281a !important; background: #34d399 !important; cursor: pointer; transition: transform .15s ease, filter .2s ease; }
+:global(:root) .headActions .addNew:hover:not(:disabled), :global(:root) .filters2 .apply:hover:not(:disabled), :global(:root) .filters2 .exportBtn:hover:not(:disabled) { filter: brightness(1.08); }
+:global(:root) .headActions .addNew:active:not(:disabled), :global(:root) .filters2 .apply:active:not(:disabled), :global(:root) .filters2 .exportBtn:active:not(:disabled) { transform: scale(.97); }
+:global(:root) .filters2 .exportBtn { border: 0; border-radius: 12px; padding: 11px 20px; font: inherit; font-weight: 700; color: #2a1a00 !important; background: #f5a93b !important; cursor: pointer; transition: transform .15s ease, filter .2s ease; }
+:global(:root) .headActions .addNew:disabled, :global(:root) .filters2 .apply:disabled, :global(:root) .filters2 .exportBtn:disabled { opacity: .5; cursor: not-allowed; }
+.filters2 { display: grid; grid-template-columns: minmax(160px, .7fr) minmax(220px, 2fr) auto auto auto; gap: 10px; align-items: center; margin: 0 0 16px; }
+.filters2 input { width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--glass-line, #3a3a42); background: var(--glass, transparent); color: inherit; font: inherit; }
+.pager { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 14px; font-size: 14px; }
+.perPage { display: flex; align-items: center; gap: 8px; color: var(--text-muted); white-space: nowrap; flex-wrap: nowrap; }
+.perPage > :last-child { min-width: 84px; }
+.pages { display: flex; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; }
+.filters { display: grid; grid-template-columns: minmax(240px, 1.2fr) minmax(200px, 1fr) minmax(180px, 1fr) minmax(160px, .8fr); gap: 10px; align-items: end; margin: 0 0 12px; }
+.filters label { display: grid; gap: 5px; font-size: 12px; font-weight: 700; color: var(--text-muted); }
+.dates { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.filters input[type='search'], .filters input[type='text'] { width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--glass-line, #3a3a42); background: var(--glass, transparent); color: inherit; font: inherit; }
+.count { margin: 0 0 8px; font-size: 13px; color: var(--text-muted); }
+.table { display: grid; border: 1px solid var(--glass-line, #3a3a42); border-radius: 16px; overflow: hidden; }
+.head, .row { display: grid; grid-template-columns: 32px 26px 80px minmax(130px, .9fr) minmax(130px, 1fr) minmax(150px, 1.1fr) 84px 150px minmax(110px, .7fr) minmax(140px, .9fr); gap: 10px; align-items: center; padding: 11px 14px; }
+.row input[type='checkbox'], .head input[type='checkbox'] { width: 17px; height: 17px; margin: 0; accent-color: #34d399; }
+.head { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--glass-line, #3a3a42); background: rgba(255, 255, 255, .03); }
+.item { border-bottom: 1px solid var(--glass-line, #3a3a42); }
+.item:last-child { border-bottom: 0; }
+.row { font-size: 14px; }
+.row:hover { background: rgba(255, 255, 255, .03); }
+.row strong { font-weight: 700; }
+.muted { color: var(--text-muted); font-size: 13px; }
+.chev { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 8px; border: 1px solid var(--glass-line, #3a3a42); background: transparent; color: inherit; cursor: pointer; padding: 0; }
+.chev { border-radius: 50%; font-size: 16px; line-height: 1; }
+.chev[aria-expanded='true'] { background: rgba(255, 255, 255, .08); }
+.id { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 13px; }
+.status { min-width: 0; }
+.detail { padding: 6px 18px 18px 60px; display: grid; gap: 14px; }
+.detailTop { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: center; }
+.detailTop h3 { margin: 0; font-size: 17px; }
+.price { display: inline-block; margin-left: 10px; padding: 3px 10px; border-radius: 8px; background: rgba(52, 211, 153, .18); color: #34d399; font-size: 14px; font-weight: 800; }
+.detailCols { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; }
+.detailCols h4 { margin: 0 0 8px; font-size: 14px; border-bottom: 1px solid var(--glass-line, #3a3a42); padding-bottom: 6px; }
+.kv { display: grid; grid-template-columns: 120px 1fr; gap: 6px 10px; font-size: 14px; margin: 0; }
+.kv dt { color: var(--text-muted); }
+.kv dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.empty { padding: 28px; text-align: center; color: var(--text-muted); }
+@media (max-width: 1100px) {
+  .filters { grid-template-columns: 1fr 1fr; }
+  .filters2 { grid-template-columns: 1fr 1fr; }
+  .head { display: none; }
+  .row { grid-template-columns: 32px 26px 1fr; row-gap: 4px; }
+  .detail { padding-left: 18px; }
+  .detailCols { grid-template-columns: 1fr; }
+}
+/* The row expander is a small filled circle with a plus (a minus when open), like the WordPress list. */
+:global(:root) .row .chev, :global(:root) .head .chev { width: 22px !important; height: 22px !important; min-width: 22px !important; min-height: 0 !important; padding: 0 !important; border: 0 !important; border-radius: 50% !important; background: rgba(255, 255, 255, .18) !important; color: #fff !important; font-size: 15px; font-weight: 700; line-height: 1; display: grid; place-items: center; box-shadow: none !important; transform: none; }
+:global(:root) .row .chev:hover { background: rgba(255, 255, 255, .3) !important; }
+:global(:root) .row .chev[aria-expanded='true'] { background: #34d399 !important; color: #06281a !important; }
+.sortBtn { all: unset; cursor: pointer; font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; white-space: nowrap; }
+.sortBtn:hover { color: var(--text); }
+.sortBtn:focus-visible { outline: 2px solid var(--focus, currentColor); outline-offset: 2px; }
+
+/* Table header and row arrow, made to read on both themes: plain small-caps headers (the sort buttons lose the global pill look) and a chevron that turns when the row opens. */
+:global(:root) .head .sortBtn { all: unset !important; cursor: pointer; font: inherit !important; letter-spacing: inherit !important; text-transform: inherit !important; color: inherit !important; white-space: nowrap; }
+:global(:root) .head .sortBtn:hover { color: var(--text) !important; }
+:global(:root) .head { font-size: 11.5px; letter-spacing: .08em; background: color-mix(in srgb, currentColor 5%, transparent); }
+:global(:root) .row .chev { background: color-mix(in srgb, currentColor 10%, transparent) !important; color: currentColor !important; transition: transform .2s ease, background-color .2s ease; }
+:global(:root) .row .chev svg { display: block; transition: transform .25s cubic-bezier(.23, 1, .32, 1); }
+:global(:root) .row .chev[aria-expanded='true'] { background: #34d399 !important; color: #06281a !important; }
+:global(:root) .row .chev[aria-expanded='true'] svg { transform: rotate(180deg); }

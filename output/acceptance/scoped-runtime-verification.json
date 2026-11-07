@@ -1,0 +1,30 @@
+{
+  "verifiedAt": "2026-10-22T17:59:07.991490+00:00",
+  "mode": "synthetic-development-only",
+  "transport": "HTTPS with certificate and hostname validation using explicit local certificate trust",
+  "browserVerified": false,
+  "productionReady": false,
+  "cases": [
+    "anonymous_denied",
+    "managed_password_login_over_verified_tls",
+    "customer_portal_explicit_membership_no_staff_fallback_or_self_link",
+    "scheduling_resource_access_matches_explicit_grant",
+    "scheduling_rule_access_matches_explicit_management_grant",
+    "reservation_calendar_read_requires_explicit_grant",
+    "foreign_organization_denied",
+    "linked_main_service_identity_and_standalone_addon_denial",
+    "linked_addon_snapshot_duplicate_forgery_and_archive_denial",
+    "catalogue_revision_parent_and_archive_lifecycle",
+    "job_actor_origin_and_completion_lifecycle",
+    "organization_central_catalogue_lifecycle",
+    "employee_attendance_clock_break_and_history_lifecycle",
+    "booking_vehicle_customer_ownership_and_persistence",
+    "production_booking_lifecycle_and_events",
+    "apple_calendar_rfc5545_feed_subscription",
+    "production_invoicing_itemization_and_exact_payments",
+    "sop_compliance_registry_and_training_acknowledgments",
+    "franchise_location_creation_without_implicit_operational_grants",
+    "logout_session_revoked"
+  ],
+  "certificateFileSha256": "08d7fe2810269e416bbeeb1de757b5ea46d407575e1928515832505f028618c1"
+}

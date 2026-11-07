@@ -166,9 +166,23 @@ func TestInstallRequestValidation(t *testing.T) {
 		t.Error("short owner password must be rejected")
 	}
 	q.Owner.Password = "a-long-enough-passphrase"
+	if q.validate() == nil {
+		t.Error("a request without a first franchise must be rejected")
+	}
+	q.Franchise.Name, q.Franchise.Code, q.Franchise.Street, q.Franchise.City, q.Franchise.Region, q.Franchise.PostalCode, q.Franchise.Country = "Garage", "gar", "1 Main St", "Town", "ON", "A1A 1A1", "Canada"
 	if err := q.validate(); err != nil {
 		t.Errorf("valid request rejected: %v", err)
 	}
+	q.Franchise.Code = "g"
+	if q.validate() == nil {
+		t.Error("a one-letter franchise code must be rejected")
+	}
+	q.Franchise.Code = "gar"
+	q.Franchise.Street = ""
+	if q.validate() == nil {
+		t.Error("a franchise without a street must be rejected")
+	}
+	q.Franchise.Street = "1 Main St"
 	q.Site.Timezone = "Mars/Olympus"
 	if q.validate() == nil {
 		t.Error("unknown timezone must be rejected")

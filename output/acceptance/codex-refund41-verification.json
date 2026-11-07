@@ -1,0 +1,43 @@
+{
+  "schema": 41,
+  "sourceHashes": [
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/store.go",
+      "sha256": "86CCBDCDC4E664424BAF4A88F8D277C4F203FFE3DDC0CEBBC02DAA000B0AB2A9"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/payment_refund_accounting.sql",
+      "sha256": "4816113C8B173F50A817B24E274333384B5FE48372A1EC8F0443DDE212A6A2E8"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/postgres/invoices.go",
+      "sha256": "819E2CC19332562CF2662D491770F7AB32A98C4AFE9B29CDDDE750348022419A"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/email/smtp.go",
+      "sha256": "9EF1375B3A3224DE4DAAF127C1E43FCA4DD155976ED693BC22C119B82FDC9356"
+    },
+    {
+      "path": "dapper-platform/apps/api/internal/workspace/square_webhooks.go",
+      "sha256": "9E44156A85959EFBD3FED9474C8239FA84CED7F9DF2BD08F31820D3E8528DB96"
+    }
+  ],
+  "native": "PASS full scripts/test-postgres.ps1 session53240 exit0,9tested packages",
+  "migration": "PASS encrypted backup/restore all-public-table-count match session3399 exit0",
+  "restart": "PASS recorded stop/start",
+  "ingress": "PASS5/5 pinnedCA+hostname",
+  "counts": {
+    "migrations": 41,
+    "principals": 1,
+    "payments": 0,
+    "refundAdjustments": 0
+  },
+  "providerEvidence": "NOT_RUN",
+  "productionAcceptance": "INCOMPLETE",
+  "remaining": [
+    "Merchant/amount/currency verified provider binding",
+    "Durable external-charge recovery/provider inbox",
+    "Actual SMTP/payment/provider acceptance",
+    "Full SOW/deployment/UAT"
+  ]
+}

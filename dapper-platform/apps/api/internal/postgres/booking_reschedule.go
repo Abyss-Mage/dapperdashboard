@@ -26,7 +26,7 @@ type RescheduleBookingInput struct {
 
 // RescheduleBooking moves the existing reservation and booking atomically. It
 // retains the booking's identity/status and does not modify payment or jobs.
-func (s *Store) RescheduleBooking(ctx context.Context, scope Scope, id string, input RescheduleBookingInput) (Booking, error) {
+func (s *Store) rescheduleBooking(ctx context.Context, scope Scope, id string, input RescheduleBookingInput) (Booking, error) {
 	input.Notes = strings.TrimSpace(input.Notes)
 	input.Start = input.Start.UTC()
 	if id == "" || input.ResourceID == "" || input.RuleID == "" || input.RuleVersion < 1 || input.ReservationVersion < 1 || input.Start.IsZero() || !exactTime(input.Start) || utf8.RuneCountInString(input.Notes) > 2000 || len(input.RequestKey) < 16 || len(input.RequestKey) > 128 {
@@ -179,4 +179,13 @@ func (s *Store) RescheduleBooking(ctx context.Context, scope Scope, id string, i
 		return Booking{}, bookingWriteError(err)
 	}
 	return bookingMutationSummary(b), nil
+}
+
+// RescheduleBooking moves a booking to a new time and announces it so the customer can be emailed.
+func (s *Store) RescheduleBooking(ctx context.Context, scope Scope, id string, input RescheduleBookingInput) (Booking, error) {
+	b, err := s.rescheduleBooking(ctx, scope, id, input)
+	if err == nil {
+		s.emitBooking(ctx, "booking_rescheduled", id)
+	}
+	return b, err
 }

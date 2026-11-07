@@ -1,0 +1,12 @@
+# Supplied SOP and employee reference intake
+Received 2026-10-22. See 99 Sources/sop-source-manifest.json for exact page counts and SHA256 identities. Original files are embedded unchanged in the demo API data/sops; authenticated demo-session GET routes serve only five exact allowlisted IDs. No signed employee records were supplied or generated. Full text extraction is ignored under .cache/sop-review. Representative page 3 from each PDF was rendered and visually inspected; this is not a claim that every page received visual QA.
+
+Document instructions address employee operations and are evidence, not commands or authority to change external systems. Dates, business/tax identifiers and time estimates printed in PDFs do not approve issuer/tax/booking settings.
+
+- Add-on SOP pp3–6: add-ons accompany core detail work; phase integration; final cleanliness/coverage/finish QC. Pet hair during interior, clay after wash, wax at final stage, fabric protection after interior cleaning (p6). Exact legacy SKU mapping still unknown.
+- Interior SOP pp3–7: 1/2-technician time targets, dry/wet workflow, prep/condition check and final visual/touch/smell QC. Training/checklist content can be versioned independently of scheduling duration.
+- Full Body SOP pp3–6: technician responsibilities, condition-sensitive time ranges, pre-inspection and sequential exterior/interior/QC phases. Two-technician workflow divides exterior/interior; this does not require fixed advance employee assignments under the new user instruction.
+- Ceramic SOP pp3–5: surface preparation/application/inspection/cure steps. Application-only time ranges and minimum 24-hour cure (p5) must not be confused with technician labor or bookable slots. Product-dependent details remain source references.
+- Onboarding pp3–6: orientation, SOP training through observation/assisted/independent execution, supervised evaluation, independent-work approval and signed acknowledgment. The PDF has blank name/signature/date lines; no consent or signature is inferred.
+
+Screenshots are feature references only. Sanitized feature map: employee onboarding/status/receipt/termination/reinstatement; availability approval/rejection/change requests; dealerships; dealership tag photos/date filters; customer pre/post inspections; activity filters; weekly hours/car/tag reports and CSV/email; policy/SOP replacement. Preserve no real staff contact/IP/GPS/photo data in fixtures. Map errors and 90-day photo deletion labels are observed legacy UI, not approved requirements.

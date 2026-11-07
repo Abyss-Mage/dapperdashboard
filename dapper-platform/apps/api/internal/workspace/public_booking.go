@@ -1,18 +1,19 @@
 package workspace
 
 import (
+	"context"
+	"fmt"
+	"log"
 	"dapper.local/platform/internal/postgres"
 	"errors"
-	"net"
 	"net/http"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 )
 
-// A small per-visitor limiter (process-local, like the sign-in throttle). The gateway appends the real client address to
-// X-Forwarded-For, so the last entry is the one the gateway saw.
+// A small per-visitor limiter (process-local, like the sign-in throttle). Caddy sets the real client address as the first
+// X-Forwarded-For entry and the gateway appends Caddy's own (loopback) address, so the first entry is the visitor.
 type visitorLimiter struct {
 	mu     sync.Mutex
 	window time.Duration
@@ -48,22 +49,15 @@ func (l *visitorLimiter) allow(key string) bool {
 	return true
 }
 func visitor(r *http.Request) string {
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		parts := strings.Split(xff, ",")
-		return strings.TrimSpace(parts[len(parts)-1])
-	}
-	ip, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr
-	}
-	return ip
+	return postgres.ClientIP(r.RemoteAddr, r.Header.Get("X-Forwarded-For"))
 }
 
-func registerPublicBookingRoutes(mux *http.ServeMux, store *postgres.Store) {
+func registerPublicBookingRoutes(mux *http.ServeMux, store *postgres.Store, sender postgres.EmailSender) {
 	browse := newVisitorLimiter(240, time.Minute)
 	book := newVisitorLimiter(6, 10*time.Minute)
 	sendCode := newVisitorLimiter(5, time.Hour)
 	checkCode := newVisitorLimiter(20, time.Hour)
+	couponTries := newVisitorLimiter(15, 10*time.Minute)
 	base := "/api/v1/public/booking/{site}"
 	limited := func(w http.ResponseWriter, r *http.Request, l *visitorLimiter) bool {
 		if l.allow(visitor(r)) {
@@ -79,6 +73,8 @@ func registerPublicBookingRoutes(mux *http.ServeMux, store *postgres.Store) {
 			reply(w, 404, map[string]string{"error": "Online booking is not available right now."})
 		case errors.Is(err, postgres.ErrPublicBookingInput), errors.Is(err, postgres.ErrBookingInput), errors.Is(err, postgres.ErrAvailabilityInput), errors.Is(err, postgres.ErrSchedulingRule), errors.Is(err, postgres.ErrSchedulingRuleConflict):
 			reply(w, 422, map[string]string{"error": "Please check your choices and try again."})
+		case errors.As(err, new(postgres.CouponInvalid)):
+			reply(w, 422, map[string]string{"error": err.Error()})
 		case errors.Is(err, postgres.ErrPublicBookingPrice):
 			reply(w, 422, map[string]string{"error": "This service needs a quote. Please contact us to book it."})
 		case errors.Is(err, postgres.ErrPhoneVerificationUnavailable):
@@ -98,6 +94,18 @@ func registerPublicBookingRoutes(mux *http.ServeMux, store *postgres.Store) {
 			reply(w, 500, map[string]string{"error": "Something went wrong on our side. Nothing was charged. Please try again."})
 		}
 	}
+	mux.HandleFunc("GET /api/v1/public/booking-locations", func(w http.ResponseWriter, r *http.Request) {
+		if limited(w, r, browse) {
+			return
+		}
+		items, err := store.PublicBookingLocations(r.Context())
+		if err != nil {
+			reply(w, 503, map[string]string{"error": "Online booking is not available right now."})
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		reply(w, 200, map[string]any{"items": items})
+	})
 	mux.HandleFunc("GET "+base+"/options", func(w http.ResponseWriter, r *http.Request) {
 		if limited(w, r, browse) {
 			return
@@ -131,6 +139,29 @@ func registerPublicBookingRoutes(mux *http.ServeMux, store *postgres.Store) {
 		}
 		w.Header().Set("Cache-Control", "no-store")
 		reply(w, 200, map[string]any{"configured": true, "credentialsConfigured": store.SquareCredentialResolver() != nil, "applicationId": store.SquareApplicationID(b.Environment), "binding": map[string]any{"environment": b.Environment, "squareLocationId": b.SquareLocationID}})
+	})
+	mux.HandleFunc("POST "+base+"/coupon", func(w http.ResponseWriter, r *http.Request) {
+		if limited(w, r, couponTries) {
+			return
+		}
+		var in struct {
+			Code          string `json:"code"`
+			ServiceID     string `json:"serviceId"`
+			SubtotalCents int64  `json:"subtotalCents"`
+		}
+		if !decode(w, r, &in) {
+			return
+		}
+		if !uuid(in.ServiceID) || in.SubtotalCents <= 0 || in.SubtotalCents > 100000000 {
+			reply(w, 422, map[string]string{"error": "Please check your choices and try again."})
+			return
+		}
+		out, err := store.PublicCouponPreview(r.Context(), r.PathValue("site"), in.Code, in.ServiceID, in.SubtotalCents)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		reply(w, 200, map[string]any{"code": out.Code, "discountCents": out.DiscountCents})
 	})
 	mux.HandleFunc("GET "+base+"/availability", func(w http.ResponseWriter, r *http.Request) {
 		if limited(w, r, browse) {
@@ -204,7 +235,7 @@ func registerPublicBookingRoutes(mux *http.ServeMux, store *postgres.Store) {
 		}
 		site := r.PathValue("site")
 		if in.DepositMethod != "card" && in.DepositMethod != "cash" || in.DepositMethod == "card" && (len(in.SourceID) < 8 || len(in.SourceID) > 200) {
-			reply(w, 422, map[string]string{"error": "Choose how to pay the deposit."})
+			reply(w, 422, map[string]string{"error": "Choose how to pay."})
 			return
 		}
 		res, err := store.PublicBook(r.Context(), site, in.PublicBookingInput)
@@ -212,20 +243,59 @@ func registerPublicBookingRoutes(mux *http.ServeMux, store *postgres.Store) {
 			fail(w, err)
 			return
 		}
-		paid := false
+		paid, pending := false, false
 		if in.DepositMethod == "card" {
 			scope, err := store.PublicBookingScope(r.Context(), site)
 			if err == nil {
-				err = takeSquareDeposit(r, store, scope, res.InvoiceID, "dep-"+in.RequestKey, in.SourceID, res.DepositCents)
+				err = takeSquareDeposit(r, store, scope, res.InvoiceID, "dep-"+in.RequestKey, in.SourceID, res.TotalCents)
 			}
-			if err != nil {
+			switch {
+			case err == nil:
+				paid = true
+			case errors.Is(err, postgres.ErrPaymentProvider) && !errors.Is(err, postgres.ErrPaymentDeclined):
+				// The charge may have gone through. Keep the booking and its invoice so the Square notification can settle it; voiding
+				// them here could leave a customer charged with nothing booked.
+				pending = true
+			default:
 				store.PublicBookingAbort(r.Context(), site, res.BookingID, res.InvoiceID)
 				reply(w, 402, map[string]string{"error": depositMessage(err)})
 				return
 			}
-			paid = true
 		}
-		reply(w, 201, map[string]any{"bookingId": res.BookingID, "invoiceNumber": res.InvoiceNumber, "totalCents": res.TotalCents, "depositCents": res.DepositCents, "depositPaid": paid, "serviceName": res.ServiceName})
+		// Emails, in the owner's wording, sent in the background and only when outgoing email works: the customer's confirmation (only when this
+		// booking created the customer, since a typed address might not be theirs) and the alert to the business (always).
+		if emailReady(sender) {
+			go func(name, to, phone, address string, start time.Time, paid, pending, newCustomer bool) {
+				ctx, cancel := context.WithTimeout(context.Background(), 40*time.Second)
+				defer cancel()
+				payment := "Pay on the day"
+				switch {
+				case paid:
+					payment = "Paid in full online"
+				case pending:
+					payment = "Card payment is being confirmed"
+				}
+				where := "At the Dapper shop"
+				if address != "" {
+					where = address
+				}
+				vars := map[string]string{"name": name, "phone": phone, "email": to, "service": res.ServiceName, "when": whenText(start), "where": where,
+					"total": fmt.Sprintf("$%.2f", float64(res.TotalCents)/100), "payment": payment}
+				if newCustomer {
+					subject, body, text := store.RenderEmail(ctx, "booking_confirmation", vars)
+					if _, err := sender.SendEmail(ctx, to, subject, body, text); err != nil {
+						log.Print("The booking confirmation email could not be sent")
+					}
+				}
+				if admin := store.AdminNotifyEmail(ctx); admin != "" {
+					subject, body, text := store.RenderEmail(ctx, "booking_admin", vars)
+					if _, err := sender.SendEmail(ctx, admin, subject, body, text); err != nil {
+						log.Print("The new-booking alert could not be sent")
+					}
+				}
+			}(in.Name, in.Email, in.Phone, in.ServiceAddress, in.Start, paid, pending, res.NewCustomer)
+		}
+		reply(w, 201, map[string]any{"bookingId": res.BookingID, "invoiceNumber": res.InvoiceNumber, "totalCents": res.TotalCents, "depositPaid": paid, "paymentPending": pending, "paidCents": map[bool]int64{true: res.TotalCents, false: 0}[paid], "serviceName": res.ServiceName})
 	})
 }
 
@@ -236,11 +306,11 @@ func isCapacityConflict(err error) bool {
 func depositMessage(err error) string {
 	switch {
 	case errors.Is(err, postgres.ErrSquareBinding):
-		return "Card payments are not available yet. Please choose to pay on the day."
-	case errors.Is(err, postgres.ErrPaymentProvider):
-		return "We could not confirm the card payment, so the booking was not kept. Please check your card and try again."
+		return "Online payment is not available yet. Please choose to pay on the day."
+	case errors.Is(err, postgres.ErrPaymentDeclined):
+		return "Your card was declined, so the booking was not kept. Please check the card details or try another card."
 	default:
-		return "The deposit could not be taken, so the booking was not kept. Please try again or pay on the day."
+		return "The payment could not be taken, so the booking was not kept. Please try again or pay on the day."
 	}
 }
 

@@ -28,7 +28,8 @@ const ruleAvailabilityStep = 30 * time.Minute
 // RuleAvailability answers "which days and times can this service be booked?" for staff screens. It uses the same Evaluate
 // authority as saving a booking, so a time offered here is one the save will accept (unless someone else books it first).
 // The caller has already checked the person may book at this scope.
-func (s *Store) RuleAvailability(ctx context.Context, scope Scope, resourceID, ruleID string, ruleVersion int, firstDay string, days int) (RuleAvailability, error) {
+func (s *Store) RuleAvailability(ctx context.Context, scope Scope, resourceID, ruleID string, ruleVersion int, firstDay string, days int, allowPast ...bool) (RuleAvailability, error) {
+	past := len(allowPast) > 0 && allowPast[0] // administrators entering a booking that already happened
 	out := RuleAvailability{Days: []RuleAvailabilityDay{}}
 	if resourceID == "" || ruleID == "" || ruleVersion < 1 || days < 1 || days > 31 {
 		return out, ErrAvailabilityInput
@@ -40,7 +41,8 @@ func (s *Store) RuleAvailability(ctx context.Context, scope Scope, resourceID, r
 	defer tx.Rollback(ctx)
 	var plan scheduling.Plan
 	var capacity int
-	err = tx.QueryRow(ctx, `SELECT capacity,rules,timezone FROM scheduling_resources WHERE organization_id=$1 AND location_id=$2 AND id=$3 FOR SHARE`, scope.OrganizationID, scope.LocationID, resourceID).Scan(&capacity, &plan, &out.Timezone)
+	var weekly []HourWindow
+	err = tx.QueryRow(ctx, `SELECT capacity,rules,timezone,weekly_hours FROM scheduling_resources WHERE organization_id=$1 AND location_id=$2 AND id=$3 FOR SHARE`, scope.OrganizationID, scope.LocationID, resourceID).Scan(&capacity, &plan, &out.Timezone, &weekly)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return out, ErrAvailabilityInput
 	}
@@ -62,22 +64,31 @@ func (s *Store) RuleAvailability(ctx context.Context, scope Scope, resourceID, r
 		return out, err
 	}
 	out.DurationMinutes = rule.DurationMinutes
-	request := scheduling.Request{Duration: time.Duration(rule.DurationMinutes) * time.Minute, Before: time.Duration(rule.BeforeMinutes) * time.Minute, After: time.Duration(rule.AfterMinutes) * time.Minute, Units: rule.Units, WorkingTime: rule.WorkingTime}
+	request := scheduling.Request{Duration: time.Duration(rule.DurationMinutes) * time.Minute, Before: time.Duration(rule.BeforeMinutes) * time.Minute, After: time.Duration(rule.AfterMinutes) * time.Minute, Units: 1, WorkingTime: rule.WorkingTime}
+	plan.Capacity = rule.Slots // each service has its own number of slots
 	end := first.AddDate(0, 0, days)
+	if past && first.Before(time.Now()) {
+		addPastWindows(&plan, out.Timezone, weekly, first, end)
+	}
 	reach := request.Duration + request.After
 	if request.WorkingTime {
 		reach = 30 * 24 * time.Hour // a working-time job can run across many days
 	}
-	rows, err := tx.Query(ctx, `SELECT occupied_start,occupied_end,units FROM capacity_reservations WHERE organization_id=$1 AND location_id=$2 AND resource_id=$3 AND cancelled_at IS NULL AND occupied_start<$5 AND occupied_end>$4 LIMIT 1001`, scope.OrganizationID, scope.LocationID, resourceID, first.Add(-request.Before), end.Add(reach))
+	rows, err := tx.Query(ctx, `SELECT occupied_start,occupied_end,units,COALESCE(rule_snapshot->>'serviceId','') FROM capacity_reservations WHERE organization_id=$1 AND location_id=$2 AND resource_id=$3 AND cancelled_at IS NULL AND occupied_start<$5 AND occupied_end>$4 LIMIT 1001`, scope.OrganizationID, scope.LocationID, resourceID, first.Add(-request.Before), end.Add(reach))
 	if err != nil {
 		return out, err
 	}
 	for rows.Next() {
 		var allocation scheduling.Allocation
-		if err = rows.Scan(&allocation.Start, &allocation.End, &allocation.Units); err != nil {
+		var service string
+		if err = rows.Scan(&allocation.Start, &allocation.End, &allocation.Units, &service); err != nil {
 			rows.Close()
 			return out, err
 		}
+		if service != rule.ServiceID {
+			continue
+		}
+		allocation.Units = 1
 		plan.Existing = append(plan.Existing, allocation)
 	}
 	err = rows.Err()
@@ -94,7 +105,7 @@ func (s *Store) RuleAvailability(ctx context.Context, scope Scope, resourceID, r
 		dayEnd := first.AddDate(0, 0, i+1)
 		item := RuleAvailabilityDay{Date: dayStart.Format("2006-01-02"), Starts: []time.Time{}}
 		from := dayStart
-		if from.Before(now) {
+		if from.Before(now) && !past {
 			from = now.Truncate(ruleAvailabilityStep).Add(ruleAvailabilityStep)
 		}
 		if from.Before(dayEnd) {

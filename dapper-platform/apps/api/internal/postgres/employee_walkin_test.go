@@ -54,7 +54,7 @@ func verifyEmployeeWalkIn(t *testing.T, ctx context.Context, s *Store, owner Sco
 	if e != nil {
 		t.Fatal(e)
 	}
-	input := EmployeeWalkInInput{RequestKey: "synthetic-walkin-0001", Name: "Synthetic walk-in", Email: "employee-walkin@example.invalid", Phone: "+1 (416) 555-0100", ResourceID: resource.ID, RuleID: rule.ID, RuleVersion: rule.Version, LocalStart: start.Format("2006-01-02T15:04")}
+	input := EmployeeWalkInInput{ServiceAddress: " 9 Synthetic Lane, Peterborough ", RequestKey: "synthetic-walkin-0001", Name: "Synthetic walk-in", Email: "employee-walkin@example.invalid", Phone: "+1 (416) 555-0100", ResourceID: resource.ID, RuleID: rule.ID, RuleVersion: rule.Version, LocalStart: start.Format("2006-01-02T15:04")}
 	if _, e = s.CreateEmployeeWalkIn(ctx, actor, input); !errors.Is(e, ErrForbidden) {
 		t.Fatal("customer grant inferred", e)
 	}
@@ -72,8 +72,12 @@ func verifyEmployeeWalkIn(t *testing.T, ctx context.Context, s *Store, owner Sco
 		go func() { b, e := s.CreateEmployeeWalkIn(ctx, actor, input); ch <- result{b, e} }()
 	}
 	a, b := <-ch, <-ch
-	if a.e != nil || b.e != nil || a.b.ID == "" || a.b.ID != b.b.ID || a.b.ReservationID == nil || a.b.Status != "pending" {
+	if a.e != nil || b.e != nil || a.b.ID == "" || a.b.ID != b.b.ID || a.b.ReservationID == nil || a.b.Status != "confirmed" {
 		t.Fatal("atomic retry", a, b)
+	}
+	var bookingAddress, customerAddress string
+	if e = s.pool.QueryRow(ctx, `SELECT b.service_address,c.address FROM bookings b JOIN customers c ON (c.organization_id,c.location_id,c.id)=(b.organization_id,b.location_id,b.customer_id) WHERE b.id=$1`, a.b.ID).Scan(&bookingAddress, &customerAddress); e != nil || bookingAddress != "9 Synthetic Lane, Peterborough" || customerAddress != bookingAddress {
+		t.Fatal("the service address was not kept on the booking and the customer", bookingAddress, customerAddress, e)
 	}
 	changed := input
 	changed.Email = "other@example.invalid"

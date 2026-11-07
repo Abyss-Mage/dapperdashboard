@@ -1,0 +1,82 @@
+{
+  "candidateMigrationRegistered": false,
+  "recordedAt": "2026-10-23T20:40:08.6081454+05:30",
+  "deployedSchema": 41,
+  "liveProviderEvidence": false,
+  "remaining": [
+    "Trusted merchant-binding provisioning/config loader",
+    "Active invoice/customer/quote routes",
+    "Unknown payment ID recovery/webhook mapping",
+    "Reviewed migration registration and deployment",
+    "Live provider acceptance"
+  ],
+  "nativeSuite": {
+    "exitCode": 0,
+    "testedPackages": 9,
+    "session": 69288,
+    "result": "PASS"
+  },
+  "sourceHashes": [
+    {
+      "sha256": "1CA400FC396A8CA45EC83DD203EC2762C3503F7EAD43A4C755E25FD6AB3A137B",
+      "path": "dapper-platform\\apps\\api\\internal\\postgres\\square_payment_execution_test.go"
+    },
+    {
+      "sha256": "3FFA2B2AA4FF4C2577D3330AD8D56DA4082F3F947D55A7789E26442EEA38FD4F",
+      "path": "dapper-platform\\apps\\api\\internal\\postgres\\square_payment_execution.go"
+    },
+    {
+      "sha256": "30BE64EA33C98F49C71ED772353E69A4AD630326328E8CA6E847C89F16F6487F",
+      "path": "dapper-platform\\apps\\api\\internal\\postgres\\square_payment_intents_test.go"
+    },
+    {
+      "sha256": "8F462725029E483BE90A785056C21D18DF6752E376333F4AF1CBF9FC5A8892C1",
+      "path": "dapper-platform\\apps\\api\\internal\\postgres\\square_payment_intents.go"
+    },
+    {
+      "sha256": "8AF9F7A75999BD58841050215082EC8332AB53702D7AB1C52015C3438CAE429D",
+      "path": "dapper-platform\\apps\\api\\internal\\postgres\\square_payment_intents.sql"
+    },
+    {
+      "sha256": "300CFC476B32DAE02E0812D7B09BE77284F60E7817B272F23CC2ED655980776B",
+      "path": "dapper-platform\\apps\\api\\internal\\postgres\\square_credential_resolver_test.go"
+    },
+    {
+      "sha256": "076397640BBC939453727FD4B0D010B2C5EC21542EB7D1FCB397FB78D753E30E",
+      "path": "dapper-platform\\apps\\api\\internal\\postgres\\square_credential_resolver.go"
+    },
+    {
+      "sha256": "37F4A13501AFF91D44BB763D5541F18311BAFC4A9BB1069C911D208A7D998157",
+      "path": "dapper-platform\\apps\\api\\internal\\square\\identity_test.go"
+    },
+    {
+      "sha256": "B0071749257A0359C9444FCE26CD91CCAC68E093663E8EA6EC7C7FA6E82CFF6C",
+      "path": "dapper-platform\\apps\\api\\internal\\square\\identity.go"
+    },
+    {
+      "sha256": "4192A28815748760DAB986BAF8F9351DCD7A22F4532F3BB7015110E8ED7A2E50",
+      "path": "dapper-platform\\apps\\api\\internal\\square\\payments_read_test.go"
+    },
+    {
+      "sha256": "7256C5664502BE2F604709C410DBF41B3773A8B5FE0DE30056F75CBF49CF1765",
+      "path": "dapper-platform\\apps\\api\\internal\\square\\payments_read.go"
+    },
+    {
+      "sha256": "37C70FFF039F9CD6741F535773F6E037387F57844964B2ED89D0CD8BB2041650",
+      "path": "dapper-platform\\apps\\api\\internal\\paymentstate\\refunds_test.go"
+    },
+    {
+      "sha256": "7D857A4C5522CE5632F18EFDF282DC5C0D18D330341505B6A6149A8CAFD7E5F9",
+      "path": "dapper-platform\\apps\\api\\internal\\paymentstate\\refunds.go"
+    },
+    {
+      "sha256": "03F999C265458560B99A5D584EFA6CE7FEBB9C8DFE94366C25A954947DAA3461",
+      "path": "dapper-platform\\apps\\api\\internal\\paymentstate\\settlement_test.go"
+    },
+    {
+      "sha256": "D7428B72ECC2C529915E0CB304D80B98A6F1A7482F9E051CEECA55136991D8B1",
+      "path": "dapper-platform\\apps\\api\\internal\\paymentstate\\settlement.go"
+    }
+  ],
+  "vet": "PASS internal/postgres internal/square internal/paymentstate"
+}

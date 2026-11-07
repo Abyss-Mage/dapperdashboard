@@ -150,6 +150,19 @@ func verifyBookings(t *testing.T, ctx context.Context, s *Store, a, b Scope, cus
 		t.Fatalf("expected status in_progress, got: %s", inProg.Status)
 	}
 
+	// 6b. A booking without a calendar reservation can be moved to another time; the move is written to its history.
+	moved, err := s.MoveUnreservedBooking(ctx, a, booking.ID, booking.BookingTime.Add(26*time.Hour))
+	if err != nil || !moved.BookingTime.Equal(booking.BookingTime.Add(26*time.Hour)) {
+		t.Fatalf("booking was not moved: %+v %v", moved, err)
+	}
+	var movedEvents int
+	if err = s.pool.QueryRow(ctx, `SELECT count(*) FROM booking_events WHERE booking_id=$1 AND notes LIKE 'Rescheduled from%'`, booking.ID).Scan(&movedEvents); err != nil || movedEvents != 1 {
+		t.Fatal("the move is not in the booking history", movedEvents, err)
+	}
+	if _, err = s.MoveUnreservedBooking(ctx, b, booking.ID, booking.BookingTime); err == nil {
+		t.Fatal("another franchise moved this booking")
+	}
+
 	// 7. Valid status transition: in_progress -> completed
 	completed, err := s.UpdateBookingStatus(ctx, a, booking.ID, "completed", "", "Vehicle ready for pickup")
 	if err != nil {
@@ -160,6 +173,9 @@ func verifyBookings(t *testing.T, ctx context.Context, s *Store, a, b Scope, cus
 	}
 
 	// 8. Completed booking cannot transition back to in_progress or cancelled
+	if _, err = s.MoveUnreservedBooking(ctx, a, booking.ID, time.Now().Add(time.Hour)); !errors.Is(err, ErrBookingTransition) {
+		t.Fatal("a completed booking was moved", err)
+	}
 	if _, err = s.UpdateBookingStatus(ctx, a, booking.ID, "in_progress", "", "Reopen"); err != ErrBookingTransition {
 		t.Fatalf("expected ErrBookingTransition when reopening completed booking, got: %v", err)
 	}
@@ -169,8 +185,8 @@ func verifyBookings(t *testing.T, ctx context.Context, s *Store, a, b Scope, cus
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(allEvents) != 4 {
-		t.Fatalf("expected 4 status events, got %d: %+v", len(allEvents), allEvents)
+	if len(allEvents) != 5 {
+		t.Fatalf("expected 5 history events, got %d: %+v", len(allEvents), allEvents)
 	}
 
 	// 10. Cross-scope denial: b cannot access a's booking

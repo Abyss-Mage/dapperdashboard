@@ -61,7 +61,13 @@ func registerRuleAvailabilityRoutes(mux *http.ServeMux, store *postgres.Store) {
 			failure(w, err)
 			return
 		}
-		out, err := store.RuleAvailability(r.Context(), scope, resource, rule, version, from, days)
+		// Administrators who manage bookings can also see earlier days, to enter a booking that already happened.
+		past := false
+		if r.URL.Query().Get("past") == "1" {
+			_, perr := store.ResolveScope(r.Context(), requestSession(r).principalID, org, loc, "bookings.manage")
+			past = perr == nil
+		}
+		out, err := store.RuleAvailability(r.Context(), scope, resource, rule, version, from, days, past)
 		if err != nil {
 			fail(w, err)
 			return

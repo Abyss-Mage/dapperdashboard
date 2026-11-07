@@ -1,0 +1,143 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "arial",
+        "files": [
+          ".impeccable/mocks/decision/canon.html"
+        ],
+        "createdAt": "2026-10-28T10:34:25.067Z",
+        "reason": "Claude: canon card deliberately shows the generic category-standard look; decision sketch only, not site code"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/assigned.html"
+        ],
+        "createdAt": "2026-10-28T11:24:37.204Z",
+        "reason": "Claude: unchosen decision-round sketches of other directions; deliberately use their own fonts, not site code"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/glazier.html"
+        ],
+        "createdAt": "2026-10-28T11:24:37.247Z",
+        "reason": "Claude: unchosen decision-round sketches of other directions; deliberately use their own fonts, not site code"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/brick.html"
+        ],
+        "createdAt": "2026-10-28T11:24:37.290Z",
+        "reason": "Claude: unchosen decision-round sketches of other directions; deliberately use their own fonts, not site code"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/canon.html"
+        ],
+        "createdAt": "2026-10-28T11:24:37.332Z",
+        "reason": "Claude: unchosen decision-round sketches of other directions; deliberately use their own fonts, not site code"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          "main website/tools/frame-slicer.html"
+        ],
+        "createdAt": "2026-10-28T15:01:25.155Z",
+        "reason": "Claude: internal frame-slicing tool, not the website; system and monospace stacks for form fields and step input"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision2/livery.html"
+        ],
+        "createdAt": "2026-10-30T16:22:52.652Z",
+        "reason": "Claude: decision-round sketches proposing a replacement type system; DESIGN.md is rewritten after the build"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision2/inspection.html"
+        ],
+        "createdAt": "2026-10-30T16:22:52.702Z",
+        "reason": "Claude: decision-round sketches proposing a replacement type system; DESIGN.md is rewritten after the build"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision2/canon.html"
+        ],
+        "createdAt": "2026-10-30T16:22:52.775Z",
+        "reason": "Claude: decision-round sketches proposing a replacement type system; DESIGN.md is rewritten after the build"
+      },
+      {
+        "rule": "overused-font",
+        "value": "arial",
+        "files": [
+          ".impeccable/mocks/decision2/canon.html"
+        ],
+        "createdAt": "2026-10-30T16:23:10.035Z",
+        "reason": "Claude: canon card deliberately shows the generic category look; decision sketch only"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision3/a-showroom.html"
+        ],
+        "createdAt": "2026-10-30T16:26:08.380Z",
+        "reason": "Claude: decision-round sketches proposing a replacement type system; DESIGN.md is rewritten after the build"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision3/b-executive.html"
+        ],
+        "createdAt": "2026-10-30T16:26:08.429Z",
+        "reason": "Claude: decision-round sketches proposing a replacement type system; DESIGN.md is rewritten after the build"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision3/c-split.html"
+        ],
+        "createdAt": "2026-10-30T16:26:08.473Z",
+        "reason": "Claude: decision-round sketches proposing a replacement type system; DESIGN.md is rewritten after the build"
+      },
+      {
+        "rule": "hero-eyebrow-chip",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision3/a-showroom.html"
+        ],
+        "createdAt": "2026-10-30T16:41:15.339Z",
+        "reason": "Claude: discarded decision-round sketch, not site code"
+      },
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision3/a-showroom.html"
+        ],
+        "createdAt": "2026-10-30T16:41:15.418Z",
+        "reason": "Claude: discarded decision-round sketch, not site code"
+      }
+    ]
+  }
+}

@@ -10,6 +10,10 @@ const config: NextConfig = {
       { source: '/owners', destination: '/dashboard', permanent: true },
       { source: '/owner/:path*', destination: '/dashboard/:path*', permanent: true },
       { source: '/owners/:path*', destination: '/dashboard/:path*', permanent: true },
+      // Public website addresses from the static-page era.
+      { source: '/home', destination: '/', permanent: true },
+      { source: '/my-bookings', destination: '/account', permanent: false },
+      { source: '/book-appointment', destination: '/booking', permanent: false },
     ];
   },
 };

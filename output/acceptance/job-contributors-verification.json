@@ -1,0 +1,31 @@
+{
+  "productionReady": false,
+  "nativeSuite": "pass",
+  "existingHttpsGroups": 12,
+  "goVet": "pass",
+  "frontendBuild": "pass",
+  "runtimeMigration": 19,
+  "twoUserBrowserVerified": false,
+  "verifiedAt": "2026-10-22T06:24:25.8802523Z",
+  "changedFiles": [
+    {
+      "sha256": "1BE1013BEEDC4E21E58B538EDE4573BD26BC3F54488745A9E738B3FA2346CAB8",
+      "file": "dapper-platform/apps/api/internal/postgres/job_contributors.sql"
+    },
+    {
+      "sha256": "4C342CADEDF9C506A4378E54718C01C6455F493A21FDF4FC4202C33210A843D1",
+      "file": "dapper-platform/apps/api/internal/postgres/job_contributors.go"
+    },
+    {
+      "sha256": "38B41452FAD020E0D34C5ECE6F017D4696655BCDEAB42AE439C7C4E8E39BAF12",
+      "file": "dapper-platform/apps/api/internal/postgres/job_contributors_test.go"
+    },
+    {
+      "sha256": "12346AEB332A96FD3524AD03B17420F95944A011C995612C501092CEB5E40CE8",
+      "file": "dapper-platform/apps/web/app/workspace/page.tsx"
+    }
+  ],
+  "twoUserEvidence": "isolated native PostgreSQL",
+  "newRuntimeGrantsAdded": false,
+  "browserRosterVerified": true
+}

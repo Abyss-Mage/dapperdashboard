@@ -1,0 +1,31 @@
+{
+  "timestamp": "2026-10-22T18:41:19.2924162Z",
+  "checks": {
+    "localApplicationIngress": "PASS",
+    "authenticatedProductionBrowserCash": "NOT_RUN",
+    "nextBuildTypecheck": "PASS",
+    "nativePostgresAndHTTP": "PASS",
+    "goVet": "PASS",
+    "distinctConcurrentOverpayment": "PASS",
+    "cashOnlyPermissionSummary": "PASS",
+    "auditRollback": "PASS",
+    "concurrentDuplicateRequest": "PASS",
+    "revokedGrant": "PASS",
+    "payloadAndActorConflict": "PASS"
+  },
+  "schemaVersion": 29,
+  "sourceHashes": {
+    "dapper-platform/apps/api/internal/workspace/handler_test.go": "E4CF17675907AF8C6F509F0046B03797FF9162C10ECC3B96D74540870BAD1FDA",
+    "dapper-platform/apps/api/internal/postgres/invoices.go": "6842BFE6D5145AE941CF3743F8C5438B23CF93A3B3D42AA8C4F4EBBF67F79AA6",
+    "dapper-platform/apps/web/app/workspace/InvoiceManager.tsx": "43CBA8E9856E2A422B78E44FF22C048FE8A8A526F3426C1A23359BE2ADD61CC4",
+    "dapper-platform/apps/api/internal/workspace/invoices.go": "799791E273C0D9E8649C655246796BE4A82A7441333C73116068251DF5964F86",
+    "dapper-platform/apps/api/internal/postgres/payment_safety_test.go": "C672C17F268986C336AD57930E101F25AAF0A5E2E0FE16CA217BA89DE8CD52E2"
+  },
+  "limits": [
+    "Actual cash receipt browser journey pending administrator setup and approved finance configuration",
+    "No Square/provider transaction or invoice-policy acceptance",
+    "No production readiness claim"
+  ],
+  "scope": "cash-receipt-request-integrity",
+  "operationalPaymentsCreatedByVerification": 0
+}

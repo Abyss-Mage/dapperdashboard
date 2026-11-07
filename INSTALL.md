@@ -290,7 +290,3 @@ Other files and folders created next to it (all git-ignored): `.dapper/tls/` (se
 ---
 
 Developer notes: the product requirements, decisions and delivery status live in the `Dapper Detailing Knowledge` folder (open it as an Obsidian vault and start at `00 Home.md`). The home page can play a frame sequence instead of the 3D scene; see `main website/FRAME_SEQUENCE_SPEC.md`.
-
-## Note for this public copy
-
-The 3D car models (`*.glb`), the internal planning notes and the legacy BookingPress migration data are not part of this repository. The dashboards, API and installer do not need them. The public home page's 3D scene needs a car model at `main website/assets/three/` (rebuild with `build-pages.py`) or the photographic frame sequence (see `main website/home-frames.js`); without either, that scene shows no car.

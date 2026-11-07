@@ -1,0 +1,71 @@
+{
+  "sourceHashes": [
+    {
+      "sha256": "9e535401cd6e934bc4f3d8c9fcdd0192e20de1789fac151cc259cc8024aaae47",
+      "path": "dapper-platform/apps/api/internal/postgres/member_invitations.sql"
+    },
+    {
+      "sha256": "fa215d3b749e2d5d375b198c754adc5569fd2cf7843a2c84e852d7768eb367b1",
+      "path": "dapper-platform/apps/api/internal/postgres/member_invitations.go"
+    },
+    {
+      "sha256": "d457487d6feab808f05848d31036dc87ef3d0453e0d98af00d536aa44f630b49",
+      "path": "dapper-platform/apps/api/internal/postgres/member_invitations_test.go"
+    },
+    {
+      "sha256": "fc626a6ea5919526eb9f43053fbf91e8b2b8bf98dc148f929805712309b33d03",
+      "path": "dapper-platform/apps/api/internal/workspace/member_invitations.go"
+    },
+    {
+      "sha256": "1b504b9818fb051717f23cc80c81d1940104431b2ca62108ca1e93604bcfbbe7",
+      "path": "dapper-platform/apps/api/internal/workspace/member_invitations_test.go"
+    },
+    {
+      "sha256": "2ed2d5bbb7a04b75a1d27134425cb8f363db05f078ccb381252c9528f5ea7c86",
+      "path": "dapper-platform/apps/api/internal/workspace/handler.go"
+    },
+    {
+      "sha256": "bf2b7fa00647e1d2f1857bfdda98eb30e11c35b774e71efccc1beeedcdd023fc",
+      "path": "dapper-platform/apps/api/cmd/workspace/main.go"
+    },
+    {
+      "sha256": "5060e21258a99c00ac2480cc4042502747c8fbe4a665736be651a09ac4ad335d",
+      "path": "dapper-platform/apps/web/app/workspace/MemberInvitations.tsx"
+    },
+    {
+      "sha256": "79c505d09010f168217e2174d65e5bad583597de7a672afa98cfad1e3f10d61d",
+      "path": "dapper-platform/apps/web/app/workspace/AccessManager.tsx"
+    },
+    {
+      "sha256": "c315549c5dfa27b95fd1ad854e027d9fe89ec87695647cea6a7badc337c77bea",
+      "path": "dapper-platform/apps/web/app/enroll/page.tsx"
+    }
+  ],
+  "checkedAt": "2026-10-22T22:48:34.5065904+00:00",
+  "goVet": "PASS",
+  "actualApplication": {
+    "emailTransport": "NOT_CONNECTED",
+    "invitationService": "UNCONFIGURED explicit key absent",
+    "invitationsCreated": 0,
+    "realAccountsCreated": 0,
+    "externalMessagesSent": 0
+  },
+  "schemaVersion": 32,
+  "frontendBuildTypecheck": "PASS",
+  "browser": {
+    "screenshot": "output/acceptance/member-enrollment-entry.png",
+    "checks": [
+      "missing-link guidance",
+      "new-account password controls render without entering password",
+      "existing-account mode removes password replacement fields",
+      "fragment removed from URL",
+      "same-document new invitation hash resets enrollment mode"
+    ],
+    "realEnrollmentAcceptance": "NOT_RUN no password or valid invitation submitted",
+    "scope": "read-only actual application enrollment entry, invalid format-valid test fragments only"
+  },
+  "productionAccepted": false,
+  "unconfiguredEnrollment503": "PASS verified using explicit local CA and hostname checks",
+  "nativePostgresHTTP": "PASS",
+  "verifiedApplicationTLSIngress": "PASS_5_OF_5"
+}

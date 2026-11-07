@@ -119,7 +119,7 @@ func registerMemberInvitationRoutes(mux *http.ServeMux, store *postgres.Store, s
 			reply(w, 503, map[string]string{"error": "Invitation delivery encryption is not configured"})
 			return
 		}
-		if sender == nil {
+		if !emailReady(sender) {
 			reply(w, 503, map[string]string{"error": "Email delivery provider is not configured"})
 			return
 		}

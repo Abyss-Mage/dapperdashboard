@@ -1,0 +1,42 @@
+{
+  "cases": [
+    "authenticated managed password login",
+    "customer name validation",
+    "customer creation and automatic choice refresh",
+    "linked addon work-order creation",
+    "session-derived completion",
+    "reload persisted addon snapshot and completed status"
+  ],
+  "browser": "Brave",
+  "mode": "synthetic-development-only",
+  "verifiedAt": "2026-10-22T05:34:06.4529881Z",
+  "changedFiles": [
+    {
+      "sha256": "7CBC0DDF5AE85D17D9A19B907D08D6C1C1484AEFFDE697187FB034991BE08A1E",
+      "file": "dapper-platform/apps/api/internal/postgres/job_addons.sql"
+    },
+    {
+      "sha256": "DF74EC47F03D38FB36A63014D2D4DCAEEB6EA4A931BE9166DD4B02674BD12E0C",
+      "file": "dapper-platform/apps/api/internal/postgres/jobs.go"
+    },
+    {
+      "sha256": "68C27D38B9DDFF9D17C2BBE1F3D6383814B6F3CCA3EF50F9075C29ACD01142F3",
+      "file": "dapper-platform/apps/api/internal/workspace/jobs.go"
+    },
+    {
+      "sha256": "97FF7BB459F8DF1B7ABAB394602579506B2DA5CFD2E7CF0BDE7B87D6EC950FFC",
+      "file": "dapper-platform/apps/web/app/workspace/WorkOrderForm.tsx"
+    },
+    {
+      "sha256": "59D46699128012CAFD4C62E14CBD8B03A17FE5A31D83ACF08F77553F1BC48348",
+      "file": "dapper-platform/apps/web/app/workspace/page.tsx"
+    }
+  ],
+  "productionReady": false,
+  "responsive": {
+    "documentScrollWidth": 375,
+    "viewportReset": true,
+    "viewportWidth": 390,
+    "viewportHeight": 844
+  }
+}
