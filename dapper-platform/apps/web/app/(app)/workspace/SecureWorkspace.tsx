@@ -3,6 +3,7 @@ import {useCallback,useEffect,useRef,useState} from 'react';
 import ServiceEditor from './ServiceEditor';
 import OwnerOverview from '../owner/OwnerOverview';
 import Link from 'next/link';
+import AuthShell from '../AuthShell';
 import CentralServiceEditor from './CentralServiceEditor';
 import StructureEditor from './StructureEditor';
 import AttendancePanel from './AttendancePanel';
@@ -14,7 +15,6 @@ import ReservedBookingForm from './ReservedBookingForm';
 import BookingOfferManager from './BookingOfferManager';
 import CustomerBookingRequestList from '../account/CustomerBookingRequestList';
 import SOPCompliancePanel from './SOPCompliancePanel';
-import AuthShell from '../AuthShell';
 import ThemeToggle from '../ThemeToggle';
 import AccessManager from './AccessManager';
 import InvoiceIssuerEditor from './InvoiceIssuerEditor';
@@ -353,28 +353,10 @@ export default function SecureWorkspace({ownerView=false}:{ownerView?:boolean}) 
     );
   }
 
-  return (
-    <main className="secure-workspace">
-      <div className="page-title">
-        <div>
-          <p className="eyebrow">DAPPER DETAILING PROS</p>
-          <h1>{principal ? (ownerView?'Owner dashboard':'Your operations workspace') : (ownerView?'Sign in to Owner dashboard':'Sign in to Dapper')}</h1>
-          <p className="subtitle">{ownerView?'An overview of your authorized business locations':'Your account, services and available work'}</p>
-        </div>
-        <div className="workspace-actions">
-          <ThemeToggle />
-          {!ownerView && <Link href="/dashboard">Dashboard</Link>}
-          {principal && (
-            <button className="secondary" disabled={busy} onClick={logout}>
-              Sign out
-            </button>
-          )}
-        </div>
-      </div>
-      {error && <p role="alert" className="field-error">{error}</p>}
-      {!principal ? (
-        <section className="panel detail-card secure-login">
-          <h2>Email and password</h2>
+  if (!principal) {
+    return (
+      <AuthShell kind={ownerView ? 'Owner dashboard' : 'Staff workspace'} title={ownerView ? 'Sign in to the dashboard' : 'Sign in to your workspace'} lead={ownerView ? 'An overview of your authorized business locations.' : 'Your account, services and available work.'}>
+        {error && <p role="alert" className="field-error">{error}</p>}
           {!ready && (
             <p>
               Secure sign-in is currently unavailable. Open the configured Dapper application address or contact your administrator.
@@ -411,7 +393,31 @@ export default function SecureWorkspace({ownerView=false}:{ownerView?:boolean}) 
             </button>
             <p>Use your Dapper staff account. Contact your administrator if you need access.</p>
           </form>
-        </section>
+      </AuthShell>
+    );
+  }
+
+  return (
+    <main className="secure-workspace">
+      <div className="page-title">
+        <div>
+          <p className="eyebrow">DAPPER DETAILING PROS</p>
+          <h1>{principal ? (ownerView?'Owner dashboard':'Your operations workspace') : (ownerView?'Sign in to Owner dashboard':'Sign in to Dapper')}</h1>
+          <p className="subtitle">{ownerView?'An overview of your authorized business locations':'Your account, services and available work'}</p>
+        </div>
+        <div className="workspace-actions">
+          <ThemeToggle />
+          {!ownerView && <Link href="/dashboard">Dashboard</Link>}
+          {principal && (
+            <button className="secondary" disabled={busy} onClick={logout}>
+              Sign out
+            </button>
+          )}
+        </div>
+      </div>
+      {error && <p role="alert" className="field-error">{error}</p>}
+      {!principal ? (
+        null
       ) : (
         <>
           <section className="panel detail-card">

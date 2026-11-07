@@ -3,6 +3,7 @@ import {useCallback, useEffect, useRef, useState} from 'react';
 import InvoiceDraftEditor from './InvoiceDraftEditor';
 import InvoiceDraftHistory from './InvoiceDraftHistory';
 import SquareCardPayment from './SquareCardPayment';
+import SquareReaderPayment from './SquareReaderPayment';
 import { printInvoiceDocument, usePrintTemplate } from './InvoicePrint';
 import Select from '../GlassSelect';
 import { askConfirm } from '../confirm';
@@ -763,7 +764,8 @@ export default function InvoiceManager({
             )}
 
             {activeInvoice.dueCents > 0 && ['issued','partially_paid'].includes(activeInvoice.status) && canRecordPayment && (
-              <SquareCardPayment key={'card-' + activeInvoice.id} infoUrl={`${base}/square/binding`} payUrl={`${base}/invoices/${activeInvoice.id}/square-payments`} invoiceId={activeInvoice.id} dueCents={activeInvoice.dueCents} onPaid={async () => { await loadInvoices(); await loadInvoiceDetail(activeInvoice.id); }} />
+              <><SquareCardPayment key={'card-' + activeInvoice.id} infoUrl={`${base}/square/binding`} payUrl={`${base}/invoices/${activeInvoice.id}/square-payments`} invoiceId={activeInvoice.id} dueCents={activeInvoice.dueCents} onPaid={async () => { await loadInvoices(); await loadInvoiceDetail(activeInvoice.id); }} />
+              <SquareReaderPayment key={'reader-' + activeInvoice.id} prepareUrl={`${base}/invoices/${activeInvoice.id}/square-reader`} completeUrl={(intent) => `${base}/square-reader/${intent}/complete`} invoiceId={activeInvoice.id} dueCents={activeInvoice.dueCents} /></>
             )}
 
             {/* Payments History */}

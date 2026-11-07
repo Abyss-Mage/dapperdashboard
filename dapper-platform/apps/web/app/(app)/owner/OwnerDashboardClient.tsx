@@ -4,6 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import gsap from 'gsap';
 import Link from 'next/link';
 import ThemeToggle from '../ThemeToggle';
+import AuthShell from '../AuthShell';
 import { OwnerIcon, type OwnerIconName } from './OwnerIcons';
 
 // Operational & Management Component Imports
@@ -329,20 +330,8 @@ export default function OwnerDashboardClient() {
   // Handle unauthenticated state
   if (!principal) {
     return (
-      <main className="secure-workspace">
-        <div className="page-title">
-          <div>
-            <p className="eyebrow">DAPPER DETAILING PROS</p>
-            <h1>Owner & Business Dashboard</h1>
-            <p className="subtitle">Sign in with authorized administrator or manager credentials</p>
-          </div>
-          <div className="workspace-actions">
-            <ThemeToggle />
-          </div>
-        </div>
+      <AuthShell kind="Business dashboard" title="Sign in to the dashboard" lead="For owners, administrators and managers.">
         {error && <p role="alert" className="field-error">{error}</p>}
-        <section className="panel detail-card secure-login">
-          <h2>Manager Sign-in</h2>
           {!ready && (
             <p>
               Secure gateway connection is required. Access via <code>https://127.0.0.1:8443/owner</code>.
@@ -394,8 +383,7 @@ export default function OwnerDashboardClient() {
               {busy ? 'Signing in…' : needsCode ? 'Verify and sign in' : 'Sign in to Dashboard'}
             </button>
           </form>
-        </section>
-      </main>
+      </AuthShell>
     );
   }
 

@@ -1,4 +1,5 @@
 'use client';
+import { ChevronDown } from 'lucide-react';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import BookingRescheduler from './BookingRescheduler';
 import { fillInvoiceWindow, openInvoiceWindow, usePrintTemplate } from './InvoicePrint';
@@ -702,7 +703,7 @@ export default function BookingManager({
           return (
             <div key={b.id} className={t.item}>
               <div className={t.row} role="row">
-                <button type="button" className={t.chev} aria-expanded={isOpen} aria-label={isOpen ? 'Hide details' : 'Show details'} onClick={() => setOpen((prev) => { const next = new Set(prev); if (next.has(b.id)) next.delete(b.id); else next.add(b.id); return next; })}>{isOpen ? '−' : '+'}</button>
+                <button type="button" className={t.chev} aria-expanded={isOpen} aria-label={isOpen ? 'Hide details' : 'Show details'} onClick={() => setOpen((prev) => { const next = new Set(prev); if (next.has(b.id)) next.delete(b.id); else next.add(b.id); return next; })}><ChevronDown size={15} aria-hidden="true" /></button>
                 <input type="checkbox" aria-label={`Select appointment ${bookingRef(b)}`} checked={picked.has(b.id)} onChange={(e) => setPicked((prev) => { const next = new Set(prev); if (e.target.checked) next.add(b.id); else next.delete(b.id); return next; })} />
                 <span className={t.id}>{bookingRef(b)}</span>
                 <span>{formatTime(b.bookingTime)}</span>

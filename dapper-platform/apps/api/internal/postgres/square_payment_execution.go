@@ -136,6 +136,10 @@ func (s *Store) RecoverSquareInvoiceIntent(ctx context.Context, scope Scope, id,
 	if response.ID != paymentID {
 		return SquareIntentAllocation{}, ErrPaymentProvider
 	}
+	// A payment taken on the Square Reader (Point of Sale app) has no reference id; it is tied to this request by the note we sent with it.
+	if response.ReferenceID == "" && strings.Contains(response.Note, attempt.ID) {
+		response.ReferenceID = attempt.ID
+	}
 	evidence := paymentstate.SettlementEvidence{SettlementBinding: paymentstate.SettlementBinding{Environment: attempt.Environment, OrganizationID: scope.OrganizationID, LocationID: scope.LocationID, MerchantID: attempt.MerchantID, ProviderLocationID: response.LocationID, ReferenceID: response.ReferenceID, Currency: response.Currency, AmountCents: response.AmountCents}, PaymentID: response.ID, Status: response.Status}
 	if _, err = s.RecordSquarePaymentCapture(ctx, scope, id, evidence); err != nil {
 		return SquareIntentAllocation{}, err

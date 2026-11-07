@@ -56,6 +56,7 @@ type PaymentResponse struct {
 	CardBrand   string    `json:"cardBrand,omitempty"`
 	Last4       string    `json:"last4,omitempty"`
 	CreatedAt   time.Time `json:"createdAt"`
+	Note        string    `json:"note,omitempty"`
 }
 
 type squareClient struct {
