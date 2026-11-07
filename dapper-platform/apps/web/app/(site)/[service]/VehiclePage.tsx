@@ -2,7 +2,7 @@
 import { ScrollRow } from '../_components/ScrollRow';
 import { CtaBand } from '../_components/CtaBand';
 import Link from 'next/link';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowRight, Check, Plus, Star } from 'lucide-react';
 import { categories } from '../content';
 import { faqs } from '../faq';
@@ -56,6 +56,8 @@ function Packages({ category, name }: { category: string; name: string }) {
   // Add-ons that belong to any package on this page, once each by name.
   const ids = new Set(items.map((s) => s.serviceId));
   const extras = [...new Map(addons.filter((a) => ids.has(a.parentId)).map((a) => [a.name.trim().toLowerCase(), a])).values()].sort((a, b) => a.name.localeCompare(b.name));
+  // The packages arrive after the page has measured itself; measure again so the scroll effects further down fire in the right places.
+  useEffect(() => { if (status !== 'loading') requestAnimationFrame(() => ScrollTrigger.refresh()); }, [status, shown.length, extras.length]);
   if (status === 'loading') return <p className="v-note" role="status">Loading packages…</p>;
   if (status === 'error') return <div className="v-note" role="status"><span>Current packages could not be loaded. Call the team or try again.</span><button type="button" className="v-ghost" onClick={retry}>Try again</button></div>;
   if (!items.length) return (
