@@ -98,7 +98,7 @@ export default function BookingManager({
   }, [base]);
   const [open, setOpen] = useState<Set<string>>(new Set());
   // Each booking's invoice (one per booking), so the appointment shows what is still owed or already paid.
-  const [invoices, setInvoices] = useState<Record<string, { id: string; version: number; invoiceNumber: string; status: string; totalCents: number; paidCents: number; discountCents?: number; taxCents?: number; subtotalCents?: number; couponCode?: string; legacy?: boolean }>>({});
+  const [invoices, setInvoices] = useState<Record<string, { id: string; version: number; invoiceNumber: string; status: string; totalCents: number; paidCents: number; discountCents?: number; taxCents?: number; subtotalCents?: number; couponCode?: string; legacy?: boolean; issuedAt?: string; paidAt?: string }>>({});
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [events, setEvents] = useState<BookingEvent[]>([]);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -149,8 +149,8 @@ export default function BookingManager({
     try {
       const r = await fetch(base + '/invoices', { cache: 'no-store' });
       if (!r.ok) return;
-      const map: Record<string, { id: string; version: number; invoiceNumber: string; status: string; totalCents: number; paidCents: number; discountCents?: number; taxCents?: number; subtotalCents?: number; couponCode?: string; legacy?: boolean }> = {};
-      for (const i of ((await r.json()).items ?? []) as { id: string; version: number; bookingId?: string; invoiceNumber: string; status: string; totalCents: number; paidCents: number; discountCents?: number; taxCents?: number; subtotalCents?: number; couponCode?: string; legacy?: boolean }[]) if (i.bookingId && i.status !== 'void') map[i.bookingId] = i;
+      const map: Record<string, { id: string; version: number; invoiceNumber: string; status: string; totalCents: number; paidCents: number; discountCents?: number; taxCents?: number; subtotalCents?: number; couponCode?: string; legacy?: boolean; issuedAt?: string; paidAt?: string }> = {};
+      for (const i of ((await r.json()).items ?? []) as { id: string; version: number; bookingId?: string; invoiceNumber: string; status: string; totalCents: number; paidCents: number; discountCents?: number; taxCents?: number; subtotalCents?: number; couponCode?: string; legacy?: boolean; issuedAt?: string; paidAt?: string }[]) if (i.bookingId && i.status !== 'void') map[i.bookingId] = i;
       // Bookings imported from the old site have no stored invoice: their billing comes as a summary and the document is built when opened.
       try {
         const lr = await fetch(base + '/legacy-billing', { cache: 'no-store' });
@@ -159,7 +159,7 @@ export default function BookingManager({
       setInvoices(map);
     } catch { /* invoices are optional here */ }
   }, [base]);
-  useEffect(() => { void loadInvoices(); }, [loadInvoices, revision]);
+  useEffect(() => { void loadInvoices(); }, [loadInvoices, revision, bookings]);
   const loadBookings = useCallback(async () => {
     const reqId = ++bookingsReqIdRef.current;
     if (!base) {
@@ -345,6 +345,12 @@ export default function BookingManager({
     } catch (e) { setError(e instanceof Error ? e.message : 'The coupon could not be applied.'); }
     finally { setCouponBusy(false); }
   }
+  // A website booking paid by card is paid within moments of its invoice being issued; anything else is paid at the shop.
+  // shortcut: judged from the issue and payment times, so a card payment taken more than ten minutes later reads as paid at the shop; store the booking's payment choice if that matters.
+  const payWay = (inv?: { status: string; issuedAt?: string; paidAt?: string }) => {
+    if (inv?.issuedAt && inv.paidAt && new Date(inv.paidAt).getTime() - new Date(inv.issuedAt).getTime() < 10 * 60 * 1000) return 'Online · paid by card';
+    return 'Online · pay local';
+  };
   const [completing, setCompleting] = useState<Booking | null>(null);
   const [completeBusy, setCompleteBusy] = useState(false);
   const [completeError, setCompleteError] = useState('');
@@ -728,7 +734,7 @@ export default function BookingManager({
                     <div className={t.actions}>
                       {inv && <button className="secondary" onClick={() => viewInvoice(b)}>Invoice</button>}
                       <button className="secondary" onClick={() => viewEvents(b)}>History</button>
-                      {canManage && !final && b.status !== 'pending' && <button className="primary" disabled={busy} onClick={() => { setCompleteError(''); setCompleting(b); }}>Mark completed</button>}
+                      {canManage && !final && b.status !== 'pending' && <button className="primary" disabled={busy} onClick={() => { setCompleteError(''); void loadInvoices().then(() => setCompleting(b)); }}>Mark completed</button>}
                       {canManage && !final && !b.reservationId && <button className="secondary" disabled={busy} onClick={() => { setMoveError(''); setMoveTime(''); setMoving(b); }}>Reschedule</button>}
                       {canManage && !final && b.reservationId && <button className="secondary" disabled={busy} onClick={(event) => { rescheduleTrigger.current = event.currentTarget; setReschedulingBooking(b); }}>Reschedule</button>}
                       {canManage && !final && <button className="secondary" disabled={busy} onClick={(event) => { cancellationTrigger.current = event.currentTarget; setCancellationReason(''); setError(''); setCancellingBooking(b); }}>Cancel</button>}
@@ -736,7 +742,7 @@ export default function BookingManager({
                     </div>
                   </div>
                   <div className={t.detailCols}>
-                    <div><h4>Booking</h4><dl className={t.kv}><dt>Date</dt><dd>{formatTime(b.bookingTime)}</dd><dt>Booked</dt><dd>{b.channel === 'online' ? 'Online' : b.channel === 'walk_in' ? 'Walk-in' : b.channel === 'phone' ? 'Phone' : 'By staff'}</dd>{b.addons?.length > 0 && <><dt>Add-ons</dt><dd>{b.addons.map((a) => a.name).join(', ')}</dd></>}{b.notes.replace(/Imported from BookingPress[^\n]*/g, '').trim() && <><dt>Notes</dt><dd>{b.notes.replace(/Imported from BookingPress[^\n]*/g, '').trim()}</dd></>}{b.cancellationReason && <><dt>Cancelled</dt><dd>{b.cancellationReason}</dd></>}</dl></div>
+                    <div><h4>Booking</h4><dl className={t.kv}><dt>Date</dt><dd>{formatTime(b.bookingTime)}</dd><dt>Booked</dt><dd>{b.channel === 'online' ? payWay(invoices[b.id]) : b.channel === 'walk_in' ? 'Walk-in' : b.channel === 'phone' ? 'Phone' : 'By staff'}</dd>{b.addons?.length > 0 && <><dt>Add-ons</dt><dd>{b.addons.map((a) => a.name).join(', ')}</dd></>}{b.notes.replace(/Imported from BookingPress[^\n]*/g, '').trim() && <><dt>Notes</dt><dd>{b.notes.replace(/Imported from BookingPress[^\n]*/g, '').trim()}</dd></>}{b.cancellationReason && <><dt>Cancelled</dt><dd>{b.cancellationReason}</dd></>}</dl></div>
                     <div><h4>Customer</h4><dl className={t.kv}><dt>Name</dt><dd>{b.customerName}</dd>{b.customerEmail && <><dt>Email</dt><dd>{b.customerEmail}</dd></>}{b.customerPhone && <><dt>Phone</dt><dd>{b.customerPhone}</dd></>}<dt>Service location</dt><dd>{b.serviceAddress ? b.serviceAddress : 'At the shop'}</dd></dl></div>
                     <div><h4>Payment</h4><dl className={t.kv}>{inv ? <><dt>Invoice</dt><dd>{inv.invoiceNumber}{inv.status === 'draft' ? ' (draft)' : ''}</dd>{(inv.discountCents ?? 0) > 0 && <><dt>Discount</dt><dd>−{money(inv.discountCents ?? 0)} ({inv.couponCode})</dd></>}{(inv.taxCents ?? 0) > 0 && <><dt>Subtotal</dt><dd>{money(inv.totalCents - (inv.taxCents ?? 0))}</dd><dt>Tax</dt><dd>{money(inv.taxCents ?? 0)}</dd></>}<dt>Total</dt><dd>{money(inv.totalCents)}</dd><dt>Paid</dt><dd>{money(inv.paidCents)}</dd><dt>Pending</dt><dd>{money(Math.max(0, owed))}</dd></> : <><dt>Invoice</dt><dd>None yet</dd></>}</dl>
                       {inv && inv.status === 'draft' && canManage && (

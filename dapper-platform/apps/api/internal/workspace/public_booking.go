@@ -286,9 +286,9 @@ func registerPublicBookingRoutes(mux *http.ServeMux, store *postgres.Store, send
 				if _, err := sender.SendEmail(ctx, to, subject, body, text); err != nil {
 					log.Print("The booking confirmation email could not be sent")
 				}
-				if admin := store.AdminNotifyEmail(ctx); admin != "" {
-					subject, body, text := store.RenderEmail(ctx, "booking_admin", vars)
-					if _, err := sender.SendEmail(ctx, admin, subject, body, text); err != nil {
+				adminSubject, adminBody, adminText := store.RenderEmail(ctx, "booking_admin", vars)
+				for _, admin := range store.AdminNotifyEmails(ctx, "new") {
+					if _, err := sender.SendEmail(ctx, admin, adminSubject, adminBody, adminText); err != nil {
 						log.Print("The new-booking alert could not be sent")
 					}
 				}

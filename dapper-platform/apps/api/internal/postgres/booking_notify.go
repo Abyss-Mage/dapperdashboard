@@ -55,9 +55,18 @@ func (s *Store) ClaimBookingEmail(ctx context.Context, bookingID, kind string) (
 	return err == nil && tag.RowsAffected() == 1, err
 }
 
-// AdminNotifyEmail is where new-booking alerts go: the address saved for them, else the From address of the email settings.
-func (s *Store) AdminNotifyEmail(ctx context.Context) string {
+// AdminNotifyEmails lists where a business alert of this kind ("new", "cancelled" or "rescheduled") goes: the addresses saved for alerts,
+// else the From address. Empty when that alert is switched off.
+func (s *Store) AdminNotifyEmails(ctx context.Context, kind string) []string {
 	var to string
-	_ = s.pool.QueryRow(ctx, `SELECT coalesce(nullif(m.smtp_notify_email,''),m.smtp_from_address) FROM messaging_settings m JOIN public_sites ps ON ps.organization_id=m.organization_id AND ps.slug=$1 LIMIT 1`, mainSiteSlug()).Scan(&to)
-	return to
+	var on bool
+	col := map[string]string{"new": "m.notify_new", "cancelled": "m.notify_cancelled", "rescheduled": "m.notify_rescheduled"}[kind]
+	if col == "" {
+		return nil
+	}
+	if err := s.pool.QueryRow(ctx, `SELECT coalesce(nullif(m.smtp_notify_email,''),m.smtp_from_address),`+col+` FROM messaging_settings m JOIN public_sites ps ON ps.organization_id=m.organization_id AND ps.slug=$1 LIMIT 1`, mainSiteSlug()).Scan(&to, &on); err != nil || !on {
+		return nil
+	}
+	list, _ := notifyList(to)
+	return list
 }

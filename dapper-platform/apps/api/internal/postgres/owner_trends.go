@@ -171,7 +171,7 @@ func (s *Store) OwnerTrends(ctx context.Context, scope Scope, from, to, tz, chan
 		if err = rows.Err(); err != nil {
 			return OwnerTrends{}, err
 		}
-		if p.ByMethod, err = keys(`SELECT method,count(*),COALESCE(sum(amount_cents-refunded_cents),0),0::bigint FROM payments WHERE organization_id=$1 AND location_id=$2 AND status IN ('completed','refunded') AND (recorded_at AT TIME ZONE $5)::date BETWEEN $3::date AND $4::date GROUP BY method ORDER BY 3 DESC,method`, org, loc, from, to, tz); err != nil {
+		if p.ByMethod, err = keys(`SELECT method,count(*),COALESCE(sum(amount_cents-refunded_cents),0),0::bigint FROM payments WHERE organization_id=$1 AND location_id=$2 AND status IN ('completed','refunded') AND (recorded_at AT TIME ZONE $5)::date BETWEEN $3::date AND $4::date AND ($6='' OR EXISTS(SELECT 1 FROM invoices i JOIN bookings b ON b.id=i.booking_id WHERE i.id=payments.invoice_id AND b.channel=$6)) GROUP BY method ORDER BY 3 DESC,method`, org, loc, from, to, tz, channel); err != nil {
 			return OwnerTrends{}, err
 		}
 		out.Payments = p
@@ -180,7 +180,7 @@ func (s *Store) OwnerTrends(ctx context.Context, scope Scope, from, to, tz, chan
 		return OwnerTrends{}, err
 	} else if ok {
 		i := &TrendInvoices{}
-		if i.ByStatus, err = keys(`SELECT status,count(*),COALESCE(sum(total_cents),0),COALESCE(sum(due_cents),0) FROM invoices WHERE organization_id=$1 AND location_id=$2 AND (created_at AT TIME ZONE $5)::date BETWEEN $3::date AND $4::date GROUP BY status ORDER BY count(*) DESC,status`, org, loc, from, to, tz); err != nil {
+		if i.ByStatus, err = keys(`SELECT status,count(*),COALESCE(sum(total_cents),0),COALESCE(sum(due_cents),0) FROM invoices WHERE organization_id=$1 AND location_id=$2 AND (created_at AT TIME ZONE $5)::date BETWEEN $3::date AND $4::date AND NOT (status='void' AND issued_at IS NULL) AND ($6='' OR EXISTS(SELECT 1 FROM bookings b WHERE b.id=invoices.booking_id AND b.channel=$6)) GROUP BY status ORDER BY count(*) DESC,status`, org, loc, from, to, tz, channel); err != nil {
 			return OwnerTrends{}, err
 		}
 		out.Invoices = i

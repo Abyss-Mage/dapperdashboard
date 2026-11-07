@@ -26,8 +26,25 @@ type SMTPSettings struct {
 	Password    string `json:"password,omitempty"`
 	FromAddress string `json:"fromAddress"`
 	FromName    string `json:"fromName"`
-	// NotifyEmail is where new-booking alerts go (the From address when blank).
+	// NotifyEmail is where the business alerts go: one or more addresses, comma separated (the From address when blank).
 	NotifyEmail string `json:"notifyEmail"`
+	// Which business alerts are sent.
+	NotifyNew         bool `json:"notifyNew"`
+	NotifyCancelled   bool `json:"notifyCancelled"`
+	NotifyRescheduled bool `json:"notifyRescheduled"`
+}
+
+// notifyList splits the business addresses ("a@x.ca, b@y.ca"), checks each and gives them back tidy. At most ten.
+func notifyList(v string) ([]string, bool) {
+	out := []string{}
+	for _, part := range strings.FieldsFunc(v, func(r rune) bool { return r == ',' || r == ';' || r == ' ' || r == '\t' }) {
+		addr, err := mail.ParseAddress(part)
+		if err != nil || addr.Address != part {
+			return nil, false
+		}
+		out = append(out, part)
+	}
+	return out, len(out) <= 10
 }
 
 // SMSSettings are the Twilio details. AuthToken is only filled in when the server reads them back for use.
@@ -79,8 +96,8 @@ func (s *Store) MessagingSettings(ctx context.Context, actor, org string) (Messa
 		return view, err
 	}
 	var smtpSealed, smsSealed []byte
-	err = tx.QueryRow(ctx, `SELECT smtp_host,smtp_port,smtp_username,smtp_password_sealed,smtp_from_address,smtp_from_name,smtp_notify_email,twilio_account_sid,twilio_auth_token_sealed,twilio_from FROM messaging_settings WHERE organization_id=$1`, org).
-		Scan(&view.SMTP.Host, &view.SMTP.Port, &view.SMTP.Username, &smtpSealed, &view.SMTP.FromAddress, &view.SMTP.FromName, &view.SMTP.NotifyEmail, &view.SMS.AccountSID, &smsSealed, &view.SMS.From)
+	err = tx.QueryRow(ctx, `SELECT smtp_host,smtp_port,smtp_username,smtp_password_sealed,smtp_from_address,smtp_from_name,smtp_notify_email,notify_new,notify_cancelled,notify_rescheduled,twilio_account_sid,twilio_auth_token_sealed,twilio_from FROM messaging_settings WHERE organization_id=$1`, org).
+		Scan(&view.SMTP.Host, &view.SMTP.Port, &view.SMTP.Username, &smtpSealed, &view.SMTP.FromAddress, &view.SMTP.FromName, &view.SMTP.NotifyEmail, &view.SMTP.NotifyNew, &view.SMTP.NotifyCancelled, &view.SMTP.NotifyRescheduled, &view.SMS.AccountSID, &smsSealed, &view.SMS.From)
 	if errors.Is(err, pgx.ErrNoRows) {
 		view.SMTP.Port = 587
 		return view, nil
@@ -106,18 +123,18 @@ func (s *Store) SaveSMTPSettings(ctx context.Context, actor, org string, in SMTP
 	user, ok2 := trimmed(in.Username, 255)
 	from, ok3 := trimmed(in.FromAddress, 254)
 	name, ok4 := trimmed(in.FromName, 120)
-	notify, ok5 := trimmed(in.NotifyEmail, 254)
+	notify, ok5 := trimmed(in.NotifyEmail, 1000)
 	if !ok1 || !ok2 || !ok3 || !ok4 || !ok5 || host == "" || strings.ContainsAny(host, " /\\") || in.Port < 1 || in.Port > 65535 || len(in.Password) > 500 {
 		return ErrMessagingInput
 	}
 	if addr, err := mail.ParseAddress(from); err != nil || addr.Address != from {
 		return ErrMessagingInput
 	}
-	if notify != "" {
-		if addr, err := mail.ParseAddress(notify); err != nil || addr.Address != notify {
-			return ErrMessagingInput
-		}
+	list, okList := notifyList(notify)
+	if !okList {
+		return ErrMessagingInput
 	}
+	notify = strings.Join(list, ", ")
 	if !s.MFAConfigured() {
 		return ErrMessagingUnavailable
 	}
@@ -136,10 +153,10 @@ func (s *Store) SaveSMTPSettings(ctx context.Context, actor, org string, in SMTP
 		}
 	}
 	// keep the saved password when none was typed
-	if _, err = tx.Exec(ctx, `INSERT INTO messaging_settings(organization_id,smtp_host,smtp_port,smtp_username,smtp_password_sealed,smtp_from_address,smtp_from_name,smtp_notify_email,updated_by)
-VALUES($1,$2,$3,$4,$5,$6,$7,$9,$8)
-ON CONFLICT(organization_id) DO UPDATE SET smtp_host=$2,smtp_port=$3,smtp_username=$4,smtp_password_sealed=COALESCE($5,messaging_settings.smtp_password_sealed),smtp_from_address=$6,smtp_from_name=$7,smtp_notify_email=$9,updated_by=$8,updated_at=now()`,
-		org, host, in.Port, user, nullIfEmpty(sealed), from, name, actor, notify); err != nil {
+	if _, err = tx.Exec(ctx, `INSERT INTO messaging_settings(organization_id,smtp_host,smtp_port,smtp_username,smtp_password_sealed,smtp_from_address,smtp_from_name,smtp_notify_email,notify_new,notify_cancelled,notify_rescheduled,updated_by)
+VALUES($1,$2,$3,$4,$5,$6,$7,$9,$10,$11,$12,$8)
+ON CONFLICT(organization_id) DO UPDATE SET smtp_host=$2,smtp_port=$3,smtp_username=$4,smtp_password_sealed=COALESCE($5,messaging_settings.smtp_password_sealed),smtp_from_address=$6,smtp_from_name=$7,smtp_notify_email=$9,notify_new=$10,notify_cancelled=$11,notify_rescheduled=$12,updated_by=$8,updated_at=now()`,
+		org, host, in.Port, user, nullIfEmpty(sealed), from, name, actor, notify, in.NotifyNew, in.NotifyCancelled, in.NotifyRescheduled); err != nil {
 		return err
 	}
 	if err = structureAudit(ctx, tx, actor, org, "messaging.smtp_saved", org); err != nil {

@@ -57,6 +57,18 @@ var emailDefaults = map[string]emailDefault{
 		body:         "A new booking was made on the website.\n\nCustomer: {{name}}\nPhone: {{phone}}\nEmail: {{email}}\nService: {{service}}\nWhen: {{when}}\nWhere: {{where}}\nTotal, tax included: {{total}}\nPayment: {{payment}}",
 		placeholders: []string{"name", "phone", "email", "service", "when", "where", "total", "payment"},
 	},
+	"booking_admin_cancelled": {
+		label:        "Business alert: booking cancelled",
+		subject:      "Booking cancelled: {{service}} for {{name}}",
+		body:         "A booking was cancelled.\n\nCustomer: {{name}}\nPhone: {{phone}}\nEmail: {{email}}\nService: {{service}}\nWas booked for: {{when}}\nWhere: {{where}}",
+		placeholders: []string{"name", "phone", "email", "service", "when", "where"},
+	},
+	"booking_admin_rescheduled": {
+		label:        "Business alert: booking rescheduled",
+		subject:      "Booking moved: {{service}} for {{name}}",
+		body:         "A booking was moved to a new time.\n\nCustomer: {{name}}\nPhone: {{phone}}\nEmail: {{email}}\nService: {{service}}\nNew time: {{when}}\nWhere: {{where}}",
+		placeholders: []string{"name", "phone", "email", "service", "when", "where"},
+	},
 	"booking_cancelled": {
 		label:        "Booking cancelled",
 		subject:      "Your Dapper Detailing booking was cancelled",
@@ -78,7 +90,7 @@ var emailDefaults = map[string]emailDefault{
 }
 
 // EmailKeys lists the emails in the order the dashboard shows them.
-var EmailKeys = []string{"booking_confirmation", "booking_admin", "booking_completed", "booking_cancelled", "booking_rescheduled", "password_reset", "invitation"}
+var EmailKeys = []string{"booking_confirmation", "booking_admin", "booking_admin_cancelled", "booking_admin_rescheduled", "booking_completed", "booking_cancelled", "booking_rescheduled", "password_reset", "invitation"}
 
 func fill(text string, vars map[string]string, escape bool) string {
 	for k, v := range vars {
