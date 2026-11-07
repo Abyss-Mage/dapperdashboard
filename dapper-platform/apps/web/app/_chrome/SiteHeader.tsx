@@ -29,7 +29,7 @@ export function SiteHeader() {
   return (
     <>
       <header className={s.header}>
-        <Link href="/" className={s.brand} aria-label="Dapper Detailing Pros, home">Dapper</Link>
+        <Link href="/" className={s.brand} aria-label="Dapper Detailing Pros, home"><img src="/site/assets/logo.webp" alt="" width={44} height={44} />Dapper</Link>
         <nav className={s.nav} aria-label="Main">
           {links.map((l) => <Link key={l.href} href={l.href} aria-current={current(l.href)}>{l.label}</Link>)}
         </nav>

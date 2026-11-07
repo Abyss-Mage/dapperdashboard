@@ -16,6 +16,7 @@ export function SiteFooter() {
           <a className={s.call} href={'tel:' + contact.tel}>or call <span>+1 {contact.phone}</span></a>
         </div>
       </div>
+      <div className={s.brandRow}><img src="/site/assets/logo.webp" alt="" width={72} height={72} loading="lazy" /><span>Dapper Detailing Pros<small>Mobile &amp; in-shop detailing, Peterborough</small></span></div>
       <div className={s.cols}>
         <div><h2>Visit</h2><p>Peterborough, Ontario</p><a href={contact.directions} target="_blank" rel="noopener noreferrer">Get directions</a></div>
         <div><h2>Contact</h2><a href={'tel:' + contact.tel}>{contact.phone}</a><a href={'mailto:' + contact.email}>{contact.email}</a></div>

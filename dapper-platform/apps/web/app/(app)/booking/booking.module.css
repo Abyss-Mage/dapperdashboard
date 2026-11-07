@@ -1,5 +1,5 @@
 /* The Book now page: the website's black strip and headline band over the booking steps. */
-.page{min-height:100svh;display:flex;flex-direction:column;background:var(--bg);color:var(--text);padding-top:72px}
+.page{min-height:100svh;display:flex;flex-direction:column;background:var(--bg);color:var(--text);padding-top:88px}
 .bar{display:flex;align-items:center;gap:clamp(16px,3vw,48px);padding:0 clamp(16px,3.6vw,56px);min-height:64px;background:#0b0b0c;color:#efede8}
 .brand{font:500 clamp(18px,1.4vw,22px)/1 'Unbounded Variable','Arial Narrow',sans-serif;letter-spacing:.04em;text-transform:uppercase;color:#efede8;text-decoration:none}
 .bar nav{display:flex;gap:clamp(14px,2vw,32px);margin-left:auto;font:500 13px/1 'Unbounded Variable','Arial Narrow',sans-serif;letter-spacing:.1em;text-transform:uppercase}

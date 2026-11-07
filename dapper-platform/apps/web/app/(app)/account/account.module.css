@@ -1,6 +1,6 @@
 /* The signed-in customer account: the site's header and footer, a greeting with three numbers, section chips, and the existing panels
    restyled to the site's dark look. Phone first: one column, big tap targets, chips that scroll sideways. */
-.page{min-height:100svh;padding-top:72px;background:#0b0b0c;color:#efece4}
+.page{min-height:100svh;padding-top:88px;background:#0b0b0c;color:#efece4}
 .wait{max-width:640px;margin:12vh auto;padding:0 clamp(16px,3.4vw,56px)}
 .hello{max-width:1100px;margin:0 auto;padding:clamp(28px,5vw,72px) clamp(16px,3.4vw,56px) clamp(16px,2vw,28px)}
 .kicker{margin:0 0 14px;padding-left:12px;border-left:3px solid #e3172b;font:500 12px/1 'Unbounded Variable','Arial Narrow',sans-serif;letter-spacing:.12em;text-transform:uppercase}

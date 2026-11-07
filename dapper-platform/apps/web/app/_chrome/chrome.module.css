@@ -1,6 +1,8 @@
 /* The one header, footer and booking popup of the whole customer-facing site (public pages, booking and account). Scoped to this module, so it
    looks the same under both layouts. */
-.header{--red:#e4202e;--ink:#0b0b0c;--bone:#efece4;position:fixed;z-index:60;top:0;left:0;right:0;height:72px;display:flex;align-items:center;gap:clamp(14px,2.4vw,40px);padding:0 clamp(16px,3.4vw,56px);background:var(--ink);color:var(--bone);font-family:'Manrope','Helvetica Neue',Arial,sans-serif}
+.header{--red:#e4202e;--ink:#0b0b0c;--bone:#efece4;position:fixed;z-index:60;top:14px;left:50%;translate:-50% 0;width:min(1240px,calc(100% - 28px));height:64px;border-radius:999px;border:1px solid #ffffff1f;box-shadow:0 14px 40px #0006;-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);display:flex;align-items:center;gap:clamp(14px,2.4vw,40px);padding:0 10px 0 clamp(20px,2.4vw,32px);background:#0b0b0cd9;color:var(--bone);font-family:'Manrope','Helvetica Neue',Arial,sans-serif}
+.brand{display:inline-flex;align-items:center;gap:10px}
+.brand img{display:block;width:44px;height:44px;border-radius:50%}
 .brand{font:500 clamp(19px,1.6vw,24px)/1 'Unbounded Variable','Unbounded','Arial Narrow',sans-serif;letter-spacing:.04em;text-transform:uppercase;color:var(--bone);text-decoration:none}
 .nav{display:flex;gap:clamp(16px,2.2vw,36px);margin-left:auto;font:500 13px/1 'Unbounded Variable','Unbounded',sans-serif;letter-spacing:.08em;text-transform:uppercase}
 .nav a{position:relative;padding:8px 0;color:#a9a69e;text-decoration:none;transition:color .2s}
@@ -15,30 +17,34 @@
 .book:active{transform:scale(.97)}
 @media(hover:hover) and (pointer:fine){.book:hover{background:#c91a27}}
 .menuBtn{display:none;margin-left:auto;width:48px;height:48px;border:0;border-radius:50%;background:transparent;color:var(--bone);cursor:pointer;place-items:center}
-.menu{position:fixed;z-index:55;inset:0;display:flex;flex-direction:column;gap:2px;padding:92px 22px 120px;background:var(--ink);color:var(--bone);opacity:0;visibility:hidden;transition:opacity .3s cubic-bezier(.23,1,.32,1),visibility 0s .3s}
+.menu{position:fixed;z-index:55;inset:0;display:flex;flex-direction:column;gap:2px;padding:104px 22px 120px;background:var(--ink);color:var(--bone);opacity:0;visibility:hidden;transition:opacity .3s cubic-bezier(.23,1,.32,1),visibility 0s .3s}
 .menu.open{opacity:1;visibility:visible;transition:opacity .3s cubic-bezier(.23,1,.32,1)}
 .menu a{font:500 clamp(26px,8vw,40px)/1.15 'Unbounded Variable','Unbounded',sans-serif;letter-spacing:-.02em;text-transform:uppercase;color:var(--bone);text-decoration:none;padding:12px 0}
 .menu .menuBook{margin-top:auto;justify-content:center;min-height:56px;font-size:15px}
 .dock{display:none}
 @media(max-width:899px){
   /* On a phone the header is not sticky: it scrolls away with the page, and there is no bar along the bottom */
-  .header{position:absolute}
+  .header{position:absolute;top:10px;width:calc(100% - 20px);height:60px}
   .nav,.actions{display:none}
   .menuBtn{display:grid}
-  .dock{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;position:fixed;z-index:70;left:10px;right:10px;bottom:max(10px,env(safe-area-inset-bottom));padding:6px;border-radius:22px;background:#0b0b0cf2;color:var(--bone);box-shadow:0 14px 40px #0008;font-family:'Manrope',sans-serif}
-  .dock a,.dock button{display:grid;justify-items:center;align-content:center;gap:3px;min-height:52px;border:0;border-radius:16px;background:transparent;color:#cfcbc2;font:700 11px/1 'Manrope',sans-serif;text-decoration:none;cursor:pointer}
+  .dock{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;position:fixed;z-index:70;left:10px;right:10px;bottom:max(10px,env(safe-area-inset-bottom));padding:6px;border-radius:999px;border:1px solid #ffffff1f;background:#0b0b0cd9;-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);color:var(--bone);box-shadow:0 14px 40px #0008;font-family:'Manrope',sans-serif}
+  .dock a,.dock button{display:grid;justify-items:center;align-content:center;gap:3px;min-height:52px;border:0;border-radius:999px;background:transparent;color:#cfcbc2;font:700 11px/1 'Manrope',sans-serif;text-decoration:none;cursor:pointer}
   .dock .dockBook svg{color:var(--red)}
   .dock a:active,.dock button:active{transform:scale(.96)}
 }
 
 /* Footer */
-.footer{display:block;gap:0;font-size:16px;line-height:1.5;--red:#e4202e;--bone:#efece4;background:#0b0b0c;color:var(--bone);padding:clamp(56px,7vw,110px) clamp(16px,3.4vw,56px) clamp(24px,3vw,40px);font-family:'Manrope','Helvetica Neue',Arial,sans-serif}
+.footer{display:block;gap:0;font-size:16px;line-height:1.5;--red:#e4202e;--bone:#efece4;background:#0b0b0c;color:var(--bone);padding:clamp(48px,6vw,96px) clamp(22px,3.6vw,64px) clamp(24px,3vw,40px);margin:0 clamp(10px,1.4vw,20px) clamp(10px,1.4vw,20px);border-radius:clamp(26px,3.2vw,44px);border:1px solid #ffffff14;overflow:hidden;font-family:'Manrope','Helvetica Neue',Arial,sans-serif}
 .cta{display:grid;gap:clamp(16px,2vw,28px);padding-bottom:clamp(36px,5vw,72px)}
 .lead{margin:0;font:500 clamp(28px,5vw,80px)/1 'Unbounded Variable','Unbounded',sans-serif;letter-spacing:-.03em;text-transform:uppercase;max-width:14ch;text-wrap:balance}
 .lead em{font-style:normal;color:var(--red)}
 .ctaRow{display:flex;align-items:center;gap:clamp(16px,2vw,32px);flex-wrap:wrap}
 .call{color:var(--bone);text-decoration:none;font:600 clamp(15px,1.2vw,18px)/1 'Manrope',sans-serif}
 .call span{border-bottom:2px solid var(--red);padding-bottom:3px}
+.brandRow{display:flex;align-items:center;gap:16px;padding-top:clamp(8px,2vw,24px);border-top:1px solid #ffffff14;margin-top:clamp(8px,2vw,24px)}
+.brandRow img{display:block;width:72px;height:72px;border-radius:50%}
+.brandRow span{display:grid;gap:4px;font:500 16px/1.1 'Unbounded Variable','Unbounded',sans-serif;letter-spacing:.04em;text-transform:uppercase}
+.brandRow small{font:500 14px/1.4 'Manrope',sans-serif;letter-spacing:0;text-transform:none;color:#a9a69e}
 .cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(28px,4vw,56px) clamp(20px,3vw,48px);padding:clamp(32px,4vw,56px) 0}
 @media(min-width:900px){.cols{grid-template-columns:repeat(4,minmax(0,1fr))}}
 .cols h2{margin:0 0 14px;font:500 13px/1 'Unbounded Variable','Unbounded',sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#a9a69e}
