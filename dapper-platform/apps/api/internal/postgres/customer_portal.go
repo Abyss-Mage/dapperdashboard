@@ -185,6 +185,24 @@ func (s *Store) CustomerRecords(ctx context.Context, actor, customer string) (Po
 	if err != nil {
 		return PortalRecords{}, err
 	}
+	// Bookings imported from the old site keep their bill as a recorded summary; they are listed with the rest (opened through the portal's legacy invoice).
+	rows, err = tx.Query(ctx, `SELECT 'legacy-'||l.booking_id::text,l.invoice_number,l.status,'CAD',l.total_cents,l.paid_cents,CASE WHEN l.status='void' THEN 0 ELSE GREATEST(l.total_cents-l.paid_cents,0) END,l.booking_id::text FROM legacy_booking_billing l JOIN bookings b ON b.id=l.booking_id WHERE l.organization_id=$1 AND l.location_id=$2 AND b.customer_id=$3 ORDER BY b.booking_time DESC LIMIT 100`, org, loc, customer)
+	if err != nil {
+		return PortalRecords{}, err
+	}
+	for rows.Next() {
+		var i PortalInvoice
+		if err = rows.Scan(&i.ID, &i.Number, &i.Status, &i.Currency, &i.TotalCents, &i.PaidCents, &i.DueCents, &i.BookingID); err != nil {
+			rows.Close()
+			return PortalRecords{}, err
+		}
+		result.Invoices = append(result.Invoices, i)
+	}
+	err = rows.Err()
+	rows.Close()
+	if err != nil {
+		return PortalRecords{}, err
+	}
 	if result.Addresses, err = readPortalAddresses(ctx, tx, org, loc, customer); err != nil {
 		return PortalRecords{}, err
 	}

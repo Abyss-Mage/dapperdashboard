@@ -207,6 +207,10 @@ func verifyPublicBookFlow(t *testing.T, ctx context.Context, s *Store, a Scope, 
 	if err = s.pool.QueryRow(ctx, `SELECT count(*) FROM invoices WHERE booking_id=$1 AND status<>'void'`, got.BookingID).Scan(&liveInvoices); err != nil || liveInvoices != 1 {
 		t.Fatal("a website booking should leave exactly one live invoice", liveInvoices, err)
 	}
+	// The confirmation email writes the invoice out, add-ons and totals included.
+	if text := s.BookingInvoiceText(ctx, got.BookingID, "https://example.invalid/account"); !strings.Contains(text, "Add-on: ") || !strings.Contains(text, "Total: $282.50") || !strings.Contains(text, "example.invalid/account") {
+		t.Fatal("invoice text for the email is wrong:", text)
+	}
 	if got.TotalCents != 28250 || !strings.HasPrefix(got.InvoiceNumber, "T") && !strings.Contains(got.InvoiceNumber, "-") {
 		t.Fatalf("totals wrong (want 28250 total, 8475 deposit): %+v", got)
 	}

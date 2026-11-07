@@ -52,7 +52,7 @@ func visitor(r *http.Request) string {
 	return postgres.ClientIP(r.RemoteAddr, r.Header.Get("X-Forwarded-For"))
 }
 
-func registerPublicBookingRoutes(mux *http.ServeMux, store *postgres.Store, sender postgres.EmailSender) {
+func registerPublicBookingRoutes(mux *http.ServeMux, store *postgres.Store, sender postgres.EmailSender, origin string) {
 	browse := newVisitorLimiter(240, time.Minute)
 	book := newVisitorLimiter(6, 10*time.Minute)
 	sendCode := newVisitorLimiter(5, time.Hour)
@@ -281,7 +281,7 @@ func registerPublicBookingRoutes(mux *http.ServeMux, store *postgres.Store, send
 					where = address
 				}
 				vars := map[string]string{"name": name, "phone": phone, "email": to, "service": res.ServiceName, "when": whenText(start), "where": where,
-					"total": fmt.Sprintf("$%.2f", float64(res.TotalCents)/100), "payment": payment}
+					"total": fmt.Sprintf("$%.2f", float64(res.TotalCents)/100), "payment": payment, "invoice": store.BookingInvoiceText(ctx, res.BookingID, origin+"/account")}
 				subject, body, text := store.RenderEmail(ctx, "booking_confirmation", vars)
 				if _, err := sender.SendEmail(ctx, to, subject, body, text); err != nil {
 					log.Print("The booking confirmation email could not be sent")

@@ -156,7 +156,7 @@ export default function CustomerAccount() {
   const owing = records ? records.invoices.reduce((t, i) => t + (i.dueCents > 0 ? i.dueCents : 0), 0) : 0;
   const currency = records?.invoices[0]?.currency ?? 'CAD';
   return <div className={a.page}>
-    <ForceDark />
+    <ForceDark theme="light" />
     <SiteHeader />
     {error && <p className="field-error" role="alert" style={{margin: '0 auto', maxWidth: 1100, padding: '1rem clamp(16px,3.4vw,56px)'}}>{error}</p>}
     {notice && <p role="status" style={{margin: '0 auto', maxWidth: 1100, padding: '0 clamp(16px,3.4vw,56px)'}}>{notice}</p>}
@@ -212,7 +212,7 @@ export default function CustomerAccount() {
                     Total: {amount(i.totalCents, i.currency)} · Balance Due: {amount(i.dueCents, i.currency)}
                   </p>
                   <button type="button" className="secondary" onClick={() => openInvoice(i.id)}>View or download invoice</button>
-                  {i.dueCents > 0 && (
+                  {i.dueCents > 0 && !i.id.startsWith('legacy-') && (
                     <InvoicePaymentForm
                       customerId={selected}
                       invoiceId={i.id}

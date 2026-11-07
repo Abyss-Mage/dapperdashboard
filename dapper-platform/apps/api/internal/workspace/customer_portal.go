@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strings"
 )
 
 func registerCustomerPortalRoutes(mux *http.ServeMux, store *postgres.Store, sqClient square.Client) {
@@ -169,6 +170,15 @@ func registerCustomerPortalRoutes(mux *http.ServeMux, store *postgres.Store, sqC
 	})
 	mux.HandleFunc("GET /api/v1/portal/accounts/{customer}/invoices/{invoice}", func(w http.ResponseWriter, r *http.Request) {
 		customer, invoice := r.PathValue("customer"), r.PathValue("invoice")
+		if booking, legacy := strings.CutPrefix(invoice, "legacy-"); legacy && uuid(customer) && uuid(booking) {
+			inv, err := store.PortalLegacyInvoice(r.Context(), requestSession(r).principalID, customer, booking)
+			if err != nil {
+				invoiceFailure(w, err)
+				return
+			}
+			reply(w, 200, inv)
+			return
+		}
 		if !uuid(customer) || !uuid(invoice) {
 			reply(w, 400, map[string]string{"error": "Valid selectors required"})
 			return

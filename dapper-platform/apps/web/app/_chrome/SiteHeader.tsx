@@ -73,7 +73,7 @@ export function SiteHeader() {
               : <Link key={l.href} href={l.href} aria-current={current(l.href)} onMouseEnter={() => setMega(false)} onFocus={() => setMega(false)}>{l.label}</Link>)}
           </nav>
           <div className={s.actions}>
-            <a className={s.callBtn} href={'tel:' + contact.tel}><Phone size={15} aria-hidden="true" />{contact.phone}</a>
+            <Link className={s.callBtn} href="/account" aria-current={pathname === '/account' ? 'page' : undefined}><UserRound size={15} aria-hidden="true" />My account</Link>
             <a className={s.book} href="/booking">Book now<ArrowRight size={16} aria-hidden="true" /></a>
           </div>
           <button type="button" className={s.menuBtn} aria-expanded={open} aria-controls="site-menu" aria-label={open ? 'Close menu' : 'Open menu'} onClick={() => setOpen((o) => !o)}>

@@ -48,8 +48,8 @@ var emailDefaults = map[string]emailDefault{
 	"booking_confirmation": {
 		label:        "Booking: to the customer",
 		subject:      "Your Dapper Detailing booking is confirmed",
-		body:         "Hi {{name}},\n\nThank you for booking with Dapper Detailing Pros. Your booking is confirmed and we are holding your time.\n\nService: {{service}}\nWhen: {{when}}\nWhere: {{where}}\nTotal, tax included: {{total}}\nPayment: {{payment}}\n\nIf anything needs to change, call us on (705) 977-6217.",
-		placeholders: []string{"name", "service", "when", "where", "total", "payment"},
+		body:         "Hi {{name}},\n\nThank you for booking with Dapper Detailing Pros. Your booking is confirmed and we are holding your time.\n\nService: {{service}}\nWhen: {{when}}\nWhere: {{where}}\nTotal, tax included: {{total}}\nPayment: {{payment}}\n\n{{invoice}}\n\nIf anything needs to change, call us on (705) 977-6217.",
+		placeholders: []string{"name", "service", "when", "where", "total", "payment", "invoice"},
 	},
 	"booking_admin": {
 		label:        "Booking: to the business",
@@ -78,8 +78,8 @@ var emailDefaults = map[string]emailDefault{
 	"booking_completed": {
 		label:        "Booking completed",
 		subject:      "Thank you for choosing Dapper Detailing",
-		body:         "Hi {{name}},\n\nYour service is complete. Thank you for choosing Dapper Detailing Pros.\n\nService: {{service}}\nDone on: {{when}}\n\nIf anything is not right, call us on (705) 977-6217 and we will make it right.",
-		placeholders: []string{"name", "service", "when"},
+		body:         "Hi {{name}},\n\nYour service is complete. Thank you for choosing Dapper Detailing Pros.\n\nService: {{service}}\nDone on: {{when}}\n\n{{invoice}}\n\nIf anything is not right, call us on (705) 977-6217 and we will make it right.",
+		placeholders: []string{"name", "service", "when", "invoice"},
 	},
 	"booking_rescheduled": {
 		label:        "Booking rescheduled",

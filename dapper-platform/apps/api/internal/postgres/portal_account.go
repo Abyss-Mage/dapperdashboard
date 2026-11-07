@@ -88,3 +88,32 @@ func (s *Store) PortalInvoice(ctx context.Context, actor, customer, invoiceID st
 	inv.IssuedBy, inv.Notes = nil, ""
 	return inv, nil
 }
+
+// PortalLegacyInvoice is the invoice of one of the customer's own bookings imported from the old site, built from its recorded figures.
+func (s *Store) PortalLegacyInvoice(ctx context.Context, actor, customer, bookingID string) (Invoice, error) {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return Invoice{}, err
+	}
+	defer tx.Rollback(ctx)
+	org, loc, err := portalLink(ctx, tx, actor, customer)
+	if err != nil {
+		return Invoice{}, err
+	}
+	var own bool
+	if err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM bookings WHERE organization_id=$1 AND location_id=$2 AND id=$3 AND customer_id=$4)`, org, loc, bookingID, customer).Scan(&own); err != nil {
+		return Invoice{}, err
+	}
+	if !own {
+		return Invoice{}, ErrInvoiceNotFound
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return Invoice{}, err
+	}
+	inv, err := s.legacyInvoice(ctx, org, loc, bookingID)
+	if err != nil {
+		return Invoice{}, err
+	}
+	inv.IssuedBy, inv.Notes = nil, ""
+	return inv, nil
+}

@@ -55,6 +55,11 @@ func (s *Store) LegacyInvoice(ctx context.Context, scope Scope, bookingID string
 	if err := s.authorize(ctx, scope, "invoices.read"); err != nil {
 		return Invoice{}, err
 	}
+	return s.legacyInvoice(ctx, scope.OrganizationID, scope.LocationID, bookingID)
+}
+
+// legacyInvoice builds the document; callers check who may see it.
+func (s *Store) legacyInvoice(ctx context.Context, org, loc, bookingID string) (Invoice, error) {
 	var (
 		inv        Invoice
 		itemsJSON  []byte
@@ -71,7 +76,7 @@ func (s *Store) LegacyInvoice(ctx context.Context, scope Scope, bookingID string
 		FROM legacy_booking_billing l
 		JOIN bookings b ON b.id=l.booking_id
 		JOIN customers c ON c.organization_id=b.organization_id AND c.location_id=b.location_id AND c.id=b.customer_id
-		WHERE l.organization_id=$1 AND l.location_id=$2 AND l.booking_id=$3`, scope.OrganizationID, scope.LocationID, bookingID).
+		WHERE l.organization_id=$1 AND l.location_id=$2 AND l.booking_id=$3`, org, loc, bookingID).
 		Scan(&inv.InvoiceNumber, &inv.Status, &itemsJSON, &inv.SubtotalCents, &inv.DiscountCents, &inv.CouponCode, &inv.TaxCents, &inv.TotalCents, &inv.PaidCents, &method, &gateway, &inv.Notes,
 			&bookedAt, &createdAt, &customerID, &customer.Name, &customer.Email, &customer.Phone)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -86,7 +91,7 @@ func (s *Store) LegacyInvoice(ctx context.Context, scope Scope, bookingID string
 	}
 	inv.ID = "legacy-" + bookingID
 	inv.Version = 1
-	inv.OrganizationID, inv.LocationID, inv.CustomerID = scope.OrganizationID, scope.LocationID, customerID
+	inv.OrganizationID, inv.LocationID, inv.CustomerID = org, loc, customerID
 	inv.BookingID = &bookingID
 	inv.Currency = "CAD"
 	if inv.Status != "void" {
@@ -108,11 +113,11 @@ func (s *Store) LegacyInvoice(ctx context.Context, scope Scope, bookingID string
 	}
 	inv.Payments = []Payment{}
 	if inv.PaidCents > 0 && inv.Status != "void" {
-		inv.Payments = append(inv.Payments, Payment{ID: inv.ID + "-payment", OrganizationID: scope.OrganizationID, LocationID: scope.LocationID, InvoiceID: inv.ID, CustomerID: customerID,
+		inv.Payments = append(inv.Payments, Payment{ID: inv.ID + "-payment", OrganizationID: org, LocationID: loc, InvoiceID: inv.ID, CustomerID: customerID,
 			AmountCents: inv.PaidCents, Currency: "CAD", Method: method, Status: "completed", Notes: "Legacy BookingPress payment (gateway: " + gateway + ")", RecordedAt: bookedAt, CreatedAt: bookedAt})
 	}
 	// The issuer the franchise has now; none bound means the document simply has no issuer block yet.
-	issuer, err := scanInvoiceIssuer(s.pool.QueryRow(ctx, `SELECT i.id::text,i.legal_name,i.address,i.tax_registration,i.currency,i.number_prefix,i.version,i.next_number FROM invoice_issuers i JOIN location_invoice_issuers b ON b.organization_id=i.organization_id AND b.issuer_id=i.id WHERE b.organization_id=$1 AND b.location_id=$2`, scope.OrganizationID, scope.LocationID))
+	issuer, err := scanInvoiceIssuer(s.pool.QueryRow(ctx, `SELECT i.id::text,i.legal_name,i.address,i.tax_registration,i.currency,i.number_prefix,i.version,i.next_number FROM invoice_issuers i JOIN location_invoice_issuers b ON b.organization_id=i.organization_id AND b.issuer_id=i.id WHERE b.organization_id=$1 AND b.location_id=$2`, org, loc))
 	if err == nil {
 		snap := issuer.InvoiceIssuerSnapshot
 		inv.IssuerSnapshot = &snap

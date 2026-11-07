@@ -142,3 +142,6 @@ body:has(.s-page),html:has(.s-page){background:#0b0b0c}
 .s-roll{position:relative;white-space:nowrap}
 .s-roll>span:first-child{display:block}
 .s-roll>span:last-child{position:absolute;left:0;top:100%}
+/* Review cards: a thin border that also follows the cut corner (the card is a white layer 1px inside a border-coloured shape) */
+.s-light .s-rev__row li{position:relative;isolation:isolate;background:#0b0b0c2e}
+.s-light .s-rev__row li::before{content:"";position:absolute;inset:1px;z-index:-1;background:#fff;clip-path:polygon(0 0,100% 0,100% 100%,17.5px 100%,0 calc(100% - 17.5px))}

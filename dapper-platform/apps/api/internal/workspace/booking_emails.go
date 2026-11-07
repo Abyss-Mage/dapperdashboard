@@ -18,7 +18,7 @@ var bookingEmailZone = func() *time.Location {
 func whenText(t time.Time) string { return t.In(bookingEmailZone).Format("Monday, January 2 at 3:04 PM") }
 
 // installBookingEmails emails the customer when a booking is completed, cancelled or moved, and the business when one is cancelled or moved. It runs in the background and only when outgoing email works.
-func installBookingEmails(store *postgres.Store, sender postgres.EmailSender) {
+func installBookingEmails(store *postgres.Store, sender postgres.EmailSender, origin string) {
 	store.SetBookingEventHook(func(e postgres.BookingEmailEvent) {
 		if !emailReady(sender) {
 			return
@@ -32,7 +32,7 @@ func installBookingEmails(store *postgres.Store, sender postgres.EmailSender) {
 		if err != nil {
 			return
 		}
-		vars := map[string]string{"name": f.Name, "phone": f.Phone, "email": f.Email, "service": f.Service, "when": whenText(f.When), "where": f.Where}
+		vars := map[string]string{"name": f.Name, "phone": f.Phone, "email": f.Email, "service": f.Service, "when": whenText(f.When), "where": f.Where, "invoice": store.BookingInvoiceText(ctx, e.BookingID, origin+"/account")}
 		if f.Email != "" {
 			subject, body, text := store.RenderEmail(ctx, e.Kind, vars)
 			if _, err = sender.SendEmail(ctx, f.Email, subject, body, text); err != nil {
