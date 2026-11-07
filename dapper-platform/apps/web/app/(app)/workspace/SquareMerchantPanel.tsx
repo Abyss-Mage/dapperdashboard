@@ -84,6 +84,7 @@ export default function SquareMerchantPanel({ organizationId, locationId, canMan
         <label className={glass.field}>Square account type<Select disabled={busy} value={env} onChange={(e) => setEnv(e.target.value as Env)} style={{ minHeight: 46, borderRadius: 14, padding: '0 12px', font: 'inherit' }}><option value="sandbox">{ENV_LABEL.sandbox}</option><option value="production">{ENV_LABEL.production}</option></Select></label>
       </div>
       {!available[env] && <p className={`${glass.notice} ${glass.warn}`}>The {env === 'production' ? 'live' : 'testing'} Square keys have not been added yet. Add the Application ID and secret under “Online payment keys” above.</p>}
+      {env === 'sandbox' && !connection && <p className={glass.notice}>Before you press Connect: in the Square Developer Console open <strong>Sandbox test accounts</strong> and click <strong>Open</strong> on your test account, and keep that tab open. Without it Square&rsquo;s test sign-in shows a blank page.</p>}
       {connection ? <>
         <p className={glass.notice}>Connected to Square account {connection.merchantId} on {new Date(connection.connectedAt).toLocaleDateString()}. The connection renews itself.</p>
         {!places ? <p role="status" className={glass.lede}>Loading this account&rsquo;s Square locations…</p> : <>
