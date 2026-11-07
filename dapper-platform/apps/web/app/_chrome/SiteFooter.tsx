@@ -8,7 +8,7 @@ import s from './chrome.module.css';
    No city or street address (more locations are coming): visitors are pointed to directions instead. */
 export function SiteFooter() {
   return (
-    <footer className={s.footer}>
+    <div className={s.footWrap}><footer className={s.footer}>
       <div className={s.fMain}>
         <div className={s.fLeft}>
           <Link href="/" aria-label="Dapper Detailing Pros, home"><img src="/site/assets/logo.webp" alt="" width={104} height={104} loading="lazy" /></Link>
@@ -40,6 +40,6 @@ export function SiteFooter() {
         </div>
       </div>
       <p className={s.mark} aria-hidden="true"><span>Dapper</span> <span>Detailing</span></p>
-    </footer>
+    </footer></div>
   );
 }

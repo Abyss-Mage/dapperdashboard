@@ -34,7 +34,7 @@
 }
 
 /* Footer */
-.footer{position:relative;isolation:isolate;overflow:hidden;display:block;gap:0;font-size:16px;line-height:1.5;--red:#e4202e;--bone:#efece4;background:#0b0b0c;color:var(--bone);margin:clamp(10px,1.6vw,24px);clip-path:polygon(0 0,calc(100% - 32px) 0,100% 32px,100% 100%,32px 100%,0 calc(100% - 32px));padding:clamp(40px,5vw,72px) clamp(22px,3.6vw,64px) 0;font-family:'Manrope','Helvetica Neue',Arial,sans-serif}
+.footer{position:relative;isolation:isolate;overflow:hidden;display:block;gap:0;font-size:16px;line-height:1.5;--red:#e4202e;--bone:#efece4;background:#0b0b0c;color:var(--bone);clip-path:polygon(0 0,100% 0,100% 100%,40px 100%,0 calc(100% - 40px));padding:clamp(40px,5vw,72px) clamp(22px,3.6vw,64px) 0;font-family:'Manrope','Helvetica Neue',Arial,sans-serif}
 /* The big name, with a light that sweeps across the letters, and a soft red glow behind the footer that slowly breathes */
 .footer::before{content:'';position:absolute;z-index:-1;left:-10%;right:-10%;top:-30%;height:80%;background:radial-gradient(55% 60% at 30% 0%,#e4202e38,transparent 70%);pointer-events:none;animation:footGlow 7s ease-in-out infinite alternate}
 .mark{margin:clamp(28px,5vw,72px) 0 -.17em;overflow:hidden;font:500 clamp(22px,6.5vw,150px)/1 'Unbounded Variable','Unbounded',sans-serif;letter-spacing:-.04em;text-transform:uppercase;white-space:nowrap;text-align:center;user-select:none;color:transparent;background:linear-gradient(100deg,#1a1a1e 0%,#1a1a1e 38%,#8a8a92 46%,#f2efe7 50%,#8a8a92 54%,#1a1a1e 62%,#1a1a1e 100%) 0 0/260% 100%;-webkit-background-clip:text;background-clip:text;animation:markSweep 7s ease-in-out infinite}
@@ -87,7 +87,6 @@
 @media(max-width:700px){.mark{font-size:13.5vw;line-height:.95;white-space:normal}.mark span{display:block}}
 
 /* Footer layout: logo and words at the left, the small print and the page links at the right, the big name along the bottom */
-.footer::after{content:'';position:absolute;inset:18px;pointer-events:none;background:radial-gradient(circle,#fff 38%,transparent 44%) left top/12px 12px no-repeat,radial-gradient(circle,#fff 38%,transparent 44%) right top/12px 12px no-repeat,radial-gradient(circle,#fff 38%,transparent 44%) left bottom/12px 12px no-repeat,radial-gradient(circle,#fff 38%,transparent 44%) right bottom/12px 12px no-repeat;opacity:.85}
 .fMain{display:grid;grid-template-columns:1fr;gap:clamp(28px,4vw,48px)}
 @media(min-width:900px){.fMain{grid-template-columns:minmax(0,1fr) minmax(0,1fr);min-height:clamp(300px,26vw,400px)}}
 .fLeft{display:grid;gap:14px;align-content:start;justify-items:start}
@@ -107,4 +106,6 @@
 .fNav a{display:inline-flex;align-items:center;gap:5px;color:var(--bone);text-decoration:none;font:600 15px/1.4 'Manrope',sans-serif}
 .fNav svg{opacity:.7}
 @media(hover:hover) and (pointer:fine){.fLink:hover,.fNav a:hover,.fSmall a:hover,.fCopy a:hover{color:#fff}.fLink:hover svg,.fNav a:hover svg{opacity:1;transform:translate(2px,-2px)}.fLink svg,.fNav svg{transition:transform .2s,opacity .2s}}
-@media(max-width:899px){.footer{margin-bottom:calc(88px + env(safe-area-inset-bottom))}}
+/* White space all round the footer, so its edges and the cut show on every page */
+.footWrap{background:#fff;padding:clamp(10px,1.6vw,24px)}
+@media(max-width:899px){.footWrap{padding-bottom:calc(88px + env(safe-area-inset-bottom))}}
