@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { ArrowRight } from 'lucide-react';
 import '@fontsource-variable/unbounded/index.css';
 import { categories } from '../(site)/content';
 import { contact } from '../(site)/dapper';
@@ -10,13 +9,6 @@ import s from './chrome.module.css';
 export function SiteFooter() {
   return (
     <footer className={s.footer}>
-      <div className={s.cta}>
-        <p className={s.lead}>Ready for <em>precise detailing?</em></p>
-        <div className={s.ctaRow}>
-          <a className={s.book} href="/booking">Book now<ArrowRight size={18} aria-hidden="true" /></a>
-          <a className={s.call} href={'tel:' + contact.tel}>or call <span>+1 {contact.phone}</span></a>
-        </div>
-      </div>
       <div className={s.fGrid}>
         <div className={s.fBrand}>
           <Link href="/" aria-label="Dapper Detailing Pros, home"><img src="/site/assets/logo.webp" alt="" width={96} height={96} loading="lazy" /></Link>
@@ -44,6 +36,7 @@ export function SiteFooter() {
           <a href={contact.youtube} target="_blank" rel="noopener noreferrer">YouTube</a>
         </div>
       </div>
+      <p className={s.mark} aria-hidden="true">Dapper</p>
       <div className={s.legal}>
         <span>© 2026 Dapper Detailing Pros Ltd. All rights reserved.</span>
         <span><a href="/privacy-policy">Privacy policy</a><a href="/terms-conditions">Terms &amp; conditions</a><a href="/refund-and-cancellation">Refund &amp; cancellation</a></span>
