@@ -99,4 +99,5 @@ export const portfolio = [
 // Portraits of the founders, by name. Add a file under public/site/assets/team and list it here to show it on the About page.
 export const founderPhotos: Record<string, string> = {
   'Mohan Preet Singh Virk': '/site/assets/team/mohan-preet-singh-virk.webp',
+  'Ayush Kumar Singh': '/site/assets/team/ayush-kumar-singh.webp',
 };
