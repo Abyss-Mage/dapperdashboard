@@ -202,3 +202,13 @@
 /* The bar under the hero: the price at the left, the button and the number at the right, all on one line through the middle of the bar */
 .v-buy{display:flex;align-items:center}
 .v-buy .v-price{margin-right:auto}
+
+/* Phones: the picture is dimmed enough for the white text to read, and everything under it lines up on the left */
+@media(max-width:700px){
+  .v-hero__scrim{background:linear-gradient(180deg,rgba(11,11,12,.62) 0,rgba(11,11,12,.55) 30%,rgba(11,11,12,.86) 62%,#0b0b0c 100%)}
+  .v-h1,.v-lede,.v-crumb{text-shadow:0 2px 18px rgba(0,0,0,.7)}
+  .v-lede{color:#efece4}
+  .v-buy{align-items:flex-start}
+  .v-buy .s-btn{justify-content:flex-start}
+  .v-buy .s-close__call{text-align:left;min-height:0}
+}

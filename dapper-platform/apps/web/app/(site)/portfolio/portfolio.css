@@ -85,3 +85,5 @@
 .p-films h2{color:#f3f2ee;font-size:clamp(34px,4.7vw,79.9px);line-height:.98;letter-spacing:-.035em}
 /* Phones: the headline sits on a dark fade so it never fights the photographs behind it */
 @media(max-width:720px){.ph__scrim{background:linear-gradient(180deg,rgba(11,11,12,.1) 0,rgba(11,11,12,.55) 38%,rgba(11,11,12,.96) 62%)}}
+/* Phones: the photographs stay in a band at the top and the headline starts below them, so nothing overlaps */
+@media(max-width:720px){.ph__rows{height:38svh}.ph__copy{padding-top:calc(76px + 38svh + 28px)}}
