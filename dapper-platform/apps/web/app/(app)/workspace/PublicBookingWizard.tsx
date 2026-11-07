@@ -11,6 +11,7 @@ import { categories as siteCategories } from '../../(site)/content';
 const MAIN_SITE = process.env.NEXT_PUBLIC_DAPPER_SITE_SLUG || 'dapper-detailing-pros-peterborough';
 type Place = { slug: string; name: string; address: string };
 // The main shop's address (the invoice details hold test text, so they are not used for it).
+const niceName = (n: string) => n.replace(/^Dapper Detailing Pros\s*/i, '') || n;
 const SHOP_FALLBACK = '660 The Kingsway, Peterborough, ON K9J 7C8';
 
 type Options = { timezone: string; phoneVerification: boolean; rules: WizardRule[]; services: (WizardService & { priceCents: number })[]; taxes: NonNullable<WizardTaxes> };
@@ -24,7 +25,9 @@ const post = (body: unknown): RequestInit => ({ method: 'POST', headers: { 'Cont
 
 function BookingFlow({ site, place, onBack }: { site: string; place: Place; onBack: () => void }) {
   const api = `/api/v1/public/booking/${site}`;
-  const shopAddress = (place.name ? place.name + ', ' : '') + (site === MAIN_SITE ? SHOP_FALLBACK : place.address);
+  const shopAddress = site === MAIN_SITE ? SHOP_FALLBACK : place.address;
+  // Is online card payment set up? Without it the payment step offers only "pay on the day".
+  const [squareOn, setSquareOn] = useState(true);
   const [options, setOptions] = useState<Options | null>(null);
   const [error, setError] = useState('');
   // The website categories set in the dashboard (service id -> category); without any, the wizard falls back to its built-in groups.
@@ -44,6 +47,7 @@ function BookingFlow({ site, place, onBack }: { site: string; place: Place; onBa
 
   useEffect(() => {
     let live = true;
+    fetch(`${api}/square`, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).then((b: { configured?: boolean; credentialsConfigured?: boolean } | null) => { if (live) setSquareOn(!!b?.configured && !!b?.credentialsConfigured); }).catch(() => undefined);
     fetch(`${api}/options`, { cache: 'no-store' }).then((r) => json<Options>(r)).then((o) => live && setOptions(o)).catch((e) => live && setError(e.message));
     fetch(`/api/v1/public/sites/${site}`, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : Promise.reject())).then((site: { services: { serviceId: string; category: string }[] }) => { if (live) { const m = new Map(site.services.filter((s) => s.category).map((s) => [s.serviceId, s.category])); setCats(m.size ? m : null); } }).catch(() => undefined);
     (async () => {
@@ -70,7 +74,8 @@ function BookingFlow({ site, place, onBack }: { site: string; place: Place; onBa
       prefill={prefill}
       extraSteps={1}
       onBack={onBack}
-      shopAddress={shopAddress.replace(/,\s*$/, '')}
+      shopAddress={shopAddress}
+      locationLabel={niceName(place.name) + (shopAddress ? ' · ' + shopAddress : '')}
       checkCoupon={async (code, serviceId, subtotalCents) => json(await fetch(`${api}/coupon`, post({ code, serviceId, subtotalCents })))}
       preselect={preselect}
       categories={cats ? { list: siteCategories.map((c) => ({ key: c.key, title: c.title })), of: (id) => cats.get(id) ?? '' } : undefined}
@@ -83,7 +88,7 @@ function BookingFlow({ site, place, onBack }: { site: string; place: Place; onBa
         start: async (phone) => { await json(await fetch(`${api}/verify/start`, post({ phone }))); },
         check: async (phone, code): Promise<WizardCustomer[]> => { const r = await json<{ token: string; customers: WizardCustomer[] }>(await fetch(`${api}/verify/check`, post({ phone, code }))); verified.current = r.token; return r.customers; },
       } : undefined}
-      deposit={{ renderCard: (register) => <SquareCardField infoUrl={`${api}/square`} register={register} /> }}
+      deposit={{ onlineOff: !squareOn, renderCard: (register) => <SquareCardField infoUrl={`${api}/square`} register={register} /> }}
       doneNote={({ name, pack, when, deposit }) => ({
         title: 'You are booked',
         lines: [
@@ -142,7 +147,7 @@ export default function PublicBookingWizard() {
           <div className={`${styles.choices} ${styles.two}`}>
             {places.map((x) => (
               <button key={x.slug} type="button" className={styles.choice} aria-pressed={pick === x.slug} onClick={() => setPick(x.slug)}>
-                <span><strong>{x.name}</strong><small>{x.slug === MAIN_SITE ? SHOP_FALLBACK : x.address}</small></span>
+                <span><strong>{niceName(x.name)}</strong><small>{x.slug === MAIN_SITE ? SHOP_FALLBACK : x.address}</small></span>
               </button>
             ))}
           </div>

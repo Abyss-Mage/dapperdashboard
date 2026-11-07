@@ -19,6 +19,8 @@ export type WizardBooking = {
 };
 /* Customer-facing extras: a phone check for returning customers, and a deposit step with a card form. */
 export type WizardDeposit = {
+  /** True while online card payment is not set up: only "pay on the day" is offered. */
+  onlineOff?: boolean;
   // Draws the card form; call register(fn) with a function that turns the typed card into a single-use token (or null when not ready).
   renderCard: (register: (tokenize: (() => Promise<string>) | null) => void, amountCents: number) => React.ReactNode;
 };
@@ -44,6 +46,8 @@ export type WizardProps = {
   onBack?: () => void;
   /** The shop's name and address, shown under "In the shop". */
   shopAddress?: string;
+  /** The chosen location, shown in the booking summary. */
+  locationLabel?: string;
   checkCoupon?: (code: string, serviceId: string, subtotalCents: number) => Promise<{ code: string; discountCents: number }>;
   /** Wording for the final screen; staff see a default that mentions taking payment later. */
   doneNote?: (b: { name: string; pack: string; when: string; deposit?: 'card' | 'cash' }) => WizardDone;
@@ -149,6 +153,7 @@ export default function BookingWizard(p: WizardProps) {
   const prevStep = useRef(0);
   // On the website the second question is the package, with the vehicle's details on the same step; staff keep the longer order.
   const merged = p.audience === 'customer' && !!p.categories;
+  useEffect(() => { if (p.deposit?.onlineOff) setPayMethod('cash'); }, [p.deposit?.onlineOff]);
   const steps = [...(p.phoneCheck ? ['Welcome'] : []), ...(merged ? ['Service', 'Package', 'Where'] : ['Service', 'Where', 'Vehicle', 'Package']), 'Extras', 'Day & time', 'Details', ...(p.deposit ? ['Payment'] : [])];
   const name = steps[step];
   // Saved details fill in once, and never over something already typed.
@@ -364,10 +369,11 @@ export default function BookingWizard(p: WizardProps) {
             <div className={styles.grand}><span>Total, tax included</span><span>{money(total)}</span></div>
           </div>
           <div className={`${styles.choices} ${styles.two}`}>
-            <button type="button" className={styles.choice} aria-pressed={payMethod === 'card'} onClick={() => setPayMethod('card')}><span><strong>Pay online now</strong><small>The full {money(total)}, by card, securely through Square</small></span></button>
+            {!p.deposit.onlineOff && <button type="button" className={styles.choice} aria-pressed={payMethod === 'card'} onClick={() => setPayMethod('card')}><span><strong>Pay online now</strong><small>The full {money(total)}, by card, securely through Square</small></span></button>}
             <button type="button" className={styles.choice} aria-pressed={payMethod === 'cash'} onClick={() => setPayMethod('cash')}><span><strong>Pay on the day</strong><small>Nothing is charged now. You pay when we do the work.</small></span></button>
           </div>
-          {payMethod === 'card' && p.deposit.renderCard((fn) => { tokenizer.current = fn; setCardReady(!!fn); }, deposit)}
+          {p.deposit.onlineOff && <p className={styles.help}>Online card payment is not available yet. You pay on the day.</p>}
+          {payMethod === 'card' && !p.deposit.onlineOff && p.deposit.renderCard((fn) => { tokenizer.current = fn; setCardReady(!!fn); }, deposit)}
         </>}
         {name === 'Service' && <>
           <h2 ref={topRef} tabIndex={-1} className={styles.title}>{cust ? 'What do you need done?' : 'What can we do for them?'}</h2>
@@ -492,6 +498,7 @@ export default function BookingWizard(p: WizardProps) {
       <aside className={styles.side} aria-label="Your booking so far">
         <h3>Your booking</h3>
         <dl>
+          {p.locationLabel && <div><dt>Location</dt><dd>{p.locationLabel}</dd></div>}
           <div><dt>Service</dt><dd>{byCategory ? (custGroups.find((g) => g.key === group)?.title ?? 'Not chosen yet') : group || 'Not chosen yet'}</dd></div>
           {where !== 'shop' && <div><dt>Where</dt><dd>{where === 'mobile' ? (cust ? 'We come to you' : 'We come to them') : cust ? 'Pick-up and drop-off' : 'Valet'}</dd></div>}
           {vehicle && <div><dt>Vehicle</dt><dd>{vehicle}</dd></div>}
