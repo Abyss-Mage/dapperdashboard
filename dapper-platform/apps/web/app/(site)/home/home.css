@@ -12,7 +12,7 @@
 @media(max-width:720px){.h-h1{font-size:clamp(36px,10.5vw,66px)}.h-hero__img{object-position:50% 50%}}
 
 /* White sections: the base of Home. Services and the hero stay black; the rest of the page alternates. */
-.h-light{--pp:#faf9f6;--ink:#121212;--ink2:#5d5a54;--hair:#12121224;background:var(--pp);color:var(--ink)}
+.h-light{--pp:#fff;--ink:#121212;--ink2:#5d5a54;--hair:#12121224;background:var(--pp);color:var(--ink)}
 .h-light h1,.h-light h2,.h-light h3{color:var(--ink)}
 .h-light em{color:#c4121f}
 .h-light ::selection{background:var(--red);color:#fff}

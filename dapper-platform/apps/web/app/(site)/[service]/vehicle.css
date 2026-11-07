@@ -92,7 +92,7 @@
 .v-page .s-close{border-top:0}
 
 /* Light sections: the page alternates black and white. A .v-light section redefines the tokens, so everything inside follows. */
-.v-light{--bk:#f5f2eb;--bk2:#ebe7dd;--bone:#0b0b0c;--mute:#55524b;--line:#0b0b0c26;background:var(--bk);color:var(--bone)}
+.v-light{--bk:#fff;--bk2:#ebe7dd;--bone:#0b0b0c;--mute:#55524b;--line:#0b0b0c26;background:var(--bk);color:var(--bone)}
 .v-light ::selection{background:var(--red);color:#fff}
 .v-light .v-sec__head p{color:var(--mute)}
 
@@ -143,7 +143,7 @@
 @media(hover:hover) and (pointer:fine){.v-more .v-card__go:hover{color:#fff}}
 
 /* ---- Round 3: pure white (no cream), red prices, tabs, centred bar, richer What to expect, carousels, FAQ ---- */
-.v-light{--bk:#fff;--bk2:#f3f3f3;--line:#0b0b0c1f;background:#fff}
+.v-light{--bk:#fff;--bk2:#fff;--line:#0b0b0c1f;background:#fff}
 .v-light .v-row{background:#fff;box-shadow:none;border:1px solid #0b0b0c1f;clip-path:polygon(0 0,100% 0,100% 100%,18px 100%,0 calc(100% - 18px))}
 .v-row__price b{color:var(--red)}
 .v-row__price{margin:0}

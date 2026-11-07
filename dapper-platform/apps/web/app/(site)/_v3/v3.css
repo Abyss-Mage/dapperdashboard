@@ -1,6 +1,6 @@
 /* Dapper home, Delta + Atelier style: a warm off-white page, dark rounded panels, red pills and chips, soft depth. */
 :root{
-  --bg:#f6f4f1; --card:#fff; --ink:#0b0a0b; --panel:#211c20; --panel-2:#171315; --line:#e7e3de; --line-dark:#2e272a;
+  --bg:#fff; --card:#fff; --ink:#0b0a0b; --panel:#211c20; --panel-2:#171315; --line:#e7e3de; --line-dark:#2e272a;
   --text:#211c20; --text-2:#5f585c; --stone:#d1d4d0; --mute:#a1a1aa; --red:#d22b2b; --red-2:#a52121; --gold:#fbbf24;
   --h:'Unbounded Variable','Sora',system-ui,sans-serif; --b:Manrope,system-ui,sans-serif;
   --ease:cubic-bezier(.23,1,.32,1); --r:28px; --g:clamp(16px,3vw,40px); --shadow:0 1px 2px #211c200a,0 12px 32px #211c2012;
@@ -254,7 +254,7 @@ main{padding:12px}
 .d-cal header{display:flex;align-items:center;gap:12px}.d-cal header div{flex:1}.d-cal h3{font-size:18px}.d-cal header p{font-size:13px;color:var(--text-2)}
 .d-live{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#15803d}.d-live i{width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 4px #22c55e33}
 .d-cal ol{display:grid;gap:6px;margin:0;padding:0;list-style:none}
-.d-cal li{display:flex;justify-content:space-between;gap:12px;padding:10px 12px;border-radius:12px;background:#f6f4f1;font-size:14px}
+.d-cal li{display:flex;justify-content:space-between;gap:12px;padding:10px 12px;border-radius:12px;background:#fff;font-size:14px}
 .d-cal li b{font-family:var(--h)}.d-cal li span{color:var(--text-2);font-variant-numeric:tabular-nums}
 .d-cal li.is-full span{color:var(--red)}
 .d-cal .d-btn{justify-self:start}
@@ -282,7 +282,7 @@ main{padding:12px}
 .d-contact-form__info ul{display:grid;gap:12px}.d-contact-form__info li{display:flex;align-items:center;gap:12px;font-weight:500}.d-contact-form__info svg{color:var(--red)}
 .d-form{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:clamp(22px,3vw,36px);border-radius:24px;background:var(--card);box-shadow:var(--shadow)}
 .d-form label{display:grid;gap:6px;font-size:13px;font-weight:700;color:var(--text-2)}
-.d-form input,.d-form select,.d-form textarea{font:500 15px/1.4 var(--b);color:var(--text);background:#f6f4f1;border:1px solid transparent;border-radius:14px;padding:13px 14px;transition:border-color .2s,background-color .2s;width:100%}
+.d-form input,.d-form select,.d-form textarea{font:500 15px/1.4 var(--b);color:var(--text);background:#fff;border:1px solid transparent;border-radius:14px;padding:13px 14px;transition:border-color .2s,background-color .2s;width:100%}
 .d-form textarea{resize:vertical}
 .d-form input:focus,.d-form select:focus,.d-form textarea:focus{outline:none;border-color:var(--red);background:#fff}
 .d-form__wide{grid-column:1/-1}

@@ -58,7 +58,7 @@
 @media(max-width:720px){.a-values__foot{grid-template-columns:minmax(0,1fr);align-items:start}}
 
 /* A5 Why vehicle owners trust Dapper: six panels, one open at a time */
-.aw{padding:clamp(72px,9vw,140px) var(--cg);background:#efede7}
+.aw{padding:clamp(72px,9vw,140px) var(--cg);background:#fff}
 .aw h2{font-size:clamp(30px,4vw,64px);line-height:1;max-width:20ch}
 .aw-stack{margin-top:clamp(32px,5vw,64px);display:block}
 .aw-card{display:grid;gap:clamp(12px,1.6vw,20px);padding:clamp(24px,4vw,56px) clamp(24px,4vw,56px) clamp(24px,4vw,56px) clamp(30px,4.4vw,64px);background:var(--ink);color:#f6f4f0;box-shadow:inset 6px 0 0 var(--red);transform-origin:50% 0;position:sticky;top:calc(64px + 12px + var(--i) * 14px);margin-bottom:12vh}

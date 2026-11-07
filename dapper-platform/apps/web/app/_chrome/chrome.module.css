@@ -40,7 +40,7 @@
 .megaList a[aria-current=page]{background:#e4202e0f}
 @media(hover:hover) and (pointer:fine){.megaList a:hover{background:#0b0b0c08}}
 .megaSide{padding-left:clamp(20px,2.6vw,36px);border-left:1px solid var(--line)}
-.megaCard{display:grid;gap:10px;padding:18px;border:1px solid var(--line);border-radius:14px;background:#fafafa}
+.megaCard{display:grid;gap:10px;padding:18px;border:1px solid var(--line);border-radius:14px;background:#fff}
 .megaCard strong{font:700 16px/1.25 'Manrope',sans-serif}
 .megaCard p{margin:0;color:var(--mute);font-size:14px;line-height:1.5}
 .megaCard a{display:inline-flex;align-items:center;gap:6px;color:var(--red);text-decoration:none;font:700 14px/1.2 'Manrope',sans-serif}

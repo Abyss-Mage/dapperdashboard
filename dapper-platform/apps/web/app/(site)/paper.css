@@ -1,12 +1,12 @@
 /* Contact: warm paper, ink-black heavy headlines, one red. Square corners, hairline rules. Scoped to .c-page and the paper header. */
 .c-page,.d-nav--paper{
-  --paper:#faf9f6; --ink:#121212; --ink-2:#55524d; --red:#e3172b; --red-ink:#c4121f; --rule:#12121226; --edge:#8a8780;
+  --paper:#fff; --ink:#121212; --ink-2:#55524d; --red:#e3172b; --red-ink:#c4121f; --rule:#12121226; --edge:#8a8780;
   --ch:'Unbounded Variable','Arial Narrow',sans-serif; --cb:Manrope,system-ui,sans-serif;
   --cg:clamp(16px,4.4vw,72px); --ease:cubic-bezier(.23,1,.32,1);
 }
 main:has(.c-page){padding:0}
 body:has(.c-page){background:var(--paper)}
-html:has(.c-page){background:#faf9f6}
+html:has(.c-page){background:#fff}
 .c-page{background:var(--paper);color:var(--ink);font:400 17px/1.6 var(--cb);caret-color:var(--red)}
 .c-page ::selection{background:var(--red);color:#fff}
 .c-page :focus-visible,.d-nav--paper :focus-visible{outline:2px solid var(--red);outline-offset:3px;border-radius:0}

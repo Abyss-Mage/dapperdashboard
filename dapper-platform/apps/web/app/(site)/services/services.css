@@ -120,7 +120,7 @@ body:has(.s-page),html:has(.s-page){background:#0b0b0c}
 @media(max-width:720px){.s-tile__tag{display:none}.s-tile__sub{font-size:10px;letter-spacing:.03em}}
 
 /* The page alternates black and white sections: .s-light redefines the tokens for its section */
-.s-light{--bk:#f5f2eb;--bk2:#ebe7dd;--bone:#0b0b0c;--mute:#55524b;--line:#0b0b0c26;background:var(--bk2);color:var(--bone)}
+.s-light{--bk:#fff;--bk2:#ebe7dd;--bone:#0b0b0c;--mute:#55524b;--line:#0b0b0c26;background:var(--bk2);color:var(--bone)}
 .s-how.s-light{background:var(--bk)}
 .s-light .s-how__steps button{color:#7d7a72}
 .s-light .s-how__steps button.is-on,.s-light .s-how__steps button:hover{color:var(--bone)}
@@ -129,14 +129,14 @@ body:has(.s-page),html:has(.s-page){background:#0b0b0c}
 .s-light .s-rev__row li{background:#fff}
 
 /* ---- Round 3: pure white (no cream), carousel reviews, eleven tiles ---- */
-.s-light{--bk:#fff;--bk2:#f3f3f3;--line:#0b0b0c1f;background:#fff}
+.s-light{--bk:#fff;--bk2:#fff;--line:#0b0b0c1f;background:#fff}
 .s-how.s-light{background:#fff}
 .s-grid{grid-auto-rows:minmax(clamp(220px,28vh,340px),1fr)}
 .s-rev.s-light{padding-inline:var(--cg)}
 .s-rev .s-h2{padding:0}
 .s-rev .srow{margin-top:clamp(32px,4vw,56px);color:var(--bone)}
 .s-rev__row.srow__track{margin:0;padding:0 0 4px}
-.s-light .s-rev__row li{background:#f3f3f3;width:clamp(280px,32vw,440px);scroll-margin-left:0;clip-path:polygon(0 0,100% 0,100% 100%,18px 100%,0 calc(100% - 18px))}
+.s-light .s-rev__row li{background:#fff;width:clamp(280px,32vw,440px);scroll-margin-left:0;clip-path:polygon(0 0,100% 0,100% 100%,18px 100%,0 calc(100% - 18px))}
 
 /* The rolling label on buttons: only the first line takes room, the second waits below it, so the label can never show twice */
 .s-roll{position:relative;white-space:nowrap}

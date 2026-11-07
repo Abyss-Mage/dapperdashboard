@@ -41,3 +41,4 @@
 @media(max-width:600px){.recap>div{grid-template-columns:1fr;gap:4px}}
 
 @media(max-width:899px){.page{padding-top:80px}}
+:global(:root:not([data-theme=dark])) .page{background:#fff}
