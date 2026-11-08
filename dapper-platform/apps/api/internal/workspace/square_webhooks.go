@@ -6,9 +6,16 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log"
 	"net/http"
 	"strings"
+	"time"
 )
+
+// waitOnSquare gives a request that calls Square (two calls, up to 15 seconds each) longer than the server's usual 10-second write limit.
+func waitOnSquare(w http.ResponseWriter) {
+	_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(60 * time.Second))
+}
 
 type squareWebhookEvent struct {
 	MerchantID string `json:"merchant_id"`
@@ -25,7 +32,8 @@ type squareWebhookEvent struct {
 type squarePaymentObject struct {
 	Payment struct {
 		ID          string `json:"id"`
-		Status      string `json:"status"` // "COMPLETED", "CANCELED", "FAILED"
+		ReferenceID string `json:"reference_id"` // our payment attempt, when the charge came through one
+		Status      string `json:"status"`       // "COMPLETED", "CANCELED", "FAILED"
 		AmountMoney struct {
 			Amount   int64  `json:"amount"`
 			Currency string `json:"currency"`
@@ -41,7 +49,7 @@ func registerSquareWebhookRoutes(mux *http.ServeMux, store *postgres.Store, sqCl
 	mux.HandleFunc("POST /api/v1/integrations/square/webhooks", func(w http.ResponseWriter, r *http.Request) {
 		sigKey := strings.TrimSpace(signatureKey)
 		url := strings.TrimSpace(webhookURL)
-		if sqClient == nil || sigKey == "" || url == "" {
+		if sigKey == "" || url == "" {
 			reply(w, 503, map[string]string{"error": "Square webhook ingress is not configured"})
 			return
 		}
@@ -58,7 +66,12 @@ func registerSquareWebhookRoutes(mux *http.ServeMux, store *postgres.Store, sqCl
 		}
 
 		sig := r.Header.Get("x-square-hmacsha256-signature")
-		if !sqClient.VerifyWebhookSignature(body, sig, url, sigKey) {
+		// Franchises connected by OAuth need no server-wide Square client.
+		verify := square.VerifyWebhookSignature
+		if sqClient != nil {
+			verify = sqClient.VerifyWebhookSignature
+		}
+		if !verify(body, sig, url, sigKey) {
 			reply(w, 401, map[string]string{"error": "Invalid webhook signature"})
 			return
 		}
@@ -83,6 +96,15 @@ func registerSquareWebhookRoutes(mux *http.ServeMux, store *postgres.Store, sqCl
 				if err := store.HandleSquareWebhookPayment(r.Context(), obj.Payment.ID, obj.Payment.Status, refundAmt); err != nil {
 					reply(w, http.StatusServiceUnavailable, map[string]string{"error": "Payment notification persistence unavailable"})
 					return
+				}
+				if obj.Payment.Status == "COMPLETED" {
+					waitOnSquare(w)
+					if err := store.SettleSquareIntentFromWebhook(r.Context(), obj.Payment.ReferenceID, obj.Payment.ID); err != nil {
+						// A failed reply makes Square send this again later.
+						log.Printf("square webhook: payment attempt %s could not be settled: %v", obj.Payment.ReferenceID, err)
+						reply(w, http.StatusServiceUnavailable, map[string]string{"error": "Payment could not be settled yet"})
+						return
+					}
 				}
 			}
 		}

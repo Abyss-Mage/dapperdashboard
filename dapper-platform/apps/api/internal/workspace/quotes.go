@@ -2,7 +2,6 @@ package workspace
 
 import (
 	"dapper.local/platform/internal/postgres"
-	"dapper.local/platform/internal/square"
 	"errors"
 	"net/http"
 )
@@ -47,7 +46,7 @@ func quoteFailure(w http.ResponseWriter, err error) {
 	failure(w, err)
 }
 
-func registerQuoteRoutes(mux *http.ServeMux, store *postgres.Store, sqClient square.Client) {
+func registerQuoteRoutes(mux *http.ServeMux, store *postgres.Store) {
 	base := "/api/v1/organizations/{organization}/locations/{location}/quotes"
 
 	// The business details printed on a quotation (the same ones invoices use).
@@ -279,15 +278,25 @@ func registerQuoteRoutes(mux *http.ServeMux, store *postgres.Store, sqClient squ
 			reply(w, 400, map[string]string{"error": "Valid selectors required"})
 			return
 		}
-		if sqClient == nil {
-			reply(w, 503, map[string]string{"error": "Square payment provider is not configured for this location"})
-			return
-		}
 		var input postgres.CustomerPayQuoteDepositInput
 		if !decodeLimited(w, r, &input, 8192) {
 			return
 		}
-		res, err := store.CustomerPayQuoteDeposit(r.Context(), requestSession(r).principalID, customer, quoteID, sqClient, input)
+		waitOnSquare(w)
+		principal := requestSession(r).principalID
+		client, locationID, err := portalSquareClient(r.Context(), store, principal, customer)
+		if errors.Is(err, postgres.ErrSquareBinding) {
+			reply(w, 503, map[string]string{"error": "Square payment provider is not configured for this location"})
+			return
+		}
+		if err == nil {
+			input.SquareLocationID = locationID
+			var res postgres.CustomerQuoteDepositResult
+			if res, err = store.CustomerPayQuoteDeposit(r.Context(), principal, customer, quoteID, client, input); err == nil {
+				reply(w, 201, res)
+				return
+			}
+		}
 		if err != nil {
 			switch {
 			case errors.Is(err, postgres.ErrForbidden):
@@ -307,6 +316,5 @@ func registerQuoteRoutes(mux *http.ServeMux, store *postgres.Store, sqClient squ
 			}
 			return
 		}
-		reply(w, 201, res)
 	})
 }

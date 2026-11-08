@@ -165,6 +165,7 @@ func registerSquareIntentRoutes(mux *http.ServeMux, store *postgres.Store) {
 // chargeSquareInvoice runs the shared prepare + execute flow for both the location-scoped and the
 // employee-scoped routes. The scope is always resolved by the caller from server-side authority.
 func chargeSquareInvoice(w http.ResponseWriter, r *http.Request, store *postgres.Store, scope postgres.Scope, invoice, requestKey, sourceID string, amountCents int64) {
+	waitOnSquare(w)
 	resolve := store.SquareCredentialResolver()
 	if resolve == nil {
 		reply(w, 503, map[string]string{"error": "Square payments are not configured on the server"})
@@ -202,6 +203,8 @@ func squareIntentFailure(w http.ResponseWriter, err error, intent string) {
 		reply(w, 404, map[string]string{"error": "Invoice not found in this scope"})
 	case errors.Is(err, postgres.ErrSquareIntentState):
 		reply(w, 409, map[string]string{"error": "This payment attempt is already being processed", "intentId": intent})
+	case errors.Is(err, postgres.ErrPaymentDeclined):
+		reply(w, 402, map[string]string{"error": "The card was declined. Nothing was charged. Try another card.", "intentId": intent})
 	case errors.Is(err, postgres.ErrPaymentProvider):
 		// The outcome is not confirmed; the same request key retries the SAME provider charge identity.
 		reply(w, 502, map[string]string{"error": "The payment could not be confirmed. Do not use a different card. Retry with the same request key or ask an administrator to reconcile it", "intentId": intent})

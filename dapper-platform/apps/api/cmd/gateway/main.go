@@ -78,6 +78,14 @@ func refreshAssetOverrides(apiURL *url.URL) {
 	}
 }
 
+// waitsOnSquare is a request that may outlast the normal write limit: cutting it off could tell a customer a charge failed when it went through.
+func waitsOnSquare(r *http.Request) bool {
+	p := r.URL.Path
+	return r.Method == http.MethodPost && (strings.HasPrefix(p, "/api/v1/public/booking/") && strings.HasSuffix(p, "/book") ||
+		strings.HasPrefix(p, "/api/v1/portal/") && strings.HasSuffix(p, "/pay") ||
+		strings.HasSuffix(p, "/square-payments") || p == "/api/v1/integrations/square/webhooks")
+}
+
 func gatewayHandler(apiURL, webURL *url.URL, hosts map[string]bool) http.Handler {
 	api, web := httputil.NewSingleHostReverseProxy(apiURL), httputil.NewSingleHostReverseProxy(webURL)
 	unavailable := func(w http.ResponseWriter, r *http.Request, err error) {
@@ -111,11 +119,17 @@ func gatewayHandler(apiURL, webURL *url.URL, hosts map[string]bool) http.Handler
 		}
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Referrer-Policy", "same-origin")
-		if r.Method == http.MethodPost && r.URL.Path == "/api/v1/employee/uploads" || r.Method == http.MethodPut && strings.HasSuffix(r.URL.Path, "/site-assets") || r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/test") && strings.Contains(r.URL.Path, "/messaging/") {
+		if r.Method == http.MethodPost && r.URL.Path == "/api/v1/employee/uploads" || r.Method == http.MethodPut && strings.HasSuffix(r.URL.Path, "/site-assets") || r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/test") && strings.Contains(r.URL.Path, "/messaging/") || waitsOnSquare(r) {
 			// Multi-photo posts from phones need a longer window than the global limits.
 			controller := http.NewResponseController(w)
 			_ = controller.SetReadDeadline(time.Now().Add(3 * time.Minute))
 			_ = controller.SetWriteDeadline(time.Now().Add(3 * time.Minute))
+		}
+		if strings.HasPrefix(r.URL.Path, "/api/v1/organizations/") && strings.Contains(r.URL.Path, "/backups") {
+			// A whole-system backup takes as long as its photos take to move.
+			controller := http.NewResponseController(w)
+			_ = controller.SetReadDeadline(time.Now().Add(2 * time.Hour))
+			_ = controller.SetWriteDeadline(time.Now().Add(2 * time.Hour))
 		}
 		mux.ServeHTTP(w, r)
 	})

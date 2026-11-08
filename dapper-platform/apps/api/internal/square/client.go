@@ -214,6 +214,11 @@ func (c *squareClient) CreatePayment(ctx context.Context, req PaymentRequest) (P
 }
 
 func (c *squareClient) VerifyWebhookSignature(body []byte, signature, webhookURL, signatureKey string) bool {
+	return VerifyWebhookSignature(body, signature, webhookURL, signatureKey)
+}
+
+// VerifyWebhookSignature checks a Square notification; it needs only the signature key, not an account's token.
+func VerifyWebhookSignature(body []byte, signature, webhookURL, signatureKey string) bool {
 	sig := strings.TrimSpace(signature)
 	key := strings.TrimSpace(signatureKey)
 	url := strings.TrimSpace(webhookURL)

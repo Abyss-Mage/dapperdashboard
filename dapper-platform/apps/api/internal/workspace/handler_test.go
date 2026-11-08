@@ -629,6 +629,13 @@ func TestScopedHTTPBoundaryWithPostgres(t *testing.T) {
 	if unconfRec.Code != 503 {
 		t.Fatalf("expected 503 for unconfigured square client, got %d: %s", unconfRec.Code, unconfRec.Body.String())
 	}
+	// Portal payments charge the account saved for the invoice's location, like every other card payment.
+	if _, err = setup.Exec(ctx, `INSERT INTO square_merchant_binding_revisions(organization_id,location_id,version,environment,merchant_id,square_location_id,credential_reference,reviewed_by) VALUES($1,$2,1,'sandbox','synthetic-merchant','synthetic-provider-location','synthetic-secret-selector',$3) ON CONFLICT DO NOTHING`, org, location, actor); err != nil {
+		t.Fatal(err)
+	}
+	store.SetSquareCredentialResolver(func(context.Context, string, string) (postgres.VerifiedSquareClient, error) {
+		return verifiedMockSquare{mockSquare}, nil
+	})
 	if overpayRes := send("POST", custPayPath, `{"sourceId":"cnon:card-nonce-ok","amountCents":901,"idempotencyKey":"http-cust-pay-00002"}`, token, origin); overpayRes.Code != 422 {
 		t.Fatalf("expected 422 for overpay, got %d: %s", overpayRes.Code, overpayRes.Body.String())
 	}
@@ -787,3 +794,7 @@ func TestScopedHTTPBoundaryWithPostgres(t *testing.T) {
 		t.Fatal("Host boundary bypass")
 	}
 }
+
+type verifiedMockSquare struct{ *square.MockClient }
+
+func (verifiedMockSquare) VerifyLocation(context.Context, square.LocationBinding) error { return nil }

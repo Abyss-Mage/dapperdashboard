@@ -35,14 +35,13 @@ type Config struct {
 }
 
 type SMTPSender struct {
-	tlsRoots           *x509.CertPool
-	host               string
-	port               int
-	username           string
-	password           string
-	fromAddress        string
-	fromName           string
-	insecureSkipVerify bool
+	tlsRoots    *x509.CertPool
+	host        string
+	port        int
+	username    string
+	password    string
+	fromAddress string
+	fromName    string
 }
 
 func NewSMTPSender(cfg Config) (*SMTPSender, error) {
@@ -60,13 +59,12 @@ func NewSMTPSender(cfg Config) (*SMTPSender, error) {
 		fromName = "Dapper Detailing"
 	}
 	return &SMTPSender{
-		host:               host,
-		port:               port,
-		username:           strings.TrimSpace(cfg.Username),
-		password:           cfg.Password,
-		fromAddress:        from,
-		fromName:           fromName,
-		insecureSkipVerify: cfg.InsecureSkipVerify,
+		host:        host,
+		port:        port,
+		username:    strings.TrimSpace(cfg.Username),
+		password:    cfg.Password,
+		fromAddress: from,
+		fromName:    fromName,
 	}, nil
 }
 
@@ -99,7 +97,11 @@ func (s *SMTPSender) SendEmailWithAttachment(ctx context.Context, recipient, sub
 	providerRef := fmt.Sprintf("smtp-%s", hex.EncodeToString(nonce))
 
 	boundary := fmt.Sprintf("=_dapper_%d_%s", time.Now().UnixNano(), hex.EncodeToString(nonce[:4]))
+	return s.deliver(ctx, recipient, providerRef, s.message(recipient, subject, messageID, boundary, bodyHTML, bodyText, att))
+}
 
+// message builds the full email: text and HTML bodies, and the attached file when there is one.
+func (s *SMTPSender) message(recipient, subject, messageID, boundary, bodyHTML, bodyText string, att *Attachment) string {
 	var msg strings.Builder
 	msg.WriteString(fmt.Sprintf("From: %s\r\n", (&mail.Address{Name: s.fromName, Address: s.fromAddress}).String()))
 	msg.WriteString(fmt.Sprintf("To: <%s>\r\n", recipient))
@@ -149,7 +151,10 @@ func (s *SMTPSender) SendEmailWithAttachment(ctx context.Context, recipient, sub
 		msg.WriteString(enc + "\r\n")
 		msg.WriteString(fmt.Sprintf("--%s_mixed--\r\n", boundary))
 	}
+	return msg.String()
+}
 
+func (s *SMTPSender) deliver(ctx context.Context, recipient, providerRef, message string) (string, error) {
 	addr := fmt.Sprintf("%s:%d", s.host, s.port)
 	d := net.Dialer{Timeout: 10 * time.Second}
 	conn, err := d.DialContext(ctx, "tcp", addr)
@@ -174,10 +179,9 @@ func (s *SMTPSender) SendEmailWithAttachment(ctx context.Context, recipient, sub
 	defer c.Close()
 
 	tlsConfig := &tls.Config{
-		ServerName:         s.host,
-		RootCAs:            s.tlsRoots,
-		MinVersion:         tls.VersionTLS12,
-		InsecureSkipVerify: s.insecureSkipVerify,
+		ServerName: s.host,
+		RootCAs:    s.tlsRoots,
+		MinVersion: tls.VersionTLS12,
 	}
 
 	if ok, _ := c.Extension("STARTTLS"); !ok {
@@ -211,7 +215,7 @@ func (s *SMTPSender) SendEmailWithAttachment(ctx context.Context, recipient, sub
 	if err != nil {
 		return "", fmt.Errorf("%w: data command failed: %v", ErrSMTPSend, err)
 	}
-	if _, err = w.Write([]byte(msg.String())); err != nil {
+	if _, err = w.Write([]byte(message)); err != nil {
 		_ = w.Close()
 		return "", fmt.Errorf("%w: data write failed: %v", ErrSMTPSend, err)
 	}

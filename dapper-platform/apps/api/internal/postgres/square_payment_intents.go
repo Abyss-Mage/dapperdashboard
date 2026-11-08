@@ -56,7 +56,7 @@ func (s *Store) changeSquarePaymentAttempt(ctx context.Context, scope Scope, id,
 		}
 		return attempt, nil
 	}
-	if (next == "submitting" && attempt.State != "prepared" && attempt.State != "uncertain") || (next == "uncertain" && attempt.State != "submitting") {
+	if (next == "submitting" && attempt.State != "prepared" && attempt.State != "uncertain") || ((next == "uncertain" || next == "failed") && attempt.State != "submitting") {
 		return SquarePaymentAttempt{}, ErrSquareIntentState
 	}
 	if _, err = tx.Exec(ctx, `UPDATE square_payment_intents SET state=$1,updated_at=now() WHERE id=$2`, next, id); err != nil {

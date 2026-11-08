@@ -56,7 +56,8 @@ func (s *Store) ExecuteSquareInvoiceIntent(ctx context.Context, scope Scope, id,
 	uncertain := func() error {
 		recovery, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 		defer cancel()
-		if _, err := s.MarkSquarePaymentIntentUncertain(recovery, scope, id); err != nil {
+		// ErrSquareIntentState means Square's notification already settled it while this call was timing out: the booking must stay.
+		if _, err := s.MarkSquarePaymentIntentUncertain(recovery, scope, id); err != nil && !errors.Is(err, ErrSquareIntentState) {
 			return err
 		}
 		return ErrPaymentProvider
@@ -70,7 +71,10 @@ func (s *Store) ExecuteSquareInvoiceIntent(ctx context.Context, scope Scope, id,
 	}
 	response, err := client.CreatePayment(ctx, square.PaymentRequest{SourceID: sourceID, IdempotencyKey: attempt.ProviderRequestKey, AmountCents: attempt.AmountCents, Currency: attempt.Currency, LocationID: attempt.ProviderLocationID, ReferenceID: attempt.ID})
 	if errors.Is(err, square.ErrSquareDeclined) {
-		_ = uncertain()
+		// Nothing was charged, so this attempt must not keep holding the balance: the customer has to be able to try another card.
+		recovery, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		defer cancel()
+		_, _ = s.changeSquarePaymentAttempt(recovery, scope, id, "failed")
 		return SquareIntentAllocation{}, ErrPaymentDeclined
 	}
 	if err != nil {
@@ -87,6 +91,24 @@ func (s *Store) ExecuteSquareInvoiceIntent(ctx context.Context, scope Scope, id,
 		return SquareIntentAllocation{}, err
 	}
 	return s.AllocateSquareInvoiceCapture(ctx, scope, id)
+}
+
+// SettleSquareIntentFromWebhook finishes a charge whose answer never reached us. Square's notification names our payment attempt in
+// reference_id; the payment is then read back from Square, so the notification alone settles nothing. Anything else is ignored.
+func (s *Store) SettleSquareIntentFromWebhook(ctx context.Context, intentID, paymentID string) error {
+	if !uuid(intentID) {
+		return nil
+	}
+	var scope Scope
+	err := s.pool.QueryRow(ctx, `SELECT organization_id::text,location_id::text,actor_id::text FROM square_payment_intents WHERE id=$1 AND invoice_id IS NOT NULL AND state IN ('submitting','uncertain')`, intentID).Scan(&scope.OrganizationID, &scope.LocationID, &scope.ActorID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	_, err = s.RecoverSquareInvoiceIntent(ctx, scope, intentID, paymentID, s.SquareCredentialResolver())
+	return err
 }
 
 // RecoverSquareInvoiceIntent reads an already-known provider payment; it never

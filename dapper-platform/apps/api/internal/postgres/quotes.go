@@ -1197,8 +1197,9 @@ func uuid(s string) bool {
 }
 
 type CustomerPayQuoteDepositInput struct {
-	SourceID       string `json:"sourceId"`
-	IdempotencyKey string `json:"idempotencyKey"`
+	SourceID         string `json:"sourceId"`
+	IdempotencyKey   string `json:"idempotencyKey"`
+	SquareLocationID string `json:"-"` // from the location's saved Square account, never from the browser
 }
 
 type CustomerQuoteDepositResult struct {
@@ -1396,6 +1397,7 @@ func (s *Store) CustomerPayQuoteDeposit(ctx context.Context, actorID, customerID
 		IdempotencyKey: idempotencyKey,
 		AmountCents:    depositCents,
 		Currency:       "CAD",
+		LocationID:     input.SquareLocationID,
 		ReferenceID:    invoiceID,
 		Note:           fmt.Sprintf("Deposit for Quote %s", refNum),
 	})

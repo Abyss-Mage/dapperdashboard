@@ -284,7 +284,22 @@ func verifyQuotationHTTP(t *testing.T, ctx context.Context, store *postgres.Stor
 		t.Fatal("authorization left deposit invoice/payment rows")
 	}
 	t.Log("VERIFIED: quote deposit APPROVED rolls back invoice/payment rows")
-	// 11. Customer portal: pay deposit
+	// 11. Customer portal: pay deposit, charged to the account saved for this location
+	if _, err = setup.Exec(ctx, `INSERT INTO square_merchant_binding_revisions(organization_id,location_id,version,environment,merchant_id,square_location_id,credential_reference,reviewed_by) VALUES($1,$2,1,'sandbox','synthetic-merchant','synthetic-provider-location','synthetic-secret-selector',$3) ON CONFLICT DO NOTHING`, org, loc, actor); err != nil {
+		t.Fatal(err)
+	}
+	var chargedLocation string
+	store.SetSquareCredentialResolver(func(context.Context, string, string) (postgres.VerifiedSquareClient, error) {
+		return verifiedMockSquare{&square.MockClient{CreatePaymentFunc: func(_ context.Context, req square.PaymentRequest) (square.PaymentResponse, error) {
+			chargedLocation = req.LocationID
+			return square.PaymentResponse{ID: "synthetic-quote-deposit", ReferenceID: req.ReferenceID, LocationID: req.LocationID, Status: "COMPLETED", AmountCents: req.AmountCents, Currency: req.Currency}, nil
+		}}}, nil
+	})
+	defer func() {
+		if chargedLocation != "synthetic-provider-location" {
+			t.Errorf("deposit charged to %q", chargedLocation)
+		}
+	}()
 	depPayRes := send("POST", portalBase+"/"+createdQuote.ID+"/pay-deposit", map[string]any{
 		"sourceId":       "cnon:card-nonce-ok",
 		"idempotencyKey": "http-cust-dep-pay-0001",

@@ -10,9 +10,10 @@ HOST="${DAPPER_HOST:-dapper-prod}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-# Checks first: nothing is sent unless the Go services build and pass vet and the web app type-checks.
+# Checks first: nothing is sent unless the Go services build and pass vet and tests and the web app type-checks.
+# Tests that need a database skip unless DAPPER_TEST_DATABASE_URL points at a throwaway one.
 echo "Checking the code before sending it…"
-(cd dapper-platform/apps/api && go build ./... && go vet ./...) || { echo "Go check failed: nothing was deployed."; exit 1; }
+(cd dapper-platform/apps/api && go build ./... && go vet ./... && go test ./...) || { echo "Go check failed: nothing was deployed."; exit 1; }
 (cd dapper-platform/apps/web && npx tsc --noEmit) || { echo "Web type check failed: nothing was deployed."; exit 1; }
 if ! git diff --quiet HEAD -- . 2>/dev/null; then echo "Note: this working tree has changes that are not committed yet."; fi
 

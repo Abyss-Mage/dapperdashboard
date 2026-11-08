@@ -171,6 +171,7 @@ func main() {
 		}
 	}
 	var emailSender postgres.EmailSender = liveEmail
+	go workspace.RetryBookingEmails(store, emailSender, origin)
 	sqWebhookURL := os.Getenv("DAPPER_SQUARE_WEBHOOK_URL")
 	sqSignatureKey := os.Getenv("DAPPER_SQUARE_WEBHOOK_SIGNATURE_KEY")
 

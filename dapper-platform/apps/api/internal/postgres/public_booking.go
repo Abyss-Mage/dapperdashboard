@@ -54,12 +54,25 @@ func (s *Store) websiteScope(ctx context.Context, slug string) (Scope, error) {
 	if err != nil {
 		return Scope{}, err
 	}
+	return s.websiteScopeAt(ctx, org, loc)
+}
+
+// websiteScopeAt reads the website's account for a location and only writes when it is missing, so visitors' reads do not queue on one row.
+func (s *Store) websiteScopeAt(ctx context.Context, org, loc string) (Scope, error) {
+	var principal string
+	err := s.pool.QueryRow(ctx, `SELECT p.id::text FROM principals p WHERE p.external_subject='system:website' AND EXISTS(SELECT 1 FROM organization_memberships m WHERE m.organization_id=$1 AND m.principal_id=p.id)
+ AND (SELECT count(*) FROM location_grants g WHERE g.principal_id=p.id AND g.organization_id=$1 AND g.location_id=$2 AND g.action=ANY($3::text[]))=$4`, org, loc, websiteGrants, len(websiteGrants)).Scan(&principal)
+	if err == nil {
+		return Scope{ActorID: principal, OrganizationID: org, LocationID: loc}, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return Scope{}, err
+	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return Scope{}, err
 	}
 	defer tx.Rollback(ctx)
-	var principal string
 	if err = tx.QueryRow(ctx, `INSERT INTO principals(external_subject) VALUES('system:website') ON CONFLICT(external_subject) DO UPDATE SET external_subject=excluded.external_subject RETURNING id::text`).Scan(&principal); err != nil {
 		return Scope{}, err
 	}
@@ -70,6 +83,36 @@ func (s *Store) websiteScope(ctx context.Context, slug string) (Scope, error) {
 		return Scope{}, err
 	}
 	return Scope{ActorID: principal, OrganizationID: org, LocationID: loc}, tx.Commit(ctx)
+}
+
+// CustomerInvoicePaymentScope checks the signed-in customer owns the invoice and returns the website's account at the invoice's location, which
+// holds the payment grants a customer account does not have.
+func (s *Store) CustomerInvoicePaymentScope(ctx context.Context, actorID, customerID, invoiceID string) (Scope, error) {
+	scope, err := s.CustomerPaymentScope(ctx, actorID, customerID)
+	if err != nil {
+		return Scope{}, err
+	}
+	var found bool
+	if err = s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM invoices WHERE id=$1 AND organization_id=$2 AND location_id=$3 AND customer_id=$4)`, invoiceID, scope.OrganizationID, scope.LocationID, customerID).Scan(&found); err != nil {
+		return Scope{}, err
+	}
+	if !found {
+		return Scope{}, ErrInvoiceNotFound
+	}
+	return scope, nil
+}
+
+// CustomerPaymentScope is the same for an account as a whole: the location the signed-in customer belongs to.
+func (s *Store) CustomerPaymentScope(ctx context.Context, actorID, customerID string) (Scope, error) {
+	var org, loc string
+	err := s.pool.QueryRow(ctx, `SELECT a.organization_id::text,a.location_id::text FROM customer_account_links a JOIN principals p ON p.id=a.principal_id AND p.active WHERE a.principal_id=$1 AND a.customer_id=$2`, actorID, customerID).Scan(&org, &loc)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Scope{}, ErrForbidden
+	}
+	if err != nil {
+		return Scope{}, err
+	}
+	return s.websiteScopeAt(ctx, org, loc)
 }
 
 type PublicService struct {

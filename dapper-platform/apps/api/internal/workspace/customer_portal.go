@@ -1,6 +1,7 @@
 package workspace
 
 import (
+	"context"
 	"dapper.local/platform/internal/postgres"
 	"dapper.local/platform/internal/square"
 	"errors"
@@ -9,7 +10,55 @@ import (
 	"strings"
 )
 
-func registerCustomerPortalRoutes(mux *http.ServeMux, store *postgres.Store, sqClient square.Client) {
+// portalSquareClient is the Square account saved for the signed-in customer's location, and that account's location id.
+func portalSquareClient(ctx context.Context, store *postgres.Store, principal, customer string) (square.Client, string, error) {
+	scope, err := store.CustomerPaymentScope(ctx, principal, customer)
+	if err != nil {
+		return nil, "", err
+	}
+	resolve := store.SquareCredentialResolver()
+	if resolve == nil {
+		return nil, "", postgres.ErrSquareBinding
+	}
+	binding, err := store.CurrentSquareMerchantBinding(ctx, scope, "payments.record")
+	if err != nil {
+		return nil, "", err
+	}
+	client, err := resolve(ctx, binding.Environment, binding.CredentialReference)
+	if err != nil || client == nil {
+		return nil, "", postgres.ErrSquareBinding
+	}
+	if err = client.VerifyLocation(ctx, square.LocationBinding{Environment: binding.Environment, MerchantID: binding.MerchantID, LocationID: binding.SquareLocationID, Currency: "CAD"}); err != nil {
+		return nil, "", postgres.ErrPaymentProvider
+	}
+	return client, binding.SquareLocationID, nil
+}
+
+func registerCustomerPortalRoutes(mux *http.ServeMux, store *postgres.Store) {
+	// Only what the card form needs: public identifiers, never credentials.
+	mux.HandleFunc("GET /api/v1/portal/accounts/{customer}/square", func(w http.ResponseWriter, r *http.Request) {
+		customer := r.PathValue("customer")
+		if !uuid(customer) {
+			reply(w, 400, map[string]string{"error": "Valid customer selector required"})
+			return
+		}
+		scope, err := store.CustomerPaymentScope(r.Context(), requestSession(r).principalID, customer)
+		if err != nil {
+			failure(w, err)
+			return
+		}
+		b, err := store.CurrentSquareMerchantBinding(r.Context(), scope, "payments.record")
+		if errors.Is(err, postgres.ErrSquareBinding) {
+			reply(w, 200, map[string]any{"configured": false})
+			return
+		}
+		if err != nil {
+			failure(w, err)
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		reply(w, 200, map[string]any{"configured": true, "credentialsConfigured": store.SquareCredentialResolver() != nil, "applicationId": store.SquareApplicationID(b.Environment), "binding": map[string]any{"environment": b.Environment, "squareLocationId": b.SquareLocationID}})
+	})
 	mux.HandleFunc("POST /api/v1/portal/accounts/{customer}/vehicles", func(w http.ResponseWriter, r *http.Request) {
 		customer := r.PathValue("customer")
 		if !uuid(customer) {
@@ -209,17 +258,43 @@ func registerCustomerPortalRoutes(mux *http.ServeMux, store *postgres.Store, sqC
 			reply(w, 400, map[string]string{"error": "Valid customer and invoice selectors are required"})
 			return
 		}
-		if sqClient == nil {
-			reply(w, 503, map[string]string{"error": "Square payment provider is not configured for this location"})
-			return
+		var input struct {
+			SourceID       string `json:"sourceId"`
+			AmountCents    int64  `json:"amountCents"`
+			IdempotencyKey string `json:"idempotencyKey"`
 		}
-		var input postgres.CustomerPayInvoiceInput
 		if !decodeLimited(w, r, &input, 16*1024) {
 			return
 		}
-		pmt, updatedInv, err := store.CustomerPayInvoice(r.Context(), requestSession(r).principalID, customer, invoice, sqClient, input)
+		waitOnSquare(w)
+		principal := requestSession(r).principalID
+		// The customer proves the invoice is theirs; the charge then goes to the Square account saved for the invoice's own location.
+		scope, err := store.CustomerInvoicePaymentScope(r.Context(), principal, customer, invoice)
+		if err == nil {
+			if store.SquareCredentialResolver() == nil {
+				reply(w, 503, map[string]string{"error": "Square payment provider is not configured for this location"})
+				return
+			}
+			if strings.TrimSpace(input.SourceID) == "" {
+				err = postgres.ErrPaymentInput
+			} else {
+				err = takeSquareDeposit(r, store, scope, invoice, "portal-invoice-"+input.IdempotencyKey, input.SourceID, input.AmountCents)
+			}
+		}
+		if errors.Is(err, postgres.ErrSquareBinding) {
+			reply(w, 503, map[string]string{"error": "Square payment provider is not configured for this location"})
+			return
+		}
+		var updatedInv postgres.Invoice
+		if err == nil {
+			updatedInv, err = store.PortalInvoice(r.Context(), principal, customer, invoice)
+		}
 		if err != nil {
 			switch {
+			case errors.Is(err, postgres.ErrPaymentDeclined):
+				reply(w, 402, map[string]string{"error": "Your card was declined. Please check the details or try another card."})
+			case errors.Is(err, postgres.ErrSquareIntentState):
+				reply(w, 409, map[string]string{"error": "This payment is already being processed"})
 			case errors.Is(err, postgres.ErrForbidden):
 				reply(w, 403, map[string]string{"error": "Access denied to customer account"})
 			case errors.Is(err, postgres.ErrInvoiceNotFound):
@@ -240,7 +315,7 @@ func registerCustomerPortalRoutes(mux *http.ServeMux, store *postgres.Store, sqC
 			return
 		}
 		reply(w, 201, map[string]any{
-			"payment": pmt,
+			"payment": map[string]any{"amountCents": input.AmountCents},
 			"invoice": updatedInv,
 		})
 	})

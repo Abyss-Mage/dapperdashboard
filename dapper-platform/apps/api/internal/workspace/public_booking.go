@@ -1,8 +1,6 @@
 package workspace
 
 import (
-	"context"
-	"fmt"
 	"log"
 	"dapper.local/platform/internal/postgres"
 	"errors"
@@ -245,6 +243,7 @@ func registerPublicBookingRoutes(mux *http.ServeMux, store *postgres.Store, send
 		}
 		paid, pending := false, false
 		if in.DepositMethod == "card" {
+			waitOnSquare(w)
 			scope, err := store.PublicBookingScope(r.Context(), site)
 			if err == nil {
 				err = takeSquareDeposit(r, store, scope, res.InvoiceID, "dep-"+in.RequestKey, in.SourceID, res.TotalCents)
@@ -263,36 +262,9 @@ func registerPublicBookingRoutes(mux *http.ServeMux, store *postgres.Store, send
 				return
 			}
 		}
-		// Emails, in the owner's wording, sent in the background and only when outgoing email works: the customer's confirmation (only when this
-		// booking created the customer, since a typed address might not be theirs) and the alert to the business (always).
+		// The confirmation and the business alert, in the owner's wording, sent in the background and only when outgoing email works.
 		if emailReady(sender) {
-			go func(name, to, phone, address string, start time.Time, paid, pending, newCustomer bool) {
-				ctx, cancel := context.WithTimeout(context.Background(), 40*time.Second)
-				defer cancel()
-				payment := "Pay on the day"
-				switch {
-				case paid:
-					payment = "Paid in full online"
-				case pending:
-					payment = "Card payment is being confirmed"
-				}
-				where := "At the Dapper shop"
-				if address != "" {
-					where = address
-				}
-				vars := map[string]string{"name": name, "phone": phone, "email": to, "service": res.ServiceName, "when": whenText(start), "where": where,
-					"total": fmt.Sprintf("$%.2f", float64(res.TotalCents)/100), "payment": payment, "invoice": store.BookingInvoiceText(ctx, res.BookingID, origin+"/account")}
-				subject, body, text := store.RenderEmail(ctx, "booking_confirmation", vars)
-				if _, err := sendWithInvoicePDF(ctx, store, sender, res.BookingID, to, subject, body, text); err != nil {
-					log.Print("The booking confirmation email could not be sent")
-				}
-				adminSubject, adminBody, adminText := store.RenderEmail(ctx, "booking_admin", vars)
-				for _, admin := range store.AdminNotifyEmails(ctx, "new") {
-					if _, err := sender.SendEmail(ctx, admin, adminSubject, adminBody, adminText); err != nil {
-						log.Print("The new-booking alert could not be sent")
-					}
-				}
-			}(in.Name, in.Email, in.Phone, in.ServiceAddress, in.Start, paid, pending, res.NewCustomer)
+			go sendBookingEmail(store, sender, origin, res.BookingID, "booking_confirmation")
 		}
 		reply(w, 201, map[string]any{"bookingId": res.BookingID, "invoiceNumber": res.InvoiceNumber, "totalCents": res.TotalCents, "depositPaid": paid, "paymentPending": pending, "paidCents": map[bool]int64{true: res.TotalCents, false: 0}[paid], "serviceName": res.ServiceName})
 	})

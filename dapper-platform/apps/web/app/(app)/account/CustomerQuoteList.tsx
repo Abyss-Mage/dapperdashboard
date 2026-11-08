@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import SquareCardField from '../workspace/SquareCardField';
 
 type QuoteItem = {
   id: string;
@@ -61,7 +62,8 @@ export default function CustomerQuoteList({
   const [termsAgreed, setTermsAgreed] = useState<{ [quoteId: string]: boolean }>({});
   const [declineReason, setDeclineReason] = useState<{ [quoteId: string]: string }>({});
   const [showDeclineBox, setShowDeclineBox] = useState<{ [quoteId: string]: boolean }>({});
-  const [depositSourceId, setDepositSourceId] = useState<{ [quoteId: string]: string }>({});
+  const tokenizers = useRef<{ [quoteId: string]: (() => Promise<string>) | null }>({});
+  const [cardReady, setCardReady] = useState<{ [quoteId: string]: boolean }>({});
 
   const errorRef = useRef<HTMLParagraphElement>(null);
   const endpoint = `/api/v1/portal/accounts/${customerId}/quotes`;
@@ -154,17 +156,15 @@ export default function CustomerQuoteList({
   }
 
   async function handlePayDeposit(quote: Quote) {
-    const sourceId = (depositSourceId[quote.id] || '').trim();
-    if (!sourceId) {
-      setError('Please provide a valid card payment nonce or token.');
-      return;
-    }
+    const tokenize = tokenizers.current[quote.id];
+    if (!tokenize) return;
     setActingOnQuoteId(quote.id);
     setError('');
     setNotice('');
 
     try {
-      const idempotencyKey = `cust-dep-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      const sourceId = await tokenize();
+      const idempotencyKey = crypto.randomUUID();
       const res = await fetch(`${endpoint}/${quote.id}/pay-deposit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -340,20 +340,16 @@ export default function CustomerQuoteList({
                     <p style={{ margin: '0.2rem 0 0.6rem', color: 'var(--foreground, #1a0b0d)' }}>
                       To confirm your booking, a deposit of {formatMoney(q.depositCents, q.currency)} is required. Settle online below via credit card or pay in-person at drop-off.
                     </p>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                      <input
-                        type="text"
-                        placeholder="Square card nonce (e.g. cnon:card-nonce-ok)"
-                        value={depositSourceId[q.id] || ''}
-                        onChange={(e) => setDepositSourceId((prev) => ({ ...prev, [q.id]: e.target.value }))}
-                        disabled={isActing}
-                        style={{ minWidth: '260px', padding: '0.4rem 0.6rem', fontSize: '0.85rem' }}
-                      />
+                    <SquareCardField
+                      infoUrl={`/api/v1/portal/accounts/${encodeURIComponent(customerId)}/square`}
+                      register={(fn) => { tokenizers.current[q.id] = fn; setCardReady((prev) => ({ ...prev, [q.id]: !!fn })); }}
+                    />
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.5rem' }}>
                       <button
                         type="button"
                         className="primary"
                         onClick={() => handlePayDeposit(q)}
-                        disabled={isActing || !(depositSourceId[q.id] || '').trim()}
+                        disabled={isActing || !cardReady[q.id]}
                         style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
                       >
                         {isActing ? 'Processing…' : `Pay Deposit (${formatMoney(q.depositCents, q.currency)})`}

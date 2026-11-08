@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import SquareCardField from '../workspace/SquareCardField';
 
 type InvoicePaymentFormProps = {
   customerId: string;
@@ -28,7 +29,8 @@ export default function InvoicePaymentForm({
   currency,
   onPaymentSuccess,
 }: InvoicePaymentFormProps) {
-  const [sourceId, setSourceId] = useState('');
+  const tokenize = useRef<(() => Promise<string>) | null>(null);
+  const [cardReady, setCardReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -36,35 +38,26 @@ export default function InvoicePaymentForm({
 
   async function handlePay(event: React.FormEvent) {
     event.preventDefault();
-    const token = sourceId.trim();
-    if (!token) {
-      setError('Please provide a valid card nonce or payment token.');
-      return;
-    }
+    if (!tokenize.current) return;
     setBusy(true);
     setError('');
     setNotice('');
 
     try {
-      const idempotencyKey = `cust-inv-pay-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      const sourceId = await tokenize.current();
       const res = await fetch(`/api/v1/portal/accounts/${encodeURIComponent(customerId)}/invoices/${encodeURIComponent(invoiceId)}/pay`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sourceId: token,
-          amountCents: dueCents,
-          idempotencyKey,
-        }),
+        body: JSON.stringify({ sourceId, amountCents: dueCents, idempotencyKey: crypto.randomUUID() }),
       });
 
       if (!res.ok) {
-        const body = await res.json();
+        const body = await res.json().catch(() => ({}));
         throw new Error(body.error || 'Invoice payment failed');
       }
 
       const data = await res.json();
       setNotice(`Payment of ${amount(data.payment.amountCents, currency)} processed successfully!`);
-      setSourceId('');
       setShowForm(false);
       onPaymentSuccess();
     } catch (err) {
@@ -95,20 +88,15 @@ export default function InvoicePaymentForm({
           <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>
             Pay Invoice #{invoiceNumber} Balance: {amount(dueCents, currency)}
           </div>
+          <SquareCardField
+            infoUrl={`/api/v1/portal/accounts/${encodeURIComponent(customerId)}/square`}
+            register={(fn) => { tokenize.current = fn; setCardReady(!!fn); }}
+          />
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-            <input
-              type="text"
-              placeholder="Card nonce (e.g. cnon:card-nonce-ok)"
-              value={sourceId}
-              onChange={(e) => setSourceId(e.target.value)}
-              disabled={busy}
-              required
-              style={{ minWidth: '240px', padding: '0.35rem 0.5rem', fontSize: '0.85rem' }}
-            />
             <button
               type="submit"
               className="primary"
-              disabled={busy || !sourceId.trim()}
+              disabled={busy || !cardReady}
               style={{ padding: '0.35rem 0.75rem', fontSize: '0.85rem' }}
             >
               {busy ? 'Processing…' : `Pay ${amount(dueCents, currency)}`}

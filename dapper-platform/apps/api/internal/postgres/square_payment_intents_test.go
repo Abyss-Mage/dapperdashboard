@@ -390,7 +390,18 @@ func TestSquarePaymentIntentCandidateMigration(t *testing.T) {
 		readCalls++
 		return square.PaymentResponse{ID: paymentID, ReferenceID: rejectedIntent.ID, LocationID: rejectedIntent.ProviderLocationID, Status: "COMPLETED", AmountCents: 500, Currency: "CAD"}, nil
 	}
-	recovered, err := store.RecoverSquareInvoiceIntent(ctx, scope, rejectedIntent.ID, "synthetic-known-provider-payment", func(context.Context, string, string) (VerifiedSquareClient, error) { return recoveredClient, nil })
+	// Square's notification names the attempt in reference_id; that alone settles the uncertain charge, by reading the payment back.
+	store.SetSquareCredentialResolver(func(context.Context, string, string) (VerifiedSquareClient, error) { return recoveredClient, nil })
+	if err = store.SettleSquareIntentFromWebhook(ctx, "not-an-attempt", "synthetic-known-provider-payment"); err != nil || readCalls != 0 {
+		t.Fatalf("foreign reference touched provider: %v", err)
+	}
+	if err = store.SettleSquareIntentFromWebhook(ctx, rejectedIntent.ID, "synthetic-known-provider-payment"); err != nil {
+		t.Fatalf("webhook settlement failed: %v", err)
+	}
+	if err = store.SettleSquareIntentFromWebhook(ctx, rejectedIntent.ID, "synthetic-known-provider-payment"); err != nil || readCalls != 1 {
+		t.Fatalf("repeated notification read provider again: %v", err)
+	}
+	recovered, err := store.RecoverSquareInvoiceIntent(ctx, scope, rejectedIntent.ID, "synthetic-known-provider-payment", nil)
 	if err != nil {
 		t.Fatalf("known-payment recovery failed: %v", err)
 	}
