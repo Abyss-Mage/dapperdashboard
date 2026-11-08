@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -71,6 +72,9 @@ func TestReopenReversesCompletionPayment(t *testing.T) {
 	must(err)
 	_, err = pool.Exec(ctx, `INSERT INTO payments(organization_id,location_id,invoice_id,customer_id,actor_id,amount_cents,method,status,idempotency_key) VALUES($1,$2,$3,$4,$5,20000,'cash','completed',$6)`, org, loc, inv.ID, customer, staff, "complete-"+booking)
 	must(err)
+	if name, pdf := s.BookingInvoicePDF(ctx, booking); name != "Invoice-SYN1.pdf" || !bytes.Contains(pdf, []byte("(Synthetic Detail)")) {
+		t.Fatalf("emailed invoice PDF not built from the saved invoice: %q %d bytes", name, len(pdf))
+	}
 
 	back, err := s.CorrectBookingStatus(ctx, scope, booking, "confirmed", "", "")
 	if err != nil || back.Status != "confirmed" || !strings.Contains(back.PaymentNotice, "$200.00") {

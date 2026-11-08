@@ -276,6 +276,30 @@ func registerInvoiceTemplateRoutes(mux *http.ServeMux, store *postgres.Store) {
 		}
 		sendLogo(w, contentType, data, digest, true)
 	})
+	mux.HandleFunc("GET /api/v1/portal/accounts/{customer}/invoice-template", func(w http.ResponseWriter, r *http.Request) {
+		if !uuid(r.PathValue("customer")) {
+			reply(w, 400, map[string]string{"error": "Valid customer selector required"})
+			return
+		}
+		out, err := store.CustomerInvoicePrintTemplate(r.Context(), requestSession(r).principalID, r.PathValue("customer"))
+		if err != nil {
+			templateFailure(w, err)
+			return
+		}
+		reply(w, 200, out)
+	})
+	mux.HandleFunc("GET /api/v1/portal/accounts/{customer}/logo", func(w http.ResponseWriter, r *http.Request) {
+		if !uuid(r.PathValue("customer")) {
+			reply(w, 400, map[string]string{"error": "Valid customer selector required"})
+			return
+		}
+		contentType, data, digest, found, err := store.CustomerLocationLogo(r.Context(), requestSession(r).principalID, r.PathValue("customer"))
+		if err != nil {
+			templateFailure(w, err)
+			return
+		}
+		sendLogo(w, contentType, data, digest, found)
+	})
 	mux.HandleFunc("GET /api/v1/employee/invoice-template", func(w http.ResponseWriter, r *http.Request) {
 		out, err := store.EmployeeInvoicePrintTemplate(r.Context(), requestSession(r).principalID)
 		if err != nil {

@@ -204,12 +204,12 @@ export default function InvoiceTemplateEditor({ organizationId, revision, locati
         </div>
         <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
           <button className="primary" disabled={busy || !loaded}>{busy ? 'Saving…' : 'Save template'}</button>
-          <button type="button" className="secondary" disabled={busy || !loaded} onClick={() => printInvoiceDocument(quote ? SAMPLE_QUOTE : SAMPLE, form)}>Print a sample</button>
+          <button type="button" className="secondary" disabled={busy || !loaded} onClick={() => printInvoiceDocument(quote ? SAMPLE_QUOTE : SAMPLE, { ...form, outlet: doc === 'franchise' ? 'franchise' : undefined })}>Print a sample</button>
           <button type="button" className="secondary" disabled={busy || !loaded} onClick={() => { setForm(quote ? { ...DEFAULT_PRINT_TEMPLATE, title: 'Quotation', validDays: 30 } : DEFAULT_PRINT_TEMPLATE); setNotice('Built-in layout restored here. Save to keep it.'); }}>Restore built-in layout</button>
         </div>
       </form>
       <h3>Preview (sample data)</h3>
-      <div style={{ background: '#fff', borderRadius: 12, padding: 24, overflowX: 'auto' }}><InvoiceDocument invoice={quote ? SAMPLE_QUOTE : SAMPLE} template={{ ...form, logoUrl: target === 'franchise' ? logoUrl || undefined : undefined }} /></div>
+      <div style={{ background: '#fff', borderRadius: 12, padding: 24, overflowX: 'auto' }}><InvoiceDocument invoice={quote ? SAMPLE_QUOTE : SAMPLE} template={{ ...form, logoUrl: target === 'franchise' ? logoUrl || undefined : undefined, outlet: doc === 'franchise' ? 'franchise' : undefined }} /></div>
     </section>
   );
 }

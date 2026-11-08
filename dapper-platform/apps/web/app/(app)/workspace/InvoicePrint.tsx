@@ -20,6 +20,8 @@ export type PrintTemplate = {
   /** Filled from the franchise when the template is loaded: the business details it prints (so drafts and quotes show them)
       and its active tax name and rate, e.g. HST at 13. */
   issuer?: { legalName: string; address: string; taxRegistration: string } | null; taxName?: string; taxRatePercent?: number;
+  /** 'franchise' outlets print the line saying who independently owns them. */
+  outlet?: string;
 };
 export type PrintInvoice = {
   /** 'quotation' prints a quotation: no paid or pending lines, a valid-until date and the quotation terms. */
@@ -34,8 +36,8 @@ export type PrintInvoice = {
 };
 
 export const DEFAULT_PRINT_TEMPLATE: PrintTemplate = {
-  title: 'Invoice', accentColor: '#111111', showLogo: true, headerNote: '', billToLabel: 'Bill to', itemLabel: 'Item', quantityLabel: 'Qty',
-  unitPriceLabel: 'Unit price', amountLabel: 'Amount', showTaxRegistration: true, showCustomerContact: true, paymentInstructions: '', footerNote: '', paperSize: 'letter',
+  title: 'Invoice', accentColor: '#e4202e', showLogo: true, headerNote: '', billToLabel: 'Bill to', itemLabel: 'Item', quantityLabel: 'Qty',
+  unitPriceLabel: 'Unit price', amountLabel: 'Amount', showTaxRegistration: true, showCustomerContact: true, paymentInstructions: '', footerNote: 'Thank you for choosing Dapper Detailing Pros.', paperSize: 'letter',
   customHtml: '', customCss: '', quotationTitle: 'Quotation', quotationNote: '', validDays: 0,
 };
 
@@ -52,27 +54,29 @@ export function taxLabel(invoice: PrintInvoice, t: PrintTemplate): string {
   return t.taxName ? `Tax (${t.taxName} ${pct})` : `Tax (${pct})`;
 }
 const issuerOf = (invoice: PrintInvoice, t: PrintTemplate) => (invoice.issuerSnapshot?.legalName ? invoice.issuerSnapshot : t.issuer?.legalName ? t.issuer : null);
+const ownerLine = (invoice: PrintInvoice, t: PrintTemplate) => { const name = t.outlet === 'franchise' ? issuerOf(invoice, t)?.legalName : ''; return name ? `Independently owned and operated by ${name.replace(/\.+$/, '')}.` : ''; };
 
 const money = (cents: number, currency = 'CAD') => `${(cents / 100).toLocaleString('en-CA', { style: 'currency', currency })}`;
 const day = (iso?: string | null) => (iso ? new Date(iso).toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' }) : '');
 
 const css = (t: PrintTemplate) => `
-.ddInv{font:14px/1.5 'Manrope',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:#17171a;background:#fff;padding:0;max-width:780px;margin:0 auto;border-top:8px solid ${t.accentColor}}
+.ddInv{font:14px/1.5 'Manrope',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:#17171a;background:#fff;padding:0;max-width:780px;margin:0 auto}
 .ddInv *{box-sizing:border-box;background:transparent;border-radius:0;box-shadow:none;backdrop-filter:none}
 .ddInv,.ddInv *{color:#17171a!important;opacity:1!important;text-shadow:none!important}
-.ddInv .ddHead{display:flex;justify-content:space-between;align-items:flex-start;gap:28px;padding:22px 0 18px}
-.ddInv .ddBrand{display:flex;gap:14px;align-items:flex-start}
-.ddInv .ddBrand img{width:72px;height:72px;object-fit:contain}
-.ddInv .ddIssuer p{font-size:13px;color:#4a4a52!important;margin:0}
-.ddInv .ddIssuer .ddName{font-size:17px;font-weight:800;color:#17171a!important}
-.ddInv h1{margin:0;font-size:34px;line-height:1;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:${t.accentColor}!important}
+.ddInv .ddHead{display:flex;justify-content:space-between;align-items:center;gap:28px;padding:20px 24px;background:#0b0b0c;border-bottom:6px solid ${t.accentColor}}
+.ddInv .ddHead,.ddInv .ddHead *{color:#fff!important}
+.ddInv .ddBrand{display:flex;gap:16px;align-items:center}
+.ddInv .ddBrand img{width:72px;height:72px;object-fit:contain;background:#fff;padding:5px}
+.ddInv .ddIssuer p{margin:0}
+.ddInv .ddIssuer .ddName{font-size:18px;line-height:1.25;font-weight:800}
+.ddInv h1{margin:0;font-size:34px;line-height:1;font-weight:800;letter-spacing:.04em;text-transform:uppercase}
 .ddInv .ddMeta{text-align:right}
 .ddInv .ddMeta dl{display:grid;grid-template-columns:auto auto;gap:3px 14px;margin:10px 0 0;justify-content:end;font-size:13px}
-.ddInv .ddMeta dt{color:#6b6b74!important;text-align:right}
+.ddInv .ddMeta dt{color:#b8b5ae!important;text-align:right}
 .ddInv .ddMeta dd{margin:0;font-weight:700;text-align:right}
-.ddInv .ddStatus{display:inline-block;margin-top:10px;padding:3px 12px;border:1.5px solid #17171a;border-radius:999px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em}
-.ddInv .ddStatus.paid{border-color:#17171a;background:#17171a;color:#fff!important}
-.ddInv .ddParties{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin:6px 0 18px;padding:14px 0;border-top:1px solid #e4e4e8;border-bottom:1px solid #e4e4e8}
+.ddInv .ddStatus{display:inline-block;margin-top:10px;padding:3px 12px;border:1.5px solid #fff;border-radius:999px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em}
+.ddInv .ddStatus.paid{background:#fff;color:#0b0b0c!important}
+.ddInv .ddParties{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin:14px 0 18px;padding:14px 0;border-bottom:1px solid #e4e4e8}
 .ddInv h2{margin:0 0 5px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#6b6b74!important}
 .ddInv p{margin:0 0 2px;white-space:pre-line}
 .ddInv .ddNote{margin:0 0 14px;color:#33333a!important}
@@ -82,7 +86,7 @@ const css = (t: PrintTemplate) => `
 .ddInv .ddBanner.paid{border-color:#17171a;background:#f1f1f3}
 .ddInv .ddBanner small{display:block;font-size:12px;color:#4a4a52!important}
 .ddInv table{width:100%;border-collapse:collapse;margin-top:4px}
-.ddInv th{text-align:left;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;background:#17171a;color:#fff!important;padding:9px 10px}
+.ddInv th{text-align:left;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;background:#0b0b0c;color:#fff!important;padding:9px 10px;border:0}
 .ddInv th.r{text-align:right}
 .ddInv td{padding:11px 10px;border-bottom:1px solid #e4e4e8;vertical-align:top}
 .ddInv tbody tr:nth-child(even) td{background:#f7f7f8}
@@ -95,7 +99,7 @@ const css = (t: PrintTemplate) => `
 .ddInv .ddPay,.ddInv .ddFoot{margin-top:22px;padding-top:12px;border-top:1px solid #e4e4e8}
 .ddInv .ddFoot,.ddInv .ddFoot *{color:#4a4a52!important}
 .ddInv .ddFoot{font-size:12.5px}
-@media print{.ddInv .ddStatus.paid,.ddInv th,.ddInv .ddDue,.ddInv tbody tr:nth-child(even) td,.ddInv .ddBanner.paid{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+@media print{.ddInv .ddHead,.ddInv .ddBrand img,.ddInv .ddStatus.paid,.ddInv th,.ddInv .ddDue,.ddInv tbody tr:nth-child(even) td,.ddInv .ddBanner.paid{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 `;
 
 /* The placeholders a custom layout can use. Every value is escaped, so invoice text can never become markup. */
@@ -106,7 +110,7 @@ export const TEMPLATE_PLACEHOLDERS: [string, string][] = [
   ['items', 'The item rows (<tr> with description, quantity, unit price and amount)'],
   ['subtotal', 'Subtotal'], ['discount', 'Discount (a coupon), 0.00 when none'], ['tax', 'Tax'], ['tax_label', 'The tax line\'s name with its rate, e.g. Tax (HST 13%)'], ['total', 'Total'], ['paid', 'Paid (invoices)'], ['balance_due', 'Balance due (invoices)'], ['currency', 'Currency'],
   ['header_note', 'Note above the items'], ['payment_instructions', 'Payment instructions (invoices)'], ['footer_note', 'Footer'],
-  ['valid_until', 'Valid until (quotations)'], ['terms', 'Quotation terms'], ['note', 'The note written on this quotation'],
+  ['valid_until', 'Valid until (quotations)'], ['terms', 'Quotation terms'], ['note', 'The note written on this quotation'], ['ownership_note', 'Franchisee outlets: who independently owns them (empty otherwise)'],
 ];
 export const STARTER_HTML = [
   '<div class="invoice">',
@@ -163,7 +167,7 @@ export function customInvoicePage(invoice: PrintInvoice, t: PrintTemplate): stri
     subtotal: m(invoice.subtotalCents), discount: m(invoice.discountCents ?? 0), tax: m(invoice.taxCents), tax_label: esc(taxLabel(invoice, t)), total: m(invoice.totalCents),
     paid: quote ? '' : m(invoice.paidCents), balance_due: quote ? '' : m(invoice.dueCents), currency: esc(invoice.currency),
     header_note: esc(t.headerNote), payment_instructions: quote ? '' : esc(t.paymentInstructions), footer_note: esc(t.footerNote),
-    valid_until: esc(day(invoice.validUntil)), terms: quote ? esc(t.quotationNote ?? '') : '', note: esc(invoice.note ?? ''),
+    valid_until: esc(day(invoice.validUntil)), terms: quote ? esc(t.quotationNote ?? '') : '', note: esc(invoice.note ?? ''), ownership_note: esc(ownerLine(invoice, t)),
   };
   const body = t.customHtml.replace(/\{\{\s*([a-z_]+)\s*\}\}/g, (_all, key: string) => (key in values ? values[key] : ''));
   return `<!doctype html><html><head><meta charset="utf-8"><style>@page{size:${t.paperSize === 'a4' ? 'A4' : 'letter'};margin:16mm}\n${t.customCss.replace(/<\/style/gi, '')}</style></head><body>${body}</body></html>`;
@@ -179,6 +183,7 @@ export function InvoiceDocument({ invoice, template }: { invoice: PrintInvoice; 
   const quote = invoice.kind === 'quotation';
   const paidInFull = !quote && invoice.totalCents > 0 && invoice.dueCents <= 0;
   const issuer = issuerOf(invoice, t);
+  const owner = ownerLine(invoice, t);
   return (
     <div className="ddInv">
       <style>{css(t)}</style>
@@ -252,7 +257,7 @@ export function InvoiceDocument({ invoice, template }: { invoice: PrintInvoice; 
       {quote && invoice.note && <div className="ddPay"><h2>Note</h2><p>{invoice.note}</p></div>}
       {quote && t.quotationNote && <div className="ddPay"><h2>Terms</h2><p>{t.quotationNote}</p></div>}
       {!quote && t.paymentInstructions && <div className="ddPay"><h2>Payment</h2><p>{t.paymentInstructions}</p></div>}
-      {t.footerNote && <div className="ddFoot"><p>{t.footerNote}</p></div>}
+      {(t.footerNote || owner) && <div className="ddFoot">{t.footerNote && <p>{t.footerNote}</p>}{owner && <p>{owner}</p>}</div>}
     </div>
   );
 }
@@ -321,12 +326,18 @@ export function fillInvoiceWindow(w: Window, invoice: PrintInvoice, template: Pr
   w.document.title = template.title + ' ' + invoice.invoiceNumber;
 }
 
-/* Loads the organization's template once; falls back to the built-in layout if it cannot be read. */
+/* One read of a template; the built-in layout if it cannot be read. */
+export function loadPrintTemplate(url: string): Promise<PrintTemplate> {
+  return fetch(url, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null))
+    .then((b) => (b?.template ? { ...DEFAULT_PRINT_TEMPLATE, ...b.template, logoUrl: b.logoUrl || undefined, issuer: b.issuer ?? null, taxName: b.taxName || undefined, taxRatePercent: b.taxRatePercent || undefined, outlet: b.outlet || undefined } : DEFAULT_PRINT_TEMPLATE))
+    .catch(() => DEFAULT_PRINT_TEMPLATE);
+}
+
 export function usePrintTemplate(url: string): PrintTemplate {
   const [template, setTemplate] = useState<PrintTemplate>(DEFAULT_PRINT_TEMPLATE);
   useEffect(() => {
     let live = true;
-    fetch(url, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).then((b) => { if (live && b?.template) setTemplate({ ...DEFAULT_PRINT_TEMPLATE, ...b.template, logoUrl: b.logoUrl || undefined, issuer: b.issuer ?? null, taxName: b.taxName || undefined, taxRatePercent: b.taxRatePercent || undefined }); }).catch(() => undefined);
+    loadPrintTemplate(url).then((t) => { if (live) setTemplate(t); });
     return () => { live = false; };
   }, [url]);
   return template;

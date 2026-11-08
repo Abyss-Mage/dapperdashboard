@@ -57,9 +57,7 @@ export function SiteHeader() {
   }, []);
 
   const current = (href: string) => (pathname === href ? 'page' : href === '/services' && onVehicle ? 'true' : undefined);
-  // The booking page opens on a photo: the header sits on it with no bar, and the white bar returns once you scroll or open a menu.
-  const onImage = pathname === '/booking' && !scrolled && !mega && !open;
-  const cls = [s.header, scrolled ? s.scrolled : '', hidden && !mega && !open ? s.hidden : '', onImage ? s.onImage : ''].filter(Boolean).join(' ');
+  const cls = [s.header, scrolled ? s.scrolled : '', hidden && !mega && !open ? s.hidden : ''].filter(Boolean).join(' ');
 
   return (
     <>

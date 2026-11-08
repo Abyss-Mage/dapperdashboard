@@ -11,7 +11,7 @@ import { SiteHeader } from '../../_chrome/SiteHeader';
 import { SiteFooter } from '../../_chrome/SiteFooter';
 import ForceDark from '../../_chrome/ForceDark';
 import a from './account.module.css';
-import { DEFAULT_PRINT_TEMPLATE, fillInvoiceWindow, openInvoiceWindow } from '../workspace/InvoicePrint';
+import { fillInvoiceWindow, loadPrintTemplate, openInvoiceWindow } from '../workspace/InvoicePrint';
 
 type Account = {customerId: string; name: string; locationName: string; email?: string; phone?: string; address?: string};
 type Records = {
@@ -61,7 +61,7 @@ export default function CustomerAccount() {
     if (!w) { setError('Allow pop-ups for this site to open the invoice in a new window.'); return; }
     fetch(`/api/v1/portal/accounts/${encodeURIComponent(selected)}/invoices/${encodeURIComponent(invoiceId)}`, {cache: 'no-store'})
       .then(async (response) => { const body = await response.json().catch(() => ({})); if (!response.ok) throw new Error(body.error ?? 'The invoice could not be opened.'); return body; })
-      .then((body) => fillInvoiceWindow(w, body, DEFAULT_PRINT_TEMPLATE))
+      .then(async (body) => fillInvoiceWindow(w, body, await loadPrintTemplate(`/api/v1/portal/accounts/${encodeURIComponent(selected)}/invoice-template`)))
       .catch((err) => { w.close(); setError(err instanceof Error ? err.message : 'The invoice could not be opened.'); });
   }
   const [notice, setNotice] = useState('');

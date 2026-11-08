@@ -59,7 +59,7 @@ type InvoicePrintTemplateState struct {
 }
 
 func DefaultInvoicePrintTemplate() InvoicePrintTemplate {
-	return InvoicePrintTemplate{Title: "Invoice", AccentColor: "#111111", ShowLogo: true, BillToLabel: "Bill to", ItemLabel: "Item", QuantityLabel: "Qty", UnitPriceLabel: "Unit price", AmountLabel: "Amount", ShowTaxRegistration: true, ShowCustomerContact: true, PaperSize: "letter"}
+	return InvoicePrintTemplate{Title: "Invoice", AccentColor: "#e4202e", ShowLogo: true, BillToLabel: "Bill to", ItemLabel: "Item", QuantityLabel: "Qty", UnitPriceLabel: "Unit price", AmountLabel: "Amount", ShowTaxRegistration: true, ShowCustomerContact: true, FooterNote: "Thank you for choosing Dapper Detailing Pros.", PaperSize: "letter", QuotationTitle: "Quotation"}
 }
 
 var templateColor = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
@@ -154,9 +154,51 @@ func (s *Store) EmployeeInvoicePrintTemplate(ctx context.Context, actor string) 
 		out.LogoURL = "/api/v1/employee/logo?v=" + d
 	}
 	if err == nil {
+		out.Outlet, err = outletOf(ctx, tx, a.OrganizationID, a.LocationID)
+	}
+	if err == nil {
 		err = printParties(ctx, tx, a.OrganizationID, a.LocationID, &out)
 	}
 	return out, err
+}
+
+// customerLocation is where a signed-in customer's account lives.
+func (s *Store) customerLocation(ctx context.Context, actor, customer string) (org, loc string, err error) {
+	err = s.pool.QueryRow(ctx, `SELECT a.organization_id::text,a.location_id::text FROM customer_account_links a JOIN principals p ON p.id=a.principal_id AND p.active WHERE a.principal_id=$1 AND a.customer_id=$2`, actor, customer).Scan(&org, &loc)
+	if errors.Is(err, pgx.ErrNoRows) {
+		err = ErrForbidden
+	}
+	return org, loc, err
+}
+
+// CustomerInvoicePrintTemplate is the look of the invoices a customer opens from their account. A custom HTML layout is left out: it is
+// written for staff screens and has no place running in a customer's signed-in session, so customers get the built-in layout with its wording.
+func (s *Store) CustomerInvoicePrintTemplate(ctx context.Context, actor, customer string) (InvoicePrintTemplateState, error) {
+	org, loc, err := s.customerLocation(ctx, actor, customer)
+	if err != nil {
+		return InvoicePrintTemplateState{}, err
+	}
+	out, err := loadEffectiveInvoiceTemplate(ctx, s.pool, org, loc)
+	if err != nil {
+		return out, err
+	}
+	out.Template.CustomHTML, out.Template.CustomCSS = "", ""
+	if out.Outlet, err = outletOf(ctx, s.pool, org, loc); err != nil {
+		return out, err
+	}
+	if d := logoDigest(ctx, s.pool, org, loc); d != "" {
+		out.LogoURL = "/api/v1/portal/accounts/" + customer + "/logo?v=" + d
+	}
+	return out, printParties(ctx, s.pool, org, loc, &out)
+}
+
+// CustomerLocationLogo is the logo of the franchise a customer's account belongs to.
+func (s *Store) CustomerLocationLogo(ctx context.Context, actor, customer string) (contentType string, data []byte, digest string, found bool, err error) {
+	org, loc, err := s.customerLocation(ctx, actor, customer)
+	if err != nil {
+		return
+	}
+	return s.readLocationLogo(ctx, org, loc)
 }
 
 // SaveInvoicePrintTemplate needs invoices.configure. version is the revision the editor loaded (0 when it was the unsaved default).
