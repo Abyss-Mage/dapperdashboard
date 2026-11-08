@@ -6,6 +6,7 @@ import Select from '../GlassSelect';
 import ConfirmDialog from '../workspace/ConfirmDialog';
 import WebsiteDealers from './WebsiteDealers';
 import SiteMedia from './SiteMedia';
+import { fitImage } from './fitImage';
 
 type Photo = { id: string; mediaId: string; title: string; alt: string; category: string; sortOrder: number; published: boolean; version: number; width?: number; height?: number };
 type Site = { slug: string; name: string; published: boolean; version: number };
@@ -56,9 +57,8 @@ export default function WebsiteImages({ base, franchiseName, franchiseCode }: { 
     try {
       let order = (photos ?? []).reduce((m, p) => Math.max(m, p.sortOrder), -10) + 10;
       for (const file of Array.from(files)) {
-        if (!/^image\/(jpeg|png)$/.test(file.type)) throw new Error(`"${file.name}" is not a JPEG or PNG photo.`);
-        if (file.size > 6 * 1024 * 1024) throw new Error(`"${file.name}" is over 6 MB. Choose a smaller copy.`);
-        const media = await readJson(await fetch(`${root}/media`, { method: 'POST', headers: { 'Content-Type': file.type }, body: file }));
+        const photo = await fitImage(file);
+        const media = await readJson(await fetch(`${root}/media`, { method: 'POST', headers: { 'Content-Type': photo.type }, body: photo }));
         const title = nameFromFile(file.name) || 'Portfolio photo';
         await readJson(await fetch(`${root}/portfolio`, send('PUT', { mediaId: media.id, title: title.length < 2 ? 'Portfolio photo' : title, alt: title.length < 2 ? 'Portfolio photo' : title, category, sortOrder: order, published: rights, rightsReviewed: rights })));
         order += 10; added += 1;
@@ -123,7 +123,7 @@ export default function WebsiteImages({ base, franchiseName, franchiseCode }: { 
                 <Select value={category} onChange={(e) => setCategory(e.target.value)} disabled={busy}>{CATEGORIES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Select>
               </label>
               <div>
-                <input ref={pick} type="file" accept="image/jpeg,image/png" multiple hidden onChange={(e) => void upload(e.target.files)} />
+                <input ref={pick} type="file" accept="image/*" multiple hidden onChange={(e) => void upload(e.target.files)} />
                 <button type="button" className="primary" disabled={busy} onClick={() => pick.current?.click()}>{busy ? 'Working…' : 'Add photos'}</button>
               </div>
             </div>

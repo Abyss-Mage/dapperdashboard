@@ -982,7 +982,7 @@
 .smGrid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
 .smCard { display: grid; gap: 10px; align-content: start; min-width: 0; padding: 10px; border-radius: 14px; border: 1px solid var(--border, #00000014); background: var(--surface, #fff); }
 .smCard[data-off] { opacity: .55; }
-.smThumb { display: block; width: 100%; height: 140px; object-fit: cover; border-radius: 10px; background: #8884; }
+.smThumb { display: block; width: 100%; height: 140px; object-fit: contain; border-radius: 10px; background: #fff; }
 .smFilm { display: block; width: 100%; aspect-ratio: 9 / 16; object-fit: cover; border-radius: 10px; background: #000; }
 .smName { font-size: 12px; color: var(--text-muted); overflow-wrap: anywhere; }
 

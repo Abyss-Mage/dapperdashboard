@@ -5,9 +5,9 @@
 .dl__card{flex:0 0 calc((100% - 4 * var(--gap)) / 5)}
 @media(max-width:900px){.dl__card{flex-basis:calc((100% - 2 * var(--gap)) / 3)}}
 .dl__card{display:grid;place-items:center;aspect-ratio:3/2;padding:clamp(16px,2vw,28px);background:#fff;border:1px solid #0b0b0c14;clip-path:polygon(0 0,100% 0,100% 100%,18px 100%,0 calc(100% - 18px));transition:transform .3s cubic-bezier(.23,1,.32,1)}
-.dl__card img{display:block;width:auto;max-width:78%;max-height:62%;object-fit:contain}
-.dl__card img.is-crop{aspect-ratio:629/290;width:78%;max-height:none;object-fit:cover;object-position:50% 8%}
-.dl__card img.is-wide{width:84%;max-width:84%;max-height:none}
+.dl__card img{display:block;width:78%;height:62%;object-fit:contain}
+.dl__card img.is-crop{aspect-ratio:629/290;width:78%;height:auto;object-fit:cover;object-position:50% 8%}
+.dl__card img.is-wide{width:84%}
 .dl__name{font:500 clamp(12px,1.1vw,16px)/1.15 'Unbounded Variable','Unbounded',sans-serif;text-transform:uppercase;text-align:center;text-wrap:balance;color:#121212}
 @media(hover:hover) and (pointer:fine){.dl__card:hover{transform:translateY(-4px)}}
 @media(max-width:600px){.dl__card{flex-basis:calc((100% - var(--gap)) / 2)}}

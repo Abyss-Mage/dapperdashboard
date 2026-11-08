@@ -12,6 +12,7 @@ import { SiteHeader } from '../_chrome/SiteHeader';
 import { SiteFooter } from '../_chrome/SiteFooter';
 import SmoothScroll from './_components/SmoothScroll';
 import Tracking from './_components/Tracking';
+import RemovedImages from './_components/RemovedImages';
 
 const indexing = process.env.DAPPER_PUBLIC_INDEXING === 'enabled';
 
@@ -37,6 +38,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
         <SiteFooter />
         <SmoothScroll />
         <Tracking />
+        <RemovedImages />
       </body>
     </html>
   );

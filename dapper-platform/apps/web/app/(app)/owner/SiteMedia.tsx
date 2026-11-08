@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import styles from './owner.module.css';
+import { fitImage } from './fitImage';
 
 type Built = { path: string; kind: 'image' | 'video'; bytes: number };
 type Mine = { path: string; contentType: string; bytes: number; updatedAt: string };
@@ -12,6 +13,8 @@ async function readJson(r: Response) {
   return body;
 }
 const mb = (n: number) => (n / 1048576 >= 1 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB');
+const brandMark = (path: string) => path === 'logo.webp' || path === 'favicon.webp';
+const shapeOf = (url: string) => new Promise<number | undefined>((resolve) => { const i = new Image(); i.onload = () => resolve(i.naturalWidth / i.naturalHeight || undefined); i.onerror = () => resolve(undefined); i.src = url; });
 const nice = (folder: string) => ({ services: 'Service and vehicle pictures', portfolio: 'Portfolio photos', partners: 'Dealership logos', transformations: 'Film clips (built in)', team: 'Team photos', about: 'About page', process: 'How we do it' } as Record<string, string>)[folder] ?? folder.charAt(0).toUpperCase() + folder.slice(1);
 
 /* Every picture and film of the website. Replace any of them with your own file (the website shows yours at once, the original is kept
@@ -36,7 +39,13 @@ export default function SiteMedia({ base }: { base: string }) {
   async function upload(path: string, file: File) {
     setBusy(path); setError(''); setNotice('');
     try {
-      await readJson(await fetch(`${root}?path=${encodeURIComponent(path)}`, { method: 'PUT', body: file }));
+      // Pictures are made ready for their slot: logos lose their blank margins, everything else takes the shape of the picture it replaces.
+      let body: Blob = file;
+      if (!file.type.startsWith('video/')) {
+        const logo = path.startsWith('partners/') || brandMark(path);
+        body = await fitImage(file, logo ? { logo } : { ratio: await shapeOf(`/site/assets/${path}?v=${bump}`) });
+      }
+      await readJson(await fetch(`${root}?path=${encodeURIComponent(path)}`, { method: 'PUT', body }));
       setNotice('Saved. The website shows it now.'); setBump((n) => n + 1); await load();
     } catch (e) { setError(e instanceof Error ? e.message : 'The change could not be saved.'); }
     finally { setBusy(''); }
@@ -47,15 +56,14 @@ export default function SiteMedia({ base }: { base: string }) {
     catch (e) { setError(e instanceof Error ? e.message : 'The change could not be saved.'); }
     finally { setBusy(''); }
   }
-  // Some pictures can be taken off the website altogether (the photos, the dealer logos, the built-in films); the file stays and can come back.
+  // Any picture can be taken off the website except the brand's own logo and icon; the file stays and can come back.
   async function setShown(path: string, show: boolean) {
     setBusy(path); setError(''); setNotice('');
     try { await readJson(await fetch(`${root}/hidden?path=${encodeURIComponent(path)}`, { method: show ? 'DELETE' : 'PUT' })); setNotice(show ? 'It is back on the website.' : 'It is off the website.'); await load(); }
     catch (e) { setError(e instanceof Error ? e.message : 'The change could not be saved.'); }
     finally { setBusy(''); }
   }
-  const removable = (group: string) => ['portfolio', 'partners', 'transformations'].includes(group);
-  function open(path: string, kind: 'image' | 'video') { target.current = path; setAccept(kind === 'video' ? 'video/mp4,video/webm' : 'image/jpeg,image/png,image/webp'); setTimeout(() => pick.current?.click(), 0); }
+  function open(path: string, kind: 'image' | 'video') { target.current = path; setAccept(kind === 'video' ? 'video/mp4,video/webm' : 'image/*'); setTimeout(() => pick.current?.click(), 0); }
   function onFile(files: FileList | null) {
     const f = files?.[0];
     if (pick.current) pick.current.value = '';
@@ -75,7 +83,7 @@ export default function SiteMedia({ base }: { base: string }) {
     <div className={styles.stack}>
       <div>
         <h2 className={styles.setupTitle} style={{ fontSize: 20, margin: 0 }}>Pictures and films of the whole website</h2>
-        <p className={styles.personSub}>Replace any picture or film with your own, or add and remove the films on Home and Portfolio. JPEG, PNG or WebP pictures and MP4 or WebM films, up to 25 MB each. Only upload files you have the right to show publicly.</p>
+        <p className={styles.personSub}>Replace or remove any picture or film, and add films for Home and Portfolio. A new picture is trimmed evenly from its edges to the shape of the one it replaces, so it fits its place; logos are shown whole. Films are MP4 or WebM, up to 25 MB. Only upload files you have the right to show publicly.</p>
       </div>
       {error && <p role="alert" className="field-error">{error}</p>}
       {notice && <p role="status" className={styles.status}>{notice}</p>}
@@ -115,7 +123,7 @@ export default function SiteMedia({ base }: { base: string }) {
                 <div className={styles.svcActions}>
                   <button type="button" className="secondary" disabled={!!busy} onClick={() => open(b.path, b.kind)}>{busy === b.path ? 'Saving…' : 'Replace'}</button>
                   {replaced.has(b.path) && <button type="button" className="secondary" disabled={!!busy} onClick={() => void remove(b.path, 'The original is back.')}>Put the original back</button>}
-                  {removable(group) && (hidden.has(b.path)
+                  {!brandMark(b.path) && (hidden.has(b.path)
                     ? <button type="button" className="secondary" disabled={!!busy} onClick={() => void setShown(b.path, true)}>Show again</button>
                     : <button type="button" className="secondary" disabled={!!busy} onClick={() => void setShown(b.path, false)}>Remove</button>)}
                 </div>

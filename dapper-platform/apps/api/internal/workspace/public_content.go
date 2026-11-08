@@ -198,6 +198,10 @@ func registerPublicContentRoutes(mux *http.ServeMux, store *postgres.Store) {
 			return
 		}
 		id, err := store.UploadContentImage(r.Context(), scope, data)
+		if errors.Is(err, postgres.ErrContentInput) {
+			reply(w, 422, map[string]string{"error": "That file could not be used as a picture. Save it as a JPEG or PNG, under 6 MB, and try again."})
+			return
+		}
 		if err != nil {
 			contentFailure(w, err)
 			return

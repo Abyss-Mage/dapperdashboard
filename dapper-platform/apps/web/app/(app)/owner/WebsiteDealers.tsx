@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import styles from './owner.module.css';
 import ConfirmDialog from '../workspace/ConfirmDialog';
+import { fitImage } from './fitImage';
 
 type Dealer = { id: string; mediaId: string; name: string; sortOrder: number; published: boolean; version: number };
 
@@ -36,11 +37,10 @@ export default function WebsiteDealers({ base }: { base: string }) {
     if (!file) return;
     const clean = name.trim();
     if (clean.length < 2) { setError('Type the dealership name first.'); if (pick.current) pick.current.value = ''; return; }
-    if (!/^image\/(jpeg|png)$/.test(file.type)) { setError(`"${file.name}" is not a JPEG or PNG logo.`); return; }
-    if (file.size > 6 * 1024 * 1024) { setError(`"${file.name}" is over 6 MB. Choose a smaller copy.`); return; }
     setBusy(true); setError(''); setNotice('');
     try {
-      const media = await readJson(await fetch(`${root}/media`, { method: 'POST', headers: { 'Content-Type': file.type }, body: file }));
+      const logo = await fitImage(file, { logo: true });
+      const media = await readJson(await fetch(`${root}/media`, { method: 'POST', headers: { 'Content-Type': logo.type }, body: logo }));
       const order = (dealers ?? []).reduce((m, d) => Math.max(m, d.sortOrder), -10) + 10;
       await readJson(await fetch(`${root}/dealers`, send('PUT', { mediaId: media.id, name: clean, sortOrder: order, published: rights, rightsReviewed: rights })));
       setNotice(`${clean} added${rights ? ' and shown on the website.' : ' but hidden. Tick the box and switch it on when you are ready.'}`);
@@ -95,7 +95,7 @@ export default function WebsiteDealers({ base }: { base: string }) {
             <input value={name} maxLength={120} disabled={busy} onChange={(e) => setName(e.target.value)} placeholder="For example, Holiday Ford" />
           </label>
           <div>
-            <input ref={pick} type="file" accept="image/jpeg,image/png" hidden onChange={(e) => void add(e.target.files)} />
+            <input ref={pick} type="file" accept="image/*" hidden onChange={(e) => void add(e.target.files)} />
             <button type="button" className="primary" disabled={busy} onClick={() => pick.current?.click()}>{busy ? 'Working…' : 'Choose logo and add'}</button>
           </div>
         </div>
@@ -103,7 +103,7 @@ export default function WebsiteDealers({ base }: { base: string }) {
           <input type="checkbox" checked={rights} onChange={(e) => setRights(e.target.checked)} />
           <span>We have permission to show this dealership&apos;s name and logo publicly. Dealerships added with this ticked are shown right away.</span>
         </label>
-        <p className={styles.footnote}>JPEG or PNG, up to 6 MB. A logo on a white or transparent background looks best, because the website sets each one on a white diamond.</p>
+        <p className={styles.footnote}>Any picture file. Blank margins are cut away and the logo is sized to fit its card. A logo on a white or transparent background looks best, because the website sets each one on a white card.</p>
       </div>
       {dealers.length === 0 && <p className={styles.status}>No dealerships added yet.</p>}
       <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14 }}>
