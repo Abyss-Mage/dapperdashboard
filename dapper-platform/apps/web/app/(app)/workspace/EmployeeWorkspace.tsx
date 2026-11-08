@@ -63,6 +63,9 @@ export default function EmployeeWorkspace() {
       const response = await fetch('/api/v1/employee/workspace', { cache: 'no-store' });
       if (generation !== request.current) return;
       if (response.status === 401) { checkoutRequest.current++; setSignedIn(false); setDesk(null); setCheckout(null); setInvoices([]); paymentKeys.current = {}; assignmentKey.current = ''; return; }
+      // Customers have no staff access at all; their place is their own account.
+      const access = await fetch('/api/v1/auth/access', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null);
+      if (access && !access.locations?.length && !access.organizations?.length) { location.replace('/account'); return; }
       const data = await responseJSON<Desk>(response);
       if (generation !== request.current) return;
       const nextKey = data.assignment ? `${data.assignment.organizationId}:${data.assignment.dealershipId}:${data.assignment.locationId}:${data.assignment.version}` : '';

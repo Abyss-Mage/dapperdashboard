@@ -123,10 +123,6 @@ const isTab = (v: string): v is TabId => TABS.some((t) => t.id === v);
 const ORDER: TabId[] = [...NAV_GROUPS.flatMap((g) => g.ids), 'account'];
 
 export default function OwnerDashboardClient() {
-  // People whose only role is Employee work in the employee workspace; the dashboard sends them there.
-  useEffect(() => {
-    fetch('/api/v1/account/home', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).then((b) => { if (b?.workspaceOnly) window.location.replace('/workspace'); }).catch(() => undefined);
-  }, []);
   const [principal, setPrincipal] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -173,16 +169,26 @@ export default function OwnerDashboardClient() {
     }
     if (!me.ok) throw new Error('Workspace session unavailable');
     const who = await me.json();
-    setPrincipal(who.principalId);
 
     const response = await fetch('/api/v1/auth/access');
+    const access = response.ok ? await response.json() : null;
+    // This page is for staff, on page load and straight after signing in: customers go to their account, employees to their workspace.
+    if (access && !access.locations?.length && !access.organizations?.length) {
+      window.location.replace('/account');
+      return;
+    }
+    const home = await fetch('/api/v1/account/home', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    if (home?.workspaceOnly) {
+      window.location.replace('/workspace');
+      return;
+    }
+    setPrincipal(who.principalId);
     if (response.status === 403 && (await response.clone().json().catch(() => ({}))).code === 'mfa_setup_required') {
       setMfaBlocked(true);
       return;
     }
-    if (!response.ok) throw new Error('Could not load granted locations');
+    if (!access) throw new Error('Could not load granted locations');
     setMfaBlocked(false);
-    const access = await response.json();
     setLocations(access.locations || []);
     setOrganizations(access.organizations || []);
     setAccessRevision((v) => v + 1);
