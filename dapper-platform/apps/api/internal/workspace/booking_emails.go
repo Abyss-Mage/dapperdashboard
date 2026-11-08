@@ -49,7 +49,12 @@ func installBookingEmails(store *postgres.Store, sender postgres.EmailSender, or
 		vars := map[string]string{"name": f.Name, "phone": f.Phone, "email": f.Email, "service": f.Service, "when": whenText(f.When), "where": f.Where, "invoice": store.BookingInvoiceText(ctx, e.BookingID, origin+"/account")}
 		if f.Email != "" {
 			subject, body, text := store.RenderEmail(ctx, e.Kind, vars)
-			if _, err = sendWithInvoicePDF(ctx, store, sender, e.BookingID, f.Email, subject, body, text); err != nil {
+			if e.Kind == "booking_completed" {
+				_, err = sendWithInvoicePDF(ctx, store, sender, e.BookingID, f.Email, subject, body, text)
+			} else {
+				_, err = sender.SendEmail(ctx, f.Email, subject, body, text)
+			}
+			if err != nil {
 				log.Print("A booking email could not be sent")
 			}
 		}
