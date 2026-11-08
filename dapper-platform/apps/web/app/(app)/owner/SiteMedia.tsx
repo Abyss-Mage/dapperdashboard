@@ -76,15 +76,12 @@ export default function SiteMedia({ base }: { base: string }) {
   const replaced = new Set(mine.map((m) => m.path));
   const films = mine.filter((m) => m.path.startsWith('films/') && m.contentType.startsWith('video/'));
   const groups = new Map<string, Built[]>();
-  for (const b of built ?? []) { const g = b.path.includes('/') ? b.path.split('/')[0] : 'More'; groups.set(g, [...(groups.get(g) ?? []), b]); }
+  for (const b of built ?? []) { const g = b.path.includes('/') ? b.path.split('/')[0] : 'More'; if (g !== 'partners') groups.set(g, [...(groups.get(g) ?? []), b]); } // dealer logos have their own tab
   const src = (p: string) => `/site/assets/${p}?v=${bump}`;
 
   return (
     <div className={styles.stack}>
-      <div>
-        <h2 className={styles.setupTitle} style={{ fontSize: 20, margin: 0 }}>Pictures and films of the whole website</h2>
-        <p className={styles.personSub}>Replace or remove any picture or film, and add films for Home and Portfolio. A new picture is trimmed evenly from its edges to the shape of the one it replaces, so it fits its place; logos are shown whole. Films are MP4 or WebM, up to 25 MB. Only upload files you have the right to show publicly.</p>
-      </div>
+      <p className={styles.personSub}>A new picture is trimmed from its edges to the shape of the one it replaces, so it fits its place. Films are MP4 or WebM, up to 25 MB.</p>
       {error && <p role="alert" className="field-error">{error}</p>}
       {notice && <p role="status" className={styles.status}>{notice}</p>}
       <input ref={pick} type="file" accept={accept} hidden onChange={(e) => onFile(e.target.files)} />
@@ -111,26 +108,28 @@ export default function SiteMedia({ base }: { base: string }) {
 
       {!built && !error && <div className={`${styles.card} ${styles.skeleton}`} role="status" aria-label="Loading pictures" />}
       {[...groups.entries()].map(([group, list]) => (
-        <section key={group} className={styles.resource} aria-label={nice(group)}>
-          <h3 style={{ margin: 0 }}>{nice(group)}</h3>
+        <details key={group} className={`${styles.resource} ${styles.smGroup}`}>
+          <summary>{nice(group)} ({list.length})</summary>
           <ul className={styles.smGrid}>
             {list.map((b) => (
               <li key={b.path} className={styles.smCard} data-off={hidden.has(b.path) || undefined}>
                 {b.kind === 'video'
                   ? <video src={src(b.path)} muted playsInline controls preload="metadata" className={styles.smThumb} />
                   : /* eslint-disable-next-line @next/next/no-img-element */ <img src={src(b.path)} alt="" loading="lazy" className={styles.smThumb} />}
-                <span className={styles.smName}>{b.path.split('/').pop()}{replaced.has(b.path) ? ' · replaced' : ''}{hidden.has(b.path) ? ' · off the website' : ''}</span>
-                <div className={styles.svcActions}>
-                  <button type="button" className="secondary" disabled={!!busy} onClick={() => open(b.path, b.kind)}>{busy === b.path ? 'Saving…' : 'Replace'}</button>
-                  {replaced.has(b.path) && <button type="button" className="secondary" disabled={!!busy} onClick={() => void remove(b.path, 'The original is back.')}>Put the original back</button>}
-                  {!brandMark(b.path) && (hidden.has(b.path)
+                <span className={styles.smName}>{(b.path.split('/').pop() ?? '').replace(/\.[a-z0-9]+$/i, '').replace(/[-_]+/g, ' ')}{hidden.has(b.path) ? ' · off the website' : ''}</span>
+                <div className={styles.smActions}>
+                  {hidden.has(b.path)
                     ? <button type="button" className="secondary" disabled={!!busy} onClick={() => void setShown(b.path, true)}>Show again</button>
-                    : <button type="button" className="secondary" disabled={!!busy} onClick={() => void setShown(b.path, false)}>Remove</button>)}
+                    : <>
+                        <button type="button" className="secondary" disabled={!!busy} onClick={() => open(b.path, b.kind)}>{busy === b.path ? 'Saving…' : 'Replace'}</button>
+                        {!brandMark(b.path) && <button type="button" className="secondary" disabled={!!busy} onClick={() => void setShown(b.path, false)}>Remove</button>}
+                      </>}
                 </div>
+                {replaced.has(b.path) && !hidden.has(b.path) && <button type="button" className={styles.logoUndo} disabled={!!busy} onClick={() => void remove(b.path, 'The original is back.')}>Undo replace</button>}
               </li>
             ))}
           </ul>
-        </section>
+        </details>
       ))}
     </div>
   );

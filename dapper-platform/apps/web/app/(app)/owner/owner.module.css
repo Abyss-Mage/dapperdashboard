@@ -984,7 +984,27 @@
 .smCard[data-off] { opacity: .55; }
 .smThumb { display: block; width: 100%; height: 140px; object-fit: contain; border-radius: 10px; background: #fff; }
 .smFilm { display: block; width: 100%; aspect-ratio: 9 / 16; object-fit: cover; border-radius: 10px; background: #000; }
-.smName { font-size: 12px; color: var(--text-muted); overflow-wrap: anywhere; }
+.smName { font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+.smGroup > summary { cursor: pointer; font-weight: 700; font-size: 16px; min-height: 28px; }
+.smGroup[open] > summary { margin-bottom: 12px; }
+.smActions { display: flex; flex-wrap: wrap; gap: 8px; }
+.smActions > button { flex: 1 1 0; white-space: nowrap; }
+.viewTabs { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* Dealership logos: each card previews the logo the way the website's card shows it */
+.logoGrid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+.logoCard { display: grid; gap: 10px; align-content: start; min-width: 0; padding: 12px; border-radius: 14px; border: 1px solid var(--border, #00000014); background: var(--surface, #fff); }
+.logoCard[data-off] .logoTile { opacity: .4; }
+.logoTile { display: grid; place-items: center; aspect-ratio: 3 / 2; padding: 18px; overflow: hidden; border-radius: 10px; border: 1px solid #0b0b0c14; background: #fff; }
+.logoTile img { display: block; min-width: 0; min-height: 0; object-fit: contain; }
+.logoName { font-size: 14px; font-weight: 700; overflow-wrap: anywhere; width: 100%; }
+.logoActions { display: flex; gap: 8px; }
+.logoActions > button { flex: 1 1 0; }
+.sizeRow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; padding: 3px; border-radius: 10px; background: #0b0b0c0f; }
+.sizeBtn, .sizeBtn:hover:not(:disabled) { min-height: 36px; padding: 0 2px; border: 0; border-radius: 8px; background: transparent; color: #33333a; font-size: 12.5px; font-weight: 600; cursor: pointer; box-shadow: none; transform: none; }
+.sizeBtn[aria-pressed="true"], .sizeBtn[aria-pressed="true"]:hover:not(:disabled) { background: #d10f1f; color: #fff; }
+.sizeBtn:disabled { opacity: .5; cursor: default; }
+.logoUndo { justify-self: start; min-height: 32px; padding: 0; border: 0; background: none; color: var(--text-muted); font-size: 13px; text-decoration: underline; cursor: pointer; }
 
 /* Email list buttons: the text stays readable in every state (the global button hover styles used to wash it out) */
 :global(:root) .tplList button { color: inherit !important; background: transparent !important; text-shadow: none !important; }

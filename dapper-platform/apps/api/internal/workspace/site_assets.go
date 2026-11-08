@@ -50,7 +50,28 @@ func registerSiteAssetRoutes(mux *http.ServeMux, store *postgres.Store) {
 			fail(w, err)
 			return
 		}
-		reply(w, 200, map[string]any{"items": items, "hidden": hidden})
+		sizes, err := store.LogoSizes(r.Context(), scope)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		reply(w, 200, map[string]any{"items": items, "hidden": hidden, "logoSizes": sizes})
+	})
+	mux.HandleFunc("PUT "+base+"/logo-size", func(w http.ResponseWriter, r *http.Request) {
+		scope, ok := scopeFor(w, r)
+		if !ok {
+			return
+		}
+		err := store.SetLogoSize(r.Context(), scope, r.URL.Query().Get("logo"), r.URL.Query().Get("size"))
+		if errors.Is(err, postgres.ErrSiteAsset) {
+			reply(w, 422, map[string]string{"error": "Choose small, medium, large or full."})
+			return
+		}
+		if err != nil {
+			failure(w, err)
+			return
+		}
+		reply(w, 200, map[string]bool{"saved": true})
 	})
 	mux.HandleFunc("PUT "+base, func(w http.ResponseWriter, r *http.Request) {
 		scope, ok := scopeFor(w, r)
@@ -113,8 +134,13 @@ func registerSiteAssetRoutes(mux *http.ServeMux, store *postgres.Store) {
 			reply(w, 503, map[string]string{"error": "unavailable"})
 			return
 		}
+		sizes, err := store.PublicLogoSizes(r.Context())
+		if err != nil {
+			reply(w, 503, map[string]string{"error": "unavailable"})
+			return
+		}
 		w.Header().Set("Cache-Control", "no-store")
-		reply(w, 200, map[string]any{"paths": paths})
+		reply(w, 200, map[string]any{"paths": paths, "logoSizes": sizes})
 	})
 	mux.HandleFunc("GET /api/v1/public/site-asset", func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Query().Get("path")

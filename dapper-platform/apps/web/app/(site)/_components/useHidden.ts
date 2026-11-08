@@ -14,3 +14,17 @@ export function useHidden() {
   }, []);
   return (src: string) => hidden.has(src.replace(/^\/site\/assets\//, ''));
 }
+
+/* The size the owner chose for each dealership logo: built-in logos by path, uploaded ones as "dealers/<id>". */
+export function useLogoSizes() {
+  const [sizes, setSizes] = useState<Record<string, string>>({});
+  useEffect(() => {
+    let live = true;
+    fetch('/api/v1/public/site-assets-hidden', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((b: { logoSizes?: Record<string, string> } | null) => { if (live && b?.logoSizes) setSizes(b.logoSizes); })
+      .catch(() => undefined);
+    return () => { live = false; };
+  }, []);
+  return sizes;
+}

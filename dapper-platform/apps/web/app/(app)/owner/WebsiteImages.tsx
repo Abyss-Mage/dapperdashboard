@@ -27,6 +27,7 @@ export default function WebsiteImages({ base, franchiseName, franchiseCode }: { 
   const root = `${base}/content`;
   const [site, setSite] = useState<Site | null>(null);
   const [photos, setPhotos] = useState<Photo[] | null>(null);
+  const [view, setView] = useState<'logos' | 'photos' | 'all'>('logos');
   const [category, setCategory] = useState('detailing');
   const [rights, setRights] = useState(false);
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState('');
@@ -103,7 +104,7 @@ export default function WebsiteImages({ base, franchiseName, franchiseCode }: { 
       <div className={styles.rowBetween}>
         <div>
           <h2 className={styles.setupTitle} style={{ fontSize: 20, margin: 0 }}>Website images</h2>
-          <p className={styles.personSub}>The photos on the website&apos;s Portfolio page for {franchiseName || 'this franchise'}. {live > 0 ? `${live} published now, shown in this order.` : 'Until you publish one, the website shows its built-in photos.'}</p>
+          <p className={styles.personSub}>{view === 'photos' ? `The Portfolio page for ${franchiseName || 'this franchise'}. ${live > 0 ? `${live} published now, shown in this order.` : 'Until you publish one, the website shows its built-in photos.'}` : view === 'logos' ? 'The logos in “Trusted by the dealers”. Choose how large each one looks.' : 'Replace or remove any picture or film on the website.'}</p>
         </div>
         <a className="secondary" href="/portfolio" target="_blank" rel="noreferrer" style={{ padding: '0.55rem 1rem', borderRadius: 999, border: '1px solid var(--glass-line)' }}>View on website</a>
       </div>
@@ -116,6 +117,13 @@ export default function WebsiteImages({ base, franchiseName, franchiseCode }: { 
         </div>
       )}
       {photos && site && (
+        <nav className={styles.viewTabs} aria-label="Website images">
+          {([['logos', 'Dealership logos'], ['photos', 'Portfolio photos'], ['all', 'Other pictures and films']] as const).map(([id, label]) => (
+            <button key={id} type="button" className={view === id ? 'primary' : 'secondary'} aria-pressed={view === id} onClick={() => setView(id)}>{label}</button>
+          ))}
+        </nav>
+      )}
+      {photos && site && view === 'photos' && (
         <>
           <div className={styles.resource}>
             <div className={styles.inlineForm} style={{ alignItems: 'flex-end' }}>
@@ -131,7 +139,7 @@ export default function WebsiteImages({ base, franchiseName, franchiseCode }: { 
               <input type="checkbox" checked={rights} onChange={(e) => setRights(e.target.checked)} />
               <span>These photos are ours, or we have permission to show them publicly. Photos added with this ticked are published right away.</span>
             </label>
-            <p className={styles.footnote}>JPEG or PNG, up to 6 MB each. You can choose several at once. Edit the title afterwards; it is also the text read to people who cannot see the photo.</p>
+            <p className={styles.footnote}>Any picture files, several at once if you like. Edit the title afterwards; it is also the text read to people who cannot see the photo.</p>
           </div>
           {photos.length === 0 && <p className={styles.status}>No photos yet.</p>}
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 }}>
@@ -157,8 +165,8 @@ export default function WebsiteImages({ base, franchiseName, franchiseCode }: { 
           </ul>
         </>
       )}
-      {photos && site && <WebsiteDealers base={base} />}
-      {photos && site && <SiteMedia base={base} />}
+      {photos && site && view === 'logos' && <WebsiteDealers base={base} />}
+      {photos && site && view === 'all' && <SiteMedia base={base} />}
       <ConfirmDialog isOpen={target !== null} title="Delete photo" entityName={target?.title ?? ''} entityType="Photo" actionType="delete" isBusy={busy}
         explanation="The photo is taken off the website and deleted. This cannot be undone." onConfirm={() => void remove()} onCancel={() => setTarget(null)} />
     </div>

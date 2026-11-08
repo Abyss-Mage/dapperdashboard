@@ -8,6 +8,10 @@
 .dl__card img{display:block;width:78%;height:62%;object-fit:contain}
 .dl__card img.is-crop{aspect-ratio:629/290;width:78%;height:auto;object-fit:cover;object-position:50% 8%}
 .dl__card img.is-wide{width:84%}
+.dl__card img.dl-s{width:55%;height:44%}
+.dl__card img.dl-m{width:78%;height:62%}
+.dl__card img.dl-l{width:90%;height:76%}
+.dl__card img.dl-xl{width:100%;height:100%}
 .dl__name{font:500 clamp(12px,1.1vw,16px)/1.15 'Unbounded Variable','Unbounded',sans-serif;text-transform:uppercase;text-align:center;text-wrap:balance;color:#121212}
 @media(hover:hover) and (pointer:fine){.dl__card:hover{transform:translateY(-4px)}}
 @media(max-width:600px){.dl__card{flex-basis:calc((100% - var(--gap)) / 2)}}

@@ -82,6 +82,9 @@ func (s *Store) DeleteWebsiteDealer(ctx context.Context, scope Scope, id string)
 	if _, err = tx.Exec(ctx, `DELETE FROM content_media m WHERE m.id=$1 AND NOT EXISTS(SELECT 1 FROM portfolio_images p WHERE p.media_id=m.id) AND NOT EXISTS(SELECT 1 FROM website_dealers d WHERE d.media_id=m.id)`, media); err != nil {
 		return err
 	}
+	if _, err = tx.Exec(ctx, `DELETE FROM site_logo_sizes WHERE organization_id=$1 AND location_id=$2 AND logo=$3`, scope.OrganizationID, scope.LocationID, "dealers/"+id); err != nil {
+		return err
+	}
 	if err = contentAudit(ctx, tx, scope, "dealer.deleted", id, map[string]string{"mediaId": media}); err != nil {
 		return err
 	}

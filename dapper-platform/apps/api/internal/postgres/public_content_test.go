@@ -204,6 +204,20 @@ func TestPublicContentPersistence(t *testing.T) {
 	if _, _, e := s.PublicImage(ctx, media); e != nil {
 		t.Fatal("dealer logo not served", e)
 	}
+	if err = s.SetLogoSize(ctx, scope, "partners/partner-1.png", "huge"); !errors.Is(err, ErrSiteAsset) {
+		t.Fatal("invalid logo size accepted", err)
+	}
+	for _, size := range []string{"s", "xl"} { // the second save changes the first
+		if err = s.SetLogoSize(ctx, scope, "partners/partner-1.png", size); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if sizes, e := s.LogoSizes(ctx, scope); e != nil || sizes["partners/partner-1.png"] != "xl" {
+		t.Fatal("logo size not saved", sizes, e)
+	}
+	if sizes, e := s.LogoSizes(ctx, otherScope); e == nil && len(sizes) != 0 {
+		t.Fatal("logo sizes leaked across locations", sizes)
+	}
 	if _, err = s.SaveWebsiteDealer(ctx, otherScope, WebsiteDealer{MediaID: media, Name: "Cross scope"}); !errors.Is(err, ErrContentInput) {
 		t.Fatal("cross-location logo accepted", err)
 	}
