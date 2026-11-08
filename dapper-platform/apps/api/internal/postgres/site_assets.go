@@ -150,7 +150,7 @@ func (s *Store) PublicSiteAssetPaths(ctx context.Context) ([]string, error) {
 
 // PublicFilms lists the films the owner added (paths under films/), oldest first. Without any, the website shows its built-in films.
 func (s *Store) PublicFilms(ctx context.Context) ([]string, error) {
-	rows, err := s.pool.Query(ctx, `SELECT a.path FROM site_assets a`+onMainSite+`WHERE a.path LIKE 'films/%' AND a.content_type LIKE 'video/%' ORDER BY a.created_at,a.path`, mainSiteSlug())
+	rows, err := s.pool.Query(ctx, `SELECT a.path FROM site_assets a`+onMainSite+`WHERE a.path LIKE 'films/%' AND a.content_type LIKE 'video/%' AND NOT EXISTS(SELECT 1 FROM site_asset_hidden h WHERE (h.organization_id,h.location_id,h.path)=(a.organization_id,a.location_id,a.path)) ORDER BY a.created_at,a.path`, mainSiteSlug())
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +181,7 @@ func (s *Store) SetSiteAssetHidden(ctx context.Context, scope Scope, path string
 		return err
 	}
 	if hide {
-		_, err = tx.Exec(ctx, `INSERT INTO site_asset_hidden(organization_id,location_id,path) VALUES($1,$2,$3) ON CONFLICT DO NOTHING`, scope.OrganizationID, scope.LocationID, path)
+		_, err = tx.Exec(ctx, `INSERT INTO site_asset_hidden(organization_id,location_id,path) VALUES($1,$2,$3) ON CONFLICT(organization_id,location_id,path) DO UPDATE SET removed_at=now(),purged=false`, scope.OrganizationID, scope.LocationID, path)
 	} else {
 		_, err = tx.Exec(ctx, `DELETE FROM site_asset_hidden WHERE organization_id=$1 AND location_id=$2 AND path=$3`, scope.OrganizationID, scope.LocationID, path)
 	}

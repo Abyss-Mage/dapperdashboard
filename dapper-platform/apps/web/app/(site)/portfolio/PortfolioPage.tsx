@@ -26,7 +26,7 @@ type Shot = { src: string; caption: string; alt: string; ratio: string };
 
 export default function PortfolioPage() {
   const root = useRef<HTMLDivElement>(null);
-  // Photos added in the dashboard (Settings > Website images) replace the built-in ones as soon as one is published.
+  // Photos added in the dashboard (Settings > Website images) come first, then the built-in ones the owner has not removed.
   const [uploaded, setUploaded] = useState<Shot[] | null>(null);
   useEffect(() => {
     let live = true;
@@ -40,7 +40,7 @@ export default function PortfolioPage() {
     return () => { live = false; };
   }, []);
   const isHidden = useHidden();
-  const photos: Shot[] = uploaded ?? portfolio.filter((ph) => !isHidden(ph.src)).map((ph) => ({ src: ph.src, caption: ph.caption, alt: '', ratio: ratio(ph.src) }));
+  const photos: Shot[] = [...(uploaded ?? []), ...portfolio.filter((ph) => !isHidden(ph.src)).map((ph) => ({ src: ph.src, caption: ph.caption, alt: '', ratio: ratio(ph.src) }))];
   // Two rows of photographs drift in opposite directions behind the hero headline (each row is listed twice so the loop has no seam).
   const rowOf = (r: number) => photos.filter((_, i) => i % 2 === r).slice(0, 9);
   // The strip's length depends on the photos, so the scroll positions are measured again when they change.

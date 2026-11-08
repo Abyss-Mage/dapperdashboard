@@ -55,7 +55,23 @@ func registerSiteAssetRoutes(mux *http.ServeMux, store *postgres.Store) {
 			fail(w, err)
 			return
 		}
-		reply(w, 200, map[string]any{"items": items, "hidden": hidden, "logoSizes": sizes})
+		bin, err := store.BinnedSiteAssets(r.Context(), scope)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		reply(w, 200, map[string]any{"items": items, "hidden": hidden, "logoSizes": sizes, "bin": bin})
+	})
+	mux.HandleFunc("DELETE "+base+"/bin", func(w http.ResponseWriter, r *http.Request) {
+		scope, ok := scopeFor(w, r)
+		if !ok {
+			return
+		}
+		if err := store.PurgeSiteAsset(r.Context(), scope, r.URL.Query().Get("path")); err != nil {
+			fail(w, err)
+			return
+		}
+		reply(w, 200, map[string]bool{"removed": true})
 	})
 	mux.HandleFunc("PUT "+base+"/logo-size", func(w http.ResponseWriter, r *http.Request) {
 		scope, ok := scopeFor(w, r)

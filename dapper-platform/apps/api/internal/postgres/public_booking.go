@@ -120,6 +120,7 @@ type PublicService struct {
 	Name       string  `json:"name"`
 	Kind       string  `json:"kind"`
 	ParentID   *string `json:"parentId"`
+	ParentIDs  []string `json:"parentIds,omitempty"`
 	PriceCents int64   `json:"priceCents"`
 }
 type PublicBookingOptions struct {
@@ -148,7 +149,7 @@ func (s *Store) PublicBookingOptions(ctx context.Context, slug string) (PublicBo
 	priced := map[string]PublicService{}
 	for _, v := range all {
 		if !v.Archived && v.PriceCents != nil {
-			priced[v.ID] = PublicService{ID: v.ID, Name: v.Name, Kind: v.Kind, ParentID: v.ParentID, PriceCents: *v.PriceCents}
+			priced[v.ID] = PublicService{ID: v.ID, Name: v.Name, Kind: v.Kind, ParentID: v.ParentID, ParentIDs: v.ParentIDs, PriceCents: *v.PriceCents}
 		}
 	}
 	out := PublicBookingOptions{PhoneVerification: s.phoneVerifier != nil, Rules: []BookingRuleChoice{}, Services: []PublicService{}, Resources: choices.Resources}

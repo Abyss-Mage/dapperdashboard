@@ -10,7 +10,7 @@ export default function RemovedImages() {
       .then((r) => (r.ok ? r.json() : null))
       .then((b: { paths?: string[] } | null) => {
         const safe = (b?.paths ?? []).filter((p) => /^[A-Za-z0-9/_.-]+$/.test(p));
-        if (live && safe.length) setCss(safe.map((p) => `img[src^="/site/assets/${p}"],video[src^="/site/assets/${p}"]`).join(',') + '{display:none!important}');
+        if (live && safe.length) setCss(safe.map((p) => `img[src^="/site/assets/${p}"],video[src^="/site/assets/${p}"]`).join(',') + '{display:none!important}' + safe.map((p) => `[style*="/site/assets/${p}"]`).join(',') + '{background-image:none!important}');
       })
       .catch(() => undefined);
     return () => { live = false; };

@@ -280,6 +280,25 @@ func registerPublicContentRoutes(mux *http.ServeMux, store *postgres.Store) {
 		}
 		reply(w, 200, map[string]bool{"removed": true})
 	})
+	setBinned := func(binned bool) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			scope, ok := scopeFor(w, r, "content.manage")
+			if !ok {
+				return
+			}
+			if !uuid(r.PathValue("id")) {
+				reply(w, 400, map[string]string{"error": "Select a valid item"})
+				return
+			}
+			if err := store.SetContentBinned(r.Context(), scope, r.PathValue("kind"), r.PathValue("id"), binned); err != nil {
+				contentFailure(w, err)
+				return
+			}
+			reply(w, 200, map[string]bool{"binned": binned})
+		}
+	}
+	mux.HandleFunc("PUT "+base+"/bin/{kind}/{id}", setBinned(true))
+	mux.HandleFunc("DELETE "+base+"/bin/{kind}/{id}", setBinned(false))
 	mux.HandleFunc("PUT "+base+"/dealers-order", func(w http.ResponseWriter, r *http.Request) {
 		scope, ok := scopeFor(w, r, "content.manage")
 		if !ok {

@@ -204,6 +204,44 @@ func TestPublicContentPersistence(t *testing.T) {
 	if _, _, e := s.PublicImage(ctx, media); e != nil {
 		t.Fatal("dealer logo not served", e)
 	}
+	// The Bin: a binned item leaves the website but is kept, comes back on restore, and another location cannot touch it.
+	if err = s.SetContentBinned(ctx, otherScope, "dealers", dealer.ID, true); !errors.Is(err, ErrContentNotFound) {
+		t.Fatal("binned another location's dealer", err)
+	}
+	if err = s.SetContentBinned(ctx, scope, "dealers", dealer.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	if list, e := s.PublicDealers(ctx); e != nil || len(list) != 0 {
+		t.Fatal("binned dealer still listed", e)
+	}
+	if _, _, e := s.PublicImage(ctx, media); !errors.Is(e, ErrContentNotFound) {
+		t.Fatal("binned logo still served", e)
+	}
+	if managed, e := s.ContentForManagement(ctx, scope); e != nil || len(managed.Dealers) != 1 || managed.Dealers[0].BinnedAt == nil {
+		t.Fatal("binned dealer not kept for the Bin", e)
+	}
+	if err = s.SetContentBinned(ctx, scope, "dealers", dealer.ID, false); err != nil {
+		t.Fatal(err)
+	}
+	dealer.Version += 2
+	if list, e := s.PublicDealers(ctx); e != nil || len(list) != 1 {
+		t.Fatal("restored dealer missing", e)
+	}
+	if err = s.SetSiteAssetHidden(ctx, scope, "team/photo.jpg", true); err != nil {
+		t.Fatal(err)
+	}
+	if binned, e := s.BinnedSiteAssets(ctx, scope); e != nil || len(binned) != 1 || binned[0].Path != "team/photo.jpg" {
+		t.Fatal("removed file not in the Bin", binned, e)
+	}
+	if err = s.PurgeSiteAsset(ctx, scope, "team/photo.jpg"); err != nil {
+		t.Fatal(err)
+	}
+	if binned, e := s.BinnedSiteAssets(ctx, scope); e != nil || len(binned) != 0 {
+		t.Fatal("deleted file still in the Bin", binned, e)
+	}
+	if off, e := s.HiddenSiteAssets(ctx, scope); e != nil || len(off) != 1 {
+		t.Fatal("a deleted built-in file must stay off the website", off, e)
+	}
 	if err = s.SetLogoSize(ctx, scope, "partners/partner-1.png", "huge"); !errors.Is(err, ErrSiteAsset) {
 		t.Fatal("invalid logo size accepted", err)
 	}

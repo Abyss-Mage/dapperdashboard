@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -11,15 +12,16 @@ import (
 // WebsiteDealer is one dealership shown on the website: its name and logo. Publishing needs RightsReviewed (the owner confirms the
 // dealer's logo may be shown); the flag itself is not stored, the same as for portfolio photos.
 type WebsiteDealer struct {
-	ID             string `json:"id"`
-	MediaID        string `json:"mediaId"`
-	Name           string `json:"name"`
-	SortOrder      int    `json:"sortOrder"`
-	Published      bool   `json:"published"`
-	Version        int    `json:"version"`
-	RightsReviewed bool   `json:"rightsReviewed"`
-	Width          int    `json:"width"`
-	Height         int    `json:"height"`
+	ID             string     `json:"id"`
+	MediaID        string     `json:"mediaId"`
+	Name           string     `json:"name"`
+	SortOrder      int        `json:"sortOrder"`
+	Published      bool       `json:"published"`
+	Version        int        `json:"version"`
+	RightsReviewed bool       `json:"rightsReviewed"`
+	Width          int        `json:"width"`
+	Height         int        `json:"height"`
+	BinnedAt       *time.Time `json:"binnedAt,omitempty"`
 }
 
 // SaveWebsiteDealer creates or revises a dealer entry (optimistic concurrency on Version).
@@ -130,7 +132,7 @@ func (s *Store) PublicDealers(ctx context.Context) ([]WebsiteDealer, error) {
 FROM website_dealers d
 JOIN public_sites s ON (s.organization_id,s.location_id)=(d.organization_id,d.location_id)
 JOIN content_media m ON m.id=d.media_id
-WHERE d.published AND s.published ORDER BY d.sort_order,d.id LIMIT 60`)
+WHERE d.published AND d.binned_at IS NULL AND s.published ORDER BY d.sort_order,d.id LIMIT 60`)
 	if err != nil {
 		return nil, err
 	}

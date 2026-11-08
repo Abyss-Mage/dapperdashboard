@@ -25,7 +25,7 @@ func (s *Store) PublicPortfolio(ctx context.Context) ([]PublicPortfolioImage, er
 FROM portfolio_images p
 JOIN public_sites s ON (s.organization_id,s.location_id)=(p.organization_id,p.location_id)
 JOIN content_media m ON m.id=p.media_id
-WHERE p.published AND s.published ORDER BY p.sort_order,p.id LIMIT 200`)
+WHERE p.published AND p.binned_at IS NULL AND s.published ORDER BY p.sort_order,p.id LIMIT 200`)
 	if err != nil {
 		return nil, err
 	}

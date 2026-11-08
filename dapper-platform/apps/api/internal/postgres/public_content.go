@@ -11,6 +11,7 @@ import (
 	"image/png"
 	"regexp"
 	"strings"
+	"time"
 	"unicode/utf8"
 )
 
@@ -37,17 +38,18 @@ type ServicePublication struct {
 	Version        int     `json:"version"`
 }
 type PortfolioImage struct {
-	ID             string `json:"id"`
-	MediaID        string `json:"mediaId"`
-	Title          string `json:"title"`
-	Alt            string `json:"alt"`
-	Category       string `json:"category"`
-	SortOrder      int    `json:"sortOrder"`
-	Published      bool   `json:"published"`
-	Version        int    `json:"version"`
-	RightsReviewed bool   `json:"rightsReviewed"`
-	Width          int    `json:"width"`
-	Height         int    `json:"height"`
+	ID             string     `json:"id"`
+	MediaID        string     `json:"mediaId"`
+	Title          string     `json:"title"`
+	Alt            string     `json:"alt"`
+	Category       string     `json:"category"`
+	SortOrder      int        `json:"sortOrder"`
+	Published      bool       `json:"published"`
+	Version        int        `json:"version"`
+	RightsReviewed bool       `json:"rightsReviewed"`
+	Width          int        `json:"width"`
+	Height         int        `json:"height"`
+	BinnedAt       *time.Time `json:"binnedAt,omitempty"`
 }
 type PublishedContent struct {
 	Site      PublicSite           `json:"site"`
@@ -221,14 +223,14 @@ func readSiteContent(ctx context.Context, tx pgx.Tx, org, loc string, public boo
 	if err = rows.Err(); err != nil {
 		return out, err
 	}
-	rows, err = tx.Query(ctx, `SELECT p.id::text,p.media_id::text,p.title,p.alt,p.category,p.sort_order,p.published,p.version,m.width,m.height FROM portfolio_images p JOIN content_media m ON m.id=p.media_id WHERE p.organization_id=$1 AND p.location_id=$2 AND (NOT $3::boolean OR p.published) ORDER BY p.sort_order,p.id LIMIT 200`, org, loc, public)
+	rows, err = tx.Query(ctx, `SELECT p.id::text,p.media_id::text,p.title,p.alt,p.category,p.sort_order,p.published,p.version,m.width,m.height,p.binned_at FROM portfolio_images p JOIN content_media m ON m.id=p.media_id WHERE p.organization_id=$1 AND p.location_id=$2 AND (NOT $3::boolean OR (p.published AND p.binned_at IS NULL)) ORDER BY p.sort_order,p.id LIMIT 200`, org, loc, public)
 	if err != nil {
 		return out, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var item PortfolioImage
-		if err = rows.Scan(&item.ID, &item.MediaID, &item.Title, &item.Alt, &item.Category, &item.SortOrder, &item.Published, &item.Version, &item.Width, &item.Height); err != nil {
+		if err = rows.Scan(&item.ID, &item.MediaID, &item.Title, &item.Alt, &item.Category, &item.SortOrder, &item.Published, &item.Version, &item.Width, &item.Height, &item.BinnedAt); err != nil {
 			return out, err
 		}
 		out.Portfolio = append(out.Portfolio, item)
@@ -237,14 +239,14 @@ func readSiteContent(ctx context.Context, tx pgx.Tx, org, loc string, public boo
 		return out, err
 	}
 	rows.Close()
-	dealers, err := tx.Query(ctx, `SELECT d.id::text,d.media_id::text,d.name,d.sort_order,d.published,d.version,m.width,m.height FROM website_dealers d JOIN content_media m ON m.id=d.media_id WHERE d.organization_id=$1 AND d.location_id=$2 AND (NOT $3::boolean OR d.published) ORDER BY d.sort_order,d.id LIMIT 60`, org, loc, public)
+	dealers, err := tx.Query(ctx, `SELECT d.id::text,d.media_id::text,d.name,d.sort_order,d.published,d.version,m.width,m.height,d.binned_at FROM website_dealers d JOIN content_media m ON m.id=d.media_id WHERE d.organization_id=$1 AND d.location_id=$2 AND (NOT $3::boolean OR (d.published AND d.binned_at IS NULL)) ORDER BY d.sort_order,d.id LIMIT 60`, org, loc, public)
 	if err != nil {
 		return out, err
 	}
 	defer dealers.Close()
 	for dealers.Next() {
 		var item WebsiteDealer
-		if err = dealers.Scan(&item.ID, &item.MediaID, &item.Name, &item.SortOrder, &item.Published, &item.Version, &item.Width, &item.Height); err != nil {
+		if err = dealers.Scan(&item.ID, &item.MediaID, &item.Name, &item.SortOrder, &item.Published, &item.Version, &item.Width, &item.Height, &item.BinnedAt); err != nil {
 			return out, err
 		}
 		out.Dealers = append(out.Dealers, item)
@@ -353,7 +355,7 @@ func (s *Store) SavePortfolioImage(ctx context.Context, scope Scope, input Portf
 func (s *Store) PublicImage(ctx context.Context, id string) ([]byte, string, error) {
 	var data []byte
 	var mime string
-	err := s.pool.QueryRow(ctx, `SELECT m.data,m.content_type FROM content_media m WHERE m.id=$1 AND (EXISTS(SELECT 1 FROM portfolio_images p JOIN public_sites s ON (s.organization_id,s.location_id)=(p.organization_id,p.location_id) WHERE p.media_id=m.id AND p.published AND s.published) OR EXISTS(SELECT 1 FROM website_dealers d JOIN public_sites s ON (s.organization_id,s.location_id)=(d.organization_id,d.location_id) WHERE d.media_id=m.id AND d.published AND s.published))`, id).Scan(&data, &mime)
+	err := s.pool.QueryRow(ctx, `SELECT m.data,m.content_type FROM content_media m WHERE m.id=$1 AND (EXISTS(SELECT 1 FROM portfolio_images p JOIN public_sites s ON (s.organization_id,s.location_id)=(p.organization_id,p.location_id) WHERE p.media_id=m.id AND p.published AND p.binned_at IS NULL AND s.published) OR EXISTS(SELECT 1 FROM website_dealers d JOIN public_sites s ON (s.organization_id,s.location_id)=(d.organization_id,d.location_id) WHERE d.media_id=m.id AND d.published AND d.binned_at IS NULL AND s.published))`, id).Scan(&data, &mime)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, "", ErrContentNotFound
 	}

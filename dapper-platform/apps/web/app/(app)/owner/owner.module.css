@@ -908,6 +908,7 @@
 .parentPick legend { font-weight: 700; padding: 0 6px; }
 .parentOpt { display: flex; gap: 10px; align-items: center; font-size: 13.7px; cursor: pointer; }
 .parentOpt input { width: 20px; height: 20px; flex: none; }
+.catPick { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px 14px; padding-bottom: 10px; border-bottom: 1px solid var(--glass-line); }
 .slotGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
 .custFilters { display: grid; grid-template-columns: minmax(220px, 1.4fr) repeat(4, minmax(150px, 1fr)) auto; gap: 10px; align-items: center; }
 .custRow { display: grid; grid-template-columns: minmax(150px, 1.1fr) minmax(130px, 1fr) minmax(180px, 1.3fr) 110px; gap: 4px 16px; align-items: baseline; width: 100%; text-align: left; }
@@ -979,27 +980,43 @@
 @media (max-width: 760px) { .tplWrap { grid-template-columns: minmax(0, 1fr); } .tplList { grid-auto-flow: column; grid-auto-columns: max-content; overflow-x: auto; } }
 
 /* Website pictures and films: cards in a grid, the name under the picture, the buttons under that */
-.smGrid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
-.smCard { display: grid; gap: 10px; align-content: start; min-width: 0; padding: 10px; border-radius: 14px; border: 1px solid var(--border, #00000014); background: var(--surface, #fff); }
-.smCard[data-off] { opacity: .55; }
-.smThumb { display: block; width: 100%; height: 140px; object-fit: contain; border-radius: 10px; background: #fff; }
-.smFilm { display: block; width: 100%; aspect-ratio: 9 / 16; object-fit: cover; border-radius: 10px; background: #000; }
-.smName { font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
-.smGroup > summary { cursor: pointer; font-weight: 700; font-size: 16px; min-height: 28px; }
-.smGroup[open] > summary { margin-bottom: 12px; }
-.smActions { display: flex; flex-wrap: wrap; gap: 8px; }
-.smActions > button { flex: 1 1 0; white-space: nowrap; }
-.viewTabs { display: flex; flex-wrap: wrap; gap: 8px; }
+/* Media library: one grid, drop files anywhere, click a picture to change it */
+.mlRoot { position: relative; display: grid; gap: 14px; }
+.mlRoot[data-dragging]::after { content: 'Drop files to add them'; position: absolute; inset: 0; z-index: 5; display: grid; place-items: center; border: 2px dashed #d10f1f; border-radius: 16px; background: #ffffffe6; color: #17171a; font-weight: 700; font-size: 18px; pointer-events: none; }
+.mlBar { display: flex; gap: 10px; align-items: center; }
+.mlBar > button { display: inline-flex; align-items: center; gap: 8px; flex: none; }
+.mlSearch { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 0 12px; min-height: 44px; border: 1px solid var(--border, #00000014); border-radius: 12px; background: var(--surface, #fff); }
+.mlSearch input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; }
+.mlSearch:focus-within { outline: 3px solid #d10f1f; outline-offset: 2px; }
+.mlChips { display: flex; flex-wrap: wrap; gap: 6px; }
+.mlChips button, .mlChips button:hover:not(:disabled) { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border: 1px solid var(--border, #00000014); border-radius: 999px; background: var(--surface, #fff); color: #33333a; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: none; transform: none; }
+.mlChips button span { color: #6b6b74; font-weight: 500; }
+.mlChips button[aria-pressed="true"], .mlChips button[aria-pressed="true"]:hover:not(:disabled) { border-color: #17171a; background: #17171a; color: #fff; }
+.mlChips button[aria-pressed="true"] span { color: #d8d8dc; }
+.mlBinChip { margin-left: auto; }
+.mlGrid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+.mlItem, .mlItem:hover:not(:disabled) { display: grid; gap: 4px; width: 100%; padding: 0; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; box-shadow: none; transform: none; }
+.mlThumb { display: block; aspect-ratio: 1 / 1; overflow: hidden; border-radius: 12px; border: 1px solid var(--border, #00000014); background: #fff; transition: border-color .15s; }
+.mlThumb img, .mlThumb video { display: block; width: 100%; height: 100%; padding: 8px; object-fit: contain; }
+.mlItem:hover .mlThumb, .mlItem:focus-visible .mlThumb { border-color: #d10f1f; }
+.mlName { font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+.mlMeta { font-size: 12px; color: #6b6b74; }
+.mlBinItem { display: grid; gap: 6px; align-content: start; }
+.mlBinItem .mlThumb { opacity: .7; }
+.mlHeading { margin: 0; font-size: 16px; font-weight: 700; }
+.mlSheet { position: fixed; inset: 0 0 0 auto; width: min(420px, 100vw); height: 100dvh; max-height: none; margin: 0; padding: 20px; overflow: auto; border: 0; background: #fff; color: #17171a; box-shadow: -18px 0 50px #0003; }
+.mlSheet::backdrop, .mlUpload::backdrop { background: #0b0b0c66; }
+.mlUpload { width: min(460px, calc(100vw - 32px)); margin: auto; padding: 20px; border: 0; border-radius: 16px; background: #fff; color: #17171a; }
+.mlFiles { margin: 0; font-size: 13px; color: #55555d; overflow-wrap: anywhere; max-height: 96px; overflow: auto; }
+.mlPreview { display: block; border-radius: 12px; overflow: hidden; border: 1px solid #0b0b0c14; background: #fff; }
+.mlPreview img, .mlPreview video { display: block; width: 100%; max-height: 300px; object-fit: contain; }
+.mlClose, .mlClose:hover:not(:disabled) { display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 50%; background: transparent; color: #17171a; cursor: pointer; box-shadow: none; transform: none; }
 
-/* Dealership logos: each card previews the logo the way the website's card shows it */
-.logoGrid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
-.logoCard { display: grid; gap: 10px; align-content: start; min-width: 0; padding: 12px; border-radius: 14px; border: 1px solid var(--border, #00000014); background: var(--surface, #fff); }
-.logoCard[data-off] .logoTile { opacity: .4; }
 .logoTile { display: grid; place-items: center; aspect-ratio: 3 / 2; padding: 18px; overflow: hidden; border-radius: 10px; border: 1px solid #0b0b0c14; background: #fff; }
 .logoTile img { display: block; min-width: 0; min-height: 0; object-fit: contain; }
 .logoName { font-size: 14px; font-weight: 700; overflow-wrap: anywhere; width: 100%; }
 .logoActions { display: flex; gap: 8px; }
-.logoActions > button { flex: 1 1 0; }
+.logoActions > button { flex: 1 1 0; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 .sizeRow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; padding: 3px; border-radius: 10px; background: #0b0b0c0f; }
 .sizeBtn, .sizeBtn:hover:not(:disabled) { min-height: 36px; padding: 0 2px; border: 0; border-radius: 8px; background: transparent; color: #33333a; font-size: 12.5px; font-weight: 600; cursor: pointer; box-shadow: none; transform: none; }
 .sizeBtn[aria-pressed="true"], .sizeBtn[aria-pressed="true"]:hover:not(:disabled) { background: #d10f1f; color: #fff; }

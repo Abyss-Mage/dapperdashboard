@@ -15,6 +15,20 @@ export function useHidden() {
   return (src: string) => hidden.has(src.replace(/^\/site\/assets\//, ''));
 }
 
+/* Whether the owner has uploaded their own file for a picture, so its "example photo" label no longer applies. */
+export function useReplaced() {
+  const [paths, setPaths] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    let live = true;
+    fetch('/api/v1/public/site-asset-paths', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((b: { paths?: string[] } | null) => { if (live && b?.paths) setPaths(new Set(b.paths)); })
+      .catch(() => undefined);
+    return () => { live = false; };
+  }, []);
+  return (src: string) => paths.has(src.replace(/^\/site\/assets\//, ''));
+}
+
 /* The size the owner chose for each dealership logo: built-in logos by path, uploaded ones as "dealers/<id>". */
 export function useLogoSizes() {
   const [sizes, setSizes] = useState<Record<string, string>>({});

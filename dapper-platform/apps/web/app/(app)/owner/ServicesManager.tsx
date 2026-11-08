@@ -199,6 +199,7 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
   const addonsOf = (id: string) => visible.filter((s) => s.kind === 'addon' && parentsOf(s).includes(id));
   const orphans = visible.filter((s) => s.kind === 'addon' && !parentsOf(s).some((p) => mains.some((m) => m.id === p)));
   const nameOf = (id: string | null) => all.find((s) => s.id === id)?.name ?? 'a main service';
+  const mainsInCategory = (key: string) => all.filter((s) => !s.archived && s.kind === 'main' && webTags[s.id]?.published && webTags[s.id].cat === key).map((s) => s.id);
 
   function open(next: Service | 'new') {
     setEditing(next);
@@ -469,7 +470,21 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
             )}
             {kind === 'addon' && (
               <fieldset className={styles.parentPick}>
-                <legend>Offered with these main services (one add-on, any number of main services)</legend>
+                <legend>Offered with these categories and main services</legend>
+                {/* Ticking a category links the add-on to every package on that page of the website; unticking removes them. */}
+                {websiteCategories.some((c) => mainsInCategory(c.key).length > 0) && <div className={styles.catPick}>
+                  {websiteCategories.map((c) => {
+                    const ids = mainsInCategory(c.key);
+                    if (!ids.length) return null;
+                    const on = ids.filter((id) => parentIds.includes(id)).length;
+                    return (
+                      <label key={c.key} className={styles.parentOpt}>
+                        <input type="checkbox" checked={on === ids.length} ref={(el) => { if (el) el.indeterminate = on > 0 && on < ids.length; }} disabled={busy} onChange={(e) => setParentIds(e.target.checked ? [...new Set([...parentIds, ...ids])] : parentIds.filter((x) => !ids.includes(x)))} />
+                        <span>{c.short}</span>
+                      </label>
+                    );
+                  })}
+                </div>}
                 {all.filter((x) => !x.archived && x.kind === 'main').map((m) => {
                   const locked = false;
                   return (
