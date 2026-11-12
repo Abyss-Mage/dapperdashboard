@@ -38,6 +38,8 @@ export default function Employees({ organizationId, franchiseName = '', onChange
   const [roleFilter, setRoleFilter] = useState('');
   const [status, setStatus] = useState('');
   const [franchise, setFranchise] = useState(franchiseName);
+  // Follow the franchise picked in the sidebar (error404 #53): switching franchise shows that franchise's people.
+  useEffect(() => { setFranchise(franchiseName); }, [franchiseName]);
   const [open, setOpen] = useState<Person | null>(null);
   const [newRole, setNewRole] = useState('');
   const [newScope, setNewScope] = useState('organization');
@@ -106,7 +108,7 @@ export default function Employees({ organizationId, franchiseName = '', onChange
       </div>
       {!people && !error && <div className={`${styles.card} ${styles.skeleton}`} role="status" aria-label="Loading employees" />}
       {people && people.length === 0 && <p className={styles.status}>No employees yet. Invite someone under Team and give them the Employee role. They sign in to the workspace only.</p>}
-      {people && people.length > 0 && shown.length === 0 && <p className={styles.status}>No one matches these filters.</p>}
+      {people && people.length > 0 && shown.length === 0 && <p className={styles.status}>{franchise && !query && !roleFilter && !status ? `No employees at ${franchise} yet.` : 'No one matches these filters.'}</p>}
       <ul className={styles.people}>
         {shown.map((p) => (
           <li key={p.principalId} className={styles.person} style={{ opacity: p.active ? 1 : 0.65, gridTemplateColumns: 'minmax(0,1fr) auto', alignItems: 'center' }}>
