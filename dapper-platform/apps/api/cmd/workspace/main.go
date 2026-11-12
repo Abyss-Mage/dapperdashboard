@@ -3,6 +3,7 @@ package main
 import (
 	_ "time/tzdata" // the browser's time zone names work even where the server lacks them
 	"context"
+	"dapper.local/platform/internal/cache"
 	"dapper.local/platform/internal/email"
 	"dapper.local/platform/internal/identity"
 	"dapper.local/platform/internal/postgres"
@@ -31,6 +32,12 @@ func main() {
 	defer store.Close()
 	if err = store.ValidateSchema(ctx); err != nil {
 		log.Fatal("Scoped API requires explicit schema migration and matching checksums; no automatic migration performed")
+	}
+	// Optional Redis cache for the public website's data (owner 2026-11-13); without it, or while it is down, the database is read.
+	if c, err := cache.New(os.Getenv("DAPPER_REDIS_URL")); err != nil {
+		log.Printf("DAPPER_REDIS_URL is not a valid Redis address; running without the cache")
+	} else {
+		workspace.SetPublicCache(c)
 	}
 	origin := "http://127.0.0.1:3006"
 	if configured := os.Getenv("DAPPER_CLIENT_ORIGIN"); configured != "" {

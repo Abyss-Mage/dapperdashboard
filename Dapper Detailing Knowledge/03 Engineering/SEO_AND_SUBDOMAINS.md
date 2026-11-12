@@ -22,3 +22,11 @@
 - Runtime tests: the database test covers SEO save, permissions, input checks and serving; a unit test covers origin and host matching.
 - Deployed: website pages, robots.txt and sitemap answer on the IP address as before.
 - Not verified: the subdomains (waiting on DNS and the server steps above), the settings page in a browser, and search engines reading the sitemaps.
+
+# Redis cache (owner decisions, 2026-11-13)
+- Redis runs on the same server, listening only on 127.0.0.1 with a password. The owner installs it; production setup changes were not permitted from the agent session.
+- Only the public website's reads are cached: `/api/v1/public/sites/{slug}`, `/public/portfolio` and `/public/dealers`, each for 60 seconds. Bookings, payments, staff and dealer data are never cached.
+- Any successful change (any non-GET request that succeeds) clears the cache at once by bumping a generation key, so dashboard edits show immediately.
+- If Redis is missing or down, the app keeps working from PostgreSQL. Timeouts are short (1 s to connect, 300 ms per call) and a warning is logged at most once a minute.
+- Setting: `DAPPER_REDIS_URL=redis://:PASSWORD@127.0.0.1:6379/0` in `/opt/dapper/app/.env`, then restart `dapper`. Code: `internal/cache`, `internal/workspace/public_cache.go`.
+- Evidence: unit tests cover no cache, an unreachable Redis and which paths are cached; deployed without the setting, the site is unchanged. Not verified: a real Redis round trip (`DAPPER_TEST_REDIS_URL` test skipped, no Redis on the dev PC) and Redis on the server.

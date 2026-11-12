@@ -323,7 +323,21 @@ func NewHandlerWithFullServices(store *postgres.Store, origin string, invitation
 			reply(w, 403, map[string]string{"error": "Same-origin request required"})
 			return
 		}
+		if r.Method != http.MethodGet && r.Method != http.MethodHead && publicCache != nil {
+			// Any change that succeeds may touch what the website shows, so the cached website data is dropped (owner 2026-11-13).
+			sw := &statusWriter{ResponseWriter: w, status: 200}
+			w = sw
+			defer func() {
+				if sw.status < 400 {
+					publicCache.Invalidate(context.WithoutCancel(r.Context()))
+				}
+			}()
+		}
 		// The shop iPad's and the dealership portal's routes check their own sign-in (shop_device.go, dealer_portal.go).
+		if r.Method == http.MethodGet && cachedPublicPath(r.URL.Path) {
+			servePublicCached(w, r, mux)
+			return
+		}
 		if strings.HasPrefix(r.URL.Path, "/api/v1/public/") || strings.HasPrefix(r.URL.Path, "/api/v1/shop/") || strings.HasPrefix(r.URL.Path, "/api/v1/dealer-portal/") {
 			mux.ServeHTTP(w, r)
 			return
