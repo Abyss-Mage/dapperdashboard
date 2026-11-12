@@ -711,7 +711,6 @@ export default function SecureWorkspace({ownerView=false}:{ownerView?:boolean}) 
             <SOPCompliancePanel
               key={'sop-' + base}
               base={base}
-              canAcknowledge={scope.actions.includes('sop.acknowledge')}
               canManage={scope.actions.includes('sop.manage')}
             />
           )}

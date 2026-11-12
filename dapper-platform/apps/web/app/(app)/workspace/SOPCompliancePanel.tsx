@@ -21,25 +21,18 @@ type SOPAcknowledgment = {
   employeeId: string;
   actorId: string;
   acknowledgedSha256: string;
-  trainingTrack: 'orientation' | 'assisted' | 'independent' | 'certified';
-  notes: string;
   acknowledgedAt: string;
 };
 
 export default function SOPCompliancePanel({
   base,
-  canAcknowledge,
   canManage = false,
 }: {
   base: string;
-  canAcknowledge: boolean;
   canManage?: boolean;
 }) {
   const [docs, setDocs] = useState<SOPDocument[]>([]);
   const [acknowledgments, setAcknowledgments] = useState<SOPAcknowledgment[]>([]);
-  const [selectedDoc, setSelectedDoc] = useState<SOPDocument | null>(null);
-  const [trainingTrack, setTrainingTrack] = useState<'orientation' | 'assisted' | 'independent' | 'certified'>('orientation');
-  const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -109,40 +102,6 @@ export default function SOPCompliancePanel({
     finally { setManaging(false); }
   };
 
-  const handleAcknowledge = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedDoc) return;
-
-    setLoading(true);
-    setError('');
-    setSuccess('');
-    try {
-      const res = await fetch(`${base}/sops/${selectedDoc.id}/acknowledge`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-          trainingTrack,
-          hash: selectedDoc.sha256Hash,
-          notes: notes.trim(),
-        }),
-      });
-
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || errData.errors?.sop || 'Failed to record acknowledgment');
-      }
-
-      setSuccess(`Recorded verified acknowledgment for ${selectedDoc.title} (${trainingTrack} track)!`);
-      setSelectedDoc(null);
-      setNotes('');
-      await loadData();
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const getCategoryBadge = (cat: SOPDocument['category']) => {
     switch (cat) {
       case 'safety':
@@ -156,26 +115,12 @@ export default function SOPCompliancePanel({
     }
   };
 
-  const getTrackBadge = (track: SOPAcknowledgment['trainingTrack']) => {
-    switch (track) {
-      case 'certified':
-        return <span className="status-badge success">Certified</span>;
-      case 'independent':
-        return <span className="status-badge warning">Independent</span>;
-      case 'assisted':
-        return <span className="status-badge neutral">Assisted</span>;
-      case 'orientation':
-        return <span className="status-badge pending">Orientation</span>;
-      default:
-        return <span className="status-badge">{track}</span>;
-    }
-  };
-
   return (
     <section className="panel detail-card">
       <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem'}}>
         <div>
           <h2>Standard Operating Procedures (SOP) & Compliance</h2>
+          <p style={{margin: '0.25rem 0 0', color: 'var(--text-muted)'}}>Add the documents here. Each employee reads and acknowledges them in their first sign-in steps, next to their name and phone, and later on their workspace home page.</p>
         </div>
         <button className="secondary" onClick={loadData} disabled={loading}>
           Refresh
@@ -198,49 +143,6 @@ export default function SOPCompliancePanel({
         </form>
       )}
 
-      {/* Acknowledgment Modal */}
-      {selectedDoc && (
-        <form onSubmit={handleAcknowledge} className="inline-form" style={{background: 'var(--surface-sunken)', padding: '1.25rem', borderRadius: '8px', marginBottom: '1.5rem', border: '1px solid var(--border-color)'}}>
-          <h3 style={{margin: 0}}>Acknowledge SOP Training & Compliance</h3>
-          <p style={{fontSize: '0.9rem', color: 'var(--text-muted)', margin: '0.25rem 0 1rem 0'}}>
-            Document: <strong>{selectedDoc.title}</strong> · {selectedDoc.pageCount} Pages · SHA-256: <code>{selectedDoc.sha256Hash.slice(0, 16)}...</code>
-          </p>
-
-          <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem', marginBottom: '1rem'}}>
-            <div>
-              <label>Training Stage / Track *</label>
-              <Select
-                value={trainingTrack}
-                onChange={(e: any) => setTrainingTrack(e.target.value)}
-                style={{width: '100%', padding: '0.5rem'}}
-              >
-                <option value="orientation">Phase 1: Orientation & Policy Review</option>
-                <option value="assisted">Phase 2: Assisted Practical Observation</option>
-                <option value="independent">Phase 3: Independent Supervised Execution</option>
-                <option value="certified">Phase 4: Fully Certified Sign-Off</option>
-              </Select>
-            </div>
-            <div>
-              <label>Supervisor / Employee Notes</label>
-              <input
-                type="text"
-                placeholder="Training observations, chemical safety equipment used..."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                style={{width: '100%', padding: '0.5rem'}}
-              />
-            </div>
-          </div>
-
-          <div style={{display: 'flex', gap: '0.5rem', justifyContent: 'flex-end'}}>
-            <button type="button" className="secondary" onClick={() => setSelectedDoc(null)}>Cancel</button>
-            <button type="submit" className="primary" disabled={loading}>
-              {loading ? 'Recording...' : 'Submit Verified Acknowledgment'}
-            </button>
-          </div>
-        </form>
-      )}
-
       {/* Documents Grid */}
       <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem', marginBottom: '2rem'}}>
         {docs.map((doc) => (
@@ -256,22 +158,10 @@ export default function SOPCompliancePanel({
                 SHA-256: <code>{doc.sha256Hash}</code>
               </div>
             </div>
-            <div style={{display: 'flex', gap: '0.5rem', marginBottom: canAcknowledge ? '0.5rem' : 0}}>
+            <div style={{display: 'flex', gap: '0.5rem', marginBottom: 0}}>
               <a className="secondary" href={`${base}/sops/${doc.id}/file`} target="_blank" rel="noreferrer" style={{flex: 1, textAlign: 'center', fontSize: '0.85rem', padding: '0.45rem'}}>Open PDF</a>
               {canManage && <button type="button" className="secondary" style={{flex: 1, fontSize: '0.85rem'}} onClick={() => setRemoveTarget(doc)}>Remove</button>}
             </div>
-            {canAcknowledge && (
-              <button
-                className="secondary"
-                style={{width: '100%', fontSize: '0.85rem'}}
-                onClick={() => {
-                  setSelectedDoc(doc);
-                  setNotes('');
-                }}
-              >
-                Sign / Acknowledge Stage
-              </button>
-            )}
           </div>
         ))}
       </div>
@@ -290,12 +180,10 @@ export default function SOPCompliancePanel({
               <div>
                 <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
                   <strong>{ack.documentTitle || 'SOP Document'}</strong>
-                  {getTrackBadge(ack.trainingTrack)}
                 </div>
                 <small style={{display: 'block', color: 'var(--text-muted)'}}>
                   Recorded: {new Date(ack.acknowledgedAt).toLocaleString()} · Signer ID: {ack.actorId.slice(0, 8)}
                 </small>
-                {ack.notes && <small style={{fontStyle: 'italic'}}>{ack.notes}</small>}
               </div>
               <div style={{textAlign: 'right'}}>
                 <span className="status-badge success" style={{fontSize: '0.75rem'}}>Verified Hash Match</span>

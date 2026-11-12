@@ -571,7 +571,7 @@ export default function OwnerDashboardClient() {
             {activeTab === 'availability' && <AvailabilityReview key={scope.organizationId} organizationId={scope.organizationId} locationId={scope.locationId} />}
             {activeTab === 'dealership-tags' && <EmployeeUploadsReview key={'tags-' + base} base={base} fixedKind="dealership_tag" title="Dealership tags" canSeeLog={scope.actions.includes('attendance.manage')} />}
             {activeTab === 'customer-cars' && <EmployeeUploadsReview key={'cars-' + base} base={base} fixedKind="customer_car" title="Customer cars" canSeeLog={scope.actions.includes('attendance.manage')} />}
-            {activeTab === 'sop' && <SOPCompliancePanel base={base} canAcknowledge={scope.actions.includes('sop.acknowledge')} canManage={scope.actions.includes('sop.manage')} />}
+            {activeTab === 'sop' && <SOPCompliancePanel base={base} canManage={scope.actions.includes('sop.manage')} />}
             {activeTab === 'invoices' && <InvoiceManager base={base} canCreate={scope.actions.includes('invoices.create')} canManage={scope.actions.includes('invoices.manage')} canRecordPayment={scope.actions.includes('payments.record')} canIssue={scope.actions.includes('invoices.issue')} />}
             {activeTab === 'quotes' && <QuoteManager organizationId={scope.organizationId} locationId={scope.locationId} canCreate={scope.actions.includes('quotes.create')} canManage={scope.actions.includes('quotes.manage')} canIssue={scope.actions.includes('quotes.issue')} />}
             {activeTab === 'backups' && <BackupPanel organizationId={scope.organizationId} />}

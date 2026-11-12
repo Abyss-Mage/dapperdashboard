@@ -1,5 +1,5 @@
 'use client';
-import { Check, Download, FileText } from 'lucide-react';
+import { Check, FileText } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import styles from './employee.module.css';
 
@@ -7,7 +7,7 @@ type Doc = { id: string; title: string; category: string; version: number; pageC
 const categoryLabel: Record<string, string> = { onboarding: 'Onboarding', safety: 'Safety', chemical: 'Chemical', procedure: 'Procedure' };
 
 /* The employee reads the original PDF (served only while it matches its registered checksum), then confirms with their
-   typed name. That records an electronic acknowledgment and enables a receipt PDF. It is not a reviewed legal e-signature. */
+   typed name. That records an electronic acknowledgment (no receipt button, error404 #54). It is not a reviewed legal e-signature. */
 export default function DocumentsCard({ timezone, onChanged }: { timezone: string; onChanged?: () => void }) {
   const [docs, setDocs] = useState<Doc[] | null>(null), [error, setError] = useState(''), [open, setOpen] = useState(''), [name, setName] = useState(''), [read, setRead] = useState(false), [busy, setBusy] = useState(false), [notice, setNotice] = useState('');
   const nameField = useRef<HTMLInputElement>(null);
@@ -21,7 +21,7 @@ export default function DocumentsCard({ timezone, onChanged }: { timezone: strin
     try {
       const r = await fetch(`/api/v1/employee/documents/${id}/acknowledge`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ signedName: name.trim() }) });
       const b = await r.json().catch(() => ({})); if (!r.ok) throw new Error(b.error ?? 'The acknowledgment could not be saved.');
-      setOpen(''); setName(''); setRead(false); setNotice('Acknowledged. Your receipt is ready to download.'); await load(); onChanged?.();
+      setOpen(''); setName(''); setRead(false); setNotice('Acknowledged. Thank you.'); await load(); onChanged?.();
     } catch (err) { setError(err instanceof Error ? err.message : 'The acknowledgment could not be saved.'); }
     finally { setBusy(false); }
   }
@@ -41,7 +41,7 @@ export default function DocumentsCard({ timezone, onChanged }: { timezone: strin
         </div>
         <div className={styles.docActions}>
           {d.fileAvailable && <a className={styles.secondary} href={`/api/v1/employee/documents/${d.id}/file`} target="_blank" rel="noreferrer">View PDF</a>}
-          {d.acknowledgedAt ? <a className={styles.secondary} href={`/api/v1/employee/documents/${d.id}/receipt`}><Download size={16} aria-hidden="true" />Receipt</a>
+          {d.acknowledgedAt ? <span className={styles.secondary} aria-label="Acknowledged"><Check size={16} aria-hidden="true" />Acknowledged</span>
             : d.fileAvailable && open !== d.id && <button className={styles.primary} onClick={() => { setOpen(d.id); setNotice(''); }}>Acknowledge</button>}
         </div>
       </li>)}
