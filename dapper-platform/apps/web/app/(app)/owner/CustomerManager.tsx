@@ -22,7 +22,8 @@ const digits = (v: string) => v.replace(/\D/g, '');
 
 /* Customers of the selected franchise: search, add, edit and delete. Each email and phone number belongs to one customer.
    The list stays short; a customer's vehicles, bookings, jobs and invoices open when you click their name. */
-export default function CustomerManager({ base, canCreate, canDelete, onChanged }: { base: string; canCreate: boolean; canDelete: boolean; onChanged: () => void }) {
+// canExport: only the organization's owners and administrators may take the customer list away as a file; franchise owners may not.
+export default function CustomerManager({ base, canCreate, canDelete, canExport, onChanged }: { base: string; canCreate: boolean; canDelete: boolean; canExport: boolean; onChanged: () => void }) {
   const [items, setItems] = useState<Customer[] | null>(null);
   const [query, setQuery] = useState('');
   const [editing, setEditing] = useState<Customer | 'new' | null>(null);
@@ -142,7 +143,7 @@ export default function CustomerManager({ base, canCreate, canDelete, onChanged 
           <h2 className={styles.setupTitle} style={{ fontSize: 20, margin: 0 }}>Customers</h2>
         </div>
         <div className={styles.svcActions}>
-          <button type="button" className="secondary" disabled={!visible.length} onClick={exportCsv}>Export</button>
+          {canExport && <button type="button" className="secondary" disabled={!visible.length} onClick={exportCsv}>Export</button>}
           {canCreate && !editing && <button type="button" className="primary" onClick={() => edit('new')}>New customer</button>}
         </div>
       </div>

@@ -1,0 +1,35 @@
+/* The workspace's clock page on the shop iPad: big targets that work with gloves or a wet hand, in the workspace's own colours. */
+.panel { display: grid; gap: 18px; padding: clamp(18px, 3vw, 32px); border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+.panel h2 { margin: 0; font-size: clamp(26px, 3.4vw, 38px); font-weight: 800; letter-spacing: -.01em; }
+.center { justify-items: center; text-align: center; }
+.help { margin: 0; color: var(--muted); font-size: 17px; }
+.error { margin: 0; color: var(--error, #c4202b); font-size: 17px; font-weight: 700; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 250px)); gap: 14px; margin: 0; padding: 0; list-style: none; }
+.grid button { width: 100%; min-height: 112px; display: grid; place-content: center; gap: 8px; padding: 16px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface-alt, var(--soft)); color: var(--ink); font: inherit; cursor: pointer; transition: transform .1s; }
+.grid button:active { transform: scale(.97); }
+.grid strong { font-size: clamp(20px, 2.4vw, 25px); font-weight: 800; }
+.grid span { display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-size: 15px; font-weight: 700; color: var(--muted); }
+.grid span i { width: 10px; height: 10px; border-radius: 50%; background: #8d8a83; }
+.grid span[data-s="clocked_in"] i { background: #1f8a4c; }
+.grid span[data-s="on_break"] i { background: #b7791f; }
+.link { justify-self: start; min-height: 44px; padding: 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: 15px; font-weight: 700; text-decoration: underline; text-underline-offset: 4px; cursor: pointer; }
+.dots { display: flex; gap: 16px; }
+.dots i { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--muted); transition: background-color .15s, border-color .15s; }
+.dots i[data-on] { background: #e5222f; border-color: #e5222f; }
+.pad { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; width: min(100%, 400px); }
+.pad button, .soft, .actions button { display: inline-flex; align-items: center; justify-content: center; gap: 10px; border: 0; border-radius: 18px; font: inherit; cursor: pointer; transition: transform .1s, opacity .15s; }
+.pad button { min-height: clamp(66px, 9vh, 86px); background: var(--surface-alt, var(--soft)); color: var(--ink); font-size: clamp(26px, 3.6vw, 32px); font-weight: 700; border: 1px solid var(--line); }
+.pad button:active, .soft:active, .actions button:active { transform: scale(.96); }
+.pad button:disabled, .soft:disabled, .actions button:disabled { opacity: .45; cursor: default; }
+.soft { min-height: 60px; padding: 0 20px; background: var(--surface-alt, var(--soft)); color: var(--ink); font-size: 17px; font-weight: 700; border: 1px solid var(--line); }
+.wide { width: min(100%, 400px); }
+.state { margin: 0; font-size: clamp(19px, 2.4vw, 24px); color: var(--muted); }
+.doneLine { margin: 0; font-size: clamp(21px, 2.8vw, 28px); font-weight: 800; color: #1f8a4c; }
+.actions { display: grid; gap: 12px; width: min(100%, 400px); }
+.actions button { min-height: 86px; font-size: clamp(22px, 3vw, 27px); font-weight: 800; color: #fff; }
+.actions button.soft { min-height: 60px; font-size: 18px; color: var(--ink); }
+.go { background: #1f8a4c; }
+.pause { background: #b7791f; }
+.stop { background: #d22b2b; }
+.pad button:focus-visible, .soft:focus-visible, .actions button:focus-visible, .grid button:focus-visible { outline: 3px solid #e5222f; outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { .pad button, .soft, .actions button, .grid button, .dots i { transition: none; } }

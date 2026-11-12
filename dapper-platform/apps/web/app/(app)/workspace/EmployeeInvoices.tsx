@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FileText, Plus, Trash2 } from 'lucide-react';
 import styles from './employee.module.css';
-import { printInvoiceDocument, usePrintTemplate, type PrintInvoice } from './InvoicePrint';
+import { openPdf, ownLayout, printInvoiceDocument, usePrintTemplate, type PrintInvoice } from './InvoicePrint';
 import Select from '../GlassSelect';
 
 type Booking = { id: string; customerName: string; serviceName: string; bookingTime: string; status: string; addons: { name: string }[] };
@@ -109,6 +109,7 @@ export default function EmployeeInvoices({ bookings, canCreate, canIssue, timezo
 
   async function print(inv: Invoice) {
     setError('');
+    if (!ownLayout(printTemplate) && inv.bookingId) { openPdf(`/api/v1/employee/bookings/${inv.bookingId}/invoices/${inv.id}/pdf`); return; }
     try {
       const found = inv.bookingId ? ((await readJson(await fetch(`/api/v1/employee/bookings/${inv.bookingId}/invoices`, { cache: 'no-store' }))).items as (Invoice & PrintInvoice)[]).find((x) => x.id === inv.id) : undefined;
       if (!found) throw new Error('This invoice could not be opened for printing.');
@@ -208,7 +209,7 @@ export default function EmployeeInvoices({ bookings, canCreate, canIssue, timezo
             <div className={styles.invAmount}><strong>{money(i.totalCents)}</strong>{i.dueCents > 0 && i.status !== 'draft' && <span>{money(i.dueCents)} due</span>}</div>
             <div className={styles.invRowActions}>
               {i.status === 'draft' && canIssue && <button type="button" className={styles.invSecondary} disabled={busy} onClick={() => void issue(i)}>Issue</button>}
-              {i.status !== 'draft' && i.status !== 'void' && i.bookingId && <button type="button" className={styles.invSecondary} onClick={() => void print(i)}>Print</button>}
+              {i.status !== 'draft' && i.status !== 'void' && i.bookingId && <button type="button" className={styles.invSecondary} onClick={() => void print(i)}>PDF</button>}
               {(i.status === 'issued' || i.status === 'partially_paid') && i.bookingId && <button type="button" className={styles.invPrimary} onClick={() => onPay(i.bookingId as string)}>Take payment</button>}
             </div>
           </li>

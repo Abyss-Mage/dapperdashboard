@@ -110,6 +110,91 @@ type EmployeeAdministration struct {
 	Submissions []EmployeeAvailabilityReview `json:"submissions"`
 }
 
+// availabilitySubmissions lists recent availability; locations limits it to those franchises, nil means every franchise.
+func availabilitySubmissions(ctx context.Context, tx pgx.Tx, org string, locations []string) ([]EmployeeAvailabilityReview, error) {
+	out := []EmployeeAvailabilityReview{}
+	rows, err := tx.Query(ctx, `SELECT s.id::text,s.location_id::text,s.principal_id::text,COALESCE(d.account_name,''),l.name,s.week_start::text,s.timezone,s.intervals,s.notes,s.version,s.submitted_at,s.review_status,s.reviewed_at,s.review_note FROM employee_availability_submissions s JOIN locations l ON l.organization_id=s.organization_id AND l.id=s.location_id LEFT JOIN dealership_accounts d ON d.organization_id=s.organization_id AND d.location_id=s.location_id AND d.id=s.dealership_id WHERE s.organization_id=$1 AND ($2::uuid[] IS NULL OR s.location_id=ANY($2::uuid[])) AND s.week_start>=current_date-28 ORDER BY (s.review_status='submitted') DESC,s.week_start DESC,s.submitted_at DESC LIMIT 200`, org, locations)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var a EmployeeAvailabilityReview
+		if err = rows.Scan(&a.ID, &a.LocationID, &a.PrincipalID, &a.DealershipName, &a.LocationName, &a.WeekStart, &a.Timezone, &a.Intervals, &a.Notes, &a.Version, &a.SubmittedAt, &a.Status, &a.ReviewedAt, &a.ReviewNote); err != nil {
+			return nil, err
+		}
+		out = append(out, a)
+	}
+	return out, rows.Err()
+}
+
+// AvailabilityReviewList is what the Staff availability page shows: the weeks to review and the name of each person who sent one.
+type AvailabilityReviewList struct {
+	Submissions []EmployeeAvailabilityReview `json:"submissions"`
+	Names       map[string]string            `json:"names"`
+}
+
+// AvailabilityForReview is the list for whoever may review it, under the same rule as approving: the Owner or Super Admin (access.manage)
+// sees every franchise, a franchise owner (attendance.manage) only their own.
+func (s *Store) AvailabilityForReview(ctx context.Context, actor, org string) (AvailabilityReviewList, error) {
+	out := AvailabilityReviewList{Submissions: []EmployeeAvailabilityReview{}, Names: map[string]string{}}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return out, err
+	}
+	defer tx.Rollback(ctx)
+	var locations []string
+	if e := accessManagementGrant(ctx, tx, actor, org); e != nil {
+		rows, err := s.pool.Query(ctx, `SELECT id::text FROM locations WHERE organization_id=$1`, org)
+		if err != nil {
+			return out, err
+		}
+		var all []string
+		for rows.Next() {
+			var id string
+			if err = rows.Scan(&id); err != nil {
+				rows.Close()
+				return out, err
+			}
+			all = append(all, id)
+		}
+		rows.Close()
+		if err = rows.Err(); err != nil {
+			return out, err
+		}
+		for _, id := range all {
+			if e := s.authorize(ctx, Scope{OrganizationID: org, LocationID: id, ActorID: actor}, "attendance.manage"); e == nil {
+				locations = append(locations, id)
+			} else if !errors.Is(e, ErrForbidden) {
+				return out, e
+			}
+		}
+		if len(locations) == 0 {
+			return out, ErrForbidden
+		}
+	}
+	if out.Submissions, err = availabilitySubmissions(ctx, tx, org, locations); err != nil {
+		return out, err
+	}
+	people := []string{}
+	for _, a := range out.Submissions {
+		people = append(people, a.PrincipalID)
+	}
+	rows, err := tx.Query(ctx, `SELECT p.id::text,coalesce(NULLIF(btrim(mp.full_name),''),split_part(c.email,'@',1),'') FROM principals p LEFT JOIN password_credentials c ON c.principal_id=p.id LEFT JOIN member_profiles mp ON mp.principal_id=p.id WHERE p.id=ANY($1::uuid[])`, people)
+	if err != nil {
+		return out, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id, name string
+		if err = rows.Scan(&id, &name); err != nil {
+			return out, err
+		}
+		out.Names[id] = name
+	}
+	return out, rows.Err()
+}
+
 func (s *Store) EmployeeWorksiteAdministration(ctx context.Context, actor, org string) (EmployeeAdministration, error) {
 	r := EmployeeAdministration{Assignments: []EmployeeWorksite{}, Locations: []EmployeeLocationChoice{}, Dealerships: []EmployeeWorksiteChoice{}, Submissions: []EmployeeAvailabilityReview{}}
 	tx, err := s.pool.Begin(ctx)
@@ -171,21 +256,7 @@ func (s *Store) EmployeeWorksiteAdministration(ctx context.Context, actor, org s
 	if err != nil {
 		return r, err
 	}
-	rows, err = tx.Query(ctx, `SELECT s.id::text,s.location_id::text,s.principal_id::text,COALESCE(d.account_name,''),l.name,s.week_start::text,s.timezone,s.intervals,s.notes,s.version,s.submitted_at,s.review_status,s.reviewed_at,s.review_note FROM employee_availability_submissions s JOIN locations l ON l.organization_id=s.organization_id AND l.id=s.location_id LEFT JOIN dealership_accounts d ON d.organization_id=s.organization_id AND d.location_id=s.location_id AND d.id=s.dealership_id WHERE s.organization_id=$1 AND s.week_start>=current_date-28 ORDER BY (s.review_status='submitted') DESC,s.week_start DESC,s.submitted_at DESC LIMIT 200`, org)
-	if err != nil {
-		return r, err
-	}
-	for rows.Next() {
-		var a EmployeeAvailabilityReview
-		if err = rows.Scan(&a.ID, &a.LocationID, &a.PrincipalID, &a.DealershipName, &a.LocationName, &a.WeekStart, &a.Timezone, &a.Intervals, &a.Notes, &a.Version, &a.SubmittedAt, &a.Status, &a.ReviewedAt, &a.ReviewNote); err != nil {
-			rows.Close()
-			return r, err
-		}
-		r.Submissions = append(r.Submissions, a)
-	}
-	err = rows.Err()
-	rows.Close()
-	if err != nil {
+	if r.Submissions, err = availabilitySubmissions(ctx, tx, org, nil); err != nil {
 		return r, err
 	}
 	return r, tx.Commit(ctx)
@@ -297,7 +368,7 @@ func (s *Store) EmployeeWorkspace(ctx context.Context, actor string) (EmployeeDe
 		return r, err
 	}
 	r.Assignment = &a
-	if err = tx.QueryRow(ctx, `SELECT COALESCE(NULLIF(c.email,''),p.external_subject) FROM principals p LEFT JOIN password_credentials c ON c.principal_id=p.id WHERE p.id=$1`, actor).Scan(&r.Employee); err != nil {
+	if err = tx.QueryRow(ctx, `SELECT CASE WHEN p.external_subject LIKE 'system:shop:%' THEN 'Shop iPad' ELSE COALESCE(NULLIF(c.email,''),p.external_subject) END FROM principals p LEFT JOIN password_credentials c ON c.principal_id=p.id WHERE p.id=$1`, actor).Scan(&r.Employee); err != nil {
 		return r, err
 	}
 	scope := employeeScope(a)

@@ -29,6 +29,14 @@ func (s *Store) SetMemberActive(ctx context.Context, actor, org, member string, 
 	if !ok {
 		return ErrForbidden
 	}
+	if err = setMemberActiveTx(ctx, tx, actor, org, member, active); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+func setMemberActiveTx(ctx context.Context, tx pgx.Tx, actor, org, member string, active bool) error {
+	var err error
 	if !active && actor == member {
 		return ErrMemberSelf
 	}
@@ -61,5 +69,5 @@ func (s *Store) SetMemberActive(ctx context.Context, actor, org, member string, 
 			return err
 		}
 	}
-	return tx.Commit(ctx)
+	return nil
 }

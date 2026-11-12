@@ -45,9 +45,11 @@ export function frameSequence(section: HTMLElement): () => void {
   if (!canvas || !ctx) return () => {};
   const conn = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
   if (conn?.saveData || typeof createImageBitmap !== 'function') return () => {}; // data saver: keep the still poster
-  const phone = matchMedia('(max-width:720px)').matches;
-  const base = dir(phone);
-  const SRC_W = phone ? 960 : 1600, SRC_H = phone ? 540 : 900;
+  if (matchMedia('(max-width:720px)').matches) return () => {}; // phones play the film the page mounts instead
+  // Portrait tablets draw the frames in a box under the header, as phones once did; the sharper desktop set is used either way.
+  const phone = matchMedia('(orientation:portrait) and (max-width:1100px)').matches;
+  const base = dir(false);
+  const SRC_W = 1600, SRC_H = 900;
   const blobs: (Blob | undefined)[] = new Array(COUNT);
   const bmps: (ImageBitmap | undefined)[] = new Array(COUNT);
   const requested = new Set<number>();
@@ -66,7 +68,7 @@ export function frameSequence(section: HTMLElement): () => void {
 
   // On a phone the 16:9 picture fills a box under the header (cropped to its middle, edges faded into the page) so the car stays big and the
   // headline has the lower part of the screen.
-  const box = () => { const k = canvas.width / canvas.clientWidth; return { top: 64 * k, height: Math.round(canvas.width * .95) }; };
+  const box = () => { const k = canvas.width / canvas.clientWidth; return { top: 64 * k, height: Math.round(Math.min(canvas.width * .95, canvas.height * .6)) }; };
   const fit = () => {
     // Never more pixels than the frames have.
     const dpr = Math.min(devicePixelRatio || 1, 2, SRC_W / Math.max(1, canvas.clientWidth));

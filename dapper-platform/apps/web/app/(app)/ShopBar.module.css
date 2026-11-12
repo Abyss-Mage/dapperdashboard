@@ -1,0 +1,15 @@
+/* The shop iPad bar over a worker's dashboard: dark, large targets, always on top. */
+.bar { position: fixed; inset: 0 0 auto 0; z-index: 1000; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px; padding: 12px clamp(14px, 3vw, 28px); background: #0e0e11; color: #f4f2ee; border-bottom: 1px solid #2e2e36; font-family: 'Manrope', system-ui, sans-serif; }
+.who { display: grid; gap: 2px; min-width: 0; }
+.who strong { font-size: 20px; font-weight: 800; color: #f4f2ee; }
+.who span { font-size: 16px; font-weight: 600; color: #b9b6ae; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.actions button { display: inline-flex; align-items: center; gap: 8px; min-height: 56px; padding: 0 20px; border: 0; border-radius: 16px; font: inherit; font-size: 18px; font-weight: 800; color: #fff; cursor: pointer; transition: transform .1s; }
+.actions button:active { transform: scale(.97); }
+.actions button:disabled { opacity: .5; cursor: default; }
+.actions button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.go { background: #1f8a4c; }
+.pause { background: #b7791f; }
+.stop { background: #e5222f; }
+.done { background: #2a2a31; color: #f4f2ee !important; }
+@media (prefers-reduced-motion: reduce) { .actions button { transition: none; } }

@@ -10,7 +10,7 @@ export function WhyStack({ id }: { id: string }) {
   const root = useRef<HTMLElement>(null);
   useGSAP(() => {
     const mm = gsap.matchMedia();
-    mm.add('(prefers-reduced-motion: no-preference)', () => {
+    mm.add('(prefers-reduced-motion: no-preference) and (min-width: 1024px)', () => {
       const cards = gsap.utils.toArray<HTMLElement>('.ws-card');
       cards.forEach((card, i) => {
         if (i < cards.length - 1) gsap.to(card, { scale: .94, '--dim': .55, ease: 'none', scrollTrigger: { trigger: cards[i + 1], start: 'top 92%', end: 'top 28%', scrub: true } });

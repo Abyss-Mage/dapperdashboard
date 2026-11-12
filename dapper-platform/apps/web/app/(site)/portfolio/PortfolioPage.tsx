@@ -161,7 +161,7 @@ export default function PortfolioPage() {
             <div className="fc-sec__text">
               <h2 id="p-films-title" data-head>The finish, in <em>motion.</em></h2>
               <p>Real work from the Dapper studio. Select a film to watch it with sound.</p>
-              <a className="c-btn c-btn--red" href="/booking"><span className="c-roll"><span>Book now</span><span aria-hidden="true">Book now</span></span><ArrowRight size={20} aria-hidden="true" /></a>
+              <a className="c-btn c-btn--red" href="/book-appointment"><span className="c-roll"><span>Book now</span><span aria-hidden="true">Book now</span></span><ArrowRight size={20} aria-hidden="true" /></a>
             </div>
             <FilmCarousel clips={clips} onOpen={setFilm} />
           </div>

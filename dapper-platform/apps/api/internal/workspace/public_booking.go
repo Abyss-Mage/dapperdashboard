@@ -3,6 +3,7 @@ package workspace
 import (
 	"log"
 	"dapper.local/platform/internal/postgres"
+	"dapper.local/platform/internal/square"
 	"errors"
 	"net/http"
 	"strconv"
@@ -45,6 +46,18 @@ func (l *visitorLimiter) allow(key string) bool {
 		}
 	}
 	return true
+}
+// full says whether the key has used its allowance in the window, without counting this look as a use.
+func (l *visitorLimiter) full(key string) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	n := 0
+	for _, t := range l.hits[key] {
+		if time.Since(t) < l.window {
+			n++
+		}
+	}
+	return n >= l.max
 }
 func visitor(r *http.Request) string {
 	return postgres.ClientIP(r.RemoteAddr, r.Header.Get("X-Forwarded-For"))
@@ -136,7 +149,7 @@ func registerPublicBookingRoutes(mux *http.ServeMux, store *postgres.Store, send
 			return
 		}
 		w.Header().Set("Cache-Control", "no-store")
-		reply(w, 200, map[string]any{"configured": true, "credentialsConfigured": store.SquareCredentialResolver() != nil, "applicationId": store.SquareApplicationID(b.Environment), "binding": map[string]any{"environment": b.Environment, "squareLocationId": b.SquareLocationID}})
+		reply(w, 200, map[string]any{"configured": true, "credentialsConfigured": store.SquareCredentialResolver() != nil, "applicationId": store.SquareApplicationIDFor(r.Context(), scope, b.Environment), "binding": map[string]any{"environment": b.Environment, "squareLocationId": b.SquareLocationID}})
 	})
 	mux.HandleFunc("POST "+base+"/coupon", func(w http.ResponseWriter, r *http.Request) {
 		if limited(w, r, couponTries) {
@@ -251,7 +264,7 @@ func registerPublicBookingRoutes(mux *http.ServeMux, store *postgres.Store, send
 			switch {
 			case err == nil:
 				paid = true
-			case errors.Is(err, postgres.ErrPaymentProvider) && !errors.Is(err, postgres.ErrPaymentDeclined):
+			case errors.Is(err, postgres.ErrPaymentProvider) && !errors.Is(err, postgres.ErrPaymentDeclined) && !errors.Is(err, square.ErrSquareRejected):
 				// The charge may have gone through. Keep the booking and its invoice so the Square notification can settle it; voiding
 				// them here could leave a customer charged with nothing booked.
 				pending = true

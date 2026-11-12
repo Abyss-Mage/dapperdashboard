@@ -49,7 +49,9 @@ func franchiseInput(w http.ResponseWriter, r *http.Request) (postgres.FranchiseI
 			PostalCode string `json:"postalCode"`
 			Country    string `json:"country"`
 		} `json:"address"`
-		Contacts []postgres.FranchiseContact `json:"contacts"`
+		Contacts        []postgres.FranchiseContact `json:"contacts"`
+		TaxRegistration *string                     `json:"taxRegistration"`
+		Ownership       *string                     `json:"ownership"`
 	}
 	if !decode(w, r, &input) {
 		return postgres.FranchiseInput{}, false
@@ -71,7 +73,7 @@ func franchiseInput(w http.ResponseWriter, r *http.Request) (postgres.FranchiseI
 		reply(w, 422, map[string]any{"errors": fields})
 		return postgres.FranchiseInput{}, false
 	}
-	return postgres.FranchiseInput{Code: code, Name: input.Name, Address: postgres.Address{Street: a.Street, City: a.City, Region: a.Region, PostalCode: a.PostalCode, Country: a.Country}, Contacts: input.Contacts}, true
+	return postgres.FranchiseInput{Code: code, Name: input.Name, Address: postgres.Address{Street: a.Street, City: a.City, Region: a.Region, PostalCode: a.PostalCode, Country: a.Country}, Contacts: input.Contacts, TaxRegistration: input.TaxRegistration, Ownership: input.Ownership}, true
 }
 
 func registerStructureRoutes(mux *http.ServeMux, store *postgres.Store) {

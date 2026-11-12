@@ -9,7 +9,6 @@ import Modal from '../Modal';
    A changed week comes back as waiting. */
 
 type Submission = { id: string; principalId: string; locationId: string; locationName: string; weekStart: string; timezone: string; intervals: { day: number; start: string; end: string }[]; notes: string; version: number; submittedAt: string; status: 'submitted' | 'approved' | 'rejected'; reviewedAt: string | null; reviewNote: string };
-type Member = { principalId: string; email: string; name?: string };
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const STATUS: Record<Submission['status'], string> = { submitted: 'Waiting', approved: 'Approved', rejected: 'Rejected' };
 type Filter = 'submitted' | 'approved' | 'rejected' | 'all';
@@ -21,7 +20,7 @@ const badgeClass = (s: Submission['status']) => `${styles.badge} ${s === 'approv
 export default function AvailabilityReview({ organizationId, locationId }: { organizationId: string; locationId?: string }) {
   const base = `/api/v1/organizations/${organizationId}`;
   const [items, setItems] = useState<Submission[] | null>(null);
-  const [members, setMembers] = useState<Member[]>([]);
+  const [names, setNames] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState<Filter>('submitted');
   const [openId, setOpenId] = useState('');
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -30,12 +29,12 @@ export default function AvailabilityReview({ organizationId, locationId }: { org
   const [notice, setNotice] = useState('');
 
   const load = useCallback(async () => {
-    const [w, a] = await Promise.all([fetch(`${base}/employee-worksites`, { cache: 'no-store' }).then(read<{ submissions: Submission[] }>), fetch(`${base}/access`, { cache: 'no-store' }).then(read<{ members: Member[] }>)]);
-    setItems(w.submissions); setMembers(a.members);
+    const list = await fetch(`${base}/employee-availability`, { cache: 'no-store' }).then(read<{ submissions: Submission[]; names: Record<string, string> }>);
+    setItems(list.submissions); setNames(list.names);
   }, [base]);
   useEffect(() => { setItems(null); setError(''); load().catch((e) => setError(e.message)); }, [load]);
 
-  const nameOf = useCallback((id: string) => { const m = members.find((x) => x.principalId === id); return m?.name?.trim() || (m?.email ? m.email.split('@')[0] : '') || 'Team member'; }, [members]);
+  const nameOf = useCallback((id: string) => names[id] || 'Team member', [names]);
   const here = useMemo(() => (items ?? []).filter((s) => !locationId || s.locationId === locationId), [items, locationId]);
   const people = useMemo(() => {
     const byPerson = new Map<string, Submission[]>();
@@ -93,12 +92,9 @@ export default function AvailabilityReview({ organizationId, locationId }: { org
               <div><strong>Week of {weekLabel(s.weekStart)}</strong><div className={styles.personSub}>{s.locationName} · sent {new Date(s.submittedAt).toLocaleString('en-CA', { dateStyle: 'medium', timeStyle: 'short' })}</div></div>
               <span className={badgeClass(s.status)}>{STATUS[s.status]}</span>
             </div>
-            <table className={styles.table} style={{ marginTop: 10 }}>
-              <thead><tr><th scope="col">Day</th><th scope="col">Can work</th></tr></thead>
-              <tbody>
-                {DAYS.map((d, i) => { const r = s.intervals.filter((x) => x.day === i); return <tr key={d}><th scope="row" style={{ fontWeight: 600 }}>{d}</th><td>{r.length ? r.map((x) => `${x.start}–${x.end}`).join(', ') : <span className={styles.personSub}>Not available</span>}</td></tr>; })}
-              </tbody>
-            </table>
+            <dl className={styles.availDays}>
+              {DAYS.map((d, i) => { const r = s.intervals.filter((x) => x.day === i); return <div key={d} data-off={r.length ? undefined : ''}><dt>{d}</dt><dd>{r.length ? r.map((x) => `${x.start}–${x.end}`).join(', ') : 'Not available'}</dd></div>; })}
+            </dl>
             {s.notes && <p className={styles.personSub}>Their note: {s.notes}</p>}
             {s.reviewNote && <p className={styles.personSub}>Your note: {s.reviewNote}</p>}
             {s.status === 'submitted' && (

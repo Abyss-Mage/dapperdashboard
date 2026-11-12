@@ -33,7 +33,7 @@
         extras.length ? el('div', { class: 'q-block' }, el('h3', {}, '3. Add anything extra?'), el('div', { class: 'q-list' }, extras.map((a) => el('label', { class: 'q-row q-check' }, el('input', { type: 'checkbox', ...(state.extras.has(a.serviceId) ? { checked: '' } : {}), onchange: (e) => { e.target.checked ? state.extras.add(a.serviceId) : state.extras.delete(a.serviceId); draw(); } }), el('span', {}, el('strong', {}, a.name)), el('b', {}, '+' + money(price.get(a.serviceId))))))) : '',
         el('div', { class: 'q-total', 'aria-live': 'polite' },
           state.pack ? [el('div', {}, el('span', {}, 'Subtotal'), el('span', {}, money(sub))), el('div', {}, el('span', {}, 'Tax'), el('span', {}, money(tax))), el('div', { class: 'q-grand' }, el('span', {}, 'Estimated total'), el('span', {}, money(sub + tax))),
-            el('a', { class: 'pill dark', href: '/booking' }, 'Book this ', el('span', { 'aria-hidden': 'true' }, '↗')),
+            el('a', { class: 'pill dark', href: '/book-appointment' }, 'Book this ', el('span', { 'aria-hidden': 'true' }, '↗')),
             el('p', {}, 'An estimate from our current prices. Your final price is confirmed when you book; condition and size can change it.')]
             : el('p', {}, 'Pick a package to see the price.')));
       void params;

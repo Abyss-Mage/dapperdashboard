@@ -3,9 +3,9 @@ import { useCallback, useEffect, useState } from 'react';
 import NumberField from '../NumberField';
 import Select from '../GlassSelect';
 
-type Issuer = { id: string; legalName: string; address: string; taxRegistration: string; currency: string; numberPrefix: string; version: number; nextNumber: number };
+type Issuer = { id: string; legalName: string; address: string; taxRegistration: string; currency: string; numberPrefix: string; version: number; nextNumber: number; quotePrefix: string; quoteNextNumber: number };
 type Configuration = { issuers: Issuer[]; locations: { id: string; name: string }[]; bindings: { locationId: string; issuerId: string }[] };
-const blank = { legalName: '', address: '', taxRegistration: '', numberPrefix: '', startNumber: '' };
+const blank = { legalName: '', address: '', taxRegistration: '', numberPrefix: '', startNumber: '', nextNumber: '', quotePrefix: '', quoteNext: '1' };
 
 /* The business details printed on invoices and quotations, and the numbering. Dapper's own outlets (DDP) share one set of
    details and one number series, for example DDP1, DDP2. A franchise that is run by its own owner gets its own set, with its
@@ -32,7 +32,7 @@ export default function InvoiceIssuerEditor({ organizationId, revision }: { orga
 
   function open(target: string | 'new') {
     const i = target === 'new' ? undefined : issuers.find((x) => x.id === target);
-    setForm(i ? { legalName: i.legalName, address: i.address, taxRegistration: i.taxRegistration, numberPrefix: i.numberPrefix, startNumber: '' } : blank);
+    setForm(i ? { legalName: i.legalName, address: i.address, taxRegistration: i.taxRegistration, numberPrefix: i.numberPrefix, startNumber: '', nextNumber: String(i.nextNumber), quotePrefix: i.quotePrefix, quoteNext: String(i.quoteNextNumber) } : blank);
     setEditing(target); setError(''); setNotice('');
   }
 
@@ -42,10 +42,10 @@ export default function InvoiceIssuerEditor({ organizationId, revision }: { orga
     if (!current && (!Number.isSafeInteger(startNumber) || startNumber < 1)) { setError('Type the number the first invoice should have, for example 1.'); return; }
     setBusy(true); setError(''); setNotice('');
     try {
-      const { startNumber: unused, ...fields } = form; void unused;
+      const { startNumber: unused, nextNumber, quoteNext, ...fields } = form; void unused;
       const response = await fetch(base + (current ? '/' + current.id : ''), {
         method: current ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...fields, currency: 'CAD', version: current?.version ?? 0, ...(!current ? { startNumber } : {}) }),
+        body: JSON.stringify({ ...fields, currency: 'CAD', version: current?.version ?? 0, quoteNextNumber: Math.max(0, Math.floor(Number(quoteNext)) || 0), ...(!current ? { startNumber } : { nextNumber: Math.max(0, Math.floor(Number(nextNumber)) || 0) }) }),
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error ?? 'The details could not be saved. What you typed is still here.');
@@ -90,7 +90,7 @@ export default function InvoiceIssuerEditor({ organizationId, revision }: { orga
                 <li key={i.id} className="panel" style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
                   <div>
                     <strong>{i.legalName}</strong>
-                    <p style={{ margin: '0.2rem 0 0' }}>Next invoice: {Number.isSafeInteger(i.nextNumber) ? i.numberPrefix + i.nextNumber : 'out of range'} · Used by: {usedBy(i.id).join(', ') || 'no outlet yet'}</p>
+                    <p style={{ margin: '0.2rem 0 0' }}>Next invoice: {Number.isSafeInteger(i.nextNumber) ? i.numberPrefix + i.nextNumber : 'out of range'} · Next quotation: {i.quotePrefix ? i.quotePrefix + i.quoteNextNumber : 'automatic'} · Used by: {usedBy(i.id).join(', ') || 'no outlet yet'}</p>
                   </div>
                   <button type="button" className="secondary" disabled={busy} onClick={() => open(i.id)}>Edit</button>
                 </li>
@@ -116,7 +116,12 @@ export default function InvoiceIssuerEditor({ organizationId, revision }: { orga
                   </label>
                 )}
               </div>
-              {current && <p>The next invoice will be {Number.isSafeInteger(current.nextNumber) ? current.numberPrefix + current.nextNumber : 'out of range'}. Changing the details never restarts the numbering. Prices are in Canadian dollars (CAD).</p>}
+              <div className="management-form">
+                {current && <label className="form-field" style={{ maxWidth: 280 }}>Next invoice number<NumberField required min="1" step="1" value={form.nextNumber} disabled={busy} onChange={(e) => setForm({ ...form, nextNumber: e.target.value })} /></label>}
+                <label className="form-field">Quotation number starts with<input maxLength={24} pattern="[A-Z0-9][A-Z0-9-]*" title="Capital letters, digits and dashes only" value={form.quotePrefix} disabled={busy} onChange={(e) => setForm({ ...form, quotePrefix: e.target.value.toUpperCase() })} placeholder="e.g. QUO-" /></label>
+                <label className="form-field" style={{ maxWidth: 280 }}>Next quotation number<NumberField min="1" step="1" value={form.quoteNext} disabled={busy || !form.quotePrefix} onChange={(e) => setForm({ ...form, quoteNext: e.target.value })} /></label>
+              </div>
+              <p>The next invoice will be {form.numberPrefix || '…'}{current ? form.nextNumber : form.startNumber}. The next quotation will be {form.quotePrefix ? form.quotePrefix + form.quoteNext : 'numbered automatically (leave its start empty to keep that)'}. A number already used is skipped, and documents already issued keep theirs. Prices are in Canadian dollars (CAD).</p>
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                 <button className="primary" disabled={busy}>{busy ? 'Saving…' : 'Save business details'}</button>
                 <button type="button" className="secondary" disabled={busy} onClick={() => setEditing(null)}>Cancel</button>

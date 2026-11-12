@@ -1,21 +1,23 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, RefreshCw, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { calendarRange, dateOffset, readableDay, worksiteDate } from '../workspace/employee_helpers';
 import styles from '../workspace/employee.module.css';
 import owner from './owner.module.css';
 import { DatePicker } from '../Pickers';
+import BookingCard, { type CalendarBooking } from './BookingCard';
 
 /* Master's bookings calendar: the same month / week / day calendar as the staff workspace, for the selected franchise. */
 
-type Booking = { id: string; customerName: string; customerEmail: string; customerPhone: string; serviceName: string; bookingTime: string; status: string; channel: string; addons: { name: string }[] };
+type Booking = CalendarBooking;
 
-export default function BookingCalendar({ base, timezone, calendarLink }: { base: string; timezone: string; calendarLink: string }) {
+export default function BookingCalendar({ base, timezone, calendarLink, canManage = false }: { base: string; timezone: string; calendarLink: string; canManage?: boolean }) {
   const today = worksiteDate(new Date().toISOString(), timezone);
   const [day, setDay] = useState(today), [view, setView] = useState<'month' | 'week' | 'day'>('month');
   const [items, setItems] = useState<Booking[]>([]), [selected, setSelected] = useState<Booking | null>(null);
   const [loading, setLoading] = useState(true), [error, setError] = useState(''), [revision, setRevision] = useState(0), [copied, setCopied] = useState(false);
-  const generation = useRef(0), detail = useRef<HTMLHeadingElement>(null);
+  const generation = useRef(0);
+  const [notice, setNotice] = useState('');
   const { from, to, days } = calendarRange(day, view);
 
   useEffect(() => {
@@ -30,7 +32,6 @@ export default function BookingCalendar({ base, timezone, calendarLink }: { base
       .finally(() => { if (current === generation.current) setLoading(false); });
     return () => { generation.current++; };
   }, [base, from, to, revision]);
-  useEffect(() => { if (selected) detail.current?.focus(); }, [selected]);
 
   const time = (value: string) => new Intl.DateTimeFormat('en-CA', { timeZone: timezone, hour: 'numeric', minute: '2-digit' }).format(new Date(value));
   function step(direction: number) {
@@ -49,12 +50,13 @@ export default function BookingCalendar({ base, timezone, calendarLink }: { base
           <button className={styles.iconButton} aria-label="Next" onClick={() => step(1)}><ChevronRight size={18} /></button>
         </div>
         <div className={styles.calendarViews} aria-label="Calendar view">{(['month', 'week', 'day'] as const).map((v) => <button key={v} className={styles.secondary} aria-pressed={view === v} onClick={() => setView(v)}>{v}</button>)}</div>
-        <button className={styles.secondary} onClick={() => setDay(today)}>Today</button>
+        <button className={styles.secondary} onClick={() => { setDay(today); setView('day'); }}>Today</button>
         <label>Go to date<DatePicker value={day} onChange={(e) => e.target.value && setDay(e.target.value)} /></label>
         <button className={styles.iconButton} aria-label="Reload calendar" onClick={() => setRevision((v) => v + 1)}><RefreshCw size={18} /></button>
         <button className={styles.secondary} onClick={() => { void navigator.clipboard?.writeText(link).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2500); }); }} title="Add this link to Google Calendar or Apple Calendar to see bookings on your phone">{copied ? 'Link copied' : 'Link Calendar'}</button>
       </div>
       <p className={styles.help}>{timezone} · start times · Link Calendar copies a link you can add to Google or Apple Calendar.</p>
+      {notice && <p role="status" className={styles.help}><strong>{notice}</strong></p>}
       {loading ? <p role="status" className={styles.empty}>Loading calendar…</p> : error ? <p role="alert" className={styles.error}>{error}</p> : (
         <div className={styles.calendarScroll} tabIndex={0} aria-label="Calendar dates; scroll sideways on small screens">
           <div className={view === 'month' ? styles.monthGrid : styles.calendarAgenda}>
@@ -62,9 +64,9 @@ export default function BookingCalendar({ base, timezone, calendarLink }: { base
             {Array.from({ length: days }, (_, i) => {
               const date = dateOffset(from, i), bookings = items.filter((b) => worksiteDate(b.bookingTime, timezone) === date).sort((a, b) => a.bookingTime.localeCompare(b.bookingTime));
               return (
-                <section key={date} className={`${styles.calendarDay} ${date === today ? styles.calendarToday : ''}`} aria-label={readableDay(date)}>
+                <section key={date} className={`${styles.calendarDay} ${date === today ? styles.calendarToday : ''}`} aria-label={readableDay(date)} data-out={view === 'month' && date.slice(0, 7) !== day.slice(0, 7) ? '' : undefined}>
                   <button className={styles.calendarDate} aria-label={`Open ${readableDay(date)}`} onClick={() => { setDay(date); setView('day'); }}><time dateTime={date}>{view === 'month' ? Number(date.slice(-2)) : readableDay(date)}</time></button>
-                  {bookings.map((b) => <button className={styles.calendarEvent} key={b.id} onClick={() => setSelected(b)}><time dateTime={b.bookingTime}>{time(b.bookingTime)}</time><strong>{b.customerName}</strong><span>{b.serviceName}</span><span>{b.status.replaceAll('_', ' ')}</span></button>)}
+                  {bookings.map((b) => <button className={styles.calendarEvent} key={b.id} title={`${b.customerName} · ${b.serviceName}`} onClick={() => setSelected(b)}><time dateTime={b.bookingTime}>{time(b.bookingTime)}</time><strong>{b.customerName}</strong><span>{b.serviceName}</span><span>{b.status.replaceAll('_', ' ')}</span></button>)}
                   {!bookings.length && view !== 'month' && <p className={styles.help}>No bookings.</p>}
                 </section>
               );
@@ -72,14 +74,7 @@ export default function BookingCalendar({ base, timezone, calendarLink }: { base
           </div>
         </div>
       )}
-      {selected && (
-        <section className={styles.calendarDetails} aria-label="Selected booking">
-          <div className={styles.sectionTop}><h2 ref={detail} tabIndex={-1}>{selected.customerName}</h2><button className={styles.iconButton} aria-label="Close booking details" onClick={() => setSelected(null)}><X size={18} /></button></div>
-          <p>{readableDay(worksiteDate(selected.bookingTime, timezone))} · {time(selected.bookingTime)} · {selected.status.replaceAll('_', ' ')} · {selected.channel === 'online' ? 'Online' : 'Walk-in'}</p>
-          <p>{selected.serviceName}{selected.addons?.length ? ` · ${selected.addons.map((a) => a.name).join(', ')}` : ''}</p>
-          <div className={styles.contacts}>{selected.customerEmail && <a href={`mailto:${selected.customerEmail}`}>{selected.customerEmail}</a>}{selected.customerPhone && <a href={`tel:${selected.customerPhone}`}>{selected.customerPhone}</a>}</div>
-        </section>
-      )}
+      {selected && <BookingCard base={base} booking={selected} timezone={timezone} canManage={canManage} onClose={() => setSelected(null)} onChanged={(text) => { setNotice(text); setSelected(null); setRevision((v) => v + 1); }} />}
     </section>
     </div>
   );

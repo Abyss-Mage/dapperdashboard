@@ -111,15 +111,19 @@ func (s *Store) legacyInvoice(ctx context.Context, org, loc, bookingID string) (
 		}
 		inv.Items = append(inv.Items, InvoiceItem{ID: inv.ID + "-" + string(rune('a'+i%26)), InvoiceID: inv.ID, Description: it.Description, Quantity: qty, UnitPriceCents: it.UnitPriceCents, TotalPriceCents: int64(qty) * it.UnitPriceCents, CreatedAt: bookedAt})
 	}
+	inv.ServiceAt, inv.PaymentMethods = &bookedAt, method
 	inv.Payments = []Payment{}
 	if inv.PaidCents > 0 && inv.Status != "void" {
 		inv.Payments = append(inv.Payments, Payment{ID: inv.ID + "-payment", OrganizationID: org, LocationID: loc, InvoiceID: inv.ID, CustomerID: customerID,
 			AmountCents: inv.PaidCents, Currency: "CAD", Method: method, Status: "completed", Notes: "Legacy BookingPress payment (gateway: " + gateway + ")", RecordedAt: bookedAt, CreatedAt: bookedAt})
 	}
 	// The issuer the franchise has now; none bound means the document simply has no issuer block yet.
-	issuer, err := scanInvoiceIssuer(s.pool.QueryRow(ctx, `SELECT i.id::text,i.legal_name,i.address,i.tax_registration,i.currency,i.number_prefix,i.version,i.next_number FROM invoice_issuers i JOIN location_invoice_issuers b ON b.organization_id=i.organization_id AND b.issuer_id=i.id WHERE b.organization_id=$1 AND b.location_id=$2`, org, loc))
+	issuer, err := scanInvoiceIssuer(s.pool.QueryRow(ctx, `SELECT i.id::text,i.legal_name,i.address,i.tax_registration,i.currency,i.number_prefix,i.version,i.next_number,i.quote_prefix,i.quote_next_number FROM invoice_issuers i JOIN location_invoice_issuers b ON b.organization_id=i.organization_id AND b.issuer_id=i.id WHERE b.organization_id=$1 AND b.location_id=$2`, org, loc))
 	if err == nil {
 		snap := issuer.InvoiceIssuerSnapshot
+		if own, e := franchiseTaxNumber(ctx, s.pool, org, loc); e == nil && own != "" {
+			snap.TaxRegistration = own
+		}
 		inv.IssuerSnapshot = &snap
 		inv.IssuerID = &snap.ID
 	} else if !errors.Is(err, pgx.ErrNoRows) {

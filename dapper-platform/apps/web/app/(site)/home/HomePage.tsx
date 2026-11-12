@@ -13,7 +13,7 @@ import { money, useLiveFrom } from '../_components/useLiveFrom';
 import { categories } from '../content';
 import { gsap, ScrollTrigger, SplitText, useGSAP } from '../_components/gsapContact';
 import { frameSequence } from './frameSequence';
-import { STORY } from './story';
+import { STORY, STORY_SPAN } from './story';
 
 /* Home, built section by section with the owner's approval of each, in the darker "hard" direction.
    H1: the studio, the headline, the booking call (to become a scroll-driven video sequence when the footage arrives). H2: core values. H3: the five priced services. H4: commercial partners. H5: transformation films. H6: why owners trust Dapper. H7: reviews. H8: closing booking band. */
@@ -28,6 +28,41 @@ const facts = [
 export default function HomePage() {
   const isOwn = useReplaced();
   const root = useRef<HTMLDivElement>(null);
+  // Phones get one short looping film instead of the 288-frame scroll sequence; mounted only there so desktops never download it.
+  const [phoneFilm, setPhoneFilm] = useState(false);
+  useEffect(() => {
+    const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData;
+    setPhoneFilm(!saveData && matchMedia('(max-width:720px) and (prefers-reduced-motion: no-preference)').matches);
+  }, []);
+  // The phone film carries the same stage words as the desktop sequence: the headline holds on the first frame, then the film plays and each
+  // stage's words show while it is on screen (the film is the 288 frames at 24 fps), the last stage holds, and the cycle starts again.
+  useEffect(() => {
+    const sec = root.current?.querySelector<HTMLElement>('.h-seq');
+    const v = sec?.querySelector<HTMLVideoElement>('.h-seq__film');
+    if (!phoneFilm || !sec || !v) return;
+    const items = Array.from(sec.querySelectorAll<HTMLElement>('.h-story'));
+    let wait = 0, lit = -2;
+    const show = (on: number) => {
+      if (on === lit) return;
+      lit = on;
+      items.forEach((el, i) => el.classList.toggle('is-on', i === on));
+      sec.classList.toggle('story-on', on >= 0);
+      sec.classList.toggle('film-on', on >= 0);
+    };
+    const step = () => {
+      const f = v.currentTime * 24;
+      let on = -1;
+      // A stage comes up a little before its resting frame and stays until the next one takes over.
+      STORY.forEach((st, i) => { if (f >= st.at - STORY_SPAN * 1.5) on = i; });
+      show(on);
+    };
+    const start = () => { show(-1); v.currentTime = 0; wait = window.setTimeout(() => { void v.play().catch(() => {}); }, 3500); };
+    const ended = () => { wait = window.setTimeout(start, 2500); };
+    v.addEventListener('ended', ended);
+    v.addEventListener('timeupdate', step);
+    start();
+    return () => { clearTimeout(wait); v.removeEventListener('ended', ended); v.removeEventListener('timeupdate', step); show(-1); };
+  }, [phoneFilm]);
   const [rev, setRev] = useState(0);
   const [deckIdx, setDeckIdx] = useState(0);
   const live = useLiveFrom();
@@ -52,14 +87,16 @@ export default function HomePage() {
   useEffect(() => {
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const q = document.querySelector<HTMLElement>('.h-rev__q blockquote');
-    let split: SplitText | undefined;
-    if (q) {
-      split = SplitText.create(q, { type: 'lines', mask: 'lines', linesClass: 'c-line' });
-      gsap.from(split.lines, { yPercent: 110, duration: .9, stagger: .08, ease: 'expo.out' });
-      gsap.from('.h-rev__q figcaption', { opacity: 0, y: 12, duration: .6, delay: .4, ease: 'expo.out' });
-    }
-    timer.current = gsap.fromTo('.h-rev__bar i', { scaleX: 0 }, { scaleX: 1, duration: 8, ease: 'none', paused: paused.current, onComplete: () => setRev((i) => (i + 1) % nRev) });
-    return () => { timer.current?.kill(); split?.revert(); };
+    // A context undoes everything together, so a quick click on the arrows cannot leave a half-finished fade behind.
+    const ctx = gsap.context(() => {
+      if (q) {
+        const split = SplitText.create(q, { type: 'lines', mask: 'lines', linesClass: 'c-line' });
+        gsap.from(split.lines, { yPercent: 110, duration: .9, stagger: .08, ease: 'expo.out' });
+        gsap.from('.h-rev__q figcaption', { opacity: 0, y: 12, duration: .6, delay: .4, ease: 'expo.out' });
+      }
+      timer.current = gsap.fromTo('.h-rev__bar i', { scaleX: 0 }, { scaleX: 1, duration: 8, ease: 'none', paused: paused.current, onComplete: () => setRev((i) => (i + 1) % nRev) });
+    });
+    return () => ctx.revert();
   }, [rev, nRev]);
   const hold = (on: boolean) => { paused.current = on; if (on) timer.current?.pause(); else timer.current?.resume(); };
 
@@ -69,7 +106,8 @@ export default function HomePage() {
       SplitText.create('.h-h1', { type: 'lines,words', mask: 'lines', linesClass: 'c-line', autoSplit: true,
         onSplit: (self) => gsap.from(self.words, { yPercent: 110, duration: 1.2, stagger: .08, ease: 'expo.out', delay: .2 }) });
       gsap.timeline({ defaults: { ease: 'expo.out' } })
-        .from('.h-hero__tag, .h-hero__lead, .h-hero__act > *, .h-hero__trust', { y: 22, opacity: 0, duration: .9, stagger: .08 }, .6);
+        // An explicit end: the button's own CSS transform transition can make a plain from() read its start as its resting place.
+        .fromTo('.h-hero__tag, .h-hero__lead, .h-hero__act > *, .h-hero__trust', { y: 22, opacity: 0 }, { y: 0, opacity: 1, duration: .9, stagger: .08 }, .6);
       gsap.utils.toArray<HTMLElement>('[data-head]').forEach((el) => SplitText.create(el, { type: 'lines,words', mask: 'lines', linesClass: 'c-line', autoSplit: true,
         onSplit: (self) => gsap.from(self.words, { yPercent: 110, duration: .6, stagger: .04, ease: 'expo.out', scrollTrigger: { trigger: el, start: 'top 88%', once: true } }) }));
       gsap.from('.h-val__text > p, .h-val__text > a', { y: 24, opacity: 0, duration: .9, stagger: .1, ease: 'expo.out', scrollTrigger: { trigger: '.h-val', start: 'top 70%', once: true } });
@@ -90,14 +128,18 @@ export default function HomePage() {
       const cards = gsap.utils.toArray<HTMLElement>('.h-dcard');
       const n = cards.length;
       if (!n) return;
-      const pose = (k: number, d: number) => ({ y: d * 20, scale: 1 - d * .05, rotation: (k % 2 ? 1 : -1) * Math.min(d, 4) * 1.6, opacity: d < 4 ? 1 : 0 });
+      const pose = (k: number, d: number) => ({ y: d * 20, scale: 1 - d * .05, rotation: (k % 2 ? 1 : -1) * Math.min(d, 4) * 1.6, autoAlpha: d < 4 ? 1 : 0 });
       cards.forEach((c, k) => gsap.set(c, { xPercent: -50, yPercent: -50, zIndex: n - k, ...pose(k, k) }));
+      // Only the top card shows its words; the cards behind would otherwise show their captions under its edge.
+      const words = (c: HTMLElement) => c.querySelectorAll('.h-dcard__cap, .h-dcard__note');
+      cards.forEach((c, k) => gsap.set(words(c), { opacity: k ? 0 : 1 }));
       const total = n - 2 + .7;
-      const tl = gsap.timeline({ defaults: { ease: 'none' }, scrollTrigger: { trigger: '.h-svc', start: 'top top', end: '+=' + Math.round(innerHeight * (n - 1) * .55), pin: true, scrub: .6, anticipatePin: 1, invalidateOnRefresh: true, refreshPriority: 1,
+      const tl = gsap.timeline({ defaults: { ease: 'none' }, scrollTrigger: { trigger: '.h-svc', start: 'top top', end: '+=' + Math.round(innerHeight * (n - 1) * .55), pin: true, scrub: matchMedia('(pointer:coarse)').matches ? 1 : .6, anticipatePin: 1, invalidateOnRefresh: true, refreshPriority: 1,
         onUpdate: (self) => setDeckIdx(Math.min(n - 1, Math.round(self.progress * (n - 1)))) } });
       for (let st = 0; st < n - 1; st++) {
-        tl.to(cards[st], { x: () => innerWidth * .3, y: () => -innerHeight * .95, rotation: 12, opacity: 0, duration: .7, ease: 'power2.in' }, st);
+        tl.to(cards[st], { x: () => innerWidth * .3, y: () => -innerHeight * .95, rotation: 12, autoAlpha: 0, duration: .7, ease: 'power2.in' }, st);
         for (let j = st + 1; j < n; j++) tl.to(cards[j], { ...pose(j, j - st - 1), duration: .7, ease: 'power2.out' }, st);
+        tl.to(words(cards[st + 1]), { opacity: 1, duration: .4 }, st + .3);
       }
       tl.to('.h-deck__bar i', { scaleX: 1, duration: total }, 0);
       return () => setDeckIdx(0);
@@ -131,6 +173,7 @@ export default function HomePage() {
           <source media="(max-width:720px)" srcSet="/site/assets/frames/mobile/0000.webp" />
           <img className="h-hero__img" src="/site/assets/frames/desktop/0000.webp" alt="A dark blue sports car in the Dapper studio (AI-generated image)" fetchPriority="high" />
         </picture>
+        {phoneFilm && <video className="h-hero__img h-seq__film" src="/site/assets/hero-mobile.mp4" poster="/site/assets/frames/mobile/0000.webp" muted playsInline preload="auto" aria-hidden="true" />}
         <canvas className="h-seq__canvas" aria-hidden="true" />
         <div className="h-hero__shade" aria-hidden="true" />
         <div className="h-hero__in">
@@ -138,7 +181,7 @@ export default function HomePage() {
           <h1 id="h-title" className="h-h1">Detailing that <em>speaks for itself.</em></h1>
           <p className="h-hero__lead">{hero.lead}</p>
           <div className="h-hero__act">
-            <a className="s-btn" href="/booking"><span className="s-roll"><span>Book now</span><span aria-hidden="true">Book now</span></span><ArrowRight size={22} aria-hidden="true" /></a>
+            <a className="s-btn" href="/book-appointment"><span className="s-roll"><span>Book now</span><span aria-hidden="true">Book now</span></span><ArrowRight size={22} aria-hidden="true" /></a>
             <a className="s-close__call" href={'tel:' + contact.tel}>or call <span>+1 {contact.phone}</span></a>
           </div>
           <p className="h-hero__trust"><span className="v-stars" aria-label="5 stars">{[0, 1, 2, 3, 4].map((i) => <Star key={i} size={18} fill="currentColor" strokeWidth={0} />)}</span><b>{proof.rating}</b><span>{proof.customers}</span></p>
@@ -152,11 +195,11 @@ export default function HomePage() {
                 <p className="h-tag">{st.tag}</p>
                 <h2 className="s-h2">{st.title} <em>{st.em}</em></h2>
                 <p className="h-story__p">{st.text}</p>
+                <a className="s-btn h-story__book" href="/book-appointment"><span className="s-roll"><span>Book now</span><span aria-hidden="true">Book now</span></span><ArrowRight size={22} aria-hidden="true" /></a>
               </div>
             </div>
           ))}
         </div>
-        <a className="s-btn h-seq__book" href="/booking"><span className="s-roll"><span>Book now</span><span aria-hidden="true">Book now</span></span><ArrowRight size={22} aria-hidden="true" /></a>
         <div className="h-seq__bar" aria-hidden="true"><i /></div>
       </section>
 
@@ -166,7 +209,7 @@ export default function HomePage() {
           <p className="h-tag">Our core values</p>
           <h2 id="h-val-title" className="s-h2" data-head>Driven by quality, <em>powered by passion.</em></h2>
           <p>{values.text}</p>
-          <a className="s-btn" href="/booking"><span className="s-roll"><span>Book your detail</span><span aria-hidden="true">Book your detail</span></span><ArrowRight size={22} aria-hidden="true" /></a>
+          <a className="s-btn" href="/book-appointment"><span className="s-roll"><span>Book your detail</span><span aria-hidden="true">Book your detail</span></span><ArrowRight size={22} aria-hidden="true" /></a>
         </div>
         <ul className="h-val__facts" aria-label="Dapper in numbers">
           {facts.map((f) => (
@@ -280,10 +323,18 @@ export default function HomePage() {
           <p className="h-rev__rating"><span className="v-stars" aria-label="5 stars">{[0, 1, 2, 3, 4].map((i) => <Star key={i} size={18} fill="currentColor" strokeWidth={0} />)}</span><b>{proof.rating}</b> · {proof.customers}</p>
         </div>
         <div className="h-rev__stage">
-          <figure className="h-rev__q" aria-live="polite">
-            <blockquote>“{testimonials[rev].quote}”</blockquote>
-            <figcaption>{testimonials[rev].name}</figcaption>
-          </figure>
+          <div className="h-rev__fit">
+            <figure className="h-rev__q" aria-live="polite">
+              {/* The key gives each review a fresh element, because the line-split animation replaces the text React would update. */}
+              <blockquote key={rev}>“{testimonials[rev].quote}”</blockquote>
+              <figcaption>{testimonials[rev].name}</figcaption>
+            </figure>
+            {/* An invisible copy of the longest review holds the height, so the arrows stay put from one review to the next. */}
+            <figure className="h-rev__q h-rev__ghost" aria-hidden="true">
+              <blockquote>“{testimonials.reduce((a, b) => (b.quote.length > a.quote.length ? b : a)).quote}”</blockquote>
+              <figcaption>&nbsp;</figcaption>
+            </figure>
+          </div>
           <div className="h-rev__ctrl">
             <button type="button" onClick={() => goRev(rev - 1)} aria-label="Previous review"><ArrowLeft size={22} aria-hidden="true" /></button>
             <button type="button" onClick={() => goRev(rev + 1)} aria-label="Next review"><ArrowRight size={22} aria-hidden="true" /></button>

@@ -338,7 +338,7 @@ type Profile struct {
 func (s *Store) GetProfile(ctx context.Context, principal string) (Profile, error) {
 	var p Profile
 	err := s.pool.QueryRow(ctx, `SELECT COALESCE(NULLIF(c.email,''),''),COALESCE(m.full_name,''),COALESCE(m.phone,'') FROM principals p LEFT JOIN password_credentials c ON c.principal_id=p.id LEFT JOIN member_profiles m ON m.principal_id=p.id WHERE p.id=$1 AND p.active`, principal).Scan(&p.Email, &p.FullName, &p.Phone)
-	p.Complete = p.FullName != "" && p.Phone != ""
+	p.Complete = p.FullName != "" // the phone is optional (error404 #41)
 	return p, err
 }
 
@@ -347,7 +347,7 @@ func (s *Store) GetProfile(ctx context.Context, principal string) (Profile, erro
 func (s *Store) SaveProfile(ctx context.Context, principal, fullName, phone string) (Profile, error) {
 	fullName = strings.Join(strings.Fields(fullName), " ")
 	phone = strings.NewReplacer(" ", "", "-", "", "(", "", ")", "", ".", "").Replace(strings.TrimSpace(phone))
-	if n := utf8.RuneCountInString(fullName); n < 2 || n > 120 || !employeePhone.MatchString(phone) {
+	if n := utf8.RuneCountInString(fullName); n < 2 || n > 120 || (phone != "" && !employeePhone.MatchString(phone)) {
 		return Profile{}, ErrProfileInput
 	}
 	tx, err := s.pool.Begin(ctx)

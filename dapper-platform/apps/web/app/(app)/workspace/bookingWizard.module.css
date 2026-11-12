@@ -77,17 +77,11 @@
 .sum div{display:flex;justify-content:space-between;gap:12px}
 .sum div span:first-child{overflow-wrap:anywhere}
 .sum .grand{font-weight:800;font-size:16.8px;border-top:1px solid var(--g-line);padding-top:10px;margin-top:2px}
-.ask{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-.ask strong{font-size:14.7px}
-.seg{display:inline-flex;gap:8px}
-.seg button{min-height:44px;padding:0 20px;border-radius:99px;border:1px solid var(--g-line);background:var(--g-strong);color:var(--text);cursor:pointer;font:inherit;font-weight:650}
-.seg button[aria-pressed=true]{background:var(--primary);color:var(--on-primary);border-color:var(--primary)}
 .done{text-align:center;padding:34px 14px;display:flex;flex-direction:column;gap:12px;align-items:center}
 .check{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:16px;border:1px solid var(--g-line);background:var(--g-strong);cursor:pointer;min-height:52px}
 .check input{width:22px;height:22px;accent-color:var(--primary);flex:none}
 .check span:first-of-type{flex:1}
 @media(max-width:640px){
-  .nav{position:sticky;bottom:0;margin:0 -4px -4px;padding:10px 4px;background:var(--g-strong);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border-top:1px solid var(--g-line);border-radius:0 0 18px 18px;z-index:3}
   .back,.next{padding:0 18px}
   .total strong{font-size:17.8px}
 }
@@ -99,3 +93,19 @@
 
 /* Placeholder text is a hint, so it is smaller than what is typed */
 .field input::placeholder,.field textarea::placeholder{font-size:.8125rem}
+/* Upgrade offer: under the packages (and on Extras), a suggested bigger package with its extra cost and what it adds */
+.upsell{display:grid;gap:10px;margin-top:4px;padding:16px 18px;border-radius:18px;border:1px solid color-mix(in srgb,var(--primary) 45%,var(--g-line));background:color-mix(in srgb,var(--primary) 7%,var(--g-strong))}
+.upsellHead{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.upsellHead span{display:grid;gap:2px}
+.upsellHead small{font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--primary);font-weight:800}
+.upsellHead strong{font-size:16.5px}
+.upsellMore{font-weight:800;font-size:17px;white-space:nowrap}
+.upsell p{margin:0;font-size:14.7px;line-height:1.5}
+.upsell ul{margin:0;padding:0;list-style:none;display:grid;gap:4px;font-size:14.7px}
+.upsell li{display:flex;gap:8px}
+.upsell li::before{content:'✓';color:var(--primary);font-weight:800}
+.upsellBtn{justify-self:start;min-height:44px;padding:10px 18px;border:0;border-radius:999px;background:var(--primary);color:#fff;font:inherit;font-weight:700;cursor:pointer;transition:transform .16s}
+.upsellBtn:active{transform:scale(.97)}
+.upsellBtn:focus-visible{outline:2px solid var(--primary);outline-offset:3px}
+@media(prefers-reduced-motion:reduce){.upsellBtn{transition:none}}
+.upsellSave{margin:0;font-weight:800;color:#1f8a4c}

@@ -46,17 +46,17 @@ export function Nav3() {
         <nav aria-label="Main">{(paper ? paperLinks : links).map((l) => <Link key={l.href} href={l.href} aria-current={pathname === l.href ? 'page' : paper && onVehicle && l.href === '/services' ? 'true' : undefined}>{l.label}</Link>)}</nav>
         <a className="d-nav__call" href={'tel:' + contact.tel}><Phone size={15} />{contact.phone}</a>
         {paper
-          ? <a className="d-btn d-btn--red" href="/booking"><span className="c-roll"><span>Book now</span><span aria-hidden="true">Book now</span></span><ArrowRight size={20} aria-hidden="true" /></a>
-          : <a className="d-btn d-btn--red d-btn--sm" href="/booking">Book now</a>}
+          ? <a className="d-btn d-btn--red" href="/book-appointment"><span className="c-roll"><span>Book now</span><span aria-hidden="true">Book now</span></span><ArrowRight size={20} aria-hidden="true" /></a>
+          : <a className="d-btn d-btn--red d-btn--sm" href="/book-appointment">Book now</a>}
         <button type="button" className="d-nav__menu" aria-expanded={open} aria-controls="d-menu" onClick={() => setOpen((o) => !o)}>{open ? <X size={22} /> : <Menu size={22} />}<span className="sr">Menu</span></button>
       </header>
       <div id="d-menu" className={'d-menu' + (open ? ' is-open' : '')} inert={!open}>
         {links.map((l) => <Link key={l.href} href={l.href}>{l.label}</Link>)}
-        <a className="d-btn d-btn--red" href="/booking">Book an appointment</a>
+        <a className="d-btn d-btn--red" href="/book-appointment">Book an appointment</a>
       </div>
       <nav className="d-dock" aria-label="Quick actions">
         <Link href="/services"><Wrench size={18} />Services</Link>
-        <a className="d-dock__book" href="/booking"><CalendarCheck size={18} />Book now</a>
+        <a className="d-dock__book" href="/book-appointment"><CalendarCheck size={18} />Book now</a>
         <a href={'tel:' + contact.tel}><Phone size={18} />Call</a>
       </nav>
     </>
@@ -69,7 +69,7 @@ export function Footer3() {
       <div className="f-foot__cta">
         <p className="f-foot__lead">Ready for <em>precise detailing?</em></p>
         <div className="f-foot__act">
-          <a className="f-btn" href="/booking"><span className="f-roll"><span>Book now</span><span aria-hidden="true">Book now</span></span><ArrowRight size={22} aria-hidden="true" /></a>
+          <a className="f-btn" href="/book-appointment"><span className="f-roll"><span>Book now</span><span aria-hidden="true">Book now</span></span><ArrowRight size={22} aria-hidden="true" /></a>
           <a className="f-foot__call" href={'tel:' + contact.tel}>or call <span>+1 {contact.phone}</span></a>
         </div>
       </div>

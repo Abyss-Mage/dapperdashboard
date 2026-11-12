@@ -25,7 +25,7 @@ const placeholders: Record<Topic, string> = {
   other: 'Tell us how we can help.',
 };
 const faq = [
-  { q: 'How do I book an appointment?', a: 'Use Book an appointment to start the booking process. For help choosing a service, call our team or send an enquiry.', link: { href: '/booking', label: 'Book an appointment', plain: true } },
+  { q: 'How do I book an appointment?', a: 'Use Book an appointment to start the booking process. For help choosing a service, call our team or send an enquiry.', link: { href: '/book-appointment', label: 'Book an appointment', plain: true } },
   { q: 'Not sure which service to choose?', a: 'Tell us about your vehicle and what you would like to change. The team will point you to the right care and, if you ask, a quote.', link: { href: '/services', label: 'See our services' } },
   { q: 'Can you come to my location?', a: 'Dapper offers mobile service from its Peterborough base. Tell us your location, vehicle and the service you have in mind, and the team will confirm whether it can be arranged.' },
   { q: 'Does sending an enquiry confirm a booking?', a: 'No. An enquiry starts a conversation. An appointment is only booked once you complete online booking or the team confirms a time with you.' },
@@ -260,15 +260,9 @@ export default function ContactPage() {
             </div>
             <div className="c-datum" data-in><span>Call the studio</span><a className="c-phone" href={'tel:' + contact.tel}>{phone}</a></div>
           </div>
-          <a className="c-map" href={contact.directions} target="_blank" rel="noopener noreferrer" aria-label="Open the studio location in maps" data-in>
-            <svg viewBox="0 0 800 860" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-              <rect width="800" height="860" fill="#e9e8e4" />
-              <g fill="#dcdbd6"><path d="M60 70l95-20 38 125-95 28z" /><path d="M215 100l150-30 40 180-150 36z" /><path d="M410 40h120v90H410z" /><path d="M690 70l110-40v140l-110 40z" /><path d="M590 250l110-20 30 110-120 20z" /><path d="M95 330l100-18 36 150-110 30z" /><path d="M300 330l150-10 20 170-160 20z" /><path d="M520 450l140-30 40 160-150 30z" /><path d="M60 620l140-20 30 150-150 40z" /><path d="M330 620l120-16 20 170-130 20z" /><path d="M560 660l120-20 50 140-150 30z" /></g>
-              <g fill="none" stroke="#fff" strokeWidth="26" strokeLinecap="round" strokeLinejoin="round"><path d="M0 240L200 330 330 300 560 130 800 70" /><path d="M0 560L260 520 470 590 800 420" /><path d="M180 0L250 330 270 560 220 860" /><path d="M540 0L470 590 560 860" /><path d="M0 760L300 800 800 760" /><path d="M640 120L690 330 560 520" /></g>
-            </svg>
-            <span className="c-map__pin"><svg viewBox="0 0 24 28" width="46" height="54" aria-hidden="true"><path d="M12 27S3 18.5 3 11a9 9 0 1 1 18 0c0 7.5-9 16-9 16Z" fill="#e3172b" /><circle cx="12" cy="11" r="3.6" fill="#fff" /></svg><b>Dapper Detailing Pros</b></span>
-            <span className="c-map__note">Map preview · illustrative</span>
-          </a>
+          <div className="c-map" data-in>
+            <iframe title="Dapper Detailing Pros on Google Maps" src={'https://www.google.com/maps?output=embed&q=' + encodeURIComponent(`Dapper Detailing Pros, ${contact.street}, ${contact.city}, ${contact.country}`)} loading="lazy" referrerPolicy="strict-origin-when-cross-origin" />
+          </div>
         </section>
 
         {/* Hours */}

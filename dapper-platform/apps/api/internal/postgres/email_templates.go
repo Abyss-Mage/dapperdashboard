@@ -81,6 +81,19 @@ var emailDefaults = map[string]emailDefault{
 		body:         "Hi {{name}},\n\nYour service is complete. Thank you for choosing Dapper Detailing Pros.\n\nService: {{service}}\nDone on: {{when}}\n\n{{invoice}}\n\nIf anything is not right, call us on (705) 977-6217 and we will make it right.",
 		placeholders: []string{"name", "service", "when", "invoice"},
 	},
+	"quotation_issued": {
+		label:        "Quotation sent to customer",
+		subject:      "Your Dapper Detailing quotation {{reference}}",
+		body:         "Hi {{name}},\n\nYour quotation {{reference}} is attached.\n\nTotal: {{total}}\n{{valid_until}}\n\nTo go ahead or ask a question, call us on (705) 977-6217.",
+		placeholders: []string{"name", "reference", "total", "valid_until"},
+	},
+	"dealer_invoice_issued": {
+		label:        "Dealership invoice sent",
+		subject:      "Invoice {{number}} from Dapper Detailing Pros",
+		body:         "Hi {{name}},\n\nInvoice {{number}} is attached.\n\nTotal: {{total}}\nDue by: {{due_date}}\n\nView, download and pay it online (no sign-in needed): {{link}}\n\nQuestions about this invoice? Call us on (705) 977-6217.",
+		placeholders: []string{"name", "number", "total", "due_date", "link"},
+		needsLink:    true,
+	},
 	"booking_rescheduled": {
 		label:        "Booking rescheduled",
 		subject:      "Your Dapper Detailing booking has a new time",
@@ -90,7 +103,7 @@ var emailDefaults = map[string]emailDefault{
 }
 
 // EmailKeys lists the emails in the order the dashboard shows them.
-var EmailKeys = []string{"booking_confirmation", "booking_admin", "booking_admin_cancelled", "booking_admin_rescheduled", "booking_completed", "booking_cancelled", "booking_rescheduled", "password_reset", "invitation"}
+var EmailKeys = []string{"booking_confirmation", "booking_admin", "booking_admin_cancelled", "booking_admin_rescheduled", "booking_completed", "booking_cancelled", "booking_rescheduled", "quotation_issued", "dealer_invoice_issued", "password_reset", "invitation"}
 
 func fill(text string, vars map[string]string, escape bool) string {
 	for k, v := range vars {

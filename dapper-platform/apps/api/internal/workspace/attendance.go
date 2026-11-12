@@ -39,108 +39,19 @@ func registerAttendanceRoutes(mux *http.ServeMux, store *postgres.Store) {
 	base := "/api/v1/organizations/{organization}/locations/{location}/attendance"
 
 	mux.HandleFunc("POST "+base+"/clock-in", func(w http.ResponseWriter, r *http.Request) {
-		org, loc := r.PathValue("organization"), r.PathValue("location")
-		if !uuid(org) || !uuid(loc) {
-			reply(w, 400, map[string]string{"error": "Valid organization and location selectors required"})
-			return
-		}
-		scope, err := store.ResolveScope(r.Context(), requestSession(r).principalID, org, loc, "attendance.record")
-		if err != nil {
-			failure(w, err)
-			return
-		}
-		var input struct {
-			Notes    string         `json:"notes"`
-			Location *locationInput `json:"location"`
-		}
-		if !decode(w, r, &input) {
-			return
-		}
-		fix, ok := input.Location.fix(w)
-		if !ok {
-			return
-		}
-		item, err := store.ClockInWithLocation(r.Context(), scope, input.Notes, fix)
-		if err != nil {
-			attendanceFailure(w, err)
-			return
-		}
-		reply(w, 201, item)
+		shopClockOnly(w)
 	})
 
 	mux.HandleFunc("POST "+base+"/start-break", func(w http.ResponseWriter, r *http.Request) {
-		org, loc := r.PathValue("organization"), r.PathValue("location")
-		if !uuid(org) || !uuid(loc) {
-			reply(w, 400, map[string]string{"error": "Valid organization and location selectors required"})
-			return
-		}
-		scope, err := store.ResolveScope(r.Context(), requestSession(r).principalID, org, loc, "attendance.record")
-		if err != nil {
-			failure(w, err)
-			return
-		}
-		var input struct {
-			Notes string `json:"notes"`
-		}
-		if !decode(w, r, &input) {
-			return
-		}
-		item, err := store.StartBreak(r.Context(), scope, input.Notes)
-		if err != nil {
-			attendanceFailure(w, err)
-			return
-		}
-		reply(w, 200, item)
+		shopClockOnly(w)
 	})
 
 	mux.HandleFunc("POST "+base+"/end-break", func(w http.ResponseWriter, r *http.Request) {
-		org, loc := r.PathValue("organization"), r.PathValue("location")
-		if !uuid(org) || !uuid(loc) {
-			reply(w, 400, map[string]string{"error": "Valid organization and location selectors required"})
-			return
-		}
-		scope, err := store.ResolveScope(r.Context(), requestSession(r).principalID, org, loc, "attendance.record")
-		if err != nil {
-			failure(w, err)
-			return
-		}
-		var input struct {
-			Notes string `json:"notes"`
-		}
-		if !decode(w, r, &input) {
-			return
-		}
-		item, err := store.EndBreak(r.Context(), scope, input.Notes)
-		if err != nil {
-			attendanceFailure(w, err)
-			return
-		}
-		reply(w, 200, item)
+		shopClockOnly(w)
 	})
 
 	mux.HandleFunc("POST "+base+"/clock-out", func(w http.ResponseWriter, r *http.Request) {
-		org, loc := r.PathValue("organization"), r.PathValue("location")
-		if !uuid(org) || !uuid(loc) {
-			reply(w, 400, map[string]string{"error": "Valid organization and location selectors required"})
-			return
-		}
-		scope, err := store.ResolveScope(r.Context(), requestSession(r).principalID, org, loc, "attendance.record")
-		if err != nil {
-			failure(w, err)
-			return
-		}
-		var input struct {
-			Notes string `json:"notes"`
-		}
-		if !decode(w, r, &input) {
-			return
-		}
-		item, err := store.ClockOut(r.Context(), scope, input.Notes)
-		if err != nil {
-			attendanceFailure(w, err)
-			return
-		}
-		reply(w, 200, item)
+		shopClockOnly(w)
 	})
 
 	mux.HandleFunc("GET "+base+"/active", func(w http.ResponseWriter, r *http.Request) {

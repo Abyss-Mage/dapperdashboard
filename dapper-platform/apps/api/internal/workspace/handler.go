@@ -3,6 +3,7 @@
 package workspace
 
 import (
+	"log"
 	"context"
 	"dapper.local/platform/internal/identity"
 	"dapper.local/platform/internal/postgres"
@@ -68,6 +69,8 @@ func failure(w http.ResponseWriter, err error) {
 		reply(w, 422, map[string]any{"errors": map[string]string{"customerId": "Choose a customer in the selected location"}})
 		return
 	}
+	// The reply stays generic; the cause goes to the API log so a failure can be traced (a database error prints its message and code, not the row values in its detail).
+	log.Printf("workspace request failed: %v", err)
 	reply(w, 503, map[string]string{"error": "The workspace could not complete this request"})
 }
 
@@ -129,6 +132,9 @@ func NewHandlerWithFullServices(store *postgres.Store, origin string, invitation
 	registerServiceReservationRoutes(mux, store)
 	registerReservationReadRoutes(mux, store)
 	registerCentralServiceRoutes(mux, store)
+	registerPackageUpsellRoutes(mux, store)
+	registerShopClockRoutes(mux, store)
+	registerShopDeviceRoutes(mux, store)
 	registerAttendanceRoutes(mux, store)
 	registerGPSRoutes(mux, store)
 	registerBookingRoutes(mux, store)
@@ -159,7 +165,11 @@ func NewHandlerWithFullServices(store *postgres.Store, origin string, invitation
 	registerCouponRoutes(mux, store)
 	registerReportRoutes(mux, store)
 	registerCustomerAccountManagementRoutes(mux, store)
-	registerQuoteRoutes(mux, store)
+	registerQuoteRoutes(mux, store, emailSender)
+	registerDealerInvoiceRoutes(mux, store, emailSender, origin)
+	registerInvoicePayLinkRoutes(mux, store)
+	registerDealerPortalRoutes(mux, store)
+	registerDocumentPDFRoutes(mux, store)
 	registerSquareIntentRoutes(mux, store)
 	registerSquareOAuthRoutes(mux, store, origin)
 	registerEmployeeSquareRoutes(mux, store)
@@ -313,7 +323,8 @@ func NewHandlerWithFullServices(store *postgres.Store, origin string, invitation
 			reply(w, 403, map[string]string{"error": "Same-origin request required"})
 			return
 		}
-		if strings.HasPrefix(r.URL.Path, "/api/v1/public/") {
+		// The shop iPad's and the dealership portal's routes check their own sign-in (shop_device.go, dealer_portal.go).
+		if strings.HasPrefix(r.URL.Path, "/api/v1/public/") || strings.HasPrefix(r.URL.Path, "/api/v1/shop/") || strings.HasPrefix(r.URL.Path, "/api/v1/dealer-portal/") {
 			mux.ServeHTTP(w, r)
 			return
 		}

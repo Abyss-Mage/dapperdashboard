@@ -36,6 +36,9 @@ type ServicePublication struct {
 	Summary        string  `json:"summary"`
 	Published      bool    `json:"published"`
 	Version        int     `json:"version"`
+	Starred        bool    `json:"starred"`
+	// SetStar is what the editor asked for; nil leaves the star as it is (screens that do not show it).
+	SetStar *bool `json:"-"`
 }
 type PortfolioImage struct {
 	ID             string     `json:"id"`
@@ -51,8 +54,19 @@ type PortfolioImage struct {
 	Height         int        `json:"height"`
 	BinnedAt       *time.Time `json:"binnedAt,omitempty"`
 }
+// SiteBanner is the sales strip above the website header. The public site gets it only while it is switched on and before its end date.
+type SiteBanner struct {
+	Active    bool       `json:"active"`
+	Text      string     `json:"text"`
+	LinkLabel string     `json:"linkLabel"`
+	LinkURL   string     `json:"linkUrl"`
+	Tone      string     `json:"tone"`
+	EndsAt    *time.Time `json:"endsAt"`
+}
 type PublishedContent struct {
 	Site      PublicSite           `json:"site"`
+	Banner    *SiteBanner          `json:"banner,omitempty"`
+	Upsells   []PackageUpsell      `json:"upsells"`
 	Services  []ServicePublication `json:"services"`
 	Portfolio []PortfolioImage     `json:"portfolio"`
 	Dealers   []WebsiteDealer      `json:"dealers"`
@@ -78,6 +92,57 @@ func contentAudit(ctx context.Context, tx pgx.Tx, scope Scope, action, id string
 	_, err = tx.Exec(ctx, `INSERT INTO content_events(organization_id,location_id,actor_id,action,entity_id,snapshot) VALUES($1,$2,$3,$4,$5,$6)`, scope.OrganizationID, scope.LocationID, scope.ActorID, action, id, data)
 	return err
 }
+func (b SiteBanner) live(now time.Time) bool {
+	return b.Active && strings.TrimSpace(b.Text) != "" && (b.EndsAt == nil || now.Before(*b.EndsAt))
+}
+
+// validBannerLink accepts a page on this site ("/book-appointment") or a secure external address; nothing else can be clicked through to.
+func validBannerLink(u string) bool {
+	if u == "" {
+		return true
+	}
+	if utf8.RuneCountInString(u) > 300 || strings.ContainsAny(u, " \t\r\n<>\"'\\") {
+		return false
+	}
+	return strings.HasPrefix(u, "/") && !strings.HasPrefix(u, "//") || strings.HasPrefix(u, "https://") && len(u) > len("https://")
+}
+
+// SaveSiteBanner stores the sales strip for the location's website (the site must already exist).
+func (s *Store) SaveSiteBanner(ctx context.Context, scope Scope, b SiteBanner) (SiteBanner, error) {
+	b.Text, b.LinkLabel, b.LinkURL, b.Tone = strings.TrimSpace(b.Text), strings.TrimSpace(b.LinkLabel), strings.TrimSpace(b.LinkURL), strings.TrimSpace(b.Tone)
+	if b.Tone == "" {
+		b.Tone = "red"
+	}
+	textOK := validContentText(b.Text, 3, 160) || !b.Active && b.Text == ""
+	labelOK := b.LinkURL == "" && b.LinkLabel == "" || b.LinkURL != "" && validContentText(b.LinkLabel, 2, 30)
+	if !textOK || !labelOK || !validBannerLink(b.LinkURL) || (b.Tone != "red" && b.Tone != "black") {
+		return SiteBanner{}, ErrContentInput
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return SiteBanner{}, err
+	}
+	defer tx.Rollback(ctx)
+	if err = authorizeTransaction(ctx, tx, scope, "content.manage"); err != nil {
+		return SiteBanner{}, err
+	}
+	data, err := json.Marshal(b)
+	if err != nil {
+		return SiteBanner{}, err
+	}
+	tag, err := tx.Exec(ctx, `UPDATE public_sites SET banner=$3 WHERE organization_id=$1 AND location_id=$2`, scope.OrganizationID, scope.LocationID, data)
+	if err != nil {
+		return SiteBanner{}, err
+	}
+	if tag.RowsAffected() == 0 {
+		return SiteBanner{}, ErrContentNotFound
+	}
+	if err = contentAudit(ctx, tx, scope, "site.banner.revised", scope.LocationID, b); err != nil {
+		return SiteBanner{}, err
+	}
+	return b, tx.Commit(ctx)
+}
+
 func (s *Store) SavePublicSite(ctx context.Context, scope Scope, input PublicSite) (PublicSite, error) {
 	input.Name = strings.TrimSpace(input.Name)
 	input.Slug = strings.TrimSpace(input.Slug)
@@ -131,11 +196,21 @@ func (s *Store) SaveServicePublication(ctx context.Context, scope Scope, input S
 	if err != nil {
 		return input, err
 	}
+	// One star per category: the new star takes over, and a package that leaves the website gives its star up.
+	if !input.Published {
+		off := false
+		input.SetStar = &off
+	}
+	if input.SetStar != nil && *input.SetStar {
+		if _, err = tx.Exec(ctx, `UPDATE service_publications SET starred=false WHERE organization_id=$1 AND location_id=$2 AND category=$3 AND service_id<>$4 AND starred`, scope.OrganizationID, scope.LocationID, input.Category, input.ServiceID); err != nil {
+			return input, err
+		}
+	}
 	var version int
 	if input.Version == 0 {
-		err = tx.QueryRow(ctx, `INSERT INTO service_publications(organization_id,location_id,service_id,category,summary,published) SELECT $1,$2,$3,$4,$5,$6 WHERE EXISTS(SELECT 1 FROM public_sites WHERE organization_id=$1 AND location_id=$2) ON CONFLICT DO NOTHING RETURNING version`, scope.OrganizationID, scope.LocationID, input.ServiceID, input.Category, input.Summary, input.Published).Scan(&version)
+		err = tx.QueryRow(ctx, `INSERT INTO service_publications(organization_id,location_id,service_id,category,summary,published,starred) SELECT $1,$2,$3,$4,$5,$6,coalesce($7::boolean,false) WHERE EXISTS(SELECT 1 FROM public_sites WHERE organization_id=$1 AND location_id=$2) ON CONFLICT DO NOTHING RETURNING version,starred`, scope.OrganizationID, scope.LocationID, input.ServiceID, input.Category, input.Summary, input.Published, input.SetStar).Scan(&version, &input.Starred)
 	} else {
-		err = tx.QueryRow(ctx, `UPDATE service_publications SET category=$4,summary=$5,published=$6,version=version+1 WHERE organization_id=$1 AND location_id=$2 AND service_id=$3 AND version=$7 RETURNING version`, scope.OrganizationID, scope.LocationID, input.ServiceID, input.Category, input.Summary, input.Published, input.Version).Scan(&version)
+		err = tx.QueryRow(ctx, `UPDATE service_publications SET category=$4,summary=$5,published=$6,starred=coalesce($8::boolean,starred),version=version+1 WHERE organization_id=$1 AND location_id=$2 AND service_id=$3 AND version=$7 RETURNING version,starred`, scope.OrganizationID, scope.LocationID, input.ServiceID, input.Category, input.Summary, input.Published, input.Version, input.SetStar).Scan(&version, &input.Starred)
 	}
 	if errors.Is(err, pgx.ErrNoRows) {
 		return input, ErrContentConflict
@@ -199,21 +274,28 @@ func (s *Store) PublicContent(ctx context.Context, slug string) (PublishedConten
 	return out, tx.Commit(ctx)
 }
 func readSiteContent(ctx context.Context, tx pgx.Tx, org, loc string, public bool) (PublishedContent, error) {
-	out := PublishedContent{Services: []ServicePublication{}, Portfolio: []PortfolioImage{}, Dealers: []WebsiteDealer{}, Limit: 200}
-	err := tx.QueryRow(ctx, `SELECT slug,name,published,version FROM public_sites WHERE organization_id=$1 AND location_id=$2`, org, loc).Scan(&out.Site.Slug, &out.Site.Name, &out.Site.Published, &out.Site.Version)
+	out := PublishedContent{Services: []ServicePublication{}, Portfolio: []PortfolioImage{}, Dealers: []WebsiteDealer{}, Upsells: []PackageUpsell{}, Limit: 200}
+	var banner SiteBanner
+	err := tx.QueryRow(ctx, `SELECT slug,name,published,version,banner FROM public_sites WHERE organization_id=$1 AND location_id=$2`, org, loc).Scan(&out.Site.Slug, &out.Site.Name, &out.Site.Published, &out.Site.Version, &banner)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return out, nil
 	}
 	if err != nil {
 		return out, err
 	}
-	rows, err := tx.Query(ctx, `SELECT s.id::text,s.name,s.kind,s.parent_id::text,s.version,coalesce(p.category,''),coalesce(p.summary,''),coalesce(p.published,false),coalesce(p.version,0) FROM catalog_services s LEFT JOIN service_publications p ON (p.organization_id,p.location_id,p.service_id)=(s.organization_id,s.location_id,s.id) WHERE s.organization_id=$1 AND s.location_id=$2 AND NOT s.archived AND (NOT $3::boolean OR p.published) AND (NOT $3::boolean OR s.kind='main' OR EXISTS(SELECT 1 FROM catalog_addon_parents l JOIN catalog_services parent ON parent.id=l.main_id JOIN service_publications pub ON pub.service_id=parent.id WHERE l.addon_id=s.id AND NOT parent.archived AND pub.published)) ORDER BY s.name,s.id LIMIT 200`, org, loc, public)
+	if !public || banner.live(time.Now()) {
+		out.Banner = &banner
+	}
+	if out.Upsells, err = readUpsells(ctx, tx, org, public); err != nil {
+		return out, err
+	}
+	rows, err := tx.Query(ctx, `SELECT s.id::text,s.name,s.kind,s.parent_id::text,s.version,coalesce(p.category,''),coalesce(p.summary,''),coalesce(p.published,false),coalesce(p.version,0),coalesce(p.starred,false) FROM catalog_services s LEFT JOIN service_publications p ON (p.organization_id,p.location_id,p.service_id)=(s.organization_id,s.location_id,s.id) WHERE s.organization_id=$1 AND s.location_id=$2 AND NOT s.archived AND (NOT $3::boolean OR p.published) AND (NOT $3::boolean OR s.kind='main' OR EXISTS(SELECT 1 FROM catalog_addon_parents l JOIN catalog_services parent ON parent.id=l.main_id JOIN service_publications pub ON pub.service_id=parent.id WHERE l.addon_id=s.id AND NOT parent.archived AND pub.published)) ORDER BY s.name,s.id LIMIT 200`, org, loc, public)
 	if err != nil {
 		return out, err
 	}
 	for rows.Next() {
 		var item ServicePublication
-		if err = rows.Scan(&item.ServiceID, &item.Name, &item.Kind, &item.ParentID, &item.ServiceVersion, &item.Category, &item.Summary, &item.Published, &item.Version); err != nil {
+		if err = rows.Scan(&item.ServiceID, &item.Name, &item.Kind, &item.ParentID, &item.ServiceVersion, &item.Category, &item.Summary, &item.Published, &item.Version, &item.Starred); err != nil {
 			rows.Close()
 			return out, err
 		}

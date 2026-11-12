@@ -1,6 +1,8 @@
 package workspace
 
 import (
+	"context"
+	"time"
 	"dapper.local/platform/internal/postgres"
 	"errors"
 	"net/http"
@@ -46,7 +48,7 @@ func quoteFailure(w http.ResponseWriter, err error) {
 	failure(w, err)
 }
 
-func registerQuoteRoutes(mux *http.ServeMux, store *postgres.Store) {
+func registerQuoteRoutes(mux *http.ServeMux, store *postgres.Store, emailSender postgres.EmailSender) {
 	base := "/api/v1/organizations/{organization}/locations/{location}/quotes"
 
 	// The business details printed on a quotation (the same ones invoices use).
@@ -156,6 +158,24 @@ func registerQuoteRoutes(mux *http.ServeMux, store *postgres.Store) {
 		reply(w, 200, quote)
 	})
 
+	mux.HandleFunc("DELETE "+base+"/{quote}", func(w http.ResponseWriter, r *http.Request) {
+		organization, location, quoteID := r.PathValue("organization"), r.PathValue("location"), r.PathValue("quote")
+		if !uuid(organization) || !uuid(location) || !uuid(quoteID) {
+			reply(w, 400, map[string]string{"error": "Valid selectors are required"})
+			return
+		}
+		scope, err := store.ResolveScope(r.Context(), requestSession(r).principalID, organization, location, "quotes.manage")
+		if err != nil {
+			failure(w, err)
+			return
+		}
+		if err = store.DeleteQuote(r.Context(), scope, quoteID); err != nil {
+			quoteFailure(w, err)
+			return
+		}
+		reply(w, 200, map[string]bool{"deleted": true})
+	})
+
 	// POST issue quote
 	mux.HandleFunc("POST "+base+"/{quote}/issue", func(w http.ResponseWriter, r *http.Request) {
 		organization, location, quoteID := r.PathValue("organization"), r.PathValue("location"), r.PathValue("quote")
@@ -177,7 +197,15 @@ func registerQuoteRoutes(mux *http.ServeMux, store *postgres.Store) {
 			quoteFailure(w, err)
 			return
 		}
-		reply(w, 200, quote)
+		// Not tied to the request: staff leaving the page must not cut the email off half way.
+		mailCtx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), 40*time.Second)
+		defer cancel()
+		status, to := emailIssuedQuote(mailCtx, store, emailSender, quote)
+		reply(w, 200, struct {
+			postgres.Quote
+			EmailStatus string `json:"emailStatus"`
+			EmailedTo   string `json:"emailedTo,omitempty"`
+		}{quote, status, to})
 	})
 
 	// POST fulfill quote

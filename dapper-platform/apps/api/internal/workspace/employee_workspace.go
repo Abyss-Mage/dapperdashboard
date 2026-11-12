@@ -155,6 +155,19 @@ func registerEmployeeWorkspaceRoutes(mux *http.ServeMux, store *postgres.Store) 
 		}
 		reply(w, 200, data)
 	})
+	mux.HandleFunc("GET /api/v1/organizations/{organization}/employee-availability", func(w http.ResponseWriter, r *http.Request) {
+		org := r.PathValue("organization")
+		if !uuid(org) {
+			reply(w, 400, map[string]string{"error": "Valid organization required"})
+			return
+		}
+		data, err := store.AvailabilityForReview(r.Context(), requestSession(r).principalID, org)
+		if err != nil {
+			employeeFailure(w, err)
+			return
+		}
+		reply(w, 200, data)
+	})
 	mux.HandleFunc("POST /api/v1/organizations/{organization}/employee-availability/{submission}/review", func(w http.ResponseWriter, r *http.Request) {
 		org, id := r.PathValue("organization"), r.PathValue("submission")
 		if !uuid(org) || !uuid(id) {
@@ -216,22 +229,7 @@ func registerEmployeeWorkspaceRoutes(mux *http.ServeMux, store *postgres.Store) 
 	})
 	for _, action := range []string{"clock-in", "clock-out", "start-break", "end-break"} {
 		mux.HandleFunc("POST /api/v1/employee/attendance/"+action, func(w http.ResponseWriter, r *http.Request) {
-			var input struct {
-				Location *locationInput `json:"location"`
-			}
-			if !decode(w, r, &input) {
-				return
-			}
-			fix, ok := input.Location.fix(w)
-			if !ok {
-				return
-			}
-			data, err := store.EmployeeAttendanceAction(r.Context(), requestSession(r).principalID, action, fix)
-			if err != nil {
-				employeeFailure(w, err)
-				return
-			}
-			reply(w, 200, data)
+			shopClockOnly(w)
 		})
 	}
 	mux.HandleFunc("PUT /api/v1/organizations/{organization}/employee-worksites/{principal}", func(w http.ResponseWriter, r *http.Request) {

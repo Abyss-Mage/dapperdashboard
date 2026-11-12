@@ -27,3 +27,9 @@
 .avatar{margin-bottom:14px}
 
 @media(max-width:899px){.page{padding-top:80px}}
+/* Invoice filters and the invoice an emailed link points at */
+.invFilters{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:end;margin:6px 0 10px}
+.invFilters label{display:grid;gap:4px;font-size:13px;font-weight:600}
+.invFilters input{min-height:40px}
+.invLinked{outline:2px solid var(--primary,#d10f1f);outline-offset:6px;border-radius:8px}
+.invOverdue{color:var(--primary,#d10f1f)}

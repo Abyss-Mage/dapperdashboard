@@ -13,3 +13,4 @@
   .ws-card:last-child{margin-bottom:0}
 }
 @media(max-width:720px){.ws .ws__h{font-size:clamp(22px,6.4vw,30px)}}
+@media(max-width:1023px){.ws-card{position:static;margin-bottom:12px}}

@@ -1,5 +1,5 @@
 'use client';
-import { ArrowUpRight, Coffee, MapPin, Square } from 'lucide-react';
+import { Coffee, LogIn, LogOut, MapPin, Play } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import styles from './employee.module.css';
 
@@ -14,24 +14,49 @@ function workSeconds(shift: HomeShift, now: number) {
   return (end - new Date(shift.clockInAt).getTime()) / 1000 - (shift.totalBreakMinutes ?? 0) * 60 - onBreak;
 }
 
-/* Live shift card: big work timer, status, and the clock/break controls. Breaks stop the timer, as the server
-   also excludes them from recorded work. Location sharing sits underneath because it follows the same state. */
-export function ShiftHero({ shift, siteName, canRecord, busy, onPunch }: { shift?: HomeShift; siteName: string; canRecord: boolean; busy: boolean; onPunch: (action: string) => void }) {
+/* Live shift card: big work timer and status. Punches happen on the shop iPad (2026-11-11); breaks stop the timer, as the server
+   also excludes them from recorded work. On the shop iPad (the worker opened this with their PIN) the card has the clock buttons
+   itself; anywhere else it says how to get to them (error404 #28). */
+type Action = 'clock-in' | 'start-break' | 'end-break' | 'clock-out';
+export function ShiftHero({ shift: given, siteName }: { shift?: HomeShift; siteName: string }) {
   const [now, setNow] = useState(() => Date.now());
+  const [onShopIpad, setOnShopIpad] = useState(false);
+  const [own, setOwn] = useState<HomeShift | null | undefined>(undefined);
+  const [busy, setBusy] = useState(false), [note, setNote] = useState('');
+  useEffect(() => { setOnShopIpad(document.cookie.split('; ').includes('dapper_shop_worker=1')); }, []);
+  const shift = own === undefined ? given : own ?? undefined;
   useEffect(() => { if (!shift) return; setNow(Date.now()); const id = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(id); }, [shift?.id, shift?.status]);
+  async function punch(action: Action) {
+    setBusy(true); setNote('');
+    try {
+      const r = await fetch('/api/v1/shop/me', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }) });
+      const b = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(b.error ?? 'That did not work. Try again.');
+      setOwn(b.shift && b.shift.status !== 'clocked_out' ? b.shift : null);
+    } catch (e) { setNote(e instanceof Error ? e.message : 'That did not work. Try again.'); } finally { setBusy(false); }
+  }
   const state = !shift ? 'off' : shift.status === 'on_break' ? 'break' : 'on';
   const label = state === 'off' ? 'Off duty' : state === 'break' ? 'On break' : 'Clocked in';
   return <section className={`${styles.hero} ${state === 'on' ? styles.heroOn : state === 'break' ? styles.heroBreak : ''}`} aria-labelledby="hero-state">
     <p id="hero-state" className={styles.eyebrow}>{label}</p>
     <p className={styles.timer} role="timer" aria-label={shift ? `Recorded work ${clock(workSeconds(shift, now))}` : 'No shift in progress'}>{shift ? clock(workSeconds(shift, now)) : '00:00:00'}</p>
     <p className={styles.heroSite}><MapPin size={15} aria-hidden="true" />{siteName}</p>
-    {canRecord ? <div className={styles.heroActions}>
-      {!shift ? <button className={styles.heroPrimary} disabled={busy} onClick={() => onPunch('clock-in')}>Clock in<ArrowUpRight size={18} aria-hidden="true" /></button> : <>
-        <button className={styles.heroPrimary} disabled={busy} onClick={() => onPunch('clock-out')}><Square size={14} fill="currentColor" aria-hidden="true" />Clock out</button>
-        <button className={styles.heroSecondary} disabled={busy} onClick={() => onPunch(shift.status === 'on_break' ? 'end-break' : 'start-break')}><Coffee size={17} aria-hidden="true" />{shift.status === 'on_break' ? 'End break' : 'Take a break'}</button>
-      </>}
-    </div> : <p className={styles.help}>Clock access has not been granted. Contact your administrator.</p>}
-    <div id="gps-slot" />
+    {onShopIpad ? <>
+      <div className={styles.punchRow}>
+        {!shift && <button type="button" className={styles.punchGo} disabled={busy} onClick={() => void punch('clock-in')}><LogIn size={22} aria-hidden="true" />Clock in</button>}
+        {shift?.status === 'clocked_in' && <button type="button" className={styles.punchPause} disabled={busy} onClick={() => void punch('start-break')}><Coffee size={22} aria-hidden="true" />Start break</button>}
+        {shift?.status === 'on_break' && <button type="button" className={styles.punchGo} disabled={busy} onClick={() => void punch('end-break')}><Play size={22} aria-hidden="true" />End break</button>}
+        {shift && <button type="button" className={styles.punchStop} disabled={busy} onClick={() => void punch('clock-out')}><LogOut size={22} aria-hidden="true" />Clock out</button>}
+      </div>
+      {note && <p role="alert" className={styles.help}>{note}</p>}
+    </> : <div className={styles.help}>
+      <p style={{ margin: '0 0 6px' }}>Clock in, breaks and clock out are on the shop iPad:</p>
+      <ol style={{ margin: 0, paddingLeft: 20 }}>
+        <li>On the shop iPad (the workspace signed in with the shop login), find your name on the clock page.</li>
+        <li>Tap your name and type your 6-digit PIN. Your manager gives you the PIN (they set it under Staff hours, Shop iPad).</li>
+        <li>Your dashboard opens there with Clock in, Start break and Clock out at the top. Tap Done when you finish.</li>
+      </ol>
+    </div>}
   </section>;
 }
 

@@ -8,5 +8,6 @@ import './globals.css';
 import MotionSystem from './motion/MotionSystem';
 import Tooltips from './motion/Tooltips';
 import { ConfirmHost } from './confirm';
+import ShopBar from './ShopBar';
 export const metadata:Metadata={title:'Dapper Detailing · Operations',description:'Dapper Detailing Pros operations and customer services'};
-export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="en"><body>{children}<MotionSystem /><Tooltips /><ConfirmHost /></body></html>}
+export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="en"><body><ShopBar />{children}<MotionSystem /><Tooltips /><ConfirmHost /></body></html>}

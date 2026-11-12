@@ -118,6 +118,10 @@ func registerGPSRoutes(mux *http.ServeMux, store *postgres.Store) {
 		if !decode(w, r, &input) {
 			return
 		}
+		if input.Enabled {
+			reply(w, 409, map[string]string{"error": "Location tracking has been retired. Staff now clock in on the shop iPad."})
+			return
+		}
 		data, err := store.SaveGPSSettings(r.Context(), scope, postgres.GPSSettings{Enabled: input.Enabled, SampleIntervalSeconds: input.SampleIntervalSeconds, RetentionDays: input.RetentionDays, Version: input.Version})
 		if err != nil {
 			gpsFailure(w, err)

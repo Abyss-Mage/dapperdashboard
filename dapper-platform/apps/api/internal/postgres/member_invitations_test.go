@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"strings"
 	"bytes"
 	"context"
 	"crypto/rand"
@@ -27,6 +28,33 @@ func verifyMemberInvitations(t *testing.T, ctx context.Context, store *Store, a,
 	}
 	if _, err = NewInvitationService(store, "https://127.0.0.1:8443", nil); err == nil {
 		t.Fatal("missing encryption key accepted")
+	}
+	// A franchise owner invites Employees to their own franchise only; someone from elsewhere cannot invite or withdraw there.
+	if _, err = store.pool.Exec(ctx, `INSERT INTO roles(organization_id,name) VALUES($1,'Employee') ON CONFLICT DO NOTHING`, a.OrganizationID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = service.CreateEmployeeInvitation(ctx, b.ActorID, a.OrganizationID, a.LocationID, "crew@example.invalid"); !errors.Is(err, ErrForbidden) {
+		t.Fatal("outsider invited into another franchise", err)
+	}
+	if _, err = store.pool.Exec(ctx, `INSERT INTO location_grants(principal_id,organization_id,location_id,action) VALUES($1,$2,$3,'attendance.manage') ON CONFLICT DO NOTHING`, a.ActorID, a.OrganizationID, a.LocationID); err != nil {
+		t.Fatal(err)
+	}
+	crew, err := service.CreateEmployeeInvitation(ctx, a.ActorID, a.OrganizationID, a.LocationID, "crew@example.invalid")
+	if err != nil {
+		t.Fatal(err)
+	}
+	team, err := store.FranchiseTeam(ctx, a.ActorID, a.OrganizationID, a.LocationID)
+	if err != nil || len(team.Invitations) != 1 || team.Invitations[0].Email != "crew@example.invalid" {
+		t.Fatalf("franchise team: %v %+v", err, team)
+	}
+	if _, err = store.FranchiseTeam(ctx, b.ActorID, a.OrganizationID, a.LocationID); !errors.Is(err, ErrForbidden) {
+		t.Fatal("outsider read another franchise's team", err)
+	}
+	if err = service.RevokeEmployeeInvitation(ctx, b.ActorID, a.OrganizationID, a.LocationID, crew.ID); !errors.Is(err, ErrForbidden) {
+		t.Fatal("outsider withdrew another franchise's invitation", err)
+	}
+	if err = service.RevokeEmployeeInvitation(ctx, a.ActorID, a.OrganizationID, a.LocationID, crew.ID); err != nil {
+		t.Fatal(err)
 	}
 	if _, err = service.Create(ctx, a.ActorID, a.OrganizationID, "invited@example.invalid", time.Hour); !errors.Is(err, ErrForbidden) {
 		t.Fatal("invitation implied admin grant", err)
@@ -130,6 +158,69 @@ func verifyMemberInvitations(t *testing.T, ctx context.Context, store *Store, a,
 		t.Fatal("duplicate pending invitation accepted", err)
 	}
 	password := "Isolated invitation password only"
+	// An invitation sent by a franchise owner, who is not an organization administrator, can be accepted and starts the employee at that franchise.
+	var franchiseOwner, role string
+	if err = store.pool.QueryRow(ctx, `INSERT INTO principals(external_subject) VALUES('synthetic-franchise-owner') RETURNING id::text`).Scan(&franchiseOwner); err != nil {
+		t.Fatal(err)
+	}
+	for _, q := range []string{
+		`INSERT INTO organization_memberships(organization_id,principal_id) VALUES($2,$1)`,
+		`INSERT INTO location_grants(principal_id,organization_id,location_id,action) VALUES($1,$2,$3,'attendance.manage')`,
+	} {
+		args := []any{franchiseOwner, a.OrganizationID}
+		if strings.Contains(q, "$3") {
+			args = append(args, a.LocationID)
+		}
+		if _, err = store.pool.Exec(ctx, q, args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err = store.pool.QueryRow(ctx, `SELECT id::text FROM roles WHERE organization_id=$1 AND lower(name)='employee'`, a.OrganizationID).Scan(&role); err != nil {
+		t.Fatal(err)
+	}
+	crewInvite, err := service.CreateEmployeeInvitation(ctx, franchiseOwner, a.OrganizationID, a.LocationID, "crew.accepts@example.invalid")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = service.Accept(ctx, secret(crewInvite), password, ""); err != nil {
+		t.Fatal("a franchise owner's invitation must be acceptable:", err)
+	}
+	var assigned, worksite int
+	if err = store.pool.QueryRow(ctx, `SELECT (SELECT count(*) FROM member_role_assignments a JOIN password_credentials c ON c.principal_id=a.principal_id WHERE c.email='crew.accepts@example.invalid' AND a.role_id=$1 AND a.scope_id=$2),(SELECT count(*) FROM employee_worksite_assignments w JOIN password_credentials c ON c.principal_id=w.principal_id WHERE c.email='crew.accepts@example.invalid' AND w.location_id=$2)`, role, a.LocationID).Scan(&assigned, &worksite); err != nil || assigned != 1 || worksite != 1 {
+		t.Fatalf("employee not started at the franchise: %v role %d worksite %d", err, assigned, worksite)
+	}
+	// The franchise owner can correct and remove their own employee; someone elsewhere cannot, and nobody with a wider role can be touched.
+	var crewMember string
+	if err = store.pool.QueryRow(ctx, `SELECT principal_id::text FROM password_credentials WHERE email='crew.accepts@example.invalid'`).Scan(&crewMember); err != nil {
+		t.Fatal(err)
+	}
+	if err = store.SetFranchiseEmployeeActive(ctx, b.ActorID, a.OrganizationID, a.LocationID, crewMember, false); !errors.Is(err, ErrForbidden) {
+		t.Fatal("outsider removed another franchise's employee", err)
+	}
+	if err = store.UpdateFranchiseEmployee(ctx, franchiseOwner, a.OrganizationID, a.LocationID, crewMember, "Synthetic Crew", "+1 705 555 0142"); err != nil {
+		t.Fatal(err)
+	}
+	if err = store.SetFranchiseEmployeeActive(ctx, franchiseOwner, a.OrganizationID, a.LocationID, crewMember, false); err != nil {
+		t.Fatal(err)
+	}
+	listed, err := store.FranchiseTeam(ctx, franchiseOwner, a.OrganizationID, a.LocationID)
+	if err != nil || len(listed.Employees) != 1 || listed.Employees[0].Active || listed.Employees[0].Name != "Synthetic Crew" || listed.Employees[0].Phone != "+17055550142" {
+		t.Fatalf("franchise employee after edit and removal: %v %+v", err, listed.Employees)
+	}
+	if err = store.SetFranchiseEmployeeActive(ctx, franchiseOwner, a.OrganizationID, a.LocationID, a.ActorID, false); !errors.Is(err, ErrForbidden) {
+		t.Fatal("franchise owner removed someone who is not their employee", err)
+	}
+	// Once they stop being that franchise's owner, an invitation they sent no longer works.
+	staleCrew, err := service.CreateEmployeeInvitation(ctx, franchiseOwner, a.OrganizationID, a.LocationID, "crew.late@example.invalid")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = store.pool.Exec(ctx, `DELETE FROM location_grants WHERE principal_id=$1`, franchiseOwner); err != nil {
+		t.Fatal(err)
+	}
+	if err = service.Accept(ctx, secret(staleCrew), password, ""); !errors.Is(err, ErrInvitationUnavailable) {
+		t.Fatal("an invitation from someone who lost the franchise was accepted:", err)
+	}
 	if err = service.Accept(ctx, "invalid", password, ""); !errors.Is(err, ErrInvitationUnavailable) {
 		t.Fatal("unknown token accepted", err)
 	}
@@ -304,6 +395,20 @@ func verifyMemberInvitations(t *testing.T, ctx context.Context, store *Store, a,
 	err = store.pool.QueryRow(ctx, `SELECT state FROM member_invitation_deliveries WHERE invitation_id=$1`, toFail.ID).Scan(&failDbState)
 	if err != nil || failDbState != "failed" {
 		t.Fatalf("expected state 'failed', got %s (err: %v)", failDbState, err)
+	}
+	// A refused send waits its turn, then goes out again.
+	retrySender := &testEmailSender{ref: "email-prov-ref-002"}
+	if early, e := service.ProcessDeliveries(ctx, retrySender, 10); e != nil || len(early) != 0 {
+		t.Fatalf("a failed send was retried before its time: %v %+v", e, early)
+	}
+	if _, err = store.pool.Exec(ctx, `UPDATE member_invitation_deliveries SET retry_at=now()-interval '1 second' WHERE invitation_id=$1`, toFail.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = service.ProcessDeliveries(ctx, retrySender, 10); err != nil {
+		t.Fatal(err)
+	}
+	if err = store.pool.QueryRow(ctx, `SELECT state FROM member_invitation_deliveries WHERE invitation_id=$1`, toFail.ID).Scan(&failDbState); err != nil || failDbState != "sent" {
+		t.Fatalf("expected the retry to send, got %s (err: %v)", failDbState, err)
 	}
 }
 

@@ -59,7 +59,7 @@ export default function Home3() {
           <h1 id="d-hero-title">Detailing that<br />speaks for <em>itself.</em></h1>
           <p className="d-hero__lead">Detailing, ceramic coating, paint protection film and window tint at 660 The Kingsway, Peterborough. Book now or contact us to find the right care for your vehicle.</p>
           <div className="d-hero__actions">
-            <a className="d-btn d-btn--red" href="/booking">Book now<ArrowRight size={18} /></a>
+            <a className="d-btn d-btn--red" href="/book-appointment">Book now<ArrowRight size={18} /></a>
             <Link className="d-btn d-btn--glass" href="/contact-us">Contact us</Link>
           </div>
           <p className="d-hero__trust"><Stars /><b>5.0</b><span>{proof.customers}</span></p>
@@ -76,7 +76,7 @@ export default function Home3() {
           <p className="d-chip d-chip--light"><span className="d-dot" />Our core values</p>
           <h2 id="d-values-title" data-d-head>{values.heading}</h2>
           <p data-d-in>{values.text}</p>
-          <a className="d-btn d-btn--red" href="/booking" data-d-in>Book your detail<ArrowRight size={18} /></a>
+          <a className="d-btn d-btn--red" href="/book-appointment" data-d-in>Book your detail<ArrowRight size={18} /></a>
         </div>
         <ul className="d-words" aria-label="What we detail">
           {words.map((w, i) => <li key={w} className={i === word ? 'is-on' : undefined}>{w}</li>)}
@@ -198,7 +198,7 @@ export default function Home3() {
         <div className="d-cta__content">
           <h2 id="d-cta-title" data-d-head>{cta.heading}</h2>
           <p>{cta.text}</p>
-          <div className="d-hero__actions"><a className="d-btn d-btn--red" href="/booking">Book now<ArrowRight size={18} /></a><a className="d-btn d-btn--glass" href={'tel:' + contact.tel}><Phone size={16} />{contact.phone}</a></div>
+          <div className="d-hero__actions"><a className="d-btn d-btn--red" href="/book-appointment">Book now<ArrowRight size={18} /></a><a className="d-btn d-btn--glass" href={'tel:' + contact.tel}><Phone size={16} />{contact.phone}</a></div>
         </div>
       </section>
       <ContactForm />

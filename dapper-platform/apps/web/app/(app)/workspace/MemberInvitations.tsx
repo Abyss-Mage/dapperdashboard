@@ -40,7 +40,13 @@ export default function MemberInvitations({organizationId}: {organizationId: str
       const response = await fetch(base, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({email: email.trim(), expiresInMinutes: Number(minutes), ...(roleId && locationId ? {roleId, locationId} : {})})});
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? 'Invitation could not be queued. Your input is preserved.');
-      setEmail(''); setRoleId(''); setNotice(roleId ? 'Invitation queued. They get the chosen role when they accept. Email delivery has not yet been confirmed.' : 'Invitation queued. Email delivery has not yet been confirmed.'); await load();
+      setEmail(''); setRoleId('');
+      // Send it now so the answer is known straight away; anything left waiting goes out within a minute.
+      const sending = await fetch(`${base}/dispatch`, {method: 'POST'});
+      const sent = await sending.json().catch(() => ({})) as {results?: {invitationId: string; recipient: string; state: string}[]};
+      const mine = sent.results?.find(r => r.invitationId === body.id);
+      setNotice(sending.status === 503 ? 'Invitation saved, but outgoing email is not set up, so it has not been sent.' : mine?.state === 'sent' ? `Invitation emailed to ${mine.recipient}.` : mine?.state === 'failed' ? 'The email could not be sent. Check the email settings, then revoke this invitation and send it again.' : 'Invitation saved. The email goes out within a minute.');
+      await load();
     } catch (failure) {setError(failure instanceof Error ? failure.message : 'Invitation could not be queued.');}
     finally {setBusy(false);}
   }
@@ -67,7 +73,7 @@ export default function MemberInvitations({organizationId}: {organizationId: str
         <button className="primary" disabled={busy || (!!roleId && !locationId)}>{busy ? 'Saving…' : 'Send invitation'}</button>
       </form>
       <ul>{items.map(invitation => <li key={invitation.id} style={{paddingBlock: '.75rem', overflowWrap: 'anywhere'}}>
-        <strong>{invitation.email}</strong>{invitation.roleName ? ` · ${invitation.roleName} at ${invitation.locationName}` : ''} · {invitation.status === 'pending' && new Date(invitation.expiresAt).getTime() <= Date.now() ? 'expired' : invitation.status} · Email: {invitation.deliveryState} · Expires {new Date(invitation.expiresAt).toLocaleString()}
+        <strong>{invitation.email}</strong>{invitation.roleName ? ` · ${invitation.roleName} at ${invitation.locationName}` : ''} · {invitation.status === 'pending' && new Date(invitation.expiresAt).getTime() <= Date.now() ? 'expired' : invitation.status}{` · email ${invitation.deliveryState}`} · Email: {invitation.deliveryState} · Expires {new Date(invitation.expiresAt).toLocaleString()}
         {invitation.status === 'pending' && <button className="secondary" disabled={busy} onClick={() => revoke(invitation)} style={{marginLeft: '.5rem'}}>Revoke invitation</button>}
       </li>)}</ul>
       {items.length === 100 && <p>Showing the most recent 100 invitations.</p>}

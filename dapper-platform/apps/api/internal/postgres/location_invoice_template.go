@@ -14,6 +14,16 @@ func loadEffectiveInvoiceTemplate(ctx context.Context, q rowQuerier, org, loc st
 }
 
 func loadEffectivePrintTemplate(ctx context.Context, q rowQuerier, kind printKind, org, loc string) (InvoicePrintTemplateState, error) {
+	out, err := loadPrintTemplateForLocation(ctx, q, kind, org, loc)
+	if err == nil && out.Template.BusinessDetails == brandBusinessDetails {
+		if o, e := outletOf(ctx, q, org, loc); e != nil || o == "franchise" {
+			out.Template.BusinessDetails = ""
+		}
+	}
+	return out, err
+}
+
+func loadPrintTemplateForLocation(ctx context.Context, q rowQuerier, kind printKind, org, loc string) (InvoicePrintTemplateState, error) {
 	out := InvoicePrintTemplateState{Template: DefaultInvoicePrintTemplate(), Scope: "franchise"}
 	var raw []byte
 	err := q.QueryRow(ctx, `SELECT config,version FROM `+kind.locTable+` WHERE organization_id=$1 AND location_id=$2`, org, loc).Scan(&raw, &out.Version)

@@ -19,14 +19,14 @@ export default function BookingHistory({ bookings, invoices = [], onInvoice }: {
       <div className={p.row}>
         <span className={p.tag + ' ' + p.plain}>{b.status.replaceAll('_', ' ')}</span>
         {(() => { const inv = invoices.find((x) => x.bookingId === b.id); return inv && onInvoice ? <button type="button" className={p.ghost} onClick={() => onInvoice(inv.id)}>Invoice</button> : <span className={p.empty}>No invoice yet</span>; })()}
-        {again && <a href="/booking" className={p.ghost + ' ' + p.link}>Book again</a>}
+        {again && <a href="/book-appointment" className={p.ghost + ' ' + p.link}>Book again</a>}
       </div>
     </li>
   );
   return (
     <section className={p.card + ' ' + p.col} aria-labelledby="bh-title">
       <h3 id="bh-title" className={p.h}>Your bookings</h3>
-      {bookings.length === 0 && <p className={p.empty}>No bookings yet. <a href="/booking" className={p.inline}>Book your first detail</a>.</p>}
+      {bookings.length === 0 && <p className={p.empty}>No bookings yet. <a href="/book-appointment" className={p.inline}>Book your first detail</a>.</p>}
       {upcoming.length > 0 && <><h4 className={p.h4}>Coming up</h4><ul className={p.list}>{upcoming.map((b) => row(b, false))}</ul></>}
       {past.length > 0 && <><h4 className={p.h4}>Previous bookings</h4><ul className={p.list}>{past.map((b) => row(b, true))}</ul></>}
     </section>

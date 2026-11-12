@@ -31,7 +31,7 @@ func registerEmployeeSquareRoutes(mux *http.ServeMux, store *postgres.Store) {
 			return
 		}
 		// Employees need only what the card form requires; the merchant ID stays with administrators.
-		reply(w, 200, map[string]any{"configured": true, "credentialsConfigured": store.SquareCredentialResolver() != nil, "applicationId": store.SquareApplicationID(b.Environment), "binding": map[string]any{"version": b.Version, "environment": b.Environment, "squareLocationId": b.SquareLocationID}})
+		reply(w, 200, map[string]any{"configured": true, "credentialsConfigured": store.SquareCredentialResolver() != nil, "applicationId": store.SquareApplicationIDFor(r.Context(), scope, b.Environment), "binding": map[string]any{"version": b.Version, "environment": b.Environment, "squareLocationId": b.SquareLocationID}})
 	})
 	mux.HandleFunc("POST /api/v1/employee/bookings/{booking}/square-reader", func(w http.ResponseWriter, r *http.Request) {
 		booking := r.PathValue("booking")

@@ -5,8 +5,9 @@ import Select from '../GlassSelect';
 import { DateTimePicker } from '../Pickers';
 import { askConfirm } from '../confirm';
 import NumberField from '../NumberField';
+import FormPopup from '../FormPopup';
 import form from './quote.module.css';
-import { fillInvoiceWindow, openInvoiceWindow, usePrintTemplate, type PrintInvoice } from './InvoicePrint';
+import { fillInvoiceWindow, openInvoiceWindow, openPdf, ownLayout, usePrintTemplate, type PrintInvoice } from './InvoicePrint';
 
 type Req = { id: string; customerId: string; vehicleId: string; customerName: string; status: string; requestedStart: string; customerNote: string; vehicle?: { description?: string; identifier?: string }; offer?: { title?: string } };
 
@@ -87,18 +88,20 @@ export default function QuoteManager({
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const locationBase = `/api/v1/organizations/${organizationId}/locations/${locationId}`;
   const printTemplate = usePrintTemplate(locationBase + '/quote-template');
+  // The date box holds the browser's local time, so a stored moment has to be converted before it goes in.
+  const localInput = (at: Date) => { const d = new Date(at); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16); };
   // A new quotation starts with the franchise's tax rate and the template's validity, both editable.
   function openNewQuote() {
+    setError('');
     if (printTemplate.taxRatePercent) setFormTaxRate(String(printTemplate.taxRatePercent));
     if (printTemplate.validDays) {
-      const d = new Date(Date.now() + printTemplate.validDays * 864e5);
-      d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-      setFormExpiresAt(d.toISOString().slice(0, 16));
+      setFormExpiresAt(localInput(new Date(Date.now() + printTemplate.validDays * 864e5)));
     }
     setIsFormOpen(true);
   }
-  // The quotation opens as its own page in a new window with a Print or save as PDF button, in the same look as invoices.
+  // The quotation opens as a PDF in a new tab, in the same look as invoices.
   function printQuote(q: Quote) {
+    if (!ownLayout(printTemplate)) { openPdf(`${locationBase}/quotes/${q.id}/pdf`); return; }
     const w = openInvoiceWindow();
     if (!w) { setError('Allow pop-ups for this site to open the quotation in a new window.'); return; }
     fetch(locationBase + '/quote-issuer', { cache: 'no-store' })
@@ -209,6 +212,7 @@ export default function QuoteManager({
     setFormTaxRate('13');
     setFormDepositDollars('0.00');
     setFormExpiresAt('');
+    setError('');
     setLines([{ description: '', quantity: 1, unitPriceDollars: '' }]);
   }
 
@@ -222,7 +226,8 @@ export default function QuoteManager({
     setFormCustomerNote(q.customerNote || '');
     setFormTaxRate(q.subtotalCents > 0 ? String(Math.round((q.taxCents / q.subtotalCents) * 10000) / 100) : '13');
     setFormDepositDollars((q.depositCents / 100).toFixed(2));
-    setFormExpiresAt(q.expiresAt ? q.expiresAt.substring(0, 16) : '');
+    setError('');
+    setFormExpiresAt(q.expiresAt ? localInput(new Date(q.expiresAt)) : '');
     setLines(
       q.items.map((it) => ({
         description: it.description,
@@ -272,7 +277,7 @@ export default function QuoteManager({
           const body = await res.json();
           throw new Error(body.error || 'Failed to update quotation');
         }
-        setNotice('Quotation draft updated successfully');
+        setNotice(quotes.find((q) => q.id === editingQuoteId)?.status === 'issued' ? 'Saved. It is back to draft: issue it again so the customer sees the new version.' : 'Quotation updated.');
       } else {
         // Create draft
         const payload = {
@@ -308,8 +313,22 @@ export default function QuoteManager({
     }
   }
 
+  async function handleDeleteQuote(quote: Quote) {
+    if (!(await askConfirm({ title: 'Delete this quotation?', message: `Delete quotation ${quote.referenceNumber}?`, detail: 'It leaves this list and the customer can no longer see it.', confirmLabel: 'Delete quotation', tone: 'danger' }))) return;
+    setError('');
+    setNotice('');
+    try {
+      const res = await fetch(`${base}/${quote.id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'The quotation could not be deleted.');
+      setNotice(`Quotation ${quote.referenceNumber} deleted.`);
+      loadQuotes();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'The quotation could not be deleted.');
+    }
+  }
+
   async function handleIssueQuote(quote: Quote) {
-    if (!(await askConfirm({title: 'Issue this quotation?', message: `Issue quotation ${quote.referenceNumber} to the customer?`, detail: 'Price amounts will be frozen once it is issued.', confirmLabel: 'Issue quotation'}))) {
+    if (!(await askConfirm({title: 'Issue this quotation?', message: `Issue quotation ${quote.referenceNumber} to the customer?`, detail: 'The customer is emailed a PDF of it.', confirmLabel: 'Issue quotation'}))) {
       return;
     }
     setError('');
@@ -324,7 +343,14 @@ export default function QuoteManager({
         const body = await res.json();
         throw new Error(body.error || 'Failed to issue quotation');
       }
-      setNotice(`Quotation ${quote.referenceNumber} issued successfully`);
+      const sent = await res.json().catch(() => ({}));
+      const outcome: Record<string, string> = {
+        sent: `and emailed to ${sent.emailedTo}.`,
+        no_email: 'but this customer has no email on file, so nothing was sent.',
+        not_configured: 'but outgoing email is not set up, so nothing was sent.',
+        failed: 'but the email could not be sent. Download the PDF and send it yourself.',
+      };
+      setNotice(`Quotation ${quote.referenceNumber} issued ${outcome[sent.emailStatus] ?? ''}`.trim());
       loadQuotes();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Issuance failed');
@@ -403,12 +429,13 @@ export default function QuoteManager({
 
 
       {notice && <p role="status" style={{ color: 'var(--success, #15804f)', fontWeight: 600 }}>{notice}</p>}
-      {error && <p ref={errorRef} role="alert" tabIndex={-1} className="field-error">{error}</p>}
+      {error && !isFormOpen && <p ref={errorRef} role="alert" tabIndex={-1} className="field-error">{error}</p>}
 
       {/* Create / Edit Form Modal */}
       {isFormOpen && (
+        <FormPopup label={editingQuoteId ? 'Edit quotation' : 'New quotation'} onClose={() => { if (!submitting) resetForm(); }}>
         <form onSubmit={handleSaveQuote} className={form.form}>
-          <h4>{editingQuoteId ? `Edit draft (revision ${editingVersion})` : 'New quotation'}</h4>
+          <h4>{editingQuoteId ? `Edit quotation (revision ${editingVersion})` : 'New quotation'}</h4>
           {!editingQuoteId && !formRequestId && (
             <div className={form.grid3}>
               <label className={form.field} htmlFor="q-client">Client name
@@ -470,11 +497,13 @@ export default function QuoteManager({
             <label className={form.field} htmlFor="q-internal-notes">Internal note (staff only)<textarea id="q-internal-notes" rows={3} value={formInternalNotes} onChange={(e) => setFormInternalNotes(e.target.value)} placeholder="Only your team sees this" /></label>
           </div>
 
+          {error && <p ref={errorRef} role="alert" tabIndex={-1} className="field-error">{error}</p>}
           <div className={form.actions}>
-            <button type="submit" className="primary" disabled={submitting || (!editingQuoteId && !formRequestId && clientName.trim().length < 2)}>{submitting ? 'Saving…' : editingQuoteId ? 'Update draft' : 'Create draft'}</button>
+            <button type="submit" className="primary" disabled={submitting || (!editingQuoteId && !formRequestId && clientName.trim().length < 2)}>{submitting ? 'Saving…' : editingQuoteId ? 'Save changes' : 'Create draft'}</button>
             <button type="button" className="secondary" onClick={resetForm}>Cancel</button>
           </div>
         </form>
+        </FormPopup>
       )}
 
       {/* Fulfill Modal */}
@@ -623,9 +652,14 @@ export default function QuoteManager({
               {/* Actions */}
               <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                 <button type="button" className="secondary" onClick={() => printQuote(q)}>Download PDF</button>
-                {q.status === 'draft' && canManage && (
+                {(q.status === 'draft' || q.status === 'issued') && canManage && (
                   <button type="button" className="secondary" onClick={() => startEdit(q)}>
-                    Edit Draft
+                    Edit
+                  </button>
+                )}
+                {!['accepted', 'fulfilled'].includes(q.status) && !q.bookingId && canManage && (
+                  <button type="button" className="secondary" onClick={() => void handleDeleteQuote(q)}>
+                    Delete
                   </button>
                 )}
                 {q.status === 'draft' && canIssue && (

@@ -73,6 +73,19 @@ func (s *Store) CreateSchedulingResource(ctx context.Context, scope Scope, input
 	if err = jobAudit(ctx, tx, scope, "scheduling.resource.created", input.ID); err != nil {
 		return SchedulingResource{}, err
 	}
+	// A new bay can take every service the franchise offers straight away. Most services have no typed duration, so their timing comes from the bays already there.
+	if _, err = tx.Exec(ctx, `WITH added AS (
+INSERT INTO service_scheduling_rules(organization_id,location_id,resource_id,service_id,addon_ids,duration_minutes,before_minutes,after_minutes,units,working_time,slots)
+SELECT DISTINCT ON (r.service_id) r.organization_id,r.location_id,$3::uuid,r.service_id,'[]'::jsonb,r.duration_minutes,r.before_minutes,r.after_minutes,r.units,r.working_time,LEAST(1000,GREATEST(1,$4::int/r.units))
+FROM service_scheduling_rules r JOIN catalog_services c ON c.id=r.service_id AND NOT c.archived
+WHERE r.organization_id=$1::uuid AND r.location_id=$2::uuid AND r.resource_id<>$3::uuid AND r.addon_ids='[]'::jsonb AND r.units<=$4::int
+ORDER BY r.service_id,r.resource_id RETURNING *)
+INSERT INTO service_scheduling_revisions(rule_id,version,snapshot,actor_id) SELECT a.id,a.version,to_jsonb(a),$5::uuid FROM added a`, scope.OrganizationID, scope.LocationID, input.ID, input.Plan.Capacity, scope.ActorID); err != nil {
+		return SchedulingResource{}, err
+	}
+	if err = syncServiceDurationRules(ctx, tx, scope.OrganizationID, scope.LocationID, scope.ActorID); err != nil {
+		return SchedulingResource{}, err
+	}
 	if err = tx.Commit(ctx); err != nil {
 		return SchedulingResource{}, err
 	}

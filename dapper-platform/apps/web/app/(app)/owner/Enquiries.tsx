@@ -1,16 +1,18 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { Archive, Check, Inbox, Mail, Phone, RefreshCw, RotateCcw } from 'lucide-react';
 import styles from './owner.module.css';
 
 type Enquiry = { id: string; name: string; email: string; phone: string; vehicle: string; service: string; message: string; status: 'new' | 'read' | 'archived'; createdAt: string };
-const FILTERS: [string, string][] = [['', 'Open'], ['new', 'New'], ['read', 'Read'], ['archived', 'Archived']];
+// Each enquiry sits in exactly one folder, so marking it read or archiving it moves it out of the one on screen.
+const FILTERS: [string, string][] = [['new', 'New'], ['read', 'Read'], ['archived', 'Archived']];
 const when = (iso: string) => new Date(iso).toLocaleString('en-CA', { dateStyle: 'medium', timeStyle: 'short' });
 
 /* Messages sent from the public website's contact form. Staff reply by phone or email and sort them new, read or archived. */
 export default function Enquiries({ organizationId, canManage }: { organizationId: string; canManage: boolean }) {
   const base = `/api/v1/organizations/${organizationId}/website-enquiries`;
-  const [status, setStatus] = useState('');
+  const [status, setStatus] = useState('new');
   const [items, setItems] = useState<Enquiry[] | null>(null);
   const [fresh, setFresh] = useState(0);
   const [busy, setBusy] = useState(false), [error, setError] = useState('');
@@ -36,39 +38,49 @@ export default function Enquiries({ organizationId, canManage }: { organizationI
   return (
     <div className={styles.stack}>
       <div className={styles.rowBetween}>
-        <div>
-          <h2 className={styles.setupTitle} style={{ fontSize: 20, margin: 0 }}>Enquiries{fresh ? ` · ${fresh} new` : ''}</h2>
+        <div className={styles.segments} role="group" aria-label="Enquiry folders">
+          {FILTERS.map(([id, label]) => (
+            <button key={id} type="button" className={styles.segment} aria-pressed={status === id} onClick={() => setStatus(id)}>
+              {label}{id === 'new' && fresh ? <span className={styles.enqCount}>{fresh}</span> : null}
+            </button>
+          ))}
         </div>
-        <button type="button" className="secondary" disabled={busy} onClick={() => void load().catch((e) => setError(e.message))}>Refresh</button>
-      </div>
-      <div className={styles.segments} role="group" aria-label="Filter enquiries">
-        {FILTERS.map(([id, label]) => <button key={id} type="button" className={styles.segment} aria-pressed={status === id} onClick={() => setStatus(id)}>{label}</button>)}
+        <button type="button" className="secondary" disabled={busy} onClick={() => void load().catch((e) => setError(e.message))}><RefreshCw size={15} aria-hidden="true" /> Refresh</button>
       </div>
       {error && <p role="alert" className="field-error">{error}</p>}
       {!items && !error && <div className={`${styles.card} ${styles.skeleton}`} role="status" aria-label="Loading enquiries" />}
-      {items && items.length === 0 && <p className={styles.status}>No enquiries here.</p>}
+      {items && items.length === 0 && (
+        <div className={styles.enqEmpty}>
+          <Inbox size={28} aria-hidden="true" />
+          <p>{status === 'new' ? 'You are all caught up. New messages from the website land here.' : status === 'read' ? 'Enquiries you mark as read appear here.' : 'Archived enquiries appear here.'}</p>
+        </div>
+      )}
       <ul className={styles.enqList}>
         {(items ?? []).map((e) => (
           <li key={e.id} className={styles.enq} data-new={e.status === 'new' || undefined}>
-            <div className={styles.enqHead}>
-              <strong>{e.name}</strong>
-              {e.status === 'new' && <span className={styles.enqNew}>New</span>}
-              {e.status === 'archived' && <span className={styles.enqOld}>Archived</span>}
-              <time className={styles.enqWhen}>{when(e.createdAt)}</time>
-            </div>
-            <div className={styles.enqChips}>
-              {e.phone && <a href={`tel:${e.phone}`}>{e.phone}</a>}
-              {e.email && <a href={`mailto:${e.email}`}>{e.email}</a>}
-              {(e.service || e.vehicle) && <span>{[e.service, e.vehicle].filter(Boolean).join(' · ')}</span>}
-            </div>
-            {e.message && <p className={styles.enqMsg}>{e.message}</p>}
-            {canManage && (
-              <div className={styles.enqAct}>
-                {e.status !== 'read' && e.status !== 'archived' && <button type="button" className="secondary" disabled={busy} onClick={() => void mark(e.id, 'read')}>Mark read</button>}
-                {e.status !== 'archived' && <button type="button" className="secondary" disabled={busy} onClick={() => void mark(e.id, 'archived')}>Archive</button>}
-                {e.status !== 'new' && <button type="button" className="secondary" disabled={busy} onClick={() => void mark(e.id, 'new')}>Mark new</button>}
+            <span className={styles.enqAvatar} aria-hidden="true">{(e.name.trim()[0] ?? '?').toUpperCase()}</span>
+            <div className={styles.enqBody}>
+              <div className={styles.enqHead}>
+                <strong>{e.name}</strong>
+                {e.status === 'new' && <span className={styles.enqNew}>New</span>}
+                <time className={styles.enqWhen} dateTime={e.createdAt}>{when(e.createdAt)}</time>
               </div>
-            )}
+              {(e.service || e.vehicle) && <p className={styles.enqAbout}>{[e.service, e.vehicle].filter(Boolean).join(' · ')}</p>}
+              {e.message && <p className={styles.enqMsg}>{e.message}</p>}
+              <div className={styles.enqFoot}>
+                <div className={styles.enqChips}>
+                  {e.phone && <a href={`tel:${e.phone}`}><Phone size={14} aria-hidden="true" />{e.phone}</a>}
+                  {e.email && <a href={`mailto:${e.email}`}><Mail size={14} aria-hidden="true" />{e.email}</a>}
+                </div>
+                {canManage && (
+                  <div className={styles.enqAct}>
+                    {e.status === 'new' && <button type="button" disabled={busy} onClick={() => void mark(e.id, 'read')}><Check size={15} aria-hidden="true" /> Mark as read</button>}
+                    {e.status !== 'archived' && <button type="button" className="secondary" disabled={busy} onClick={() => void mark(e.id, 'archived')}><Archive size={15} aria-hidden="true" /> Archive</button>}
+                    {e.status !== 'new' && <button type="button" className="secondary" disabled={busy} onClick={() => void mark(e.id, 'new')}><RotateCcw size={15} aria-hidden="true" /> Move to New</button>}
+                  </div>
+                )}
+              </div>
+            </div>
           </li>
         ))}
       </ul>

@@ -49,7 +49,7 @@ export function PageHero({ chip, title, lead, image, alt, children }: { chip: st
         <Chip>{chip}</Chip>
         <h1 id="page-title">{title}</h1>
         <p className="d-hero__lead">{lead}</p>
-        <div className="d-hero__actions">{children ?? <><a className="d-btn d-btn--red" href="/booking">Book now<ArrowRight size={18} /></a><a className="d-btn d-btn--glass" href={'tel:' + contact.tel}><Phone size={16} />{contact.phone}</a></>}</div>
+        <div className="d-hero__actions">{children ?? <><a className="d-btn d-btn--red" href="/book-appointment">Book now<ArrowRight size={18} /></a><a className="d-btn d-btn--glass" href={'tel:' + contact.tel}><Phone size={16} />{contact.phone}</a></>}</div>
       </div>
     </section>
   );
@@ -161,7 +161,7 @@ export function CallToBook({ title = cta.heading, text = cta.text, image = '/sit
       <div className="d-cta__content">
         <h2 data-d-head>{title}</h2>
         <p>{text}</p>
-        <div className="d-hero__actions"><a className="d-btn d-btn--red" href="/booking">Book now<ArrowRight size={18} /></a><a className="d-btn d-btn--glass" href={'tel:' + contact.tel}><Phone size={16} />{contact.phone}</a></div>
+        <div className="d-hero__actions"><a className="d-btn d-btn--red" href="/book-appointment">Book now<ArrowRight size={18} /></a><a className="d-btn d-btn--glass" href={'tel:' + contact.tel}><Phone size={16} />{contact.phone}</a></div>
       </div>
     </section>
   );

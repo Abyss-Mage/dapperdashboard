@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"bytes"
 	"context"
 	"dapper.local/platform/internal/scheduling"
 	"errors"
@@ -267,6 +268,62 @@ func TestQuotationLifecycleAndFulfillment(t *testing.T) {
 		}
 	})
 
+	t.Run("Quotation numbers follow the owner's scheme", func(t *testing.T) {
+		var issuerID string
+		if err := s.pool.QueryRow(ctx, `INSERT INTO invoice_issuers(organization_id,legal_name,address,tax_registration,currency,number_prefix,next_number,updated_by,quote_prefix,quote_next_number) VALUES($1,'Synthetic quote issuer','Synthetic issuer address','','CAD','SYNQ-',1,$2,'QT-',7) RETURNING id::text`, scope.OrganizationID, scope.ActorID).Scan(&issuerID); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := s.pool.Exec(ctx, `INSERT INTO location_invoice_issuers(organization_id,location_id,issuer_id) VALUES($1,$2,$3)`, scope.OrganizationID, scope.LocationID, issuerID); err != nil {
+			t.Fatal(err)
+		}
+		defer func() {
+			_, _ = s.pool.Exec(ctx, `DELETE FROM location_invoice_issuers WHERE issuer_id=$1`, issuerID)
+		}()
+		item := []QuoteItemInput{{Description: "Synthetic numbered line", Quantity: 1, UnitPriceCents: 1000}}
+		first, err := s.CreateQuote(ctx, scope, CreateQuoteInput{CustomerID: customer.ID, Items: item})
+		if err != nil || first.ReferenceNumber != "QT-7" {
+			t.Fatalf("first number: %v %q", err, first.ReferenceNumber)
+		}
+		if _, err = s.pool.Exec(ctx, `UPDATE invoice_issuers SET quote_next_number=7 WHERE id=$1`, issuerID); err != nil {
+			t.Fatal(err)
+		}
+		second, err := s.CreateQuote(ctx, scope, CreateQuoteInput{CustomerID: customer.ID, Items: item})
+		if err != nil || second.ReferenceNumber != "QT-8" {
+			t.Fatalf("a used number must be stepped over: %v %q", err, second.ReferenceNumber)
+		}
+		for _, q := range []Quote{first, second} {
+			if err = s.DeleteQuote(ctx, scope, q.ID); err != nil {
+				t.Fatal(err)
+			}
+		}
+	})
+
+	t.Run("DeleteQuote takes it off the list", func(t *testing.T) {
+		q, err := s.CreateQuote(ctx, scope, CreateQuoteInput{CustomerID: customer.ID, Items: []QuoteItemInput{{Description: "Synthetic line", Quantity: 1, UnitPriceCents: 1000}}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		listed, err := s.ListQuotes(ctx, scope)
+		if err != nil || len(listed) == 0 || listed[0].ID != q.ID || len(listed[0].Items) != 1 || listed[0].Items[0].Description != "Synthetic line" {
+			t.Fatalf("the list must carry each quotation's service lines: %v %+v", err, listed)
+		}
+		if _, err = s.pool.Exec(ctx, `UPDATE customers SET email='quote.contact@example.invalid',phone='555-0142' WHERE id=$1`, customer.ID); err != nil {
+			t.Fatal(err)
+		}
+		if _, pdf := s.QuotePDF(ctx, q); !bytes.Contains(pdf, []byte("(Email: quote.contact@example.invalid)")) || !bytes.Contains(pdf, []byte("(Phone Number: 555-0142)")) {
+			t.Fatal("quotation PDF is missing the customer's email or phone")
+		}
+		if err = s.DeleteQuote(ctx, scope, q.ID); err != nil {
+			t.Fatal(err)
+		}
+		if _, err = s.GetQuote(ctx, scope, q.ID); !errors.Is(err, ErrQuoteNotFound) {
+			t.Fatalf("deleted quote still opens: %v", err)
+		}
+		if err = s.DeleteQuote(ctx, scope, q.ID); !errors.Is(err, ErrQuoteNotFound) {
+			t.Fatalf("second delete: %v", err)
+		}
+	})
+
 	t.Run("EditQuote optimistic concurrency", func(t *testing.T) {
 		quotes, err := s.ListQuotes(ctx, scope)
 		if err != nil || len(quotes) == 0 {
@@ -328,15 +385,21 @@ func TestQuotationLifecycleAndFulfillment(t *testing.T) {
 			t.Errorf("expected issuedAt and issuedBy set, got %v, %v", issued.IssuedAt, issued.IssuedBy)
 		}
 
-		// Cannot edit an issued quote
-		_, err = s.EditQuote(ctx, scope, issued.ID, EditQuoteInput{
-			Version: issued.Version,
-			Items: []QuoteItemInput{
-				{Description: "Illegal Edit", Quantity: 1, UnitPriceCents: 1000},
-			},
-		})
-		if !errors.Is(err, ErrQuoteStatusConflict) {
-			t.Fatalf("expected ErrQuoteStatusConflict editing issued quote, got %v", err)
+		// Editing an issued quote takes it back to draft, away from the customer, until it is issued again.
+		sameItems := []QuoteItemInput{}
+		for _, it := range issued.Items {
+			sameItems = append(sameItems, QuoteItemInput{Description: it.Description, Quantity: it.Quantity, UnitPriceCents: it.UnitPriceCents})
+		}
+		reopened, err := s.EditQuote(ctx, scope, issued.ID, EditQuoteInput{Version: issued.Version, TaxCents: issued.TaxCents, DepositCents: issued.DepositCents, InternalNotes: issued.InternalNotes, CustomerNote: issued.CustomerNote, ExpiresAt: issued.ExpiresAt, Items: sameItems})
+		if err != nil || reopened.Status != "draft" || reopened.IssuedAt != nil {
+			t.Fatalf("editing an issued quote should return it to draft: %v %v", err, reopened.Status)
+		}
+		if hidden, e := s.CustomerQuotes(ctx, customerActor, customer.ID); e != nil || len(hidden) != 0 {
+			t.Fatalf("customer still sees a quote being changed: %v %d", e, len(hidden))
+		}
+		issued, err = s.IssueQuote(ctx, scope, issued.ID, IssueQuoteInput{Version: reopened.Version, Note: "Sent again"})
+		if err != nil {
+			t.Fatalf("re-issue failed: %v", err)
 		}
 
 		// Customer now sees the issued quote
@@ -376,6 +439,12 @@ func TestQuotationLifecycleAndFulfillment(t *testing.T) {
 		}
 		if accepted.Status != "accepted" {
 			t.Fatalf("expected status 'accepted', got %q", accepted.Status)
+		}
+		if err = s.DeleteQuote(ctx, scope, issued.ID); !errors.Is(err, ErrQuoteStatusConflict) {
+			t.Fatalf("an accepted quote must not be deletable, got %v", err)
+		}
+		if _, err = s.EditQuote(ctx, scope, issued.ID, EditQuoteInput{Version: accepted.Version, Items: []QuoteItemInput{{Description: "Too late", Quantity: 1, UnitPriceCents: 1000}}}); !errors.Is(err, ErrQuoteStatusConflict) {
+			t.Fatalf("an accepted quote must not be editable, got %v", err)
 		}
 		if accepted.Acceptance == nil {
 			t.Fatal("expected acceptance evidence record")

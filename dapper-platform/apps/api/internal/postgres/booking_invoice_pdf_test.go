@@ -12,12 +12,12 @@ import (
 func sampleInvoiceDocument() invoiceDocument {
 	t := DefaultInvoicePrintTemplate()
 	t.PaymentInstructions = "Pay at the shop or online."
-	return invoiceDocument{number: "INV-1001", status: "partially_paid", date: "November 8, 2026", taxLabel: "Tax (HST 13%)",
+	return invoiceDocument{number: "INV-1001", status: "partially_paid", date: "November 8, 2026", taxLabel: "HST (13%)",
 		issuer:   QuoteIssuer{LegalName: "Dapper Peterborough Inc.", Address: "850 The Kingsway\nPeterborough, ON", TaxRegistration: "123456789RT0001"},
 		customer: InvoiceCustomerSnapshot{Name: "Ann Synthetic", Email: "ann@example.invalid", Phone: "+1 705 555 0100"},
 		items: []invoiceDocumentItem{
 			{description: "Full detail (sedan)", quantity: 1, unitPriceCents: 25000, lineCents: 25000},
-			{description: "Pet hair × 2", quantity: 2, unitPriceCents: 2000, lineCents: 4000},
+			{description: "Pet hair", quantity: 2, unitPriceCents: 2000, lineCents: 4000},
 		},
 		subtotal: 29000, tax: 3770, total: 32770, paid: 10000, due: 22770, template: t, logo: defaultInvoiceLogo}
 }
@@ -45,7 +45,7 @@ func TestInvoicePDF(t *testing.T) {
 	d := sampleInvoiceDocument()
 	pdf := invoicePDF(d)
 	checkPDFStructure(t, pdf)
-	for _, want := range []string{"(Pet hair \xd7 2)", "(INVOICE)", "(No. INV-1001)", "(Dapper Peterborough Inc.)", "(Tax \\(HST 13%\\))", "($327.70)", "(Pay at the shop or online.)", "/Im1 Do", "/Subtype /Image"} {
+	for _, want := range []string{"(Pet hair \xd7 2)", "(INVOICE)", "(INV-1001)", "(TOTAL DUE)", "(OUTSTANDING BALANCE)", "(SERVICE BREAKDOWN)", "(OCN: 1001610344)", "(HST: 123456789RT0001)", "(Dapper Peterborough Inc.)", "(HST \\(13%\\))", "($327.70)", "(Pay at the shop or online.)", "/Im1 Do", "/Subtype /Image"} {
 		if !bytes.Contains(pdf, []byte(want)) {
 			t.Fatalf("missing %q", want)
 		}
@@ -94,13 +94,40 @@ func TestInvoicePDFRunsOntoMorePagesAndWraps(t *testing.T) {
 	}
 }
 
+func TestQuotationAndVoidPDF(t *testing.T) {
+	d := sampleInvoiceDocument()
+	d.quote, d.validUntil, d.note = true, "December 8, 2026", "Sample note."
+	d.template.Title, d.template.QuotationNote = "Quotation", "Sample terms."
+	quote := invoicePDF(d)
+	checkPDFStructure(t, quote)
+	for _, want := range []string{"(QUOTATION)", "(QUOTE #)", "(VALID UNTIL)", "(QUOTED TOTAL)", "(Sample note.)", "(Sample terms.)", "computer generated quotation"} {
+		if !bytes.Contains(quote, []byte(want)) {
+			t.Fatalf("quotation missing %q", want)
+		}
+	}
+	for _, not := range []string{"(PAID AMOUNT)", "(TOTAL DUE)", "(Pay at the shop or online.)"} {
+		if bytes.Contains(quote, []byte(not)) {
+			t.Fatalf("quotation carries %q", not)
+		}
+	}
+	d = sampleInvoiceDocument()
+	d.status = "void"
+	void := invoicePDF(d)
+	if !bytes.Contains(void, []byte("voided")) || bytes.Contains(void, []byte("(PAID AMOUNT)")) {
+		t.Fatal("void invoice must say so instead of showing balances")
+	}
+	if got := documentFileName("Invoice", "A/B 1"); got != "Invoice-A-B-1.pdf" {
+		t.Fatal(got)
+	}
+}
+
 func TestInvoiceMoneyAndTaxLabel(t *testing.T) {
 	for cents, want := range map[int64]string{0: "$0.00", 5: "$0.05", 123456789: "$1,234,567.89", 100000: "$1,000.00", -2500: "-$25.00"} {
 		if got := invoiceMoney(cents); got != want {
 			t.Fatalf("%d: %s", cents, got)
 		}
 	}
-	if got := invoiceTaxLabel(1300, 10000, "HST"); got != "Tax (HST 13%)" {
+	if got := invoiceTaxLabel(1300, 10000, "HST"); got != "HST (13%)" {
 		t.Fatal(got)
 	}
 	if got := invoiceTaxLabel(0, 10000, "HST"); got != "Tax" {

@@ -39,7 +39,12 @@ type InvoicePrintTemplate struct {
 	QuotationNote  string `json:"quotationNote"`
 	// ValidDays is the quotation template's default "valid until" (days after the quote is made); 0 leaves it empty.
 	ValidDays int `json:"validDays"`
+	// BusinessDetails are the extra lines under the address: phone, email, website, corporation number.
+	BusinessDetails string `json:"businessDetails"`
 }
+
+// brandBusinessDetails belong to the Dapper-owned business, so a franchisee outlet never prints them (see loadEffectivePrintTemplate).
+const brandBusinessDetails = "(705) 977-6217  |  info@dapperdetailing.ca\ndapperdetailing.ca\nOCN: 1001610344"
 
 // InvoicePrintTemplateState is what the API returns: the template plus its revision (0 = built-in default, never saved).
 type InvoicePrintTemplateState struct {
@@ -59,7 +64,7 @@ type InvoicePrintTemplateState struct {
 }
 
 func DefaultInvoicePrintTemplate() InvoicePrintTemplate {
-	return InvoicePrintTemplate{Title: "Invoice", AccentColor: "#e4202e", ShowLogo: true, BillToLabel: "Bill to", ItemLabel: "Item", QuantityLabel: "Qty", UnitPriceLabel: "Unit price", AmountLabel: "Amount", ShowTaxRegistration: true, ShowCustomerContact: true, FooterNote: "Thank you for choosing Dapper Detailing Pros.", PaperSize: "letter", QuotationTitle: "Quotation"}
+	return InvoicePrintTemplate{Title: "Invoice", AccentColor: "#fb1a2b", ShowLogo: true, BillToLabel: "Bill to", ItemLabel: "Item", QuantityLabel: "Qty", UnitPriceLabel: "Unit price", AmountLabel: "Amount", ShowTaxRegistration: true, ShowCustomerContact: true, FooterNote: "Thank you for choosing us", PaperSize: "letter", QuotationTitle: "Quotation", BusinessDetails: brandBusinessDetails}
 }
 
 var templateColor = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
@@ -77,7 +82,8 @@ func (t *InvoicePrintTemplate) normalize() error {
 			return ErrInvoiceTemplateInput
 		}
 	}
-	if utf8.RuneCountInString(t.HeaderNote) > 500 || utf8.RuneCountInString(t.PaymentInstructions) > 1000 || utf8.RuneCountInString(t.FooterNote) > 1000 {
+	t.BusinessDetails = strings.TrimSpace(t.BusinessDetails)
+	if utf8.RuneCountInString(t.BusinessDetails) > 500 || utf8.RuneCountInString(t.HeaderNote) > 500 || utf8.RuneCountInString(t.PaymentInstructions) > 1000 || utf8.RuneCountInString(t.FooterNote) > 1000 {
 		return ErrInvoiceTemplateInput
 	}
 	if !templateColor.MatchString(t.AccentColor) || t.PaperSize != "letter" && t.PaperSize != "a4" {

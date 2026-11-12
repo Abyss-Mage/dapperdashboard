@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "app/(app)/owner/owner.module.css"
+        ],
+        "createdAt": "2026-11-11T04:43:23.380Z",
+        "reason": "Claude triage: L741 .svcNested is a 2px neutral glass-line indent showing sub-services nested under their parent (a tree guide), not a coloured accent card"
+      }
+    ]
+  }
+}

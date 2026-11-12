@@ -312,7 +312,8 @@ export default function Select({ value, defaultValue, onChange, children, disabl
             </div>
           </div>
         </>,
-        document.body,
+        // A modal <dialog> sits above everything in the page, so inside one the menu has to live in the dialog too.
+        triggerRef.current?.closest('dialog') ?? document.body,
       )}
     </div>
   );

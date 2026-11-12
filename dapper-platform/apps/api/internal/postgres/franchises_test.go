@@ -20,9 +20,55 @@ func verifyFranchiseStructure(t *testing.T, ctx context.Context, s *Store, a, b 
 			}
 		}
 	}
+	var centralMain, centralAddon string
+	if err := s.pool.QueryRow(ctx, `INSERT INTO central_catalog_services(organization_id,name,kind,price_cents) VALUES($1,'Synthetic central main','main',5000) RETURNING id::text`, a.OrganizationID).Scan(&centralMain); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.pool.QueryRow(ctx, `INSERT INTO central_catalog_services(organization_id,name,kind,parent_id,price_cents) VALUES($1,'Synthetic central add-on','addon',$2,1000) RETURNING id::text`, a.OrganizationID, centralMain).Scan(&centralAddon); err != nil {
+		t.Fatal(err)
+	}
 	north, err := s.CreateFranchise(ctx, a.ActorID, a.OrganizationID, FranchiseInput{Code: "north", Name: "Synthetic North", Address: Address{Street: "1 Synthetic Way", City: "Peterborough", Region: "ON", PostalCode: "K9J 7C8", Country: "Canada"}})
 	if err != nil || north.Code != "NORTH" || north.ID == "" || north.FranchiseID == nil || north.Address.City != "Peterborough" {
 		t.Fatalf("franchise with address %+v %v", north, err)
+	}
+	var copied, linkedAddon int
+	if err = s.pool.QueryRow(ctx, `SELECT count(*),count(*) FILTER (WHERE central_service_id=$2 AND parent_id IS NOT NULL) FROM catalog_services WHERE location_id=$1 AND central_service_id IS NOT NULL`, north.ID, centralAddon).Scan(&copied, &linkedAddon); err != nil || copied != 2 || linkedAddon != 1 {
+		t.Fatalf("a new franchise must start with the central catalogue: %v %d %d", err, copied, linkedAddon)
+	}
+	// A later franchise starts bookable from an existing franchise's bays, and an unused one can still be removed although it starts filled in.
+	var northBay string
+	if err = s.pool.QueryRow(ctx, `INSERT INTO scheduling_resources(organization_id,location_id,name,capacity,timezone,rules) VALUES($1,$2,'Synthetic bay',2,'America/Toronto','{}'::jsonb) RETURNING id::text`, a.OrganizationID, north.ID).Scan(&northBay); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = s.pool.Exec(ctx, `INSERT INTO service_scheduling_rules(organization_id,location_id,resource_id,service_id,addon_ids,duration_minutes,before_minutes,after_minutes,units,working_time,slots) SELECT organization_id,location_id,$2::uuid,id,'[]'::jsonb,45,0,0,1,false,1 FROM catalog_services WHERE location_id=$1 AND central_service_id=$3`, north.ID, northBay, centralMain); err != nil {
+		t.Fatal(err)
+	}
+	spare, err := s.CreateFranchise(ctx, a.ActorID, a.OrganizationID, FranchiseInput{Code: "SPARE", Name: "Synthetic Spare", Address: testAddress})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var spareBays, spareRules int
+	if err = s.pool.QueryRow(ctx, `SELECT (SELECT count(*) FROM scheduling_resources WHERE location_id=$1),(SELECT count(*) FROM service_scheduling_rules WHERE location_id=$1 AND duration_minutes=45)`, spare.ID).Scan(&spareBays, &spareRules); err != nil || spareBays != 1 || spareRules != 1 {
+		t.Fatalf("a new franchise must be bookable: %v %d bays %d rules", err, spareBays, spareRules)
+	}
+	if res, e := s.DeleteFranchise(ctx, a.ActorID, a.OrganizationID, spare.ID); e != nil || !res.Permanent {
+		t.Fatalf("a franchise holding only copied services must delete: %v %+v", e, res)
+	}
+	// Leave the organization's central catalogue as the later checks expect it.
+	if _, err = s.pool.Exec(ctx, `DELETE FROM service_scheduling_rules WHERE resource_id=$1`, northBay); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = s.pool.Exec(ctx, `DELETE FROM scheduling_resources WHERE id=$1`, northBay); err != nil {
+		t.Fatal(err)
+	}
+	for _, q := range []string{
+		`DELETE FROM catalog_service_revisions r USING catalog_services c WHERE r.service_id=c.id AND c.central_service_id = ANY($1::uuid[])`,
+		`DELETE FROM catalog_services WHERE central_service_id = ANY($1::uuid[])`,
+		`DELETE FROM central_catalog_services WHERE id = ANY($1::uuid[])`,
+	} {
+		if _, err = s.pool.Exec(ctx, q, []string{centralMain, centralAddon}); err != nil {
+			t.Fatal(err)
+		}
 	}
 	south, err := s.CreateFranchise(ctx, a.ActorID, a.OrganizationID, FranchiseInput{Code: "SOUTH", Name: "Synthetic South", Address: testAddress})
 	if err != nil || south.Address != testAddress {

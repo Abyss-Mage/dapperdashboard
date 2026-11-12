@@ -27,6 +27,8 @@ func verifyBookingReschedule(t *testing.T, ctx context.Context, s *Store, a, b S
 		if err != nil {
 			t.Fatal(err)
 		}
+	}
+	for i := range resources {
 		rules[i], err = s.SaveSchedulingRule(ctx, a, SchedulingRule{ResourceID: resources[i].ID, ServiceID: service.ID, DurationMinutes: 60, Units: 1})
 		if err != nil {
 			t.Fatal(err)

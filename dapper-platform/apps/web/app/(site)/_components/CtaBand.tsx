@@ -9,7 +9,7 @@ export function CtaBand({ id, lead = 'Ready to give your car', tail = 'the care 
       <h2 id={id} className="cta__h">{lead} <em>{tail}</em></h2>
       <p className="cta__lede">{cta.text}</p>
       <div className="cta__act">
-        <a className="cta__btn" href="/booking"><span>Book now</span><ArrowRight size={20} aria-hidden="true" /></a>
+        <a className="cta__btn" href="/book-appointment"><span>Book now</span><ArrowRight size={20} aria-hidden="true" /></a>
         <a className="cta__call" href={'tel:' + contact.tel}>or call <span>+1 {contact.phone}</span></a>
       </div>
     </section>

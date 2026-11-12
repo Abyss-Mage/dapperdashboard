@@ -101,7 +101,7 @@ function Popover({ open, anchorRef, onClose, width, label, children }: { open: b
         {children(!!pos)}
       </div>
     </>,
-    document.body,
+    anchorRef.current?.closest('dialog') ?? document.body,
   );
 }
 

@@ -309,13 +309,73 @@ var siteLogoSizesSchema string
 //go:embed media_bin.sql
 var mediaBinSchema string
 
+//go:embed franchise_tax_number.sql
+var franchiseTaxNumberSchema string
+
+//go:embed quote_delete.sql
+var quoteDeleteSchema string
+
+//go:embed quote_email_template.sql
+var quoteEmailTemplateSchema string
+
+//go:embed document_numbering.sql
+var documentNumberingSchema string
+
+//go:embed star_package.sql
+var starPackageSchema string
+
+//go:embed franchise_central_catalogue.sql
+var franchiseCentralCatalogueSchema string
+
+//go:embed franchise_default_bays.sql
+var franchiseDefaultBaysSchema string
+
+//go:embed franchise_default_rules.sql
+var franchiseDefaultRulesSchema string
+
+//go:embed package_upsells.sql
+var packageUpsellsSchema string
+
+//go:embed shop_clock.sql
+var shopClockSchema string
+
+//go:embed dealer_invoices.sql
+var dealerInvoicesSchema string
+
+//go:embed dealer_invoices_v2.sql
+var dealerInvoicesV2Schema string
+
+//go:embed shop_login.sql
+var shopLoginSchema string
+
+//go:embed dealer_portal.sql
+var dealerPortalSchema string
+
+//go:embed franchise_sites_backfill.sql
+var franchiseSitesBackfillSchema string
+
+//go:embed location_square_apps.sql
+var locationSquareAppsSchema string
+
+//go:embed location_square_keys.sql
+var locationSquareKeysSchema string
+
+//go:embed site_banner.sql
+var siteBannerSchema string
+
+//go:embed invitation_delivery_retry.sql
+var invitationDeliveryRetrySchema string
+
+//go:embed franchise_owner_no_catalogue.sql
+var franchiseOwnerNoCatalogueSchema string
+
 type migration struct {
 	version int
 	sql     string
 }
 
 func migrations() []migration {
-	return []migration{{1, schema}, {2, authorizationSchema}, {3, vehicleGrantSchema}, {4, sessionSchema}, {5, sessionInvalidationSchema}, {6, oidcIdentitySchema}, {7, passwordCredentialSchema}, {8, jobSchema}, {9, serviceSchema}, {10, franchiseSchema}, {11, jobServiceSchema}, {12, jobAddonSchema}, {13, reservationSchema}, {14, reservationReleaseSchema}, {15, schedulingRuleSchema}, {16, reservationRuleSchema}, {17, reservationHistorySchema}, {18, schedulingReadSchema}, {19, jobContributorSchema}, {20, centralCatalogueSchema}, {21, attendanceSchema}, {22, bookingSchema}, {23, invoiceSchema}, {24, sopDocumentSchema}, {25, bookingVehicleOwnershipSchema}, {26, customerAccountSchema}, {27, bookingJobRequestSchema}, {28, initialAdministratorSchema}, {29, accessGrantEventsSchema}, {30, invoiceIssuanceSchema}, {31, invoiceDraftRevisionSchema}, {32, memberInvitationSchema}, {33, customerAccountManagementSchema}, {34, bookingCapacityRequestSchema}, {35, bookingRescheduleRequestSchema}, {36, bookingOfferSchema}, {37, customerBookingRequestSchema}, {38, scopedQuotationSchema}, {39, dealershipB2BSchema}, {40, marketingPopupsSchema}, {41, paymentRefundAccountingSchema}, {43, publicContentSchema}, {44, rolesAndScopedAssignmentsSchema}, {45, centralServiceLinksSchema}, {46, employeeWorkspaceSchema}, {47, gpsTrackingSchema}, {48, squarePaymentIntentsSchema}, {49, employeeUploadsSchema}, {50, employeeUploadViewsSchema}, {51, employeeUploadBookingSchema}, {52, employeeWorksiteLocationSchema}, {53, franchiseSiteSchema}, {54, employeeUploadRetentionSchema}, {55, accountSecuritySchema}, {56, schedulingWeeklyHoursSchema}, {57, franchiseTaxesSchema}, {58, schedulingWorkingTimeSchema}, {59, bookingCapacityWorkingTimeSchema}, {60, servicePricesSchema}, {61, invoicePrintTemplateSchema}, {62, invoiceOnePerBookingSchema}, {63, publicBookingSchema}, {64, customerUniqueAvailabilityReviewSchema}, {65, ownerWave202610Schema}, {66, dashboardBatchCSchema}, {67, accountRecoverySchema}, {68, websiteTrackingSchema}, {69, calendarFeedsSchema}, {70, locationInvoiceTemplatesSchema}, {71, websiteEnquiriesSchema}, {72, locationLogosSchema}, {73, approvePendingBookingsSchema}, {74, activityLogSchema}, {75, couponsSchema}, {76, customScriptsSchema}, {77, serviceSlotsSchema}, {78, portfolioDimensionsSchema}, {79, messagingSettingsSchema}, {80, employeeRoleSchema}, {81, cleanStatusNotesSchema}, {82, addonLinksSchema}, {83, quoteTemplatesSchema}, {84, outletTemplatesSchema}, {85, legacyImportMapSchema}, {86, legacyBillingSchema}, {87, bookingNumbersSchema}, {88, websiteDealersSchema}, {89, portalProfileSchema}, {90, windowTintCategorySchema}, {91, emailTemplatesSchema}, {92, siteAssetsSchema}, {93, emailTemplatesMoreSchema}, {94, siteAssetsHiddenSchema}, {95, adminAlertsSchema}, {96, invoiceItemOrderSchema}, {97, bookingEmailDeliverySchema}, {98, siteLogoSizesSchema}, {99, mediaBinSchema}}
+	return []migration{{1, schema}, {2, authorizationSchema}, {3, vehicleGrantSchema}, {4, sessionSchema}, {5, sessionInvalidationSchema}, {6, oidcIdentitySchema}, {7, passwordCredentialSchema}, {8, jobSchema}, {9, serviceSchema}, {10, franchiseSchema}, {11, jobServiceSchema}, {12, jobAddonSchema}, {13, reservationSchema}, {14, reservationReleaseSchema}, {15, schedulingRuleSchema}, {16, reservationRuleSchema}, {17, reservationHistorySchema}, {18, schedulingReadSchema}, {19, jobContributorSchema}, {20, centralCatalogueSchema}, {21, attendanceSchema}, {22, bookingSchema}, {23, invoiceSchema}, {24, sopDocumentSchema}, {25, bookingVehicleOwnershipSchema}, {26, customerAccountSchema}, {27, bookingJobRequestSchema}, {28, initialAdministratorSchema}, {29, accessGrantEventsSchema}, {30, invoiceIssuanceSchema}, {31, invoiceDraftRevisionSchema}, {32, memberInvitationSchema}, {33, customerAccountManagementSchema}, {34, bookingCapacityRequestSchema}, {35, bookingRescheduleRequestSchema}, {36, bookingOfferSchema}, {37, customerBookingRequestSchema}, {38, scopedQuotationSchema}, {39, dealershipB2BSchema}, {40, marketingPopupsSchema}, {41, paymentRefundAccountingSchema}, {43, publicContentSchema}, {44, rolesAndScopedAssignmentsSchema}, {45, centralServiceLinksSchema}, {46, employeeWorkspaceSchema}, {47, gpsTrackingSchema}, {48, squarePaymentIntentsSchema}, {49, employeeUploadsSchema}, {50, employeeUploadViewsSchema}, {51, employeeUploadBookingSchema}, {52, employeeWorksiteLocationSchema}, {53, franchiseSiteSchema}, {54, employeeUploadRetentionSchema}, {55, accountSecuritySchema}, {56, schedulingWeeklyHoursSchema}, {57, franchiseTaxesSchema}, {58, schedulingWorkingTimeSchema}, {59, bookingCapacityWorkingTimeSchema}, {60, servicePricesSchema}, {61, invoicePrintTemplateSchema}, {62, invoiceOnePerBookingSchema}, {63, publicBookingSchema}, {64, customerUniqueAvailabilityReviewSchema}, {65, ownerWave202610Schema}, {66, dashboardBatchCSchema}, {67, accountRecoverySchema}, {68, websiteTrackingSchema}, {69, calendarFeedsSchema}, {70, locationInvoiceTemplatesSchema}, {71, websiteEnquiriesSchema}, {72, locationLogosSchema}, {73, approvePendingBookingsSchema}, {74, activityLogSchema}, {75, couponsSchema}, {76, customScriptsSchema}, {77, serviceSlotsSchema}, {78, portfolioDimensionsSchema}, {79, messagingSettingsSchema}, {80, employeeRoleSchema}, {81, cleanStatusNotesSchema}, {82, addonLinksSchema}, {83, quoteTemplatesSchema}, {84, outletTemplatesSchema}, {85, legacyImportMapSchema}, {86, legacyBillingSchema}, {87, bookingNumbersSchema}, {88, websiteDealersSchema}, {89, portalProfileSchema}, {90, windowTintCategorySchema}, {91, emailTemplatesSchema}, {92, siteAssetsSchema}, {93, emailTemplatesMoreSchema}, {94, siteAssetsHiddenSchema}, {95, adminAlertsSchema}, {96, invoiceItemOrderSchema}, {97, bookingEmailDeliverySchema}, {98, siteLogoSizesSchema}, {99, mediaBinSchema}, {100, franchiseTaxNumberSchema}, {101, quoteDeleteSchema}, {102, quoteEmailTemplateSchema}, {103, documentNumberingSchema}, {104, starPackageSchema}, {105, franchiseCentralCatalogueSchema}, {106, franchiseDefaultBaysSchema}, {107, franchiseDefaultRulesSchema}, {108, franchiseOwnerNoCatalogueSchema}, {109, invitationDeliveryRetrySchema}, {110, siteBannerSchema}, {111, packageUpsellsSchema}, {112, shopClockSchema}, {113, dealerInvoicesSchema}, {114, dealerInvoicesV2Schema}, {115, shopLoginSchema}, {116, dealerPortalSchema}, {117, franchiseSitesBackfillSchema}, {118, locationSquareAppsSchema}, {119, locationSquareKeysSchema}}
 }
 
 // ValidateSchema is read-only. Runtime startup never applies migrations.

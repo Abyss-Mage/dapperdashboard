@@ -16,3 +16,5 @@
 @media(hover:hover) and (pointer:fine){.dl__card:hover{transform:translateY(-4px)}}
 @media(max-width:600px){.dl__card{flex-basis:calc((100% - var(--gap)) / 2)}}
 @media(prefers-reduced-motion:reduce){.dl__card{transition:none}}
+.dl__card{position:relative;isolation:isolate;background:#0b0b0c14;border:0}
+.dl__card::before{content:"";position:absolute;inset:1px;z-index:-1;background:#fff;clip-path:polygon(0 0,100% 0,100% 100%,17.5px 100%,0 calc(100% - 17.5px))}

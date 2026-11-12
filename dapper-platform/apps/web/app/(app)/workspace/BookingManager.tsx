@@ -2,7 +2,7 @@
 import { ChevronDown } from 'lucide-react';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import BookingRescheduler from './BookingRescheduler';
-import { fillInvoiceWindow, openInvoiceWindow, usePrintTemplate } from './InvoicePrint';
+import { fillInvoiceWindow, openInvoiceWindow, openPdf, ownLayout, usePrintTemplate } from './InvoicePrint';
 import Select from '../GlassSelect';
 import { DatePicker, DateTimePicker } from '../Pickers';
 import t from './bookingTable.module.css';
@@ -304,6 +304,7 @@ export default function BookingManager({
   function viewInvoice(b: Booking) {
     const inv = invoices[b.id];
     if (!inv) return;
+    if (!ownLayout(printTemplate)) { openPdf(inv.legacy ? `${base}/legacy-invoices/${b.id}/pdf` : `${base}/invoices/${inv.id}/pdf`); return; }
     const w = openInvoiceWindow();
     if (!w) { setError('Allow pop-ups for this site to open the invoice in a new window.'); return; }
     fetch(inv.legacy ? base + '/legacy-invoices/' + b.id : base + '/invoices/' + inv.id, { cache: 'no-store' })
@@ -522,7 +523,7 @@ export default function BookingManager({
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'appointments.csv'; a.click(); URL.revokeObjectURL(a.href);
   }
   function shareUrl() {
-    const url = window.location.origin + '/booking';
+    const url = window.location.origin + '/book-appointment';
     navigator.clipboard?.writeText(url).then(() => setNotice('Booking page link copied: ' + url), () => setNotice('Booking page link: ' + url));
   }
   return (

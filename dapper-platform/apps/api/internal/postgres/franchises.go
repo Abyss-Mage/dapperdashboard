@@ -47,6 +47,10 @@ type FranchiseInput struct {
 	Name     string             `json:"name"`
 	Address  Address            `json:"address"`
 	Contacts []FranchiseContact `json:"contacts"`
+	// TaxRegistration is left out by screens that do not show it, which keeps the saved number.
+	TaxRegistration *string `json:"taxRegistration"`
+	// Ownership is "brand" or "franchise"; screens that do not show it leave it as it is.
+	Ownership *string `json:"ownership"`
 }
 
 // Franchise is one franchise site. ID is the site identifier used everywhere else in the system (grants, bookings,
@@ -58,6 +62,8 @@ type Franchise struct {
 	Name        string             `json:"name"`
 	Address     Address            `json:"address"`
 	Contacts    []FranchiseContact `json:"contacts"`
+	TaxRegistration string         `json:"taxRegistration"`
+	Ownership       string         `json:"ownership"`
 }
 
 // Location is a read-only compatibility view of a franchise for screens that still list sites.
@@ -119,6 +125,16 @@ func normalizeFranchise(in FranchiseInput) (FranchiseInput, error) {
 		return in, ErrStructureInput
 	}
 	in.Contacts = cleaned
+	if in.Ownership != nil && *in.Ownership != "brand" && *in.Ownership != "franchise" {
+		return in, ErrStructureInput
+	}
+	if in.TaxRegistration != nil {
+		n := strings.TrimSpace(*in.TaxRegistration)
+		in.TaxRegistration = &n
+		if utf8.RuneCountInString(n) > 100 {
+			return in, ErrStructureInput
+		}
+	}
 	if !franchiseCodePattern.MatchString(in.Code) || !validStructureName(in.Name) ||
 		utf8.RuneCountInString(a.Street) > 200 || utf8.RuneCountInString(a.City) > 100 || utf8.RuneCountInString(a.Region) > 100 || utf8.RuneCountInString(a.PostalCode) > 20 || utf8.RuneCountInString(a.Country) > 100 {
 		return in, ErrStructureInput
@@ -134,11 +150,11 @@ func franchiseWriteError(err error) error {
 	return err
 }
 
-const franchiseColumns = `l.id::text,l.franchise_id::text,COALESCE(l.code,''),l.name,l.address_street,l.address_city,l.address_region,l.address_postal_code,l.address_country`
+const franchiseColumns = `l.id::text,l.franchise_id::text,COALESCE(l.code,''),l.name,l.address_street,l.address_city,l.address_region,l.address_postal_code,l.address_country,l.tax_registration,l.ownership`
 
 func scanFranchise(row pgx.Row) (Franchise, error) {
 	var f Franchise
-	err := row.Scan(&f.ID, &f.FranchiseID, &f.Code, &f.Name, &f.Address.Street, &f.Address.City, &f.Address.Region, &f.Address.PostalCode, &f.Address.Country)
+	err := row.Scan(&f.ID, &f.FranchiseID, &f.Code, &f.Name, &f.Address.Street, &f.Address.City, &f.Address.Region, &f.Address.PostalCode, &f.Address.Country, &f.TaxRegistration, &f.Ownership)
 	f.Contacts = []FranchiseContact{}
 	return f, err
 }
@@ -161,12 +177,28 @@ func (s *Store) CreateFranchise(ctx context.Context, actor, org string, in Franc
 	if err = tx.QueryRow(ctx, `INSERT INTO franchises(organization_id,name) VALUES($1,$2) RETURNING id::text`, org, in.Name).Scan(&shadow); err != nil {
 		return Franchise{}, err
 	}
-	result, err := scanFranchise(tx.QueryRow(ctx, `WITH l AS (INSERT INTO locations(organization_id,franchise_id,name,code,address_street,address_city,address_region,address_postal_code,address_country) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *) SELECT `+franchiseColumns+` FROM l`,
-		org, shadow, in.Name, in.Code, in.Address.Street, in.Address.City, in.Address.Region, in.Address.PostalCode, in.Address.Country))
+	result, err := scanFranchise(tx.QueryRow(ctx, `WITH l AS (INSERT INTO locations(organization_id,franchise_id,name,code,address_street,address_city,address_region,address_postal_code,address_country,tax_registration,ownership) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,coalesce($10::text,''),coalesce($11::text,'brand')) RETURNING *) SELECT `+franchiseColumns+` FROM l`,
+		org, shadow, in.Name, in.Code, in.Address.Street, in.Address.City, in.Address.Region, in.Address.PostalCode, in.Address.Country, in.TaxRegistration, in.Ownership))
 	if err != nil {
 		return Franchise{}, franchiseWriteError(err)
 	}
 	if err = replaceFranchiseContacts(ctx, tx, org, result.ID, in.Contacts); err != nil {
+		return Franchise{}, err
+	}
+	if _, err = tx.Exec(ctx, `SELECT add_central_catalogue_to_location($1::uuid,$2::uuid,$3::uuid)`, org, result.ID, actor); err != nil {
+		return Franchise{}, err
+	}
+	if _, err = tx.Exec(ctx, `SELECT add_default_bays_to_location($1::uuid,$2::uuid)`, org, result.ID); err != nil {
+		return Franchise{}, err
+	}
+	if _, err = tx.Exec(ctx, `SELECT add_default_rules_to_location($1::uuid,$2::uuid,$3::uuid)`, org, result.ID, actor); err != nil {
+		return Franchise{}, err
+	}
+	if err = syncServiceDurationRules(ctx, tx, org, result.ID, actor); err != nil {
+		return Franchise{}, err
+	}
+	// Its website entry, published like the first franchise's, so the booking page lists it (error404 #43).
+	if _, err = tx.Exec(ctx, `INSERT INTO public_sites(organization_id,location_id,slug,name,published) SELECT $1,$2,s,$4,true FROM (SELECT regexp_replace(lower($3::text),'[^a-z0-9-]','-','g') s) x WHERE s ~ '^[a-z0-9][a-z0-9-]{1,59}$' ON CONFLICT DO NOTHING`, org, result.ID, in.Code, in.Name); err != nil {
 		return Franchise{}, err
 	}
 	result.Contacts = in.Contacts
@@ -282,8 +314,8 @@ func (s *Store) UpdateFranchise(ctx context.Context, actor, org, id string, in F
 	} else if _, err = tx.Exec(ctx, `UPDATE franchises SET name=$3 WHERE organization_id=$1 AND id=$2`, org, *shadow, in.Name); err != nil {
 		return Franchise{}, err
 	}
-	result, err := scanFranchise(tx.QueryRow(ctx, `WITH l AS (UPDATE locations SET franchise_id=$3,name=$4,code=$5,address_street=$6,address_city=$7,address_region=$8,address_postal_code=$9,address_country=$10 WHERE organization_id=$1 AND id=$2 RETURNING *) SELECT `+franchiseColumns+` FROM l`,
-		org, id, *shadow, in.Name, in.Code, in.Address.Street, in.Address.City, in.Address.Region, in.Address.PostalCode, in.Address.Country))
+	result, err := scanFranchise(tx.QueryRow(ctx, `WITH l AS (UPDATE locations SET franchise_id=$3,name=$4,code=$5,address_street=$6,address_city=$7,address_region=$8,address_postal_code=$9,address_country=$10,tax_registration=coalesce($11::text,tax_registration),ownership=coalesce($12::text,ownership) WHERE organization_id=$1 AND id=$2 RETURNING *) SELECT `+franchiseColumns+` FROM l`,
+		org, id, *shadow, in.Name, in.Code, in.Address.Street, in.Address.City, in.Address.Region, in.Address.PostalCode, in.Address.Country, in.TaxRegistration, in.Ownership))
 	if err != nil {
 		return Franchise{}, franchiseWriteError(err)
 	}
@@ -346,12 +378,24 @@ func (s *Store) DeleteFranchise(ctx context.Context, actor, org, id string) (Del
 		`DELETE FROM access_grant_events WHERE organization_id=$1 AND location_id=$2`,
 		`DELETE FROM location_grants WHERE organization_id=$1 AND location_id=$2`,
 		`DELETE FROM member_role_assignments WHERE organization_id=$1 AND location_id=$2`,
+		// The bays and central catalogue copied in when the site opened. Anything in real use still blocks the delete through its own link.
+		`DELETE FROM service_scheduling_revisions v USING service_scheduling_rules r WHERE v.rule_id=r.id AND r.organization_id=$1 AND r.location_id=$2`,
+		`DELETE FROM service_scheduling_rules WHERE organization_id=$1 AND location_id=$2`,
+		`DELETE FROM scheduling_resources WHERE organization_id=$1 AND location_id=$2`,
+		`DELETE FROM audit_events WHERE organization_id=$1 AND location_id=$2 AND action IN ('service.central_service_added','service.central_revision_applied')`,
+		`DELETE FROM catalog_service_revisions r USING catalog_services c WHERE r.service_id=c.id AND c.organization_id=$1 AND c.location_id=$2 AND c.central_service_id IS NOT NULL`,
+		`DELETE FROM catalog_services WHERE organization_id=$1 AND location_id=$2 AND central_service_id IS NOT NULL`,
 	} {
 		if _, err = tx.Exec(ctx, q, org, id); err != nil {
 			return DeleteResult{}, err
 		}
 	}
-	if _, err = tx.Exec(ctx, `DELETE FROM locations WHERE organization_id=$1 AND id=$2`, org, id); err != nil {
+	// The website entry made with the franchise (error404 #43); website content added to it still blocks the delete.
+	_, err = tx.Exec(ctx, `DELETE FROM public_sites WHERE organization_id=$1 AND location_id=$2`, org, id)
+	if err == nil {
+		_, err = tx.Exec(ctx, `DELETE FROM locations WHERE organization_id=$1 AND id=$2`, org, id)
+	}
+	if err != nil {
 		var pg *pgconn.PgError
 		if errors.As(err, &pg) && pg.Code == "23503" {
 			return DeleteResult{}, ErrFranchiseInUse

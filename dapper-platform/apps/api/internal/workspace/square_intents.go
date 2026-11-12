@@ -41,7 +41,7 @@ func registerSquareIntentRoutes(mux *http.ServeMux, store *postgres.Store) {
 			failure(w, err)
 			return
 		}
-		reply(w, 200, map[string]any{"configured": true, "credentialsConfigured": store.SquareCredentialResolver() != nil, "applicationId": store.SquareApplicationID(b.Environment), "binding": map[string]any{"version": b.Version, "environment": b.Environment, "merchantId": b.MerchantID, "squareLocationId": b.SquareLocationID, "reviewedAt": b.ReviewedAt}})
+		reply(w, 200, map[string]any{"configured": true, "credentialsConfigured": store.SquareCredentialResolver() != nil, "applicationId": store.SquareApplicationIDFor(r.Context(), scope, b.Environment), "binding": map[string]any{"version": b.Version, "environment": b.Environment, "merchantId": b.MerchantID, "squareLocationId": b.SquareLocationID, "reviewedAt": b.ReviewedAt}})
 	})
 	mux.HandleFunc("PUT "+base+"/square/binding", func(w http.ResponseWriter, r *http.Request) {
 		org, loc, ok := selectors(w, r)
@@ -229,7 +229,7 @@ func prepareSquareReader(w http.ResponseWriter, r *http.Request, store *postgres
 		failure(w, err)
 		return
 	}
-	appID := store.SquareApplicationID(binding.Environment)
+	appID := store.SquareApplicationIDFor(r.Context(), scope, binding.Environment)
 	if appID == "" {
 		reply(w, 409, map[string]string{"error": "The Square application ID is not set"})
 		return

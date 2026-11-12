@@ -34,6 +34,7 @@ type DealershipAccount struct {
 	ContactName      string          `json:"contactName"`
 	ContactEmail     string          `json:"contactEmail"`
 	ContactPhone     string          `json:"contactPhone"`
+	Address          string          `json:"address"`
 	BillingTermsDays int             `json:"billingTermsDays"`
 	TaxExempt        bool            `json:"taxExempt"`
 	Active           bool            `json:"active"`
@@ -105,6 +106,7 @@ type CreateDealershipInput struct {
 	ContactName      string              `json:"contactName"`
 	ContactEmail     string              `json:"contactEmail"`
 	ContactPhone     string              `json:"contactPhone,omitempty"`
+	Address          string              `json:"address"`
 	BillingTermsDays int                 `json:"billingTermsDays"`
 	TaxExempt        bool                `json:"taxExempt"`
 	Notes            string              `json:"notes,omitempty"`
@@ -117,6 +119,7 @@ type UpdateDealershipInput struct {
 	ContactName      string              `json:"contactName"`
 	ContactEmail     string              `json:"contactEmail"`
 	ContactPhone     string              `json:"contactPhone,omitempty"`
+	Address          string              `json:"address"`
 	BillingTermsDays int                 `json:"billingTermsDays"`
 	TaxExempt        bool                `json:"taxExempt"`
 	Active           bool                `json:"active"`
@@ -137,7 +140,7 @@ type CreateFleetIntakeInput struct {
 	IntakeNotes        string  `json:"intakeNotes,omitempty"`
 }
 
-const dealershipSelectColumns = `d.id::text, d.organization_id::text, d.location_id::text, d.customer_id::text, d.account_name, d.account_code, d.account_type, d.contact_name, d.contact_email, d.contact_phone, d.billing_terms_days, d.tax_exempt, d.active, d.notes, d.created_at, d.updated_at, d.per_car_rate_cents`
+const dealershipSelectColumns = `d.id::text, d.organization_id::text, d.location_id::text, d.customer_id::text, d.account_name, d.account_code, d.account_type, d.contact_name, d.contact_email, d.contact_phone, d.billing_terms_days, d.tax_exempt, d.active, d.notes, d.created_at, d.updated_at, d.per_car_rate_cents, d.address`
 
 func scanDealership(row pgx.Row) (DealershipAccount, error) {
 	var a DealershipAccount
@@ -146,7 +149,7 @@ func scanDealership(row pgx.Row) (DealershipAccount, error) {
 		&a.AccountName, &a.AccountCode, &a.AccountType,
 		&a.ContactName, &a.ContactEmail, &a.ContactPhone,
 		&a.BillingTermsDays, &a.TaxExempt, &a.Active, &a.Notes,
-		&a.CreatedAt, &a.UpdatedAt, &a.PerCarRateCents,
+		&a.CreatedAt, &a.UpdatedAt, &a.PerCarRateCents, &a.Address,
 	)
 	a.Contacts = []DealershipContact{}
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -173,7 +176,7 @@ func (s *Store) CreateDealershipAccount(ctx context.Context, scope Scope, input 
 		(input.AccountType != "dealership" && input.AccountType != "fleet" && input.AccountType != "commercial") ||
 		input.BillingTermsDays < 0 || input.BillingTermsDays > 180 ||
 		input.PerCarRateCents != nil && (*input.PerCarRateCents < 0 || *input.PerCarRateCents > 100000000000) ||
-		utf8.RuneCountInString(input.Notes) > 2000 {
+		utf8.RuneCountInString(input.Notes) > 2000 || utf8.RuneCountInString(input.Address) > 300 {
 		return DealershipAccount{}, ErrDealershipInput
 	}
 	// Payment terms and tax exemption are not set per dealership; new accounts take the standard defaults.
@@ -203,15 +206,15 @@ func (s *Store) CreateDealershipAccount(ctx context.Context, scope Scope, input 
 		INSERT INTO dealership_accounts(
 			organization_id, location_id, customer_id, account_name,
 			account_code, account_type, contact_name, contact_email,
-			contact_phone, billing_terms_days, tax_exempt, notes, per_car_rate_cents
+			contact_phone, billing_terms_days, tax_exempt, notes, per_car_rate_cents, address
 		) VALUES (
 			$1, $2, $3, $4,
 			$5, $6, $7, $8,
-			$9, $10, $11, $12, $13
+			$9, $10, $11, $12, $13, $14
 		) RETURNING id::text
 	`, scope.OrganizationID, scope.LocationID, input.CustomerID, input.AccountName,
 		input.AccountCode, input.AccountType, input.ContactName, input.ContactEmail,
-		input.ContactPhone, input.BillingTermsDays, input.TaxExempt, input.Notes, input.PerCarRateCents).Scan(&accountID)
+		input.ContactPhone, input.BillingTermsDays, input.TaxExempt, input.Notes, input.PerCarRateCents, strings.TrimSpace(input.Address)).Scan(&accountID)
 	if err != nil {
 		if strings.Contains(err.Error(), "unique") || strings.Contains(err.Error(), "account_code") {
 			return DealershipAccount{}, ErrDealershipCodeConflict
@@ -331,7 +334,7 @@ func (s *Store) UpdateDealershipAccount(ctx context.Context, scope Scope, id str
 	contacts, cerr := cleanDealershipContacts(input.Contacts, input.ContactName, input.ContactEmail, input.ContactPhone)
 	if cerr != nil || len(input.AccountName) < 2 || len(input.AccountName) > 160 ||
 		input.PerCarRateCents != nil && (*input.PerCarRateCents < 0 || *input.PerCarRateCents > 100000000000) ||
-		utf8.RuneCountInString(input.Notes) > 2000 {
+		utf8.RuneCountInString(input.Notes) > 2000 || utf8.RuneCountInString(input.Address) > 300 {
 		return DealershipAccount{}, ErrDealershipInput
 	}
 	input.ContactName, input.ContactEmail, input.ContactPhone = contacts[0].Name, contacts[0].Email, contacts[0].Phone
@@ -355,11 +358,12 @@ func (s *Store) UpdateDealershipAccount(ctx context.Context, scope Scope, id str
 			active = $8,
 			notes = $9,
 			per_car_rate_cents = $10,
+			address = $11,
 			updated_at = now()
 		WHERE organization_id=$1 AND location_id=$2 AND id=$3
 	`, scope.OrganizationID, scope.LocationID, id, input.AccountName,
 		input.ContactName, input.ContactEmail, input.ContactPhone,
-		input.Active, input.Notes, input.PerCarRateCents)
+		input.Active, input.Notes, input.PerCarRateCents, strings.TrimSpace(input.Address))
 	if err != nil {
 		return DealershipAccount{}, err
 	}

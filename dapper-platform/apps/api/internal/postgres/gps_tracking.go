@@ -280,8 +280,8 @@ func (s *Store) GPSLive(ctx context.Context, scope Scope) (GPSLive, error) {
 	if out.Settings, err = loadGPSSettings(ctx, tx, scope.OrganizationID, scope.LocationID, false); err != nil {
 		return out, err
 	}
-	rows, err := tx.Query(ctx, `SELECT a.id::text,COALESCE(NULLIF(c_p.email,''),p.external_subject),a.status,COALESCE(st.state,'none'),st.last_sample_at,ls.latitude,ls.longitude,ls.accuracy_meters
-FROM employee_attendance a JOIN principals p ON p.id=a.principal_id LEFT JOIN password_credentials c_p ON c_p.principal_id=p.id
+	rows, err := tx.Query(ctx, `SELECT a.id::text,COALESCE(NULLIF(mp.full_name,''),NULLIF(c_p.email,''),p.external_subject),a.status,COALESCE(st.state,'none'),st.last_sample_at,ls.latitude,ls.longitude,ls.accuracy_meters
+FROM employee_attendance a JOIN principals p ON p.id=a.principal_id LEFT JOIN member_profiles mp ON mp.principal_id=p.id LEFT JOIN password_credentials c_p ON c_p.principal_id=p.id
 LEFT JOIN gps_shift_state st ON st.attendance_id=a.id
 LEFT JOIN LATERAL (SELECT latitude,longitude,accuracy_meters FROM gps_samples g WHERE g.attendance_id=a.id AND g.received_at >= clock_timestamp() - make_interval(days => $3) ORDER BY captured_at DESC LIMIT 1) ls ON true
 WHERE a.organization_id=$1 AND a.location_id=$2 AND a.clock_out_at IS NULL ORDER BY 2 LIMIT 200`, scope.OrganizationID, scope.LocationID, out.Settings.RetentionDays)

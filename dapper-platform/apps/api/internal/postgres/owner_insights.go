@@ -138,7 +138,7 @@ func (s *Store) OwnerInsights(ctx context.Context, scope Scope, section, from, t
 			return OwnerInsights{}, err
 		} else if ok {
 			any = true
-			if fin.Quotes, err = keys(`SELECT status,count(*),COALESCE(sum(total_cents),0),0::bigint FROM scoped_quotations WHERE organization_id=$1 AND location_id=$2 AND (created_at AT TIME ZONE $5)::date BETWEEN $3::date AND $4::date GROUP BY status ORDER BY count(*) DESC,status`, org, loc, from, to, tz); err != nil {
+			if fin.Quotes, err = keys(`SELECT status,count(*),COALESCE(sum(total_cents),0),0::bigint FROM scoped_quotations WHERE organization_id=$1 AND location_id=$2 AND status<>'deleted' AND (created_at AT TIME ZONE $5)::date BETWEEN $3::date AND $4::date GROUP BY status ORDER BY count(*) DESC,status`, org, loc, from, to, tz); err != nil {
 				return OwnerInsights{}, err
 			}
 		}

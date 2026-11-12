@@ -1,9 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import AuthShell from '../AuthShell';
 import EmployeeInvoices from './EmployeeInvoices';
 import StaffBookingWizard from './StaffBookingWizard';
-import { printInvoiceDocument, usePrintTemplate, type PrintInvoice } from './InvoicePrint';
+import { openPdf, ownLayout, printInvoiceDocument, usePrintTemplate, type PrintInvoice } from './InvoicePrint';
 import AddonPicker from './AddonPicker';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
@@ -12,12 +13,11 @@ import { availabilityError, dateOffset, readableDay, worksiteDate, contactFormat
 import styles from './employee.module.css';
 import EmployeeCalendar from './EmployeeCalendar';
 import { RecentPunches, ShiftHero, StatCards } from './EmployeeHome';
-import GpsTracker from './GpsTracker';
 import DocumentsCard from './EmployeeDocuments';
 import EmployeeAccount from './EmployeeAccount';
+import ShopClockPanel from './ShopClockPanel';
 import OnboardingGate, { type Onboarding } from './OnboardingGate';
 import { MfaSetup } from './AccountSecurity';
-import { getClockInFix } from './clockLocation';
 import { BreakHistory, MyUploads, UploadComposer } from './EmployeeUploads';
 import SquareCardPayment from './SquareCardPayment';
 import SquareReaderPayment from './SquareReaderPayment';
@@ -31,10 +31,10 @@ type Shift = { id: string; status: 'clocked_in' | 'on_break' | 'clocked_out'; cl
 type Availability = { weekStart: string; timezone: string; intervals: AvailabilityInterval[]; notes: string; version: number; submittedAt: string | null };
 type Desk = { employee: string; assignment: Worksite | null; actions: string[]; bookings: Booking[]; attendance: Shift[]; availability: Availability | null; generatedAt: string };
 type Service = { id: string; name: string; kind: string; parentId: string | null; archived: boolean };
-type Invoice = { id: string; invoiceNumber: string; status: string; currency: string; dueCents: number; subtotalCents: number; taxCents: number; totalCents: number; paidCents: number; customerName: string; issuedAt?: string; issuerSnapshot?: { legalName: string; address: string; taxRegistration: string }; customerSnapshot?: { name: string; email: string; phone: string }; items: { description: string; quantity: number; totalPriceCents: number }[] };
+type Invoice = { id: string; bookingId?: string; invoiceNumber: string; status: string; currency: string; dueCents: number; subtotalCents: number; taxCents: number; totalCents: number; paidCents: number; customerName: string; issuedAt?: string; issuerSnapshot?: { legalName: string; address: string; taxRegistration: string }; customerSnapshot?: { name: string; email: string; phone: string }; items: { description: string; quantity: number; totalPriceCents: number }[] };
 const mobileTabs: string[] = ['today', 'walk-in', 'cars'];
-type Tab = 'today' | 'bookings' | 'walk-in' | 'invoices' | 'tags' | 'cars' | 'breaks' | 'uploads' | 'shifts' | 'account';
-const tabs = [{ id: 'today', label: 'Dashboard', icon: House }, { id: 'bookings', label: 'Schedule', icon: CalendarDays }, { id: 'walk-in', label: 'Walk-in', icon: UserRoundPlus }, { id: 'tags', label: 'Dealership Tags', icon: Tags }, { id: 'cars', label: 'Customer Cars', icon: Car }, { id: 'breaks', label: 'Break History', icon: Coffee }, { id: 'uploads', label: 'My Uploads', icon: Images }, { id: 'shifts', label: 'Availability', icon: Clock3 }] as const;
+type Tab = 'clock' | 'today' | 'bookings' | 'walk-in' | 'invoices' | 'tags' | 'cars' | 'breaks' | 'uploads' | 'shifts' | 'account';
+const tabs = [{ id: 'clock', label: 'Clock in / out', icon: Clock3 }, { id: 'today', label: 'Dashboard', icon: House }, { id: 'bookings', label: 'Schedule', icon: CalendarDays }, { id: 'walk-in', label: 'Walk-in', icon: UserRoundPlus }, { id: 'tags', label: 'Dealership Tags', icon: Tags }, { id: 'cars', label: 'Customer Cars', icon: Car }, { id: 'breaks', label: 'Break History', icon: Coffee }, { id: 'uploads', label: 'My Uploads', icon: Images }, { id: 'shifts', label: 'Availability', icon: Clock3 }] as const;
 const money = (amount: number) => new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(amount / 100);
 gsap.registerPlugin(useGSAP);
 async function responseJSON<T>(response: Response): Promise<T> {
@@ -52,8 +52,11 @@ export default function EmployeeWorkspace() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [desk, setDesk] = useState<Desk | null>(null), [signedIn, setSignedIn] = useState(false), [ready, setReady] = useState(false);
   const [loading, setLoading] = useState(true), [busy, setBusy] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState('');
-  const [email, setEmail] = useState(''), [password, setPassword] = useState(''), [tab, setTab] = useState<Tab>('today'), [day, setDay] = useState(''), [code, setCode] = useState(''), [needsCode, setNeedsCode] = useState(false), [mfaBlocked, setMfaBlocked] = useState(false), [onboarding, setOnboarding] = useState<Onboarding | null>(null);
+  const [email, setEmail] = useState(''), [password, setPassword] = useState(''), [tab, setTab] = useState<Tab>('clock'), [day, setDay] = useState(''), [code, setCode] = useState(''), [needsCode, setNeedsCode] = useState(false), [mfaBlocked, setMfaBlocked] = useState(false), [onboarding, setOnboarding] = useState<Onboarding | null>(null);
   const printTemplate = usePrintTemplate('/api/v1/employee/invoice-template');
+  // The shop's name when this device is signed in with the shop login and no worker is signed in (the shop iPad).
+  const [shopName, setShopName] = useState<string | null>(null);
+  const shopRenewed = useRef(0);
   const [checkout, setCheckout] = useState<Booking | null>(null), [invoices, setInvoices] = useState<Invoice[]>([]), [invoiceLoading, setInvoiceLoading] = useState(false), [invoiceError, setInvoiceError] = useState('');
   const [tick, setTick] = useState(0), [cashConfirmation, setCashConfirmation] = useState(false);
   const request = useRef(0), checkoutRequest = useRef(0), assignmentKey = useRef(''), heading = useRef<HTMLHeadingElement>(null), errorRef = useRef<HTMLParagraphElement>(null), paymentKeys = useRef<Record<string, string>>({});
@@ -62,7 +65,7 @@ export default function EmployeeWorkspace() {
     try {
       const response = await fetch('/api/v1/employee/workspace', { cache: 'no-store' });
       if (generation !== request.current) return;
-      if (response.status === 401) { checkoutRequest.current++; setSignedIn(false); setDesk(null); setCheckout(null); setInvoices([]); paymentKeys.current = {}; assignmentKey.current = ''; return; }
+      if (response.status === 401) { void toShopIfIpad(); checkoutRequest.current++; setSignedIn(false); setDesk(null); setCheckout(null); setInvoices([]); paymentKeys.current = {}; assignmentKey.current = ''; return; }
       // Customers have no staff access at all; their place is their own account.
       const access = await fetch('/api/v1/auth/access', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null);
       if (access && !access.locations?.length && !access.organizations?.length) { location.replace('/account'); return; }
@@ -109,17 +112,43 @@ export default function EmployeeWorkspace() {
   function navigate(next: Tab) { checkoutRequest.current++; setTab(next); setCheckout(null); setInvoices([]); setInvoiceError(''); setCashConfirmation(false); setNotice(''); setTimeout(() => heading.current?.focus(), 0); }
   async function signIn(event: React.FormEvent) {
     event.preventDefault(); setBusy(true); setError('');
+    // The same form signs in the shop iPad (owner, 2026-11-12): a shop username has no @, and opens the worker name list.
+    if (!email.includes('@')) {
+      try {
+        const r = await fetch('/api/v1/shop/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: email.trim(), password }) });
+        const b = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(b.error ?? 'Sign-in failed. Try again.');
+        setPassword('');
+        await refresh();
+        setBusy(false);
+      } catch (e) { setError(e instanceof Error ? e.message : 'Sign-in failed. Try again.'); setBusy(false); }
+      return;
+    }
     try { await responseJSON(await fetch('/api/v1/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(needsCode ? { email, password, code: code.trim() } : { email, password }) })); setPassword(''); setCode(''); setNeedsCode(false); await refresh(); }
     catch (e) { if ((e as { mfaRequired?: boolean }).mfaRequired) { setNeedsCode(true); setCode(''); } setError(e instanceof Error ? e.message : 'Sign-in failed. Try again.'); } finally { setBusy(false); }
   }
+  // On the shop iPad (signed in as the shop, no worker signed in) the workspace opens the worker name list instead of the sign-in form.
+  async function toShopIfIpad() {
+    const r = await fetch('/api/v1/shop/workers', { cache: 'no-store' }).catch(() => null);
+    if (!r?.ok) return;
+    const b = await r.json().catch(() => ({}));
+    if (!b.shopLogin) return;
+    // At most once a minute, so a session that cannot open never turns into a reload loop.
+    if (Date.now() - shopRenewed.current > 60_000) {
+      shopRenewed.current = Date.now();
+      const s = await fetch('/api/v1/shop/session', { method: 'POST' }).catch(() => null);
+      if (s?.ok) { setShopName(null); await refresh(); return; }
+    }
+    setShopName(b.name || 'Shop');
+  }
+  // The clock page found no shop and no franchise: the Shop account's iPad login has ended (sign in again), or this person has no franchise yet.
+  function clockSignedOut() {
+    if (desk?.employee === 'Shop iPad') void refresh();
+    else setNotice('The clock is not available yet: your administrator has not assigned you to a franchise.');
+  }
   async function signOut() {
     setBusy(true); setError('');
-    try { const r = await fetch('/api/v1/auth/logout', { method: 'POST' }); if (!r.ok) throw new Error('Sign-out was not confirmed. Please try again.'); request.current++; checkoutRequest.current++; assignmentKey.current = ''; setDesk(null); setSignedIn(false); setCheckout(null); setInvoices([]); setDay(''); setPassword(''); setMfaBlocked(false); setOnboarding(null); setNeedsCode(false); paymentKeys.current = {}; }
-    catch (e) { setError((e as Error).message); } finally { setBusy(false); }
-  }
-  async function punch(action: string) {
-    setBusy(true); setError(''); setNotice('');
-    try { const location = action === 'clock-in' ? await getClockInFix() : null; await responseJSON(await fetch(`/api/v1/employee/attendance/${action}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(location ? { location } : {}) })); setNotice(action === 'clock-in' ? 'You are clocked in.' : action === 'clock-out' ? 'You are clocked out.' : action === 'start-break' ? 'Break started.' : 'Break ended.'); await refresh(); }
+    try { const r = await fetch('/api/v1/auth/logout', { method: 'POST' }); if (!r.ok) throw new Error('Sign-out was not confirmed. Please try again.'); request.current++; checkoutRequest.current++; assignmentKey.current = ''; setDesk(null); setSignedIn(false); setCheckout(null); setInvoices([]); setDay(''); setPassword(''); setMfaBlocked(false); setOnboarding(null); setNeedsCode(false); paymentKeys.current = {}; void toShopIfIpad(); }
     catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   }
   async function openCheckout(booking: Booking) {
@@ -136,6 +165,35 @@ export default function EmployeeWorkspace() {
     catch (e) { if (generation === checkoutRequest.current) setInvoiceError((e as Error).message); } finally { setBusy(false); }
   }
 
+  // Signed in with the shop login (the shop iPad): the workspace's clock in / out page is the shop's name list and PIN pad.
+  if (!signedIn && shopName) return <div className={styles.app}>
+    <aside className={styles.sidebar} aria-label="Employee navigation"><a className={styles.brand} href="/workspace" aria-label="Dapper Detailing Pros, Employee workspace"><img className={styles.brandLogo} src="/site/assets/logo.webp" alt="" width={44} height={44} /><span className={styles.brandText}><strong>Dapper Detailing Pros</strong><em>Employee workspace</em></span></a>
+      <nav><button className={styles.navActive} aria-current="page"><Clock3 size={20} aria-hidden="true" />Clock in / out</button></nav>
+      <div className={styles.sidebarFoot}><ShieldCheck size={18} aria-hidden="true" /><p>This iPad is signed in as the shop. Tap your name and type your PIN.</p></div>
+    </aside>
+    <div className={styles.workspace}>
+      <header className={styles.masthead}><div className={styles.site}><Building2 size={20} aria-hidden="true" /><div><strong>{shopName}</strong><span>Shop iPad</span></div></div><div className={styles.headerActions}><ThemeToggle className={styles.iconButton} compact /></div></header>
+      <img className={styles.watermark} src="/site/assets/logo.webp" alt="" aria-hidden="true" width={240} height={240} />
+      <main id="employee-content" className={styles.main}>
+        <div className={styles.pageHeading}><div><h1>Clock in or out.</h1><p>{readableDay(new Date().toLocaleDateString('en-CA'))}</p></div></div>
+        <ShopClockPanel onSignedOut={() => setShopName(null)} />
+      </main>
+    </div>
+  </div>;
+
+  if (!signedIn && !loading) return <AuthShell kind="Employee workspace" title="Good work starts here." lead="Sign in to see your day, your bookings and your hours.">
+    {notice && <p role="status">{notice}</p>}
+    {error && <p ref={errorRef} tabIndex={-1} role="alert" className="field-error">{error}</p>}
+    <form onSubmit={signIn} style={{ display: 'grid', gap: 16 }}>
+      <label className="form-field" style={{ margin: 0 }}>Work email or shop username<input type="text" inputMode="email" autoCapitalize="none" spellCheck={false} autoComplete="username" required maxLength={254} value={email} onChange={e => setEmail(e.target.value)} disabled={busy || !ready} /></label>
+      <label className="form-field" style={{ margin: 0 }}>Password<input type="password" autoComplete="current-password" required maxLength={1024} value={password} onChange={e => setPassword(e.target.value)} disabled={busy || !ready} /></label>
+      {needsCode && <label className="form-field" style={{ margin: 0 }}>Authenticator code<input inputMode="numeric" autoComplete="one-time-code" autoFocus required maxLength={16} value={code} onChange={e => setCode(e.target.value)} disabled={busy} aria-describedby="code-hint" /><span id="code-hint" className="help">Enter the 6-digit code from your authenticator app, or a recovery code.</span></label>}
+      <button className="primary" disabled={busy || !ready}>{busy ? 'Signing in…' : needsCode ? 'Verify and sign in' : 'Sign in'}</button>
+    </form>
+    <p><a href="/reset-password" style={{ textDecoration: 'underline' }}>Forgot your password?</a></p>
+    {!ready && <p className="help">Secure sign-in is unavailable. Contact your administrator or refresh when the service is back.</p>}
+  </AuthShell>;
+
   return <div className={styles.app} ref={motionRoot}>
     <a href="#employee-content" className={styles.skip}>Skip to your workspace</a>
     <aside className={styles.sidebar} aria-label="Employee navigation"><a className={styles.brand} href="/workspace" aria-label="Dapper Detailing Pros, Employee workspace"><img className={styles.brandLogo} src="/site/assets/logo.webp" alt="" width={44} height={44} /><span className={styles.brandText}><strong>Dapper Detailing Pros</strong><em>Employee workspace</em></span></a>
@@ -144,25 +202,25 @@ export default function EmployeeWorkspace() {
     </aside>
     <div className={styles.workspace}>
       <header className={styles.masthead}><div className={styles.site}><Building2 size={20} aria-hidden="true" /><div><strong>{site?.locationName ?? 'Dapper Detailing'}</strong><span>{site ? (site.dealershipName && site.dealershipName !== site.locationName ? `${site.dealershipName} · ${site.timezone}` : site.timezone) : 'Employee access'}</span></div></div><div className={styles.headerActions}><ThemeToggle className={styles.iconButton} compact />{signedIn && site && !gate && <button className={`${styles.iconButton} ${tab === 'account' && !checkout ? styles.iconActive : ''}`} aria-label="Account" aria-current={tab === 'account' && !checkout ? 'page' : undefined} onClick={() => navigate('account')}><UserRound size={19} /></button>}{signedIn && <button className={styles.iconButton} aria-label="Sign out" disabled={busy} onClick={signOut}><LogOut size={19} /></button>}</div></header>
+      <img className={styles.watermark} src="/site/assets/logo.webp" alt="" aria-hidden="true" width={240} height={240} />
       <main id="employee-content" className={styles.main}>
         {error && <p ref={errorRef} tabIndex={-1} role="alert" className={styles.error}>{error}</p>}
         {notice && <p role="status" className={styles.notice}><Check size={18} aria-hidden="true" />{notice}</p>}
-        {loading && !desk ? <div className={styles.loading} role="status">Opening your workspace…</div> : !signedIn ? <section className={styles.login}>
-          <h1>Good work starts here.</h1><p>Sign in to your workspace.</p>
-          <form onSubmit={signIn}><label>Work email<input type="email" autoComplete="username" required maxLength={254} value={email} onChange={e => setEmail(e.target.value)} disabled={busy || !ready} /></label><label>Password<input type="password" autoComplete="current-password" required maxLength={1024} value={password} onChange={e => setPassword(e.target.value)} disabled={busy || !ready} /></label><p><a href="/reset-password" style={{ textDecoration: 'underline' }}>Forgot your password?</a></p>{needsCode && <label>Authenticator code<input inputMode="numeric" autoComplete="one-time-code" autoFocus required maxLength={16} value={code} onChange={e => setCode(e.target.value)} disabled={busy} aria-describedby="code-hint" /><span id="code-hint" className={styles.help}>Enter the 6-digit code from your authenticator app, or a recovery code.</span></label>}<button className={styles.primary} disabled={busy || !ready}>{busy ? 'Signing in…' : needsCode ? 'Verify and sign in' : 'Sign in'}<ArrowUpRight size={18} /></button></form>
-          {!ready && <p className={styles.help}>Secure sign-in is unavailable. Contact your administrator or refresh when the service is back.</p>}
-        </section> : mfaBlocked ? <section className={styles.setup}><h1>Set up two-factor authentication</h1><MfaSetup required onDone={() => { setMfaBlocked(false); void refresh(); }} /></section> : !desk ? <section className={styles.setup}><h1>Your workspace could not load.</h1><p>We could not confirm your current worksite. Refresh to try again.</p><button className={styles.secondary} onClick={refresh}>Try again</button></section> : gate ? <OnboardingGate timezone={site?.timezone ?? 'America/Toronto'} onChanged={() => { void loadOnboarding(); void refresh(); }} /> : !site ? <section className={styles.setup}><Building2 size={36} strokeWidth={1.4} aria-hidden="true" /><h1>Your worksite comes first.</h1><p>Your administrator needs to assign your franchise before you can clock in, view customers or take payments.</p><button className={styles.secondary} disabled={loading} onClick={refresh}><RefreshCw size={17} />Check assignment</button></section> : <>
-          <div className={styles.pageHeading}><div><h1 ref={heading} tabIndex={-1}>{checkout ? 'Payment & invoice' : tab === 'today' ? 'A clear start to your day.' : tab === 'bookings' ? 'Your customer agenda.' : tab === 'walk-in' ? 'Welcome a walk-in.' : tab === 'invoices' ? 'Bill your work.' : tab === 'tags' ? 'Post key tags.' : tab === 'cars' ? 'Inspect a customer car.' : tab === 'account' ? 'Your account.' : tab === 'breaks' ? 'Your break history.' : tab === 'uploads' ? 'Everything you posted.' : 'Make next week work.'}</h1><p>{checkout ? checkout.customerName : tab === 'today' ? readableDay(today) : tab === 'bookings' ? 'Prebooked customers at your franchise.' : tab === 'walk-in' ? 'Customer details, services and a reserved time. No OTP required.' : tab === 'invoices' ? 'Create invoices from bookings, issue them and take payment.' : tab === 'tags' ? 'Key tags for a partner dealership' : tab === 'cars' ? 'Pre and post detail inspection photos' : tab === 'account' ? desk!.employee : tab === 'breaks' ? `Recorded breaks · ${site.timezone}` : tab === 'uploads' ? 'Your dealership tags and customer car photos' : `Personal availability and recorded shifts · ${site.timezone}`}</p></div><button className={styles.iconButton} aria-label="Refresh workspace" disabled={loading} onClick={refresh}><RefreshCw size={19} className={loading ? styles.spinning : ''} /></button></div>
+        {loading && !desk ? <div className={styles.loading} role="status">Opening your workspace…</div> : mfaBlocked ? <section className={styles.setup}><h1>Set up two-factor authentication</h1><MfaSetup required onDone={() => { setMfaBlocked(false); void refresh(); }} /></section> : !desk ? <section className={styles.setup}><h1>Your workspace could not load.</h1><p>We could not confirm your current worksite. Refresh to try again.</p><button className={styles.secondary} onClick={refresh}>Try again</button></section> : gate ? <OnboardingGate timezone={site?.timezone ?? 'America/Toronto'} onChanged={() => { void loadOnboarding(); void refresh(); }} /> : !site ? <section className={styles.setup}><Building2 size={36} strokeWidth={1.4} aria-hidden="true" /><h1>Your worksite comes first.</h1><p>Your administrator needs to assign your franchise before you can clock in, view customers or take payments.</p><button className={styles.secondary} disabled={loading} onClick={refresh}><RefreshCw size={17} />Check assignment</button></section> : <>
+          <div className={styles.pageHeading}><div><h1 ref={heading} tabIndex={-1}>{checkout ? 'Payment & invoice' : tab === 'clock' ? 'Clock in or out.' : tab === 'today' ? 'A clear start to your day.' : tab === 'bookings' ? 'Your customer agenda.' : tab === 'walk-in' ? 'Welcome a walk-in.' : tab === 'invoices' ? 'Bill your work.' : tab === 'tags' ? 'Post key tags.' : tab === 'cars' ? 'Inspect a customer car.' : tab === 'account' ? 'Your account.' : tab === 'breaks' ? 'Your break history.' : tab === 'uploads' ? 'Everything you posted.' : 'Make next week work.'}</h1><p>{checkout ? checkout.customerName : tab === 'clock' ? `${readableDay(today)} · tap your name and type your PIN` : tab === 'today' ? readableDay(today) : tab === 'bookings' ? 'Prebooked customers at your franchise.' : tab === 'walk-in' ? 'Customer details, services and a reserved time. No OTP required.' : tab === 'invoices' ? 'Create invoices from bookings, issue them and take payment.' : tab === 'tags' ? 'Key tags for a partner dealership' : tab === 'cars' ? 'Pre and post detail inspection photos' : tab === 'account' ? desk!.employee : tab === 'breaks' ? `Recorded breaks · ${site.timezone}` : tab === 'uploads' ? 'Your dealership tags and customer car photos' : `Personal availability and recorded shifts · ${site.timezone}`}</p></div><button className={styles.iconButton} aria-label="Refresh workspace" disabled={loading} onClick={refresh}><RefreshCw size={19} className={loading ? styles.spinning : ''} /></button></div>
           {checkout ? <section className={styles.checkout}>
             <button className={styles.textButton} onClick={() => navigate('bookings')}><ArrowLeft size={17} />Back to bookings</button>
             <div className={styles.checkoutIntro}><h2>{checkout.serviceName}</h2><p>{readableDay(worksiteDate(checkout.bookingTime, site.timezone))} · {formatTime(checkout.bookingTime)}</p></div>
             {invoiceError && <p role="alert" className={styles.error}>{invoiceError}</p>}{invoiceLoading && <p role="status">Loading reviewed invoices…</p>}
             {!invoiceLoading && !invoiceError && !invoices.length && <div className={styles.empty}><h3>No invoice prepared yet.</h3><p>Ask your administrator to prepare and issue the invoice for this booking. No amount has been collected.</p></div>}
             {invoices.map(inv => <article key={inv.id} id={`employee-invoice-${inv.id}`} className={styles.invoice}><div className={styles.sectionTop}><h3>Invoice {inv.invoiceNumber}</h3><span className={styles.status}>{inv.status.replaceAll('_', ' ')}</span></div><div className={styles.invoiceIdentity}><strong>{inv.issuerSnapshot?.legalName}</strong><p>{inv.issuerSnapshot?.address}</p>{inv.issuerSnapshot?.taxRegistration && <p>Tax registration: {inv.issuerSnapshot.taxRegistration}</p>}<p>Bill to: {inv.customerSnapshot?.name ?? inv.customerName}<br />{inv.customerSnapshot?.email}<br />{inv.customerSnapshot?.phone}</p>{inv.issuedAt && <p>Issued {readableDay(worksiteDate(inv.issuedAt, site.timezone))}</p>}</div>{inv.items?.map((item, n) => <div className={styles.invoiceLine} key={n}><span>{item.description} × {item.quantity}</span><strong>{money(item.totalPriceCents)}</strong></div>)}<div className={styles.invoiceLine}><span>Subtotal</span><strong>{money(inv.subtotalCents)}</strong></div><div className={styles.invoiceLine}><span>Tax</span><strong>{money(inv.taxCents)}</strong></div><div className={styles.invoiceLine}><span>Total ({inv.currency})</span><strong>{money(inv.totalCents)}</strong></div><div className={styles.invoiceLine}><span>Paid</span><strong>{money(inv.paidCents)}</strong></div><div className={styles.total}><span>Balance due</span><strong>{money(inv.dueCents)}</strong></div>
-              {inv.status !== 'draft' && inv.status !== 'void' && <button className={styles.secondary} onClick={() => printInvoiceDocument(inv as unknown as PrintInvoice, printTemplate)}>Print invoice</button>}
+              {inv.status !== 'draft' && inv.status !== 'void' && <button className={styles.secondary} onClick={() => (inv.bookingId && !ownLayout(printTemplate) ? openPdf(`/api/v1/employee/bookings/${inv.bookingId}/invoices/${inv.id}/pdf`) : printInvoiceDocument(inv as unknown as PrintInvoice, printTemplate))}>Open PDF</button>}
               {inv.dueCents > 0 && ['issued', 'partially_paid'].includes(inv.status) && <><div className={styles.paymentOptions}><h3>Payment method</h3><label className={styles.checkLabel}><input type="checkbox" checked={cashConfirmation} onChange={e => setCashConfirmation(e.target.checked)} disabled={busy} />I have received {money(inv.dueCents)} in cash.</label><button className={styles.primary} disabled={busy || !cashConfirmation || !permitted('payments.record')} onClick={() => recordCash(inv)}><Banknote size={18} />{busy ? 'Recording…' : 'Record cash received'}</button><div className={styles.reader}><CreditCard size={20} /><div><strong>Square Reader</strong><p>Reader payments are not connected on this device. Use the approved mobile integration once configured.</p></div></div></div>{permitted('payments.record') && <><SquareCardPayment key={`card-${inv.id}`} infoUrl="/api/v1/employee/square" payUrl={`/api/v1/employee/bookings/${checkout.id}/square-payments`} extraBody={{ invoiceId: inv.id }} invoiceId={inv.id} dueCents={inv.dueCents} onPaid={async () => { const data = await responseJSON<{ items: Invoice[] }>(await fetch(`/api/v1/employee/bookings/${checkout.id}/invoices`, { cache: 'no-store' })); setInvoices(data.items); setNotice('Card payment confirmed by Square and recorded. Your invoice balance has been updated.'); }} /><SquareReaderPayment key={`reader-${inv.id}`} prepareUrl={`/api/v1/employee/bookings/${checkout.id}/square-reader`} completeUrl={(intent) => `/api/v1/employee/bookings/${checkout.id}/square-reader/${intent}/complete`} extraBody={{ invoiceId: inv.id }} invoiceId={inv.id} dueCents={inv.dueCents} /></>}</>}
             </article>)}
-          </section> : tab === 'walk-in' ? <StaffBookingWizard key={assignmentKey.current} mode="employee" timezone={site.timezone} onBooked={async () => { setNotice('Booking saved. The time is held and nothing has been paid yet.'); await refresh(); }} /> : tab === 'invoices' ? <EmployeeInvoices key={'inv-' + assignmentKey.current} bookings={desk!.bookings} canCreate={permitted('invoices.create')} canIssue={permitted('invoices.issue')} timezone={site.timezone} onPay={(id) => { const b = desk!.bookings.find(x => x.id === id); if (b) void openCheckout(b); }} /> : tab === 'tags' ? <UploadComposer key={'tags-' + assignmentKey.current} kind="dealership_tag" timezone={site.timezone} employee={desk!.employee} bookings={desk!.bookings} onPosted={() => setNotice('')} /> : tab === 'cars' ? <UploadComposer key={'cars-' + assignmentKey.current} kind="customer_car" timezone={site.timezone} employee={desk!.employee} bookings={desk!.bookings} onPosted={() => setNotice('')} /> : tab === 'account' ? <EmployeeAccount employee={desk!.employee} site={site} actions={desk!.actions} busy={busy} onSignOut={signOut} /> : tab === 'breaks' ? <BreakHistory key={'breaks-' + shift?.status} timezone={site.timezone} /> : tab === 'uploads' ? <MyUploads timezone={site.timezone} /> : tab === 'shifts' ? <div className={styles.shiftGrid}><AvailabilityForm key={assignmentKey.current} data={desk!.availability!} onSaved={async message => { setNotice(message); await refresh(); }} /><section className={styles.history}><h2>Your recorded shifts</h2>{desk!.attendance.length ? desk!.attendance.map(s => <div className={styles.historyRow} key={s.id}><div><strong>{readableDay(worksiteDate(s.clockInAt, site.timezone), { month: 'short', day: 'numeric' })}</strong><span>{formatTime(s.clockInAt)} — {s.clockOutAt ? formatTime(s.clockOutAt) : 'Active'}</span></div><span>{Math.floor(s.totalWorkMinutes / 60)}h {s.totalWorkMinutes % 60}m</span></div>) : <p className={styles.help}>No recorded shifts at this worksite yet.</p>}</section></div> : tab === 'bookings' ? <EmployeeCalendar key={assignmentKey.current} today={today} timezone={site.timezone} onPayment={openCheckout} /> : <><div className={styles.homeTop}><ShiftHero shift={shift} siteName={site.dealershipName && site.dealershipName !== site.locationName ? `${site.locationName} · ${site.dealershipName}` : site.locationName} canRecord={permitted('attendance.record')} busy={busy || loading} onPunch={punch} /><StatCards refreshKey={desk!.generatedAt} /></div><DocumentsCard timezone={site.timezone} /><div className={styles.deskGrid}>
+          </section> : tab === 'clock' ? <ShopClockPanel onSignedOut={clockSignedOut} /> : tab === 'walk-in' ? <StaffBookingWizard key={assignmentKey.current} mode="employee" timezone={site.timezone} onBooked={async () => { setNotice('Booking saved. The time is held and nothing has been paid yet.'); await refresh(); }} /> : tab === 'invoices' ? <EmployeeInvoices key={'inv-' + assignmentKey.current} bookings={desk!.bookings} canCreate={permitted('invoices.create')} canIssue={permitted('invoices.issue')} timezone={site.timezone} onPay={(id) => { const b = desk!.bookings.find(x => x.id === id); if (b) void openCheckout(b); }} /> : tab === 'tags' ? <UploadComposer key={'tags-' + assignmentKey.current} kind="dealership_tag" timezone={site.timezone} employee={desk!.employee} bookings={desk!.bookings} onPosted={() => setNotice('')} /> : tab === 'cars' ? <UploadComposer key={'cars-' + assignmentKey.current} kind="customer_car" timezone={site.timezone} employee={desk!.employee} bookings={desk!.bookings} onPosted={() => setNotice('')} /> : tab === 'account' ? <EmployeeAccount employee={desk!.employee} site={site} actions={desk!.actions} busy={busy} onSignOut={signOut} /> : tab === 'breaks' ? <BreakHistory key={'breaks-' + shift?.status} timezone={site.timezone} /> : tab === 'uploads' ? <MyUploads timezone={site.timezone} /> : tab === 'shifts' && desk!.employee === 'Shop iPad' ? <ShopClockPanel mode="availability" onSignedOut={clockSignedOut} renderAvailability={(worker, pin, data) => <AvailabilityForm data={data as Availability} onSaved={async (m) => setNotice(`${worker.name}: ${m}`)} api={{
+            read: async (week) => responseJSON<Availability>(await fetch(`/api/v1/shop/workers/${worker.principalId}/availability`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin, week }) })),
+            save: async (body) => { await responseJSON(await fetch(`/api/v1/shop/workers/${worker.principalId}/availability`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...body, pin }) })); },
+          }} />} /> : tab === 'shifts' ? <div className={styles.shiftGrid}><AvailabilityForm key={assignmentKey.current} data={desk!.availability!} onSaved={async message => { setNotice(message); await refresh(); }} /><section className={styles.history}><h2>Your recorded shifts</h2>{desk!.attendance.length ? desk!.attendance.map(s => <div className={styles.historyRow} key={s.id}><div><strong>{readableDay(worksiteDate(s.clockInAt, site.timezone), { month: 'short', day: 'numeric' })}</strong><span>{formatTime(s.clockInAt)} — {s.clockOutAt ? formatTime(s.clockOutAt) : 'Active'}</span></div><span>{Math.floor(s.totalWorkMinutes / 60)}h {s.totalWorkMinutes % 60}m</span></div>) : <p className={styles.help}>No recorded shifts at this worksite yet.</p>}</section></div> : tab === 'bookings' ? <EmployeeCalendar key={assignmentKey.current} today={today} timezone={site.timezone} onPayment={openCheckout} /> : <><div className={styles.homeTop}><ShiftHero shift={shift} siteName={site.dealershipName && site.dealershipName !== site.locationName ? `${site.locationName} · ${site.dealershipName}` : site.locationName} /><StatCards refreshKey={desk!.generatedAt} /></div><DocumentsCard timezone={site.timezone} /><div className={styles.deskGrid}>
             <section className={styles.agenda} aria-labelledby="agenda-title"><div className={styles.sectionTop}><h2 id="agenda-title">Today’s customers</h2><span className={styles.count}>{agenda.length} shown</span></div>
 
               {!permitted('bookings.read') ? <div className={styles.empty}><h3>Booking access isn’t assigned.</h3><p>Contact your administrator to enable customer bookings for this worksite.</p></div> : !agenda.length ? <div className={styles.empty}><CalendarDays size={34} strokeWidth={1.3} aria-hidden="true" /><h3>A little room in the day.</h3><p>No bookings are shown for this date. Bookings appear here once an administrator links them to your franchise.</p><button className={styles.textButton} onClick={() => navigate('walk-in')}>Add a walk-in<ArrowUpRight size={17} /></button></div> : agenda.slice(0, 100).map(b => <article className={styles.booking} key={b.id}><time dateTime={b.bookingTime}>{formatTime(b.bookingTime)}</time><div><span className={styles.status}>{b.status.replaceAll('_', ' ')}</span><h3>{b.customerName}</h3><p>{b.serviceName}{b.addons?.length ? ` · ${b.addons.map(a => a.name).join(', ')}` : ''}</p><div className={styles.contacts}>{b.customerPhone && <a href={`tel:${b.customerPhone}`}>{b.customerPhone}</a>}{b.customerEmail && <a href={`mailto:${b.customerEmail}`}>{b.customerEmail}</a>}</div><button className={styles.textButton} onClick={() => openCheckout(b)}>Payment & invoice<ArrowUpRight size={17} /></button></div></article>)}
@@ -170,7 +228,6 @@ export default function EmployeeWorkspace() {
             </section>
           </div><RecentPunches shifts={desk!.attendance} timezone={site.timezone} /></>}
         </>}
-        {signedIn && site && <GpsTracker shiftStatus={shift?.status} slotKey={tab + (checkout ? '-checkout' : '') + (loading ? '-loading' : '')} />}
       </main>
       <footer className={styles.footer}>Dapper Detailing Pros<span>Personal workspace · secure session</span></footer>
     </div>
@@ -191,14 +248,14 @@ export default function EmployeeWorkspace() {
   </div>;
 }
 
-function AvailabilityForm({ data, onSaved }: { data: Availability; onSaved: (message: string) => Promise<void> }) {
+function AvailabilityForm({ data, onSaved, api }: { data: Availability; onSaved: (message: string) => Promise<void>; api?: { read: (week: string) => Promise<Availability>; save: (body: object) => Promise<void> } }) {
   const [cur, setCur] = useState<Availability>(data);
   const mondayOf = (d: string) => { const t = new Date(d + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7)); return t.toISOString().slice(0, 10); };
   useEffect(() => { setCur(data); }, [data]);
   async function chooseWeek(date: string) {
     if (!date) return;
     setBusy(true); setError('');
-    try { setCur(await responseJSON<Availability>(await fetch('/api/v1/employee/availability?week=' + mondayOf(date), { cache: 'no-store' }))); }
+    try { setCur(api ? await api.read(mondayOf(date)) : await responseJSON<Availability>(await fetch('/api/v1/employee/availability?week=' + mondayOf(date), { cache: 'no-store' }))); }
     catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
   }
@@ -211,7 +268,7 @@ function AvailabilityForm({ data, onSaved }: { data: Availability; onSaved: (mes
   useEffect(() => { if (error && !busy) errorRef.current?.focus(); }, [error, busy]);
   async function submit(e: React.FormEvent) {
     e.preventDefault(); const issue = availabilityError(ranges, unavailable); if (issue) { setError(issue); return; } setBusy(true); setError('');
-    try { await responseJSON(await fetch('/api/v1/employee/availability', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ weekStart: cur.weekStart, intervals: unavailable ? [] : ranges, notes, version: cur.version }) })); await onSaved('Availability submitted to your administrator. This does not create an assigned shift.'); }
+    try { const body = { weekStart: cur.weekStart, intervals: unavailable ? [] : ranges, notes, version: cur.version }; if (api) await api.save(body); else await responseJSON(await fetch('/api/v1/employee/availability', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })); await onSaved('Availability submitted to your administrator. This does not create an assigned shift.'); }
     catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   }
   return <section className={styles.availability}><div className={styles.sectionTop}><h2>Availability</h2><span className={styles.status}>{cur.submittedAt ? 'Submitted' : 'Not submitted'}</span></div><label className={styles.noteLabel}>Week<DatePicker value={cur.weekStart} min={mondayOf(worksiteDate(new Date().toISOString(), cur.timezone))} aria-label="Choose the week" onChange={e => void chooseWeek(e.target.value)} disabled={busy} /></label><p>{readableDay(cur.weekStart)} — {readableDay(dateOffset(cur.weekStart, 6))}<br />All times in {cur.timezone}. Availability is not a confirmed shift.</p><form onSubmit={submit}>

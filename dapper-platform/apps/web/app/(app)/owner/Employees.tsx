@@ -28,7 +28,7 @@ const MISSING: Record<string, string> = { details: 'name and phone', documents: 
 /* Only people whose role is Employee are listed here; owners and managers are managed under Team. */
 const isEmployee = (p: { roles: string[] }) => p.roles.some((r) => r.trim().toLowerCase() === 'employee');
 
-export default function Employees({ organizationId, onChanged }: { organizationId: string; onChanged?: () => void }) {
+export default function Employees({ organizationId, franchiseName = '', onChanged }: { organizationId: string; franchiseName?: string; onChanged?: () => void }) {
   const base = `/api/v1/organizations/${organizationId}`;
   const [people, setPeople] = useState<Person[] | null>(null);
   const [roles, setRoles] = useState<Role[]>([]);
@@ -37,6 +37,7 @@ export default function Employees({ organizationId, onChanged }: { organizationI
   const [query, setQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [status, setStatus] = useState('');
+  const [franchise, setFranchise] = useState(franchiseName);
   const [open, setOpen] = useState<Person | null>(null);
   const [newRole, setNewRole] = useState('');
   const [newScope, setNewScope] = useState('organization');
@@ -58,13 +59,15 @@ export default function Employees({ organizationId, onChanged }: { organizationI
   useEffect(() => { if (open && people) setOpen(people.find((p) => p.principalId === open.principalId) ?? null); }, [people]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const roleNames = useMemo(() => [...new Set((people ?? []).flatMap((p) => p.roles))].sort(), [people]);
+  const franchiseNames = useMemo(() => [...new Set((people ?? []).map((p) => p.locationName).filter(Boolean))].sort(), [people]);
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
     return (people ?? []).filter((p) =>
       (!q || [p.fullName, p.email, p.phone].some((v) => (v ?? '').toLowerCase().includes(q))) &&
+      (!franchise || p.locationName === franchise) &&
       (!roleFilter || p.roles.includes(roleFilter)) &&
       (!status || (status === 'terminated' ? !p.active : status === 'attention' ? p.active && p.missing.length > 0 : p.active)));
-  }, [people, query, roleFilter, status]);
+  }, [people, query, roleFilter, status, franchise]);
 
   async function run(fn: () => Promise<string>) {
     setBusy(true); setError(''); setNotice('');
@@ -96,16 +99,17 @@ export default function Employees({ organizationId, onChanged }: { organizationI
       {notice && <p role="status" className={styles.status}>{notice}</p>}
       <div className={styles.custFilters}>
         <input type="search" className={styles.searchBox} placeholder="Search name, email or phone" aria-label="Search employees" value={query} onChange={(e) => setQuery(e.target.value)} />
+        <Select value={franchise} onChange={(e) => setFranchise(e.target.value)} aria-label="Franchise"><option value="">All franchises</option>{[...new Set([franchiseName, ...franchiseNames])].filter(Boolean).map((f) => <option key={f} value={f}>{f}</option>)}</Select>
         <Select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} aria-label="Role"><option value="">Any role</option>{roleNames.map((r) => <option key={r} value={r}>{r}</option>)}</Select>
         <Select value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Status"><option value="">Everyone</option><option value="active">Active</option><option value="attention">Needs attention</option><option value="terminated">Terminated</option></Select>
-        {(query || roleFilter || status) && <button type="button" className="secondary" onClick={() => { setQuery(''); setRoleFilter(''); setStatus(''); }}>Clear filters</button>}
+        {(query || roleFilter || status || franchise) && <button type="button" className="secondary" onClick={() => { setQuery(''); setRoleFilter(''); setStatus(''); setFranchise(''); }}>Clear filters</button>}
       </div>
       {!people && !error && <div className={`${styles.card} ${styles.skeleton}`} role="status" aria-label="Loading employees" />}
       {people && people.length === 0 && <p className={styles.status}>No employees yet. Invite someone under Team and give them the Employee role. They sign in to the workspace only.</p>}
       {people && people.length > 0 && shown.length === 0 && <p className={styles.status}>No one matches these filters.</p>}
       <ul className={styles.people}>
         {shown.map((p) => (
-          <li key={p.principalId} className={styles.person} style={{ opacity: p.active ? 1 : 0.65 }}>
+          <li key={p.principalId} className={styles.person} style={{ opacity: p.active ? 1 : 0.65, gridTemplateColumns: 'minmax(0,1fr) auto', alignItems: 'center' }}>
             <button type="button" className={styles.personButton} onClick={() => { setOpen(p); setNotice(''); }} aria-label={`Open ${p.fullName || p.email}`} style={{ width: '100%' }}>
               <span className={styles.custRow}>
                 <strong className={styles.custName}>{p.fullName || p.email}</strong>
@@ -115,6 +119,12 @@ export default function Employees({ organizationId, onChanged }: { organizationI
                 <span className={styles.custAddress}>{[p.roles.length ? p.roles.join(', ') : 'No role', p.locationName || p.scope || 'No franchise', `Last sign-in: ${when(p.lastSignIn)}`].join(' · ')}</span>
               </span>
             </button>
+            <div className={styles.svcActions}>
+              <button type="button" className="secondary" disabled={busy} onClick={() => { setOpen(p); setNotice(''); }}>Manage</button>
+              {p.active
+                ? <button type="button" className="secondary" disabled={busy} onClick={() => setConfirm({ person: p, action: 'terminate' })}>Terminate</button>
+                : <button type="button" className="secondary" disabled={busy} onClick={() => setConfirm({ person: p, action: 'reinstate' })}>Reinstate</button>}
+            </div>
           </li>
         ))}
       </ul>

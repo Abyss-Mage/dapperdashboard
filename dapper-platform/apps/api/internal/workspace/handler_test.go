@@ -5,6 +5,7 @@ import (
 	"dapper.local/platform/internal/identity"
 	"dapper.local/platform/internal/postgres"
 	"dapper.local/platform/internal/square"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/jackc/pgx/v5"
@@ -186,7 +187,7 @@ func TestScopedHTTPBoundaryWithPostgres(t *testing.T) {
 	if send("POST", orgBase+"franchises", `{"code":"INJ","name":"Injected actor","actorId":"forged"}`, token, origin).Code != 400 {
 		t.Fatal("structure actor injection accepted")
 	}
-	if send("PUT", orgBase+"franchises/"+franchise.ID, `{"code":"HTTPF","name":"Synthetic HTTP franchise","address":{"street":"1 Test Rd","city":"Peterborough","region":"ON","postalCode":"K9J 1A1","country":"Canada"}}`, token, origin).Code != 200 {
+	if send("PUT", orgBase+"franchises/"+franchise.ID, `{"code":"HTTPF","name":"Synthetic HTTP franchise","address":{"street":"1 Test Rd","city":"Peterborough","region":"ON","postalCode":"K9J 1A1","country":"Canada"},"taxRegistration":"SYN-HST-1"}`, token, origin).Code != 200 {
 		t.Fatal("franchise edit failed")
 	}
 	if send("GET", "/api/v1/organizations/"+otherOrg+"/structure", "", token, origin).Code != 403 {
@@ -194,6 +195,9 @@ func TestScopedHTTPBoundaryWithPostgres(t *testing.T) {
 	}
 	if list := send("GET", orgBase+"structure", "", token, origin); list.Code != 200 || !strings.Contains(list.Body.String(), "HTTPF") || !strings.Contains(list.Body.String(), "1 Test Rd") {
 		t.Fatal("persisted structure missing")
+	}
+	if listed := send("GET", orgBase+"structure", "", token, origin); listed.Code != 200 || !strings.Contains(listed.Body.String(), "SYN-HST-1") {
+		t.Fatal("franchise HST number was not saved through the route", listed.Code)
 	}
 	if del := send("DELETE", orgBase+"franchises/"+franchise.ID, "", token, origin); del.Code != 200 {
 		t.Fatal("unused franchise could not be deleted", del.Code, del.Body.String())
@@ -406,25 +410,292 @@ func TestScopedHTTPBoundaryWithPostgres(t *testing.T) {
 	if send("GET", base+"attendance/active", "", token, origin).Code != 200 {
 		t.Fatal("active attendance read failed")
 	}
-	clockInRes := send("POST", base+"attendance/clock-in", `{"notes":"HTTP morning shift"}`, token, origin)
-	if clockInRes.Code != 201 {
-		t.Fatal("clock in failed", clockInRes.Code, clockInRes.Body.String())
+	// Time is recorded on the shop iPad now: the personal clock-in is refused, and the PIN clock does the whole shift.
+	if w := send("POST", base+"attendance/clock-in", `{"notes":"HTTP morning shift"}`, token, origin); w.Code != 409 || !strings.Contains(w.Body.String(), "shop_clock") {
+		t.Fatal("personal clock in still accepted", w.Code, w.Body.String())
 	}
-	if send("POST", base+"attendance/clock-in", `{"notes":"Double clock in"}`, token, origin).Code != 409 {
-		t.Fatal("double clock in accepted")
+	if _, err = setup.Exec(ctx, `INSERT INTO location_grants(principal_id,organization_id,location_id,action) VALUES($1,$2,$3,'attendance.manage') ON CONFLICT DO NOTHING`, actor, org, location); err != nil {
+		t.Fatal(err)
 	}
-	if send("POST", base+"attendance/start-break", `{"notes":"Coffee"}`, token, origin).Code != 200 {
-		t.Fatal("start break failed")
+	// The shop iPad lists the franchise's team by role, as the Employees page does (error404 #48).
+	var clockRole string
+	if err = setup.QueryRow(ctx, `INSERT INTO roles(organization_id,name,description,version) VALUES($1,'Synthetic clock staff','Synthetic test role',1) RETURNING id::text`, org).Scan(&clockRole); err != nil {
+		t.Fatal(err)
 	}
-	if send("POST", base+"attendance/end-break", `{"notes":"Work resumed"}`, token, origin).Code != 200 {
-		t.Fatal("end break failed")
+	if _, err = setup.Exec(ctx, `INSERT INTO role_capabilities(role_id,action) VALUES($1,'attendance.record')`, clockRole); err != nil {
+		t.Fatal(err)
 	}
-	clockOutRes := send("POST", base+"attendance/clock-out", `{"notes":"Shift done"}`, token, origin)
-	if clockOutRes.Code != 200 {
-		t.Fatal("clock out failed", clockOutRes.Code, clockOutRes.Body.String())
+	if _, err = setup.Exec(ctx, `INSERT INTO organization_memberships(organization_id,principal_id) VALUES($1,$2) ON CONFLICT DO NOTHING`, org, actor); err != nil {
+		t.Fatal(err)
 	}
-	if hist := send("GET", base+"attendance/history", "", token, origin); hist.Code != 200 || !strings.Contains(hist.Body.String(), "HTTP morning shift") {
+	if _, err = setup.Exec(ctx, `INSERT INTO member_role_assignments(organization_id,principal_id,role_id,scope_type,scope_id,location_id,version,assigned_by) VALUES($1,$2,$3,'location',$4,$4,1,$2)`, org, actor, clockRole, location); err != nil {
+		t.Fatal(err)
+	}
+	if w := send("PUT", base+"shop-clock/staff/"+actor+"/pin", `{"pin":"4821"}`, token, origin); w.Code != 422 {
+		t.Fatal("a PIN that is not 6 digits was accepted", w.Code)
+	}
+	if w := send("PUT", base+"shop-clock/staff/"+actor+"/pin", `{"pin":"482193"}`, token, origin); w.Code != 200 {
+		t.Fatal("PIN not saved", w.Code, w.Body.String())
+	}
+	if w := send("GET", base+"shop-clock/staff", "", token, origin); w.Code != 200 || !strings.Contains(w.Body.String(), `"hasPin":true`) || strings.Contains(w.Body.String(), "482193") {
+		t.Fatal("PIN list wrong or shows the PIN", w.Code, w.Body.String())
+	}
+	if w := send("PUT", base+"shop-clock/login", `{"username":"Synthetic.Shop","password":"short"}`, token, origin); w.Code != 422 {
+		t.Fatal("a short shop password was accepted", w.Code)
+	}
+	if w := send("PUT", base+"shop-clock/login", `{"username":"Synthetic.Shop","password":"synthetic-shop-pass"}`, token, origin); w.Code != 200 {
+		t.Fatal("shop login not saved", w.Code, w.Body.String())
+	}
+	if w := send("GET", base+"shop-clock/login", "", token, origin); w.Code != 200 || !strings.Contains(w.Body.String(), `"username":"synthetic.shop"`) || strings.Contains(w.Body.String(), "synthetic-shop-pass") {
+		t.Fatal("shop login read wrong", w.Code, w.Body.String())
+	}
+	// The iPad: its own cookie jar, no bearer token.
+	jar := map[string]string{}
+	ipad := func(method, path, body string) *httptest.ResponseRecorder {
+		r := httptest.NewRequest(method, path, strings.NewReader(body))
+		r.Host = "127.0.0.1:8121"
+		r.Header.Set("Origin", origin)
+		r.Header.Set("Content-Type", "application/json")
+		for k, v := range jar {
+			r.AddCookie(&http.Cookie{Name: k, Value: v})
+		}
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+		for _, c := range w.Result().Cookies() {
+			if c.MaxAge < 0 {
+				delete(jar, c.Name)
+			} else {
+				jar[c.Name] = c.Value
+			}
+		}
+		return w
+	}
+	if w := ipad("GET", "/api/v1/shop/workers?release=1", ""); w.Code != 401 {
+		t.Fatal("worker list shown without the shop sign-in", w.Code)
+	}
+	if w := ipad("POST", "/api/v1/shop/login", `{"username":"synthetic.shop","password":"wrong-password-x"}`); w.Code != 401 {
+		t.Fatal("wrong shop password accepted", w.Code)
+	}
+	if w := ipad("POST", "/api/v1/shop/login", `{"username":"synthetic.shop","password":"synthetic-shop-pass"}`); w.Code != 200 || jar["__Host-dapper_shop"] == "" {
+		t.Fatal("shop sign-in failed", w.Code, w.Body.String())
+	}
+	// The shop sees every workspace page: signing in opens the workspace as the franchise's Shop account (not the owner, not a worker).
+	if w := ipad("GET", "/api/v1/employee/workspace", ""); w.Code != 200 || !strings.Contains(w.Body.String(), `"employee":"Shop iPad"`) || !strings.Contains(w.Body.String(), `"bookings.read"`) {
+		t.Fatal("the shop login did not open the Shop workspace", w.Code, w.Body.String())
+	}
+	if w := send("GET", base+"shop-clock/staff", "", token, origin); w.Code != 200 || strings.Contains(w.Body.String(), "Shop iPad") || strings.Contains(w.Body.String(), "system:shop") {
+		t.Fatal("the Shop account shows in the staff PIN list", w.Code, w.Body.String())
+	}
+	if w := ipad("POST", "/api/v1/shop/workers/"+actor+"/availability", `{"pin":"000001","week":"2026-11-09"}`); w.Code != 401 {
+		t.Fatal("availability opened with a wrong PIN", w.Code, w.Body.String())
+	}
+	if w := ipad("GET", "/api/v1/shop/workers?release=1", ""); w.Code != 200 || !strings.Contains(w.Body.String(), actor) {
+		t.Fatal("worker list wrong", w.Code, w.Body.String())
+	}
+	if w := ipad("GET", "/api/v1/shop/me", ""); w.Code != 401 {
+		t.Fatal("shop bar answered before a PIN", w.Code)
+	}
+	unlock := func(pin string) *httptest.ResponseRecorder {
+		return ipad("POST", "/api/v1/shop/workers/"+actor+"/unlock", `{"pin":"`+pin+`"}`)
+	}
+	if w := unlock("482193"); w.Code != 200 || jar["__Host-dapper_workspace"] == "" || jar["dapper_shop_worker"] != "1" {
+		t.Fatal("PIN unlock failed", w.Code, w.Body.String())
+	}
+	// The workspace's clock page: name + PIN punches without opening the dashboard; a wrong PIN is refused.
+	if w := ipad("POST", "/api/v1/shop/workers/"+actor+"/punch", `{"pin":"482193","action":"status"}`); w.Code != 200 || !strings.Contains(w.Body.String(), `"shift":null`) {
+		t.Fatal("PIN status on the clock page failed", w.Code, w.Body.String())
+	}
+	// The unlocked session is the worker's own dashboard session.
+	if w := ipad("GET", "/api/v1/auth/me", ""); w.Code != 200 || !strings.Contains(w.Body.String(), actor) {
+		t.Fatal("worker session not usable for the dashboard", w.Code, w.Body.String())
+	}
+	if w := ipad("GET", "/api/v1/shop/me", ""); w.Code != 200 || !strings.Contains(w.Body.String(), `"shift":null`) {
+		t.Fatal("status before clocking in wrong", w.Code, w.Body.String())
+	}
+	for _, step := range []struct{ action, status string }{{"clock-in", "clocked_in"}, {"start-break", "on_break"}, {"end-break", "clocked_in"}, {"clock-out", "clocked_out"}} {
+		if w := ipad("POST", "/api/v1/shop/me", `{"action":"`+step.action+`"}`); w.Code != 200 || !strings.Contains(w.Body.String(), `"status":"`+step.status+`"`) {
+			t.Fatal("shop "+step.action+" failed", w.Code, w.Body.String())
+		}
+	}
+	// Staff hours in the browser's zone, including an old alias the database may not know (error404 #47).
+	if w := send("GET", base+"attendance/totals?from="+time.Now().AddDate(0, 0, -3).Format("2006-01-02")+"&to="+time.Now().AddDate(0, 0, 3).Format("2006-01-02")+"&tz=Asia%2FCalcutta", "", token, origin); w.Code != 200 || !strings.Contains(w.Body.String(), actor) {
+		t.Fatal("staff hours in Asia/Calcutta failed", w.Code, w.Body.String())
+	}
+	if w := ipad("POST", "/api/v1/shop/me", `{"action":"clock-out"}`); w.Code != 409 {
+		t.Fatal("clock out without a shift accepted", w.Code)
+	}
+	// The owner's own signed-in session cannot punch through the shop bar (it was not opened by a PIN on the iPad).
+	if w := send("GET", "/api/v1/shop/me", "", token, origin); w.Code != 401 {
+		t.Fatal("a normal session used the shop bar", w.Code)
+	}
+	worker := jar["__Host-dapper_workspace"]
+	if w := ipad("POST", "/api/v1/shop/done", ""); w.Code != 204 || jar["__Host-dapper_workspace"] != "" {
+		t.Fatal("Done did not sign the worker out", w.Code)
+	}
+	if w := send("GET", "/api/v1/auth/me", "", worker, origin); w.Code != 401 {
+		t.Fatal("the worker session still works after Done", w.Code)
+	}
+	// An owner's PIN never opens their dashboard on the shared iPad.
+	if _, err = setup.Exec(ctx, `INSERT INTO organization_grants(principal_id,organization_id,action) VALUES($1,$2,'access.manage') ON CONFLICT DO NOTHING`, actor, org); err != nil {
+		t.Fatal(err)
+	}
+	if w := unlock("482193"); w.Code != 403 || jar["__Host-dapper_workspace"] != "" {
+		t.Fatal("an owner was signed in with a shop PIN", w.Code, w.Body.String())
+	}
+	if _, err = setup.Exec(ctx, `DELETE FROM organization_grants WHERE principal_id=$1 AND organization_id=$2 AND action='access.manage'`, actor, org); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 4; i++ { // one wrong PIN was already tried on availability
+		if w := unlock("000000"); w.Code != 401 {
+			t.Fatal("wrong PIN not refused", w.Code)
+		}
+	}
+	if w := unlock("482193"); w.Code != 429 {
+		t.Fatal("wrong PINs not limited", w.Code)
+	}
+	// Changing the shop password signs the iPad out.
+	if w := send("PUT", base+"shop-clock/login", `{"username":"synthetic.shop","password":"another-shop-pass"}`, token, origin); w.Code != 200 {
+		t.Fatal("shop login change failed", w.Code)
+	}
+	if w := ipad("GET", "/api/v1/shop/workers?release=1", ""); w.Code != 401 {
+		t.Fatal("the iPad stayed signed in after the password changed", w.Code)
+	}
+	if _, err = setup.Exec(ctx, `DELETE FROM member_role_assignments WHERE role_id=$1`, clockRole); err != nil {
+		t.Fatal(err)
+	}
+	if hist := send("GET", base+"attendance/history", "", token, origin); hist.Code != 200 || !strings.Contains(hist.Body.String(), `"status":"clocked_out"`) {
 		t.Fatal("attendance history failed", hist.Code, hist.Body.String())
+	}
+
+	// Dealership invoices over HTTP: a draft with VIN lines, the filtered list, its PDF and the ZIP of the list; another franchise is refused.
+	if _, err = setup.Exec(ctx, `INSERT INTO location_grants(principal_id,organization_id,location_id,action) SELECT $1,$2,$3,a FROM unnest(ARRAY['dealership.read','dealership.manage','invoices.read','invoices.create','invoices.manage','customers.create','customers.read']) a ON CONFLICT DO NOTHING`, actor, org, location); err != nil {
+		t.Fatal(err)
+	}
+	dlCustomer := send("POST", base+"customers", `{"name":"Synthetic HTTP Motors","email":"motors@example.test","phone":""}`, token, origin)
+	var dlc struct{ ID string }
+	if dlCustomer.Code != 201 || json.Unmarshal(dlCustomer.Body.Bytes(), &dlc) != nil {
+		t.Fatal("dealership customer failed", dlCustomer.Code, dlCustomer.Body.String())
+	}
+	dlRes := send("POST", base+"dealerships", `{"customerId":"`+dlc.ID+`","accountName":"Synthetic HTTP Motors","accountCode":"HTTPMOT","accountType":"dealership","contacts":[{"name":"Synthetic Buyer","email":"buyer@example.test"}]}`, token, origin)
+	var dl struct{ ID string }
+	if dlRes.Code != 201 || json.Unmarshal(dlRes.Body.Bytes(), &dl) != nil {
+		t.Fatal("dealership failed", dlRes.Code, dlRes.Body.String())
+	}
+	if w := send("POST", base+"dealer-invoices", `{"dealershipId":"`+dl.ID+`","discountCents":9000,"lines":[{"description":"Lot detail","quantity":1,"unitPriceCents":4500}]}`, token, origin); w.Code != 422 {
+		t.Fatal("a discount above the subtotal was accepted", w.Code, w.Body.String())
+	}
+	dlInv := send("POST", base+"dealer-invoices", `{"dealershipId":"`+dl.ID+`","poNumber":"PO-1","discountPercent":5,"lines":[{"description":"Lot detail","detail":"Full interior","quantity":2,"unitPriceCents":4500,"vin":"1HGCM82633A004352","stockNumber":"S-1"}]}`, token, origin)
+	var di struct {
+		ID    string
+		Lines []struct{ VIN string }
+	}
+	if dlInv.Code != 201 || json.Unmarshal(dlInv.Body.Bytes(), &di) != nil || len(di.Lines) != 1 || di.Lines[0].VIN != "1HGCM82633A004352" {
+		t.Fatal("dealership invoice failed", dlInv.Code, dlInv.Body.String())
+	}
+	if w := send("GET", base+"dealer-invoices?dealershipId="+dl.ID+"&status=draft", "", token, origin); w.Code != 200 || !strings.Contains(w.Body.String(), di.ID) {
+		t.Fatal("dealership invoice list failed", w.Code, w.Body.String())
+	}
+	if w := send("GET", base+"dealer-invoices?status=nonsense", "", token, origin); w.Code != 422 {
+		t.Fatal("unknown status filter accepted", w.Code)
+	}
+	if w := send("GET", base+"dealer-invoices/"+di.ID+"/pdf", "", token, origin); w.Code != 200 || !bytes.HasPrefix(w.Body.Bytes(), []byte("%PDF")) {
+		t.Fatal("dealership invoice PDF failed", w.Code)
+	}
+	if w := send("GET", base+"dealer-invoices/zip?dealershipId="+dl.ID, "", token, origin); w.Code != 200 || !bytes.HasPrefix(w.Body.Bytes(), []byte("PK")) {
+		t.Fatal("dealership invoice ZIP failed", w.Code, w.Body.String())
+	}
+	if w := send("GET", "/api/v1/public/invoice-pay/"+strings.Repeat("A", 43), "", "", origin); w.Code != 404 {
+		t.Fatal("an unknown pay link opened something", w.Code, w.Body.String())
+	}
+	if w := send("POST", "/api/v1/organizations/"+org+"/dealer-invoice-template/sample?location="+location, `{"template":{"title":"Invoice","accentColor":"#E5222F","showLogo":true,"billToLabel":"Bill to","itemLabel":"Item","quantityLabel":"Qty","unitPriceLabel":"Rate","amountLabel":"Amount","paperSize":"letter","footerNote":"Thank you"}}`, token, origin); w.Code != 200 || !bytes.HasPrefix(w.Body.Bytes(), []byte("%PDF")) || !bytes.Contains(w.Body.Bytes(), []byte("Client Details")) {
+		t.Fatal("dealership template sample failed", w.Code, w.Body.String())
+	}
+	if w := send("POST", base+"dealer-invoices/preview", `{"discountPercent":10,"lines":[{"quantity":2,"unitPriceCents":4500}]}`, token, origin); w.Code != 200 || !strings.Contains(w.Body.String(), `"discountCents":900`) {
+		t.Fatal("dealership invoice preview failed", w.Code, w.Body.String())
+	}
+	if w := send("GET", base+"dealer-invoices/"+di.ID+"/held-payments", "", token, origin); w.Code != 200 || !strings.Contains(w.Body.String(), `"items":[]`) {
+		t.Fatal("held payments list failed", w.Code, w.Body.String())
+	}
+	if w := send("POST", base+"dealer-invoices/"+di.ID+"/release-held-payments", "", token, origin); w.Code != 200 || !strings.Contains(w.Body.String(), `"released":0`) {
+		t.Fatal("releasing nothing failed", w.Code, w.Body.String())
+	}
+	if w := send("POST", base+"dealer-invoices/"+di.ID+"/reopen", "", token, origin); w.Code != 409 {
+		t.Fatal("a draft was reopened", w.Code, w.Body.String())
+	}
+	// The dealership portal: the owner gives a login; the portal answers only with its own cookie.
+	if w := send("POST", base+"dealerships/"+dl.ID+"/portal-users", `{"name":"Synthetic Buyer","email":"http-buyer@example.test","password":"portal-pass-123"}`, token, origin); w.Code != 201 {
+		t.Fatal("portal login not created", w.Code, w.Body.String())
+	}
+	if w := send("GET", base+"dealerships/"+dl.ID+"/portal-users", "", token, origin); w.Code != 200 || !strings.Contains(w.Body.String(), "http-buyer@example.test") || strings.Contains(w.Body.String(), "portal-pass-123") {
+		t.Fatal("portal login list wrong", w.Code, w.Body.String())
+	}
+	if w := send("GET", "/api/v1/dealer-portal/invoices", "", token, origin); w.Code != 401 {
+		t.Fatal("the portal answered a staff session", w.Code)
+	}
+	dealerPortal := func(method, path, body, cookie string) *httptest.ResponseRecorder {
+		r := httptest.NewRequest(method, path, strings.NewReader(body))
+		r.Host = "127.0.0.1:8121"
+		r.Header.Set("Origin", origin)
+		r.Header.Set("Content-Type", "application/json")
+		if cookie != "" {
+			r.AddCookie(&http.Cookie{Name: "__Host-dapper_dealer", Value: cookie})
+		}
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+		return w
+	}
+	if w := dealerPortal("POST", "/api/v1/dealer-portal/login", `{"email":"http-buyer@example.test","password":"wrong-pass-123"}`, ""); w.Code != 401 {
+		t.Fatal("wrong portal password accepted", w.Code)
+	}
+	login := dealerPortal("POST", "/api/v1/dealer-portal/login", `{"email":"http-buyer@example.test","password":"portal-pass-123"}`, "")
+	var dealerCookie string
+	for _, c := range login.Result().Cookies() {
+		if c.Name == "__Host-dapper_dealer" {
+			dealerCookie = c.Value
+		}
+	}
+	if login.Code != 200 || dealerCookie == "" {
+		t.Fatal("portal sign in failed", login.Code, login.Body.String())
+	}
+	if w := dealerPortal("GET", "/api/v1/dealer-portal/me", "", dealerCookie); w.Code != 200 || !strings.Contains(w.Body.String(), "Synthetic HTTP Motors") {
+		t.Fatal("portal me wrong", w.Code, w.Body.String())
+	}
+	if w := dealerPortal("GET", "/api/v1/dealer-portal/invoices", "", dealerCookie); w.Code != 200 || strings.Contains(w.Body.String(), di.ID) {
+		t.Fatal("portal list failed or showed a draft", w.Code, w.Body.String())
+	}
+	if w := dealerPortal("GET", "/api/v1/dealer-portal/invoices/"+di.ID, "", dealerCookie); w.Code != 404 {
+		t.Fatal("portal opened a draft", w.Code)
+	}
+	if w := dealerPortal("GET", "/api/v1/dealer-portal/statement?from=2026-01-01&to=2026-12-31&status=all", "", dealerCookie); w.Code != 200 {
+		t.Fatal("portal statement failed", w.Code, w.Body.String())
+	}
+	if w := dealerPortal("GET", "/api/v1/dealer-portal/statement/pdf?from=2026-01-01&to=2026-12-31&payments=1&aging=1", "", dealerCookie); w.Code != 200 || !bytes.HasPrefix(w.Body.Bytes(), []byte("%PDF")) {
+		t.Fatal("portal statement PDF failed", w.Code)
+	}
+	if w := dealerPortal("POST", "/api/v1/dealer-portal/pay-many", `{"invoiceIds":[],"cardId":"x","idempotencyKey":"key-12345"}`, dealerCookie); w.Code != 422 {
+		t.Fatal("paying no invoices was accepted", w.Code, w.Body.String())
+	}
+	if w := dealerPortal("POST", "/api/v1/dealer-portal/pay-many", `{"invoiceIds":["`+di.ID+`"],"cardId":"x","idempotencyKey":"key-12345"}`, dealerCookie); w.Code != 404 {
+		t.Fatal("a draft was offered for payment", w.Code, w.Body.String())
+	}
+	if w := dealerPortal("GET", "/api/v1/dealer-portal/cards", "", dealerCookie); w.Code != 200 {
+		t.Fatal("portal cards failed", w.Code, w.Body.String())
+	}
+	if w := dealerPortal("POST", "/api/v1/dealer-portal/link", `{"token":"`+strings.Repeat("A", 43)+`"}`, ""); w.Code != 404 {
+		t.Fatal("an unknown email link opened the portal", w.Code)
+	}
+	if w := dealerPortal("POST", "/api/v1/dealer-portal/logout", "", dealerCookie); w.Code != 204 {
+		t.Fatal("portal sign out failed", w.Code)
+	}
+	if w := dealerPortal("GET", "/api/v1/dealer-portal/me", "", dealerCookie); w.Code != 401 {
+		t.Fatal("portal session survived sign out", w.Code)
+	}
+	if w := send("GET", otherBase+"dealer-invoices", "", token, origin); w.Code != 403 {
+		t.Fatal("another franchise's dealership invoices were listed", w.Code)
+	}
+	// The checks below decide invoice rights for themselves.
+	if _, err = setup.Exec(ctx, `DELETE FROM location_grants WHERE principal_id=$1 AND organization_id=$2 AND location_id=$3 AND action IN ('dealership.read','dealership.manage','invoices.read','invoices.create','invoices.manage')`, actor, org, location); err != nil {
+		t.Fatal(err)
 	}
 	if send("GET", otherBase+"attendance/history", "", token, origin).Code != 403 {
 		t.Fatal("foreign attendance history leaked")
@@ -577,9 +848,21 @@ func TestScopedHTTPBoundaryWithPostgres(t *testing.T) {
 	if send("POST", base+"invoices/"+fiscalInvoice.ID+"/issue", `{}`, token, origin).Code != 422 {
 		t.Fatal("HTTP issuance accepted missing review identity")
 	}
+	if _, err = setup.Exec(ctx, `UPDATE locations SET tax_registration='FRANCHISE-HST' WHERE id=$1`, location); err != nil {
+		t.Fatal(err)
+	}
 	issuedResponse := send("POST", base+"invoices/"+fiscalInvoice.ID+"/issue", `{"issuerId":"`+httpIssuer.ID+`","issuerVersion":1,"invoiceVersion":1}`, token, origin)
 	if issuedResponse.Code != 200 || json.Unmarshal(issuedResponse.Body.Bytes(), &fiscalInvoice) != nil || fiscalInvoice.Status != "issued" || fiscalInvoice.InvoiceNumber != "HTTP-1" || fiscalInvoice.IssuerSnapshot == nil {
 		t.Fatal("HTTP explicit invoice issuance failed", issuedResponse.Code)
+	}
+	if fiscalInvoice.IssuerSnapshot.TaxRegistration != "FRANCHISE-HST" {
+		t.Fatal("the franchise's own HST number was not frozen onto the invoice", fiscalInvoice.IssuerSnapshot.TaxRegistration)
+	}
+	if renumbered := send("PUT", issuerBase+"/"+httpIssuer.ID, `{"legalName":"Isolated HTTP issuer","address":"Isolated HTTP issuer address","taxRegistration":"TEST-REG","currency":"CAD","numberPrefix":"HTTP-","version":1,"nextNumber":500,"quotePrefix":"hq-","quoteNextNumber":9}`, token, origin); renumbered.Code != 200 || !strings.Contains(renumbered.Body.String(), `"nextNumber":500`) || !strings.Contains(renumbered.Body.String(), `"quotePrefix":"HQ-"`) || !strings.Contains(renumbered.Body.String(), `"quoteNextNumber":9`) {
+		t.Fatal("document numbering could not be changed", renumbered.Code, renumbered.Body.String())
+	}
+	if pdf := send("GET", base+"invoices/"+fiscalInvoice.ID+"/pdf", "", token, origin); pdf.Code != 200 || pdf.Header().Get("Content-Type") != "application/pdf" || !strings.HasPrefix(pdf.Body.String(), "%PDF-") || !strings.Contains(pdf.Body.String(), "HST: FRANCHISE-HST") {
+		t.Fatal("invoice PDF unavailable", pdf.Code)
 	}
 	if _, err = setup.Exec(ctx, `DELETE FROM location_grants WHERE principal_id=$1 AND action='invoices.read'`, actor); err != nil {
 		t.Fatal(err)
@@ -698,6 +981,12 @@ func TestScopedHTTPBoundaryWithPostgres(t *testing.T) {
 	historyResponse := send("GET", base+"invoices/"+voidDraft.ID+"/draft-history", "", token, origin)
 	if historyResponse.Code != 200 || !strings.Contains(historyResponse.Body.String(), `"toVersion":2`) || !strings.Contains(historyResponse.Body.String(), `"unitPriceCents":600`) {
 		t.Fatal("HTTP draft snapshots missing")
+	}
+	if fiscalInvoice.IssuerSnapshot.TaxRegistration != "FRANCHISE-HST" {
+		t.Fatal("the franchise's own HST number was not frozen onto the invoice", fiscalInvoice.IssuerSnapshot.TaxRegistration)
+	}
+	if pdf := send("GET", base+"invoices/"+fiscalInvoice.ID+"/pdf", "", token, origin); pdf.Code != 200 || pdf.Header().Get("Content-Type") != "application/pdf" || !strings.HasPrefix(pdf.Body.String(), "%PDF-") || !strings.Contains(pdf.Body.String(), "HST: FRANCHISE-HST") {
+		t.Fatal("invoice PDF unavailable", pdf.Code)
 	}
 	if _, err = setup.Exec(ctx, `DELETE FROM location_grants WHERE principal_id=$1 AND action='invoices.read'`, actor); err != nil {
 		t.Fatal(err)

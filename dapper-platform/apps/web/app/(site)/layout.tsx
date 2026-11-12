@@ -13,6 +13,7 @@ import { SiteFooter } from '../_chrome/SiteFooter';
 import SmoothScroll from './_components/SmoothScroll';
 import Tracking from './_components/Tracking';
 import RemovedImages from './_components/RemovedImages';
+import SalesStrip from './_components/SalesStrip';
 
 const indexing = process.env.DAPPER_PUBLIC_INDEXING === 'enabled';
 
@@ -33,6 +34,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
     <html lang="en-CA">
       <body>
         <a className="d-skip" href="#main">Skip to content</a>
+        <SalesStrip />
         <SiteHeader />
         <main id="main" tabIndex={-1}>{children}</main>
         <SiteFooter />

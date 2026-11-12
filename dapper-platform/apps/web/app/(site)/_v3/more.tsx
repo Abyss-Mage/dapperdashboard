@@ -19,7 +19,7 @@ export function ReadyBand() {
         <p>Choose mobile service or at-shop detailing and pick your date and time in seconds.</p>
       </div>
       <div className="d-hero__actions">
-        <a className="d-btn d-btn--red" href="/booking">Book now<ArrowRight size={18} /></a>
+        <a className="d-btn d-btn--red" href="/book-appointment">Book now<ArrowRight size={18} /></a>
         <a className="d-btn d-btn--dark" href={'tel:' + contact.tel}><Phone size={16} />{contact.phone}</a>
       </div>
     </section>
@@ -75,7 +75,7 @@ function CalendarCard({ c }: { c: Calendar }) {
           </li>
         ))}
       </ol>
-      <a className="d-btn d-btn--red d-btn--sm" href="/booking">Pick a time<ArrowRight size={16} /></a>
+      <a className="d-btn d-btn--red d-btn--sm" href="/book-appointment">Pick a time<ArrowRight size={16} /></a>
     </article>
   );
 }
@@ -92,7 +92,7 @@ export function BookOnline() {
           <li data-d-in><b>2</b><span><strong>Pick a time</strong>At the shop, or at your place with mobile service.</span></li>
           <li data-d-in><b>3</b><span><strong>You’re confirmed</strong>Our pros arrive on time, fully equipped.</span></li>
         </ol>
-        <a className="d-btn d-btn--red" href="/booking" data-d-in>Book now<ArrowRight size={18} /></a>
+        <a className="d-btn d-btn--red" href="/book-appointment" data-d-in>Book now<ArrowRight size={18} /></a>
       </div>
       <div className="d-book__cals" aria-live="polite">
         {av.status === 'loading' && <div className="d-cal d-cal--empty"><Clock size={22} /><p>Checking live availability…</p></div>}
@@ -102,7 +102,7 @@ export function BookOnline() {
             <CalendarCheck size={26} />
             <h3>See open times when you book</h3>
             <p>Live availability appears here once online booking is switched on. Until then, book online or call and we’ll find you a time.</p>
-            <div className="d-hero__actions"><a className="d-btn d-btn--red d-btn--sm" href="/booking">Book now</a><a className="d-btn d-btn--dark d-btn--sm" href={'tel:' + contact.tel}>{contact.phone}</a></div>
+            <div className="d-hero__actions"><a className="d-btn d-btn--red d-btn--sm" href="/book-appointment">Book now</a><a className="d-btn d-btn--dark d-btn--sm" href={'tel:' + contact.tel}>{contact.phone}</a></div>
           </div>
         )}
       </div>
@@ -124,7 +124,7 @@ export function MobileDetailing() {
           <li data-d-in><Car size={18} />Pick-up, drop-off and shuttle options</li>
           <li data-d-in><MapPin size={18} />Based in Peterborough — ask us about your area</li>
         </ul>
-        <div className="d-hero__actions" data-d-in><a className="d-btn d-btn--red" href="/booking">Book mobile detailing<ArrowRight size={18} /></a></div>
+        <div className="d-hero__actions" data-d-in><a className="d-btn d-btn--red" href="/book-appointment">Book mobile detailing<ArrowRight size={18} /></a></div>
       </div>
     </section>
   );

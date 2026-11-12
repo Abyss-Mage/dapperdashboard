@@ -17,7 +17,7 @@ func mfaSetupAllowed(path string) bool {
 func accountFailure(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, postgres.ErrProfileInput):
-		reply(w, 422, map[string]any{"errors": map[string]string{"profile": "Enter your full name and an international phone number such as +14165550123"}})
+		reply(w, 422, map[string]any{"errors": map[string]string{"profile": "Enter your full name. A phone number is optional; if you add one, include the country code, such as +14165550123"}})
 	case errors.Is(err, postgres.ErrMFAUnavailable):
 		reply(w, 503, map[string]string{"error": "Two-factor authentication is not available yet. Ask your administrator."})
 	case errors.Is(err, postgres.ErrMFAInvalid):

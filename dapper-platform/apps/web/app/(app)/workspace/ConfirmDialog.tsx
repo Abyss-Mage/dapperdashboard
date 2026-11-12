@@ -105,6 +105,8 @@ export default function ConfirmDialog({ isOpen, title, entityName, entityType = 
         </div>
       </div>
     </div>,
-    document.body,
+    // Inside the open popup when there is one: a modal popup sits above the page and blocks it, so a question drawn on the page
+    // body would be hidden and unanswerable (error404 #52: "Issue and email" stuck on "Saving…").
+    [...document.querySelectorAll('dialog')].filter((d) => d.open && d.matches(':modal')).pop() ?? document.body,
   );
 }

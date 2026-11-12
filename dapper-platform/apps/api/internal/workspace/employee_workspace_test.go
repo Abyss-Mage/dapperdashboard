@@ -102,8 +102,9 @@ func TestEmployeeWorkspaceHTTPBoundary(t *testing.T) {
 	if w := send("POST", "/api/v1/employee/attendance/clock-in", `{}`, token, origin); w.Code != 409 {
 		t.Fatal("unassigned employee clocked in", w.Code)
 	}
-	if w := send("POST", "/api/v1/employee/attendance/clock-in", `{"locationId":"`+actor+`"}`, token, origin); w.Code != 400 {
-		t.Fatal("punch selector injection", w.Code)
+	// Personal punches are retired (the shop iPad records time), whatever is sent.
+	if w := send("POST", "/api/v1/employee/attendance/clock-in", `{"locationId":"`+actor+`"}`, token, origin); w.Code != 409 {
+		t.Fatal("personal punch accepted", w.Code)
 	}
 	if w := send("GET", "/api/v1/organizations/"+actor+"/employee-worksites", "", token, ""); w.Code != 403 {
 		t.Fatal("unprivileged admin access", w.Code)

@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"strconv"
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
@@ -187,6 +188,32 @@ func generateReferenceNumber() (string, error) {
 	return fmt.Sprintf("QTE-%08X", b), nil
 }
 
+// nextQuoteReference follows the owner's numbering when the franchise's business details set one, stepping over any number already used.
+// Without a prefix the quotation keeps its automatic number.
+func nextQuoteReference(ctx context.Context, tx pgx.Tx, scope Scope) (string, error) {
+	var issuerID, prefix string
+	var next int64
+	err := tx.QueryRow(ctx, `SELECT i.id::text,i.quote_prefix,i.quote_next_number FROM location_invoice_issuers b JOIN invoice_issuers i ON i.id=b.issuer_id WHERE b.organization_id=$1 AND b.location_id=$2 FOR UPDATE OF i`, scope.OrganizationID, scope.LocationID).Scan(&issuerID, &prefix, &next)
+	if errors.Is(err, pgx.ErrNoRows) || err == nil && prefix == "" {
+		return generateReferenceNumber()
+	}
+	if err != nil {
+		return "", err
+	}
+	for {
+		reference := prefix + strconv.FormatInt(next, 10)
+		var taken bool
+		if err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM scoped_quotations WHERE organization_id=$1 AND location_id=$2 AND reference_number=$3)`, scope.OrganizationID, scope.LocationID, reference).Scan(&taken); err != nil {
+			return "", err
+		}
+		next++
+		if !taken {
+			_, err = tx.Exec(ctx, `UPDATE invoice_issuers SET quote_next_number=$2 WHERE id=$1`, issuerID, next)
+			return reference, err
+		}
+	}
+}
+
 func computeSubtotal(items []QuoteItemInput) (int64, error) {
 	var total int64
 	for _, item := range items {
@@ -261,11 +288,6 @@ func (s *Store) CreateQuote(ctx context.Context, scope Scope, input CreateQuoteI
 		return Quote{}, ErrQuoteInput
 	}
 
-	refNum, err := generateReferenceNumber()
-	if err != nil {
-		return Quote{}, err
-	}
-
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
 	if err != nil {
 		return Quote{}, err
@@ -288,6 +310,11 @@ func (s *Store) CreateQuote(ctx context.Context, scope Scope, input CreateQuoteI
 			if err = tx.QueryRow(ctx, `INSERT INTO customers(organization_id,location_id,name,email,phone) VALUES($1,$2,$3,$4,$5) RETURNING id::text`, scope.OrganizationID, scope.LocationID, input.ClientName, input.ClientEmail, input.ClientPhone).Scan(&found); err != nil {
 				return Quote{}, customerUniqueness(err)
 			}
+		} else if input.ClientEmail != "" || input.ClientPhone != "" {
+			// A matched customer keeps what is on file; only details they are missing are filled in from this quotation.
+			if _, err = tx.Exec(ctx, `UPDATE customers SET email=CASE WHEN btrim(coalesce(email,''))='' THEN $4::text ELSE email END,phone=CASE WHEN btrim(coalesce(phone,''))='' THEN $5::text ELSE phone END WHERE organization_id=$1 AND location_id=$2 AND id=$3`, scope.OrganizationID, scope.LocationID, found, input.ClientEmail, input.ClientPhone); err != nil {
+				return Quote{}, customerUniqueness(err)
+			}
 		}
 		input.CustomerID = found
 	} else if !withRequest {
@@ -307,6 +334,11 @@ func (s *Store) CreateQuote(ctx context.Context, scope Scope, input CreateQuoteI
 		if err != nil {
 			return Quote{}, err
 		}
+	}
+
+	refNum, err := nextQuoteReference(ctx, tx, scope)
+	if err != nil {
+		return Quote{}, err
 	}
 
 	var quoteID string
@@ -423,7 +455,7 @@ func loadQuoteAcceptance(ctx context.Context, tx pgx.Tx, quoteID string) (*Quote
 }
 
 func loadQuoteFull(ctx context.Context, tx pgx.Tx, org, loc, quoteID string) (Quote, error) {
-	q, err := scanQuote(tx.QueryRow(ctx, `SELECT `+quoteColumns+` FROM scoped_quotations q WHERE q.organization_id=$1 AND q.location_id=$2 AND q.id=$3`, org, loc, quoteID))
+	q, err := scanQuote(tx.QueryRow(ctx, `SELECT `+quoteColumns+` FROM scoped_quotations q WHERE q.organization_id=$1 AND q.location_id=$2 AND q.id=$3 AND q.status<>'deleted'`, org, loc, quoteID))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Quote{}, ErrQuoteNotFound
 	}
@@ -468,7 +500,7 @@ func (s *Store) ListQuotes(ctx context.Context, scope Scope) ([]Quote, error) {
 	if err := s.authorize(ctx, scope, "quotes.read"); err != nil {
 		return nil, err
 	}
-	rows, err := s.pool.Query(ctx, `SELECT `+quoteColumns+` FROM scoped_quotations q WHERE q.organization_id=$1 AND q.location_id=$2 ORDER BY q.created_at DESC,q.id LIMIT 200`,
+	rows, err := s.pool.Query(ctx, `SELECT `+quoteColumns+` FROM scoped_quotations q WHERE q.organization_id=$1 AND q.location_id=$2 AND q.status<>'deleted' ORDER BY q.created_at DESC,q.id LIMIT 200`,
 		scope.OrganizationID, scope.LocationID)
 	if err != nil {
 		return nil, err
@@ -482,7 +514,75 @@ func (s *Store) ListQuotes(ctx context.Context, scope Scope) ([]Quote, error) {
 		}
 		quotes = append(quotes, q)
 	}
-	return quotes, rows.Err()
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	rows.Close()
+	return quotes, s.fillQuoteItems(ctx, quotes)
+}
+
+// fillQuoteItems adds every quotation's service lines with one query.
+func (s *Store) fillQuoteItems(ctx context.Context, quotes []Quote) error {
+	ids := make([]string, len(quotes))
+	at := make(map[string]int, len(quotes))
+	for i := range quotes {
+		ids[i], at[quotes[i].ID] = quotes[i].ID, i
+		quotes[i].Items = []QuoteItem{}
+	}
+	rows, err := s.pool.Query(ctx, `SELECT quotation_id::text,id::text,sort_order,description,quantity,unit_price_cents,(quantity::bigint*unit_price_cents),service_id::text,service_name_snapshot,created_at FROM scoped_quotation_items WHERE quotation_id=ANY($1::uuid[]) ORDER BY sort_order,id`, ids)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var quoteID string
+		var item QuoteItem
+		if err = rows.Scan(&quoteID, &item.ID, &item.SortOrder, &item.Description, &item.Quantity, &item.UnitPriceCents, &item.LineTotalCents, &item.ServiceID, &item.ServiceName, &item.CreatedAt); err != nil {
+			return err
+		}
+		quotes[at[quoteID]].Items = append(quotes[at[quoteID]].Items, item)
+	}
+	return rows.Err()
+}
+
+// DeleteQuote takes a quotation off every list. Anything a customer has accepted or started paying for stays: it is a record of an agreement.
+func (s *Store) DeleteQuote(ctx context.Context, scope Scope, quoteID string) error {
+	if !uuid(quoteID) {
+		return ErrQuoteNotFound
+	}
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	if err = authorizeTransaction(ctx, tx, scope, "quotes.manage"); err != nil {
+		return err
+	}
+	var status string
+	err = tx.QueryRow(ctx, `SELECT status FROM scoped_quotations WHERE organization_id=$1 AND location_id=$2 AND id=$3 FOR UPDATE`, scope.OrganizationID, scope.LocationID, quoteID).Scan(&status)
+	if errors.Is(err, pgx.ErrNoRows) || status == "deleted" {
+		return ErrQuoteNotFound
+	}
+	if err != nil {
+		return err
+	}
+	var committed bool
+	if err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM scoped_quotation_acceptances WHERE quotation_id=$1) OR EXISTS(SELECT 1 FROM square_payment_intents WHERE quotation_id=$1) OR EXISTS(SELECT 1 FROM bookings WHERE quotation_id=$1)`, quoteID).Scan(&committed); err != nil {
+		return err
+	}
+	if committed || status == "accepted" || status == "fulfilled" {
+		return ErrQuoteStatusConflict
+	}
+	if _, err = tx.Exec(ctx, `UPDATE scoped_quotations SET status='deleted',updated_at=now() WHERE organization_id=$1 AND location_id=$2 AND id=$3`, scope.OrganizationID, scope.LocationID, quoteID); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(ctx, `INSERT INTO scoped_quotation_events(quotation_id,organization_id,location_id,actor_id,action) VALUES($1,$2,$3,$4,'deleted')`, quoteID, scope.OrganizationID, scope.LocationID, scope.ActorID); err != nil {
+		return err
+	}
+	if err = jobAudit(ctx, tx, scope, "quotation.deleted", quoteID); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 func (s *Store) EditQuote(ctx context.Context, scope Scope, quoteID string, input EditQuoteInput) (Quote, error) {
@@ -535,7 +635,8 @@ func (s *Store) EditQuote(ctx context.Context, scope Scope, quoteID string, inpu
 	if err != nil {
 		return Quote{}, err
 	}
-	if currentStatus != "draft" {
+	// Until a customer has answered it can still change. An issued one goes back to draft, so nobody can accept terms that changed under them.
+	if currentStatus != "draft" && currentStatus != "issued" {
 		return Quote{}, ErrQuoteStatusConflict
 	}
 	if currentVersion != input.Version {
@@ -550,7 +651,7 @@ func (s *Store) EditQuote(ctx context.Context, scope Scope, quoteID string, inpu
 	}
 
 	var newVersion int
-	err = tx.QueryRow(ctx, `UPDATE scoped_quotations SET version=version+1, subtotal_cents=$1, tax_cents=$2, deposit_cents=$3, internal_notes=$4, customer_note=$5, expires_at=$6, updated_at=now() WHERE organization_id=$7 AND location_id=$8 AND id=$9 RETURNING version`,
+	err = tx.QueryRow(ctx, `UPDATE scoped_quotations SET status='draft', issued_at=NULL, issued_by=NULL, version=version+1, subtotal_cents=$1, tax_cents=$2, deposit_cents=$3, internal_notes=$4, customer_note=$5, expires_at=$6, updated_at=now() WHERE organization_id=$7 AND location_id=$8 AND id=$9 RETURNING version`,
 		subtotal, input.TaxCents, input.DepositCents, input.InternalNotes, input.CustomerNote, input.ExpiresAt,
 		scope.OrganizationID, scope.LocationID, quoteID,
 	).Scan(&newVersion)
@@ -831,7 +932,7 @@ func (s *Store) CustomerQuotes(ctx context.Context, actorID, customerID string) 
 		return nil, err
 	}
 
-	rows, err := tx.Query(ctx, `SELECT `+quoteColumns+` FROM scoped_quotations q WHERE q.organization_id=$1 AND q.location_id=$2 AND q.customer_id=$3 AND q.status NOT IN ('draft','superseded') ORDER BY q.created_at DESC,q.id LIMIT 100`,
+	rows, err := tx.Query(ctx, `SELECT `+quoteColumns+` FROM scoped_quotations q WHERE q.organization_id=$1 AND q.location_id=$2 AND q.customer_id=$3 AND q.status NOT IN ('draft','superseded','deleted') ORDER BY q.created_at DESC,q.id LIMIT 100`,
 		org, loc, customerID)
 	if err != nil {
 		return nil, err
@@ -880,7 +981,7 @@ func (s *Store) GetCustomerQuote(ctx context.Context, actorID, customerID, quote
 	if err != nil {
 		return Quote{}, err
 	}
-	if currentStatus == "draft" || currentStatus == "superseded" {
+	if currentStatus == "draft" || currentStatus == "superseded" || currentStatus == "deleted" {
 		return Quote{}, ErrQuoteNotFound
 	}
 
@@ -1313,6 +1414,11 @@ func (s *Store) CustomerPayQuoteDeposit(ctx context.Context, actorID, customerID
 		return CustomerQuoteDepositResult{}, err
 	}
 
+	if own, e := franchiseTaxNumber(ctx, tx, org, loc); e != nil {
+		return CustomerQuoteDepositResult{}, e
+	} else if own != "" {
+		taxReg = own
+	}
 	issuerSnapshot := InvoiceIssuerSnapshot{
 		ID:              issuerID,
 		LegalName:       legalName,

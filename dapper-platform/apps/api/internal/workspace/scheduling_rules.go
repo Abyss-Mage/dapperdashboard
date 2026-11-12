@@ -37,6 +37,7 @@ func registerSchedulingRuleRoutes(mux *http.ServeMux, store *postgres.Store) {
 				Before    *int     `json:"beforeMinutes"`
 				After     *int     `json:"afterMinutes"`
 				Units     int      `json:"units"`
+				Slots     int      `json:"slots"`
 				Version   int      `json:"version"`
 			}
 			if !decode(w, r, &input) {
@@ -75,7 +76,7 @@ func registerSchedulingRuleRoutes(mux *http.ServeMux, store *postgres.Store) {
 				reply(w, 422, map[string]any{"errors": fields})
 				return
 			}
-			item, err := store.SaveSchedulingRule(r.Context(), scope, postgres.SchedulingRule{ID: id, ResourceID: resource, ServiceID: input.ServiceID, AddonIDs: input.AddonIDs, DurationMinutes: *input.Duration, BeforeMinutes: *input.Before, AfterMinutes: *input.After, Units: input.Units, WorkingTime: input.WorkingTime, Version: input.Version})
+			item, err := store.SaveSchedulingRule(r.Context(), scope, postgres.SchedulingRule{ID: id, ResourceID: resource, Slots: input.Slots, ServiceID: input.ServiceID, AddonIDs: input.AddonIDs, DurationMinutes: *input.Duration, BeforeMinutes: *input.Before, AfterMinutes: *input.After, Units: input.Units, WorkingTime: input.WorkingTime, Version: input.Version})
 			if errors.Is(err, postgres.ErrSchedulingRule) {
 				reply(w, 422, map[string]any{"errors": map[string]string{"schedulingRule": "Choose an active scoped main/add-on combination and sufficient resource capacity"}})
 				return

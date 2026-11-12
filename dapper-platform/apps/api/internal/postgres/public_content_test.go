@@ -120,6 +120,89 @@ func TestPublicContentPersistence(t *testing.T) {
 	if err != nil || len(public.Services) != 1 {
 		t.Fatal("published service missing", err)
 	}
+	// The sales strip: checked input, shown only while on and before its end date, edited only with content rights.
+	for _, bad := range []SiteBanner{{Active: true}, {Active: true, Text: "Sale", LinkURL: "javascript:alert(1)", LinkLabel: "Go"}, {Active: true, Text: "Sale", LinkURL: "//evil.example", LinkLabel: "Go"}, {Active: true, Text: "Sale", LinkURL: "/book-appointment"}, {Active: true, Text: "Sale", Tone: "pink"}} {
+		if _, err = s.SaveSiteBanner(ctx, scope, bad); !errors.Is(err, ErrContentInput) {
+			t.Fatal("bad banner accepted", bad, err)
+		}
+	}
+	if _, err = s.SaveSiteBanner(ctx, foreign, SiteBanner{Active: true, Text: "Sale"}); !errors.Is(err, ErrForbidden) {
+		t.Fatal("banner saved without content rights", err)
+	}
+	banner := SiteBanner{Active: true, Text: "Synthetic sale: 10% off ceramic", LinkLabel: "Book now", LinkURL: "/book-appointment"}
+	if _, err = s.SaveSiteBanner(ctx, scope, banner); err != nil {
+		t.Fatal(err)
+	}
+	if public, err = s.PublicContent(ctx, site.Slug); err != nil || public.Banner == nil || public.Banner.Text != banner.Text || public.Banner.Tone != "red" {
+		t.Fatal("live banner missing from the website", public.Banner, err)
+	}
+	past := time.Now().Add(-time.Hour)
+	banner.EndsAt = &past
+	if _, err = s.SaveSiteBanner(ctx, scope, banner); err != nil {
+		t.Fatal(err)
+	}
+	if public, err = s.PublicContent(ctx, site.Slug); err != nil || public.Banner != nil {
+		t.Fatal("an ended banner still shows", err)
+	}
+	if managed, err := s.ContentForManagement(ctx, scope); err != nil || managed.Banner == nil || managed.Banner.EndsAt == nil {
+		t.Fatal("the dashboard lost the ended banner", err)
+	}
+	// Upgrade offers: checked input, one per package (matched without case), only switched-on ones reach the website.
+	upsellOrg := scope.OrganizationID
+	// Offers belong to the organization's catalogue, so the owner here holds the organization-level grant (the franchise-only person does not).
+	if _, err = pool.Exec(ctx, `INSERT INTO organization_grants(principal_id,organization_id,action) VALUES($1,$2,'catalogue.manage'),($1,$2,'catalogue.read')`, actor, upsellOrg); err != nil {
+		t.Fatal(err)
+	}
+	for _, bad := range []PackageUpsell{{FromPack: "VIP Interior", ToPack: "vip interior"}, {FromPack: "x", ToPack: "Luxury"}, {FromPack: "VIP Interior", ToPack: "Luxury", Perks: []string{"1", "2", "3", "4", "5", "6", "7"}}} {
+		if _, err = s.SavePackageUpsell(ctx, scope.ActorID, upsellOrg, bad); !errors.Is(err, ErrUpsellInput) {
+			t.Fatal("bad upgrade offer accepted", bad, err)
+		}
+	}
+	if _, err = s.SavePackageUpsell(ctx, foreign.ActorID, upsellOrg, PackageUpsell{FromPack: "VIP Interior", ToPack: "Luxury"}); err == nil {
+		t.Fatal("upgrade offer saved without catalogue rights")
+	}
+	offer := PackageUpsell{FromPack: "VIP Interior Detail", ToPack: "Luxury Full Body Detail", Pitch: "Add the outside too", Perks: []string{" Hand wash ", ""}, Active: true}
+	if _, err = s.SavePackageUpsell(ctx, scope.ActorID, upsellOrg, offer); err != nil {
+		t.Fatal(err)
+	}
+	offer.FromPack = "vip interior detail"
+	if _, err = s.SavePackageUpsell(ctx, scope.ActorID, upsellOrg, offer); err != nil {
+		t.Fatal("replacing an offer failed", err)
+	}
+	// #34: an offer's discount is a percent or an amount, not both, and comes off only the offer's own target package.
+	if _, err = s.SavePackageUpsell(ctx, scope.ActorID, upsellOrg, PackageUpsell{FromPack: "VIP Interior Detail", ToPack: "Luxury Full Body Detail", DiscountPercent: 10, DiscountCents: 500, Active: true}); !errors.Is(err, ErrUpsellInput) {
+		t.Fatal("an offer with two discounts was accepted", err)
+	}
+	offer.DiscountPercent = 10
+	if _, err = s.SavePackageUpsell(ctx, scope.ActorID, upsellOrg, offer); err != nil {
+		t.Fatal(err)
+	}
+	if off, err := upsellDiscount(ctx, s.pool, upsellOrg, "VIP Interior Detail", "Sedan - Luxury Full Body Detail", 22900); err != nil || off != 2290 {
+		t.Fatal("upgrade discount wrong", off, err)
+	}
+	if off, err := upsellDiscount(ctx, s.pool, upsellOrg, "VIP Interior Detail", "Sedan - Exterior Wash", 7500); err != nil || off != 0 {
+		t.Fatal("upgrade discount given on another package", off, err)
+	}
+	if _, err = s.SavePackageUpsell(ctx, scope.ActorID, upsellOrg, PackageUpsell{FromPack: "Exterior Wash", ToPack: "Full Detail", Active: false}); err != nil {
+		t.Fatal(err)
+	}
+	all, err := s.PackageUpsells(ctx, scope.ActorID, upsellOrg)
+	if err != nil || len(all) != 2 {
+		t.Fatal("offers not one per package", all, err)
+	}
+	if public, err = s.PublicContent(ctx, site.Slug); err != nil || len(public.Upsells) != 1 || public.Upsells[0].ToPack != "Luxury Full Body Detail" || len(public.Upsells[0].Perks) != 1 || public.Upsells[0].Perks[0] != "Hand wash" {
+		t.Fatal("website offers wrong", public.Upsells, err)
+	}
+	if err = s.DeletePackageUpsell(ctx, scope.ActorID, upsellOrg, "VIP INTERIOR DETAIL"); err != nil {
+		t.Fatal(err)
+	}
+	if public, err = s.PublicContent(ctx, site.Slug); err != nil || len(public.Upsells) != 0 {
+		t.Fatal("a removed offer still shows", public.Upsells, err)
+	}
+	// Later checks grant the organization catalogue themselves.
+	if _, err = pool.Exec(ctx, `DELETE FROM organization_grants WHERE principal_id=$1 AND organization_id=$2`, actor, upsellOrg); err != nil {
+		t.Fatal(err)
+	}
 	service.Name = "Shared service renamed in Workspace"
 	service, err = s.SaveService(ctx, scope, service)
 	if err != nil {
@@ -306,6 +389,27 @@ func TestPublicContentPersistence(t *testing.T) {
 	}
 	if _, err = s.ImportCentralService(ctx, foreign, central.ID, central.Version); !errors.Is(err, ErrForbidden) {
 		t.Fatal("foreign central mapping accepted", err)
+	}
+	star := true
+	if _, err = s.SaveServicePublication(ctx, scope, ServicePublication{ServiceID: linked.ID, ServiceVersion: linked.Version, Category: "boat", Summary: "Synthetic star one", Published: true, SetStar: &star}); err != nil {
+		t.Fatal(err)
+	}
+	second, err := s.SaveService(ctx, scope, CatalogService{Name: "Synthetic second star", Kind: "main"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	starred, err := s.SaveServicePublication(ctx, scope, ServicePublication{ServiceID: second.ID, ServiceVersion: second.Version, Category: "boat", Summary: "Synthetic star two", Published: true, SetStar: &star})
+	if err != nil || !starred.Starred {
+		t.Fatalf("second star: %v %+v", err, starred)
+	}
+	var stars int
+	var holder string
+	if err = s.pool.QueryRow(ctx, `SELECT count(*),min(service_id::text) FROM service_publications WHERE organization_id=$1 AND location_id=$2 AND category='boat' AND starred`, scope.OrganizationID, scope.LocationID).Scan(&stars, &holder); err != nil || stars != 1 || holder != second.ID {
+		t.Fatalf("a category must have one star, the newest: %v %d %s", err, stars, holder)
+	}
+	// Leave the website as the checks below expect it.
+	if _, err = s.pool.Exec(ctx, `DELETE FROM service_publications WHERE service_id = ANY($1::uuid[])`, []string{linked.ID, second.ID}); err != nil {
+		t.Fatal(err)
 	}
 	if _, err = s.SaveServicePublication(ctx, scope, ServicePublication{ServiceID: linked.ID, ServiceVersion: linked.Version, Category: "sedan", Summary: "Linked shared service", Published: true}); err != nil {
 		t.Fatal(err)

@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import styles from './owner.module.css';
+import Select from '../GlassSelect';
 import ConfirmDialog from '../workspace/ConfirmDialog';
 
 type Address = { street: string; city: string; region: string; postalCode: string; country: string };
 type Contact = { id?: string; name: string; email: string; phone: string };
-type Franchise = { id: string; franchiseId: string | null; code: string; name: string; address: Address; contacts?: Contact[] };
+type Franchise = { id: string; franchiseId: string | null; code: string; name: string; address: Address; contacts?: Contact[]; taxRegistration?: string; ownership?: string };
 const blankContact: Contact = { name: '', email: '', phone: '' };
 const addressComplete = (a: Address) => !!(a.street.trim() && a.city.trim() && a.region.trim() && a.postalCode.trim() && a.country.trim());
 const blank: Address = { street: '', city: '', region: '', postalCode: '', country: '' };
@@ -21,6 +22,8 @@ export default function FranchiseManager({ organization, selectedId, onSaved }: 
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [address, setAddress] = useState<Address>(blank);
+  const [taxRegistration, setTaxRegistration] = useState('');
+  const [ownership, setOwnership] = useState('franchise');
   const [contacts, setContacts] = useState<Contact[]>([{ ...blankContact }]);
   const [query, setQuery] = useState('');
   const [target, setTarget] = useState<Franchise | null>(null);
@@ -51,6 +54,8 @@ export default function FranchiseManager({ organization, selectedId, onSaved }: 
     setCode(next === 'new' ? '' : next.code);
     setName(next === 'new' ? '' : next.name);
     setAddress(next === 'new' ? blank : next.address);
+    setTaxRegistration(next === 'new' ? '' : next.taxRegistration ?? '');
+    setOwnership(next === 'new' ? 'franchise' : next.ownership ?? 'brand');
     setContacts(next !== 'new' && next.contacts?.length ? next.contacts.map((c) => ({ ...c })) : [{ ...blankContact }]);
   }
   const setField = (k: keyof Address) => (e: React.ChangeEvent<HTMLInputElement>) => setAddress({ ...address, [k]: e.target.value });
@@ -62,7 +67,7 @@ export default function FranchiseManager({ organization, selectedId, onSaved }: 
     setFields({});
     try {
       const isNew = editing === 'new';
-      const r = await fetch(isNew ? `${base}/franchises` : `${base}/franchises/${(editing as Franchise).id}`, { method: isNew ? 'POST' : 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, name, address, contacts: contacts.filter((c) => c.name.trim() || c.email.trim() || c.phone.trim()) }) });
+      const r = await fetch(isNew ? `${base}/franchises` : `${base}/franchises/${(editing as Franchise).id}`, { method: isNew ? 'POST' : 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, name, address, taxRegistration, ownership, contacts: contacts.filter((c) => c.name.trim() || c.email.trim() || c.phone.trim()) }) });
       const body = await r.json().catch(() => ({}));
       if (!r.ok) {
         setFields(body.errors ?? {});
@@ -137,6 +142,13 @@ export default function FranchiseManager({ organization, selectedId, onSaved }: 
               {fields.address && <span className="field-error">{fields.address}</span>}
             </div>
           </fieldset>
+          <label className="form-field" style={{ maxWidth: 360 }}>Type of outlet
+            <Select value={ownership} onChange={(e) => setOwnership(e.target.value)} disabled={busy}>
+              <option value="brand">Brand-owned (Dapper owns it)</option>
+              <option value="franchise">Franchise (independently owned)</option>
+            </Select>
+          </label>
+          <label className="form-field" style={{ maxWidth: 360 }}>HST number<input maxLength={100} value={taxRegistration} onChange={(e) => setTaxRegistration(e.target.value)} disabled={busy} placeholder="e.g. 123456789RT0001" /><span className="help">Printed on this franchise’s invoices and quotations. Invoices already issued keep the number they were issued with.</span></label>
           <fieldset style={{ border: '1px solid var(--border)', borderRadius: 14, padding: 14, margin: 0, display: 'grid', gap: 10 }}>
             <legend style={{ padding: '0 6px', fontWeight: 700 }}>Contact people</legend>
             {contacts.map((c, i) => (
@@ -168,7 +180,8 @@ export default function FranchiseManager({ organization, selectedId, onSaved }: 
           <section key={f.id} className={styles.resource}>
             <div className={styles.resourceHead}>
               <div>
-                <span className={styles.codeTag}>{f.code || 'NO CODE'}</span>
+                <span className={styles.codeTag}>{f.code || 'NO CODE'}</span>{' '}
+                <span className={`${styles.badge} ${f.ownership === 'franchise' ? styles.badge_incomplete : styles.badge_complete}`}>{f.ownership === 'franchise' ? 'Franchise' : 'Brand-owned'}</span>
                 <h3 style={{ marginTop: 8 }}>{f.name}</h3>
               </div>
               {selectedId === f.id && <span className={`${styles.badge} ${styles.badge_complete}`}>Selected</span>}

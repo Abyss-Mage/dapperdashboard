@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import styles from './bookingWizard.module.css';
+import Select from '../GlassSelect';
 import gsap from 'gsap';
 import AnimatedNumber from '../motion/AnimatedNumber';
 
@@ -14,7 +15,7 @@ export type WizardTaxes = { rates: { rateBasisPoints: number; active: boolean }[
 export type WizardAvailability = { timezone: string; durationMinutes: number; days: { date: string; starts: string[] }[] };
 export type WizardCustomer = { id?: string; name: string; email: string; phone: string };
 export type WizardBooking = {
-  customer: WizardCustomer; rule: WizardRule; startIso: string; localStart: string; addonIds: string[]; notes: string; serviceAddress: string; couponCode: string;
+  customer: WizardCustomer; rule: WizardRule; startIso: string; localStart: string; addonIds: string[]; notes: string; serviceAddress: string; couponCode: string; upgradeFrom: string;
   deposit?: { method: 'card' | 'cash'; sourceId?: string };
 };
 /* Customer-facing extras: a phone check for returning customers, and a deposit step with a card form. */
@@ -26,6 +27,8 @@ export type WizardDeposit = {
 };
 export type WizardPhoneCheck = { start: (phone: string) => Promise<void>; check: (phone: string, code: string) => Promise<WizardCustomer[]> };
 export type WizardDone = { title: string; lines: string[] };
+/** An upgrade offer set in the dashboard: packages are named without the vehicle (see parseName). */
+export type WizardUpsell = { fromPack: string; toPack: string; pitch: string; perks: string[]; discountPercent?: number; discountCents?: number };
 export type WizardProps = {
   loadOptions: () => Promise<{ rules: WizardRule[] }>;
   loadServices: () => Promise<WizardService[]>;
@@ -59,10 +62,12 @@ export type WizardProps = {
   /** Arrive from a Book now button on the website: the package (or just the kind of service) is already chosen, so the steps start at Where. */
   preselect?: { serviceId?: string; category?: string };
   prefill?: { name: string; email: string; phone: string; addresses: { id: string; label: string; address: string; isDefault: boolean }[] };
+  /** Switched-on upgrade offers: after a package is chosen, the bigger one for the same vehicle is suggested with its extra cost. */
+  upsells?: WizardUpsell[];
 };
 
 const VEHICLE = /^(hatchback|sedan|suv|pickup|van|2 wheeler|aircraft (?:small|medium|large)|boat (?:small|medium|large))\s*-\s*(.+)$/i;
-function parseName(name: string) {
+export function parseName(name: string) {
   const m = VEHICLE.exec(name.trim());
   if (!m) return { vehicle: '', pack: name.trim() };
   const v = m[1].toLowerCase();
@@ -141,9 +146,9 @@ export default function BookingWizard(p: WizardProps) {
   const [me, setMe] = useState<WizardCustomer>({ name: '', email: '', phone: '' });
   const [notes, setNotes] = useState('');
   const [coupon, setCoupon] = useState('');
+  // The package the customer upgraded from with an offer; picking any package by hand clears it.
+  const [upgradedFrom, setUpgradedFrom] = useState('');
   const [couponHit, setCouponHit] = useState<{ code: string; discount: number; subtotal: number } | null>(null), [couponMsg, setCouponMsg] = useState(''), [couponBusy, setCouponBusy] = useState(false);
-  const [referred, setReferred] = useState(false);
-  const [ref, setRef] = useState({ name: '', phone: '' });
   const [found, setFound] = useState<WizardCustomer[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -204,7 +209,9 @@ export default function BookingWizard(p: WizardProps) {
     const named = inGroup.map((r) => parsed.get(r.id)!.vehicle);
     return [...new Set([...named.filter(Boolean), ...(named.some((v) => !v) ? CARS : [])])].sort(byVehicleOrder);
   }, [inGroup, parsed, byCategory]);
-  const packages = useMemo(() => byCategory ? [...inGroup].sort((a, b) => (services.get(a.serviceId)?.priceCents ?? Infinity) - (services.get(b.serviceId)?.priceCents ?? Infinity)) : inGroup.filter((r) => { const v = parsed.get(r.id)!.vehicle; return !vehicle || (v ? v === vehicle : CARS.includes(vehicle)); }), [inGroup, parsed, vehicle, byCategory, services]);
+  // Highest price first (owner, error404 #21); unpriced last.
+  const packages = useMemo(() => (byCategory ? [...inGroup] : inGroup.filter((r) => { const v = parsed.get(r.id)!.vehicle; return !vehicle || (v ? v === vehicle : CARS.includes(vehicle)); }))
+    .sort((a, b) => (services.get(b.serviceId)?.priceCents ?? -1) - (services.get(a.serviceId)?.priceCents ?? -1)), [inGroup, parsed, vehicle, byCategory, services]);
   const rule = baseRules.find((r) => r.id === ruleId);
   // In a category the vehicle prefix is dropped when it is the category itself ("Sedan - Exterior Wash" under Sedan); aircraft, boats and film keep the whole name because the size or vehicle matters.
   const packName = (r: WizardRule) => (byCategory && ['aircraft', 'boat', 'ppf', 'other'].includes(catKey(r)) ? r.serviceName : parsed.get(r.id)!.pack);
@@ -233,12 +240,34 @@ export default function BookingWizard(p: WizardProps) {
   const unpriced = !!rule && (price(rule.serviceId) === null || picked.some((id) => price(id) === null));
   // A checked coupon comes off before tax, and only while the subtotal is the one it was checked against.
   const couponOff = couponHit && couponHit.subtotal === subtotal && couponHit.code === coupon.trim() ? couponHit.discount : 0;
-  const net = Math.max(0, subtotal - couponOff);
+  // The upgrade offer's discount (error404 #34) comes off the upgraded package when the customer took the offer; a coupon replaces it.
+  const takenOffer = upgradedFrom && rule ? p.upsells?.find((u) => u.fromPack.trim().toLowerCase() === upgradedFrom.trim().toLowerCase() && u.toPack.trim().toLowerCase() === parsed.get(rule.id)!.pack.trim().toLowerCase()) : undefined;
+  const offerOff = (u: WizardUpsell | undefined, packCents: number) => !u ? 0 : Math.min(packCents, u.discountPercent ? Math.round(packCents * u.discountPercent / 100) : u.discountCents ?? 0);
+  const upgradeOff = couponOff ? 0 : offerOff(takenOffer, rule ? price(rule.serviceId) ?? 0 : 0);
+  const net = Math.max(0, subtotal - couponOff - upgradeOff);
   const tax = taxOn(net, taxes);
   const total = net + tax;
   // Paying online takes the whole total (owner decision 2026-11-06: pay in full online, or pay on the day; no deposit).
   const deposit = total;
   const tz = avail?.timezone || p.timezone;
+  // The upgrade offer for the chosen package: the named bigger package for the same vehicle, if it exists and costs more.
+  const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+  const offer = rule ? p.upsells?.find((u) => same(u.fromPack, parsed.get(rule.id)!.pack)) : undefined;
+  const target = offer && rule ? baseRules.find((r) => same(parsed.get(r.id)!.pack, offer.toPack) && parsed.get(r.id)!.vehicle === parsed.get(rule.id)!.vehicle) : undefined;
+  const offerSave = offer && target ? offerOff(offer, price(target.serviceId) ?? 0) : 0;
+  const more = target && rule && price(target.serviceId) !== null && price(rule.serviceId) !== null ? (price(target.serviceId) as number) - (price(rule.serviceId) as number) - offerSave : null;
+  const upgradeCard = () => (offer && target && more !== null && more > 0 ? (
+    <aside className={styles.upsell} aria-label="Upgrade offer">
+      <div className={styles.upsellHead}>
+        <span><small>Upgrade to</small><strong>{packName(target)}</strong></span>
+        <span className={styles.upsellMore}>+{money(more)}</span>
+      </div>
+      {offerSave > 0 && <p className={styles.upsellSave}>Save {money(offerSave)} when you upgrade now{offer.discountPercent ? ` (${offer.discountPercent}% off)` : ''}.</p>}
+      {offer.pitch && <p>{offer.pitch}</p>}
+      {offer.perks.length > 0 && <ul>{offer.perks.map((k) => <li key={k}>{k}</li>)}</ul>}
+      <button type="button" className={styles.upsellBtn} onClick={() => { const from = parsed.get(rule!.id)!.pack; setRuleId(target.id); setUpgradedFrom(from); setPicked([]); setStart(''); setDay(''); }}>Upgrade for {money(more)} more</button>
+    </aside>
+  ) : null);
 
   const monthDays = new Date(month.y, month.m + 1, 0).getDate();
   const loadAvail = useCallback(async () => {
@@ -255,7 +284,7 @@ export default function BookingWizard(p: WizardProps) {
   const daySlots = starts.get(day) ?? [];
 
   const addressNeeded = where !== 'shop';
-  const detailsOk = me.name.trim().length >= 2 && me.phone.replace(/\D/g, '').length >= 7 && /.+@.+\..+/.test(me.email.trim()) && (!referred || (ref.name.trim().length >= 2 && ref.phone.replace(/\D/g, '').length >= 7));
+  const detailsOk = me.name.trim().length >= 2 && me.phone.replace(/\D/g, '').length >= 7 && /.+@.+\..+/.test(me.email.trim());
   const stepOk = ({
     Welcome: true,
     Service: !!group,
@@ -280,7 +309,6 @@ export default function BookingWizard(p: WizardProps) {
     const lines = [
       `Vehicle: ${[vehicle, [car.year, car.make, car.model].filter(Boolean).join(' ')].filter(Boolean).join(' · ') || 'not given'}`,
       `Service place: ${where === 'shop' ? 'In the shop' : where === 'mobile' ? `We go to the customer: ${address.trim()}` : `Valet pick-up and drop-off: ${address.trim()}`}`,
-      ...(referred ? [`Referred by: ${ref.name.trim()} (${ref.phone.trim()})`] : []),
       ...(notes.trim() ? [`Notes: ${notes.trim()}`] : []),
     ];
     const z = zoned(start, tz);
@@ -292,7 +320,7 @@ export default function BookingWizard(p: WizardProps) {
           deposit = { method: 'card', sourceId: await tokenizer.current() };
         } else deposit = { method: 'cash' };
       }
-      await p.submit({ customer: { ...me, name: me.name.trim(), email: me.email.trim(), phone: me.phone.trim() }, rule, startIso: start, localStart: `${z.date}T${z.time}`, addonIds: picked, notes: lines.join('\n'), serviceAddress: where === 'shop' ? '' : address.trim(), couponCode: coupon.trim(), deposit });
+      await p.submit({ customer: { ...me, name: me.name.trim(), email: me.email.trim(), phone: me.phone.trim() }, rule, startIso: start, localStart: `${z.date}T${z.time}`, addonIds: picked, notes: lines.join('\n'), serviceAddress: where === 'shop' ? '' : address.trim(), couponCode: coupon.trim(), upgradeFrom: upgradeOff > 0 ? upgradedFrom : '', deposit });
       const when = `${new Date(`${z.date}T12:00:00`).toLocaleDateString('en-CA', { weekday: 'long', month: 'long', day: 'numeric' })} at ${slotLabel(start, tz)}`;
       setDoneInfo(p.doneNote ? p.doneNote({ name: me.name.trim(), pack: packName(rule), when, deposit: deposit?.method }) : null);
       setDone(true);
@@ -300,7 +328,7 @@ export default function BookingWizard(p: WizardProps) {
     finally { setBusy(false); }
   }
   function again() {
-    setDone(false); setStep(0); setGroup(''); setWhere('shop'); setAddress(''); setVehicle(''); setCar({ year: '', make: '', model: '' }); setRuleId(''); setPicked([]); setDay(''); setStart(''); setMe({ name: '', email: '', phone: '' }); setNotes(''); setReferred(false); setRef({ name: '', phone: '' }); setFound(null); setDoneInfo(null); setPayMethod('card'); setCardReady(false); setCode(''); setCodeSent(false); setReturning(null);
+    setDone(false); setStep(0); setGroup(''); setWhere('shop'); setAddress(''); setVehicle(''); setCar({ year: '', make: '', model: '' }); setRuleId(''); setUpgradedFrom(''); setPicked([]); setDay(''); setStart(''); setMe({ name: '', email: '', phone: '' }); setNotes(''); setFound(null); setDoneInfo(null); setPayMethod('card'); setCardReady(false); setCode(''); setCodeSent(false); setReturning(null);
   }
 
   async function sendCode() {
@@ -411,11 +439,13 @@ export default function BookingWizard(p: WizardProps) {
             </button>
           ))}</div>
           {!packages.length && <p className={styles.help}>No packages for this choice yet.</p>}
+          {upgradeCard()}
           {merged && <><h3 className={styles.title} style={{ fontSize: '1.05rem' }}>Your vehicle (optional)</h3>{vehicleFields}</>}
         </>}
         {name === 'Extras' && <>
           <h2 ref={topRef} tabIndex={-1} className={styles.title}>Anything extra?</h2>
           <p className={styles.help}>Optional. You can skip this.</p>
+          {upgradeCard()}
           <div className={styles.choices}>{extras.map((a) => (
             <label key={a.serviceId} className={styles.check}>
               <input type="checkbox" checked={picked.includes(a.serviceId)} onChange={(e) => setPicked((cur) => (e.target.checked ? [...cur, a.serviceId] : cur.filter((x) => x !== a.serviceId)))} />
@@ -431,8 +461,8 @@ export default function BookingWizard(p: WizardProps) {
             <button type="button" disabled={isCurrentMonth && !p.allowPast} onClick={() => { setMonth((c) => (c.m === 0 ? { y: c.y - 1, m: 11 } : { y: c.y, m: c.m - 1 })); setDay(''); setStart(''); }} aria-label="Earlier month">‹</button>
             {p.allowPast
               ? <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <select aria-label="Month" value={month.m} onChange={(e) => { setMonth((c) => ({ y: c.y, m: Number(e.target.value) })); setDay(''); setStart(''); }}>{Array.from({ length: 12 }, (_, m) => <option key={m} value={m}>{new Date(2000, m, 1).toLocaleDateString('en-CA', { month: 'long' })}</option>)}</select>
-                  <select aria-label="Year" value={month.y} onChange={(e) => { setMonth((c) => ({ y: Number(e.target.value), m: c.m })); setDay(''); setStart(''); }}>{Array.from({ length: today.getFullYear() + 2 - 2015 + 1 }, (_, i) => 2015 + i).map((y) => <option key={y} value={y}>{y}</option>)}</select>
+                  <span style={{ width: 156 }}><Select aria-label="Month" style={{ fontSize: 14.7 }} value={month.m} onChange={(e) => { setMonth((c) => ({ y: c.y, m: Number(e.target.value) })); setDay(''); setStart(''); }}>{Array.from({ length: 12 }, (_, m) => <option key={m} value={m}>{new Date(2000, m, 1).toLocaleDateString('en-CA', { month: 'long' })}</option>)}</Select></span>
+                  <span style={{ width: 104 }}><Select aria-label="Year" style={{ fontSize: 14.7 }} value={month.y} onChange={(e) => { setMonth((c) => ({ y: Number(e.target.value), m: c.m })); setDay(''); setStart(''); }}>{Array.from({ length: today.getFullYear() + 2 - 2015 + 1 }, (_, i) => 2015 + i).map((y) => <option key={y} value={y}>{y}</option>)}</Select></span>
                 </span>
               : <strong>{new Date(month.y, month.m, 1).toLocaleDateString('en-CA', { month: 'long', year: 'numeric' })}</strong>}
             <button type="button" onClick={() => { setMonth((c) => (c.m === 11 ? { y: c.y + 1, m: 0 } : { y: c.y, m: c.m + 1 })); setDay(''); setStart(''); }} aria-label="Later month">›</button>
@@ -470,17 +500,11 @@ export default function BookingWizard(p: WizardProps) {
               {couponMsg && <span role="status" className={styles.help}>{couponMsg}</span>}</div>}
             <label className={`${styles.field} ${styles.wide}`}>Notes (optional)<textarea rows={3} maxLength={1000} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything we should know?" /></label>
           </div>
-          <div><div className={styles.ask}><strong>{cust ? 'Were you referred?' : 'Were they referred?'}</strong>
-            <div className={styles.seg}><button type="button" aria-pressed={referred} onClick={() => setReferred(true)}>Yes</button><button type="button" aria-pressed={!referred} onClick={() => setReferred(false)}>No</button></div></div>
-            {referred && <div className={styles.fields} style={{ marginTop: 10 }}>
-              <label className={styles.field}>{cust ? 'Who referred you?' : 'Who referred them?'}<input value={ref.name} onChange={(e) => setRef({ ...ref, name: e.target.value })} /></label>
-              <label className={styles.field}>Their phone number<input type="tel" value={ref.phone} onChange={(e) => setRef({ ...ref, phone: e.target.value })} /></label>
-            </div>}
-          </div>
           {rule && <div className={styles.sum} aria-label="Price summary">
             <div><span>{packName(rule)}</span><span>{price(rule.serviceId) === null ? 'Price not set' : money(price(rule.serviceId) as number)}</span></div>
             {picked.map((id) => <div key={id}><span>{extras.find((a) => a.serviceId === id)?.name}</span><span>{price(id) === null ? '' : money(price(id) as number)}</span></div>)}
             {couponOff > 0 && <div><span>Coupon {couponHit?.code}</span><span>−{money(couponOff)}</span></div>}
+            {upgradeOff > 0 && <div><span>Upgrade discount</span><span>−{money(upgradeOff)}</span></div>}
             <div><span>{taxLabel(taxes)}</span><span>{taxes ? money(tax) : 'Added on the invoice'}</span></div>
             <div className={styles.grand}><span>Total</span><span>{money(total)}</span></div>
             {unpriced && <p className={styles.help}>Some items have no price yet, so this total is not final.</p>}

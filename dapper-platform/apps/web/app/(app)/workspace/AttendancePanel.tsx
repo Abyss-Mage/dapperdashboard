@@ -1,5 +1,4 @@
 'use client';
-import {getClockInFix} from './clockLocation';
 import {useCallback,useEffect,useRef,useState} from 'react';
 
 type AttendanceRecord = {
@@ -18,7 +17,6 @@ export default function AttendancePanel({base, canRecord}: {base: string; canRec
   const [active, setActive] = useState<AttendanceRecord | null>(null);
   const [history, setHistory] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(false);
-  const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -75,32 +73,6 @@ export default function AttendancePanel({base, canRecord}: {base: string; canRec
   useEffect(() => {
     load();
   }, [load]);
-
-  async function performAction(endpoint: string, actionName: string) {
-    setBusy(true);
-    const location = endpoint === 'clock-in' ? await getClockInFix() : null;
-    setError('');
-    setNotice('');
-    try {
-      const r = await fetch(`${base}/attendance/${endpoint}`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(location ? {notes, location} : {notes}),
-      });
-      const body = await r.json();
-      if (!r.ok) {
-        setError(body.error ?? Object.values(body.errors ?? {}).join('. ') ?? `Could not ${actionName}`);
-        return;
-      }
-      setNotes('');
-      setNotice(`Successfully ${actionName}.`);
-      await load();
-    } catch {
-      setError(`Could not complete ${actionName}. Please check network and retry.`);
-    } finally {
-      setBusy(false);
-    }
-  }
 
   function formatTime(iso?: string) {
     if (!iso) return '—';
@@ -161,68 +133,7 @@ export default function AttendancePanel({base, canRecord}: {base: string; canRec
           </div>
         </div>
 
-        {canRecord && (
-          <div style={{marginTop: '1rem'}}>
-            <label className="form-field" style={{marginBottom: '0.75rem'}}>
-              Shift notes / punch comment (optional)
-              <input
-                type="text"
-                disabled={busy}
-                maxLength={1000}
-                placeholder="e.g. Bay 2 maintenance, tire rotation support"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-              />
-            </label>
-            <div style={{display: 'flex', gap: '0.75rem', flexWrap: 'wrap'}}>
-              {(!active || active.status === 'clocked_out') && (
-                <button
-                  className="primary"
-                  disabled={busy}
-                  onClick={() => performAction('clock-in', 'clocked in')}
-                >
-                  {busy ? 'Recording…' : 'Clock in'}
-                </button>
-              )}
-              {active && active.status === 'clocked_in' && (
-                <>
-                  <button
-                    className="secondary"
-                    disabled={busy}
-                    onClick={() => performAction('start-break', 'started break')}
-                  >
-                    Start break
-                  </button>
-                  <button
-                    className="primary"
-                    disabled={busy}
-                    onClick={() => performAction('clock-out', 'clocked out')}
-                  >
-                    Clock out
-                  </button>
-                </>
-              )}
-              {active && active.status === 'on_break' && (
-                <>
-                  <button
-                    className="primary"
-                    disabled={busy}
-                    onClick={() => performAction('end-break', 'ended break')}
-                  >
-                    End break
-                  </button>
-                  <button
-                    className="secondary"
-                    disabled={busy}
-                    onClick={() => performAction('clock-out', 'clocked out')}
-                  >
-                    Clock out
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        )}
+        {canRecord && <p style={{marginTop: '1rem'}}>Clock in, breaks and clock out are on the shop iPad: tap your name and type your PIN.</p>}
       </div>
 
       <h3>Shift history</h3>

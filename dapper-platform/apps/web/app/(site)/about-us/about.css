@@ -22,15 +22,12 @@
 .a-story__item:last-child .a-story__year{color:var(--red)}
 .a-story__item h3{font-size:clamp(19.2px,2.2vw,29.6px);line-height:1.05}
 .a-story__item p{margin-top:12px;color:var(--ink-2);max-width:40ch}
-.a-story__bar{display:none}
 .is-pinned .a-story{height:100svh;padding:76px 0 0;overflow:hidden;border-top:0;display:flex;align-items:center}
 .is-pinned .a-story__strip{display:flex;align-items:flex-end;gap:clamp(56px,7vw,120px);width:max-content;padding:0 var(--cg) clamp(48px,7vh,88px)}
 .is-pinned .a-story__head{flex:none;width:min(44vw,700px);align-self:center}
 .is-pinned .a-story__items{margin:0;display:flex;gap:clamp(56px,7vw,120px)}
 .is-pinned .a-story__item{display:block;flex:none;min-width:clamp(360px,30vw,520px);border-top:0;padding-top:0}
 .is-pinned .a-story__year{display:block;white-space:nowrap;font-size:clamp(96.2px,11.1vw,185px);margin-bottom:clamp(14px,2vw,30px)}
-.is-pinned .a-story__bar{display:block;position:absolute;left:var(--cg);right:var(--cg);bottom:clamp(24px,4.5vh,52px);height:2px;background:var(--rule)}
-.is-pinned .a-story__bar i{display:block;height:100%;background:var(--red);transform:scaleX(0);transform-origin:left}
 @media(max-width:720px){.a-story__item{grid-template-columns:minmax(0,1fr)}.a-story__year{grid-row:auto;margin-bottom:12px}}
 
 /* A3 The founders: a portrait each */
@@ -40,6 +37,7 @@
 .af-card{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:end;gap:clamp(18px,2.2vw,32px)}
 .af-frame{width:clamp(130px,15vw,240px);aspect-ratio:3/4;background:var(--ink);overflow:hidden;display:grid;place-items:center;clip-path:polygon(0 0,100% 0,100% 100%,14px 100%,0 calc(100% - 14px))}
 .af-frame img{width:100%;height:100%;object-fit:cover}
+@media(min-width:721px) and (max-width:1100px) and (orientation:portrait){.af-grid{grid-template-columns:minmax(0,1fr)}.af-frame{width:clamp(200px,28vw,280px)}}
 .af-mono{font:500 clamp(44px,6vw,96px)/1 var(--ch);letter-spacing:-.04em;color:var(--red)}
 .af-role{margin:0;font:500 clamp(40px,5.4vw,88px)/.9 var(--ch);letter-spacing:-.03em;color:var(--ink)}
 .af-role span{display:inline-block}
@@ -87,3 +85,6 @@
 .aw-card::after{content:'';position:absolute;inset:0;background:#000;opacity:var(--dim,0);pointer-events:none}
 /* Phones: the same pinned sideways strip as desktop, sized to the screen */
 @media(max-width:720px){.is-pinned .a-story__head{width:80vw}.is-pinned .a-story__items,.is-pinned .a-story__strip{gap:44px}.is-pinned .a-story__item{min-width:74vw}.is-pinned .a-story__year{font-size:clamp(76px,26vw,120px)}.is-pinned .a-story{padding-top:64px}}
+@media(max-width:1023px){.af-card{align-items:start}}
+/* Below desktop the reasons are a plain list: the stacking effect needs tall cards to read properly */
+@media(max-width:1023px){.aw-card{position:static;margin-bottom:12px}}

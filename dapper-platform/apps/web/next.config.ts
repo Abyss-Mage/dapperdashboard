@@ -13,7 +13,8 @@ const config: NextConfig = {
       // Public website addresses from the static-page era.
       { source: '/home', destination: '/', permanent: true },
       { source: '/my-bookings', destination: '/account', permanent: false },
-      { source: '/book-appointment', destination: '/booking', permanent: false },
+      { source: '/booking', destination: '/book-appointment', permanent: true },
+      { source: '/booking/:path*', destination: '/book-appointment/:path*', permanent: true },
     ];
   },
 };

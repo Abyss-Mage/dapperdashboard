@@ -26,7 +26,9 @@ type InvoiceIssuerSnapshot struct {
 }
 type InvoiceIssuer struct {
 	InvoiceIssuerSnapshot
-	NextNumber int64 `json:"nextNumber"`
+	NextNumber      int64  `json:"nextNumber"`
+	QuotePrefix     string `json:"quotePrefix"`
+	QuoteNextNumber int64  `json:"quoteNextNumber"`
 }
 type InvoiceCustomerSnapshot struct {
 	Name  string `json:"name"`
@@ -41,6 +43,10 @@ type InvoiceIssuerInput struct {
 	Currency        string `json:"currency"`
 	NumberPrefix    string `json:"numberPrefix"`
 	StartNumber     int64  `json:"startNumber"`
+	// On an edit, 0 leaves the running number where it is.
+	NextNumber      int64  `json:"nextNumber"`
+	QuotePrefix     string `json:"quotePrefix"`
+	QuoteNextNumber int64  `json:"quoteNextNumber"`
 	Version         int    `json:"version"`
 }
 type InvoiceIssuerBinding struct {
@@ -66,11 +72,11 @@ func financeConfigurationGrant(ctx context.Context, tx pgx.Tx, actor, org string
 	return nil
 }
 
-const invoiceIssuerColumns = `id::text,legal_name,address,tax_registration,currency,number_prefix,version,next_number`
+const invoiceIssuerColumns = `id::text,legal_name,address,tax_registration,currency,number_prefix,version,next_number,quote_prefix,quote_next_number`
 
 func scanInvoiceIssuer(row pgx.Row) (InvoiceIssuer, error) {
 	var i InvoiceIssuer
-	err := row.Scan(&i.ID, &i.LegalName, &i.Address, &i.TaxRegistration, &i.Currency, &i.NumberPrefix, &i.Version, &i.NextNumber)
+	err := row.Scan(&i.ID, &i.LegalName, &i.Address, &i.TaxRegistration, &i.Currency, &i.NumberPrefix, &i.Version, &i.NextNumber, &i.QuotePrefix, &i.QuoteNextNumber)
 	return i, err
 }
 func issuerWriteError(err error) error {
@@ -81,10 +87,16 @@ func issuerWriteError(err error) error {
 	return err
 }
 
+var quotePrefixPattern = regexp.MustCompile(`^[A-Z0-9-]{0,24}$`)
+
 func (s *Store) SaveInvoiceIssuer(ctx context.Context, actor, org string, input InvoiceIssuerInput) (InvoiceIssuer, error) {
 	input.LegalName = strings.TrimSpace(input.LegalName)
 	input.Address = strings.TrimSpace(input.Address)
 	input.TaxRegistration = strings.TrimSpace(input.TaxRegistration)
+	input.QuotePrefix = strings.ToUpper(strings.TrimSpace(input.QuotePrefix))
+	if !quotePrefixPattern.MatchString(input.QuotePrefix) || input.NextNumber < 0 || input.NextNumber >= math.MaxInt64-1 || input.QuoteNextNumber < 0 || input.QuoteNextNumber >= math.MaxInt64-1 {
+		return InvoiceIssuer{}, ErrInvoiceIssuer
+	}
 	if n := utf8.RuneCountInString(input.LegalName); n < 2 || n > 200 || utf8.RuneCountInString(input.Address) < 5 || utf8.RuneCountInString(input.Address) > 1000 || utf8.RuneCountInString(input.TaxRegistration) > 100 || input.Currency != "CAD" || !regexp.MustCompile(`^[A-Z0-9-]{1,24}$`).MatchString(input.NumberPrefix) {
 		return InvoiceIssuer{}, ErrInvoiceIssuer
 	}
@@ -101,9 +113,9 @@ func (s *Store) SaveInvoiceIssuer(ctx context.Context, actor, org string, input 
 	}
 	var issuer InvoiceIssuer
 	if input.ID == "" {
-		issuer, err = scanInvoiceIssuer(tx.QueryRow(ctx, `INSERT INTO invoice_issuers(organization_id,legal_name,address,tax_registration,currency,number_prefix,next_number,updated_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING `+invoiceIssuerColumns, org, input.LegalName, input.Address, input.TaxRegistration, input.Currency, input.NumberPrefix, input.StartNumber, actor))
+		issuer, err = scanInvoiceIssuer(tx.QueryRow(ctx, `INSERT INTO invoice_issuers(organization_id,legal_name,address,tax_registration,currency,number_prefix,next_number,updated_by,quote_prefix,quote_next_number) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,GREATEST($10::bigint,1)) RETURNING `+invoiceIssuerColumns, org, input.LegalName, input.Address, input.TaxRegistration, input.Currency, input.NumberPrefix, input.StartNumber, actor, input.QuotePrefix, input.QuoteNextNumber))
 	} else {
-		issuer, err = scanInvoiceIssuer(tx.QueryRow(ctx, `UPDATE invoice_issuers SET legal_name=$3,address=$4,tax_registration=$5,currency=$6,number_prefix=$7,updated_by=$8,version=version+1 WHERE organization_id=$1 AND id=$2 AND version=$9 RETURNING `+invoiceIssuerColumns, org, input.ID, input.LegalName, input.Address, input.TaxRegistration, input.Currency, input.NumberPrefix, actor, input.Version))
+		issuer, err = scanInvoiceIssuer(tx.QueryRow(ctx, `UPDATE invoice_issuers SET legal_name=$3,address=$4,tax_registration=$5,currency=$6,number_prefix=$7,updated_by=$8,next_number=CASE WHEN $10::bigint>0 THEN $10::bigint ELSE next_number END,quote_prefix=$11,quote_next_number=CASE WHEN $12::bigint>0 THEN $12::bigint ELSE quote_next_number END,version=version+1 WHERE organization_id=$1 AND id=$2 AND version=$9 RETURNING `+invoiceIssuerColumns, org, input.ID, input.LegalName, input.Address, input.TaxRegistration, input.Currency, input.NumberPrefix, actor, input.Version, input.NextNumber, input.QuotePrefix, input.QuoteNextNumber))
 	}
 	if errors.Is(err, pgx.ErrNoRows) {
 		return InvoiceIssuer{}, ErrInvoiceIssuerConflict
@@ -243,12 +255,17 @@ func (s *Store) InvoiceIssuancePreview(ctx context.Context, scope Scope, id stri
 	if status != "draft" {
 		return InvoiceIssuerSnapshot{}, ErrInvoiceStatusConflict
 	}
-	issuer, err := scanInvoiceIssuer(tx.QueryRow(ctx, `SELECT i.id::text,i.legal_name,i.address,i.tax_registration,i.currency,i.number_prefix,i.version,i.next_number FROM invoice_issuers i JOIN location_invoice_issuers b ON b.organization_id=i.organization_id AND b.issuer_id=i.id WHERE b.organization_id=$1 AND b.location_id=$2 FOR SHARE OF i,b`, scope.OrganizationID, scope.LocationID))
+	issuer, err := scanInvoiceIssuer(tx.QueryRow(ctx, `SELECT i.id::text,i.legal_name,i.address,i.tax_registration,i.currency,i.number_prefix,i.version,i.next_number,i.quote_prefix,i.quote_next_number FROM invoice_issuers i JOIN location_invoice_issuers b ON b.organization_id=i.organization_id AND b.issuer_id=i.id WHERE b.organization_id=$1 AND b.location_id=$2 FOR SHARE OF i,b`, scope.OrganizationID, scope.LocationID))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return InvoiceIssuerSnapshot{}, ErrInvoiceIssuer
 	}
 	if err != nil {
 		return InvoiceIssuerSnapshot{}, err
+	}
+	if own, e := franchiseTaxNumber(ctx, tx, scope.OrganizationID, scope.LocationID); e != nil {
+		return InvoiceIssuerSnapshot{}, e
+	} else if own != "" {
+		issuer.TaxRegistration = own
 	}
 	if err = tx.Commit(ctx); err != nil {
 		return InvoiceIssuerSnapshot{}, err
@@ -341,15 +358,63 @@ func (s *Store) IssueInvoice(ctx context.Context, scope Scope, id string, review
 	if lineCount == 0 || lineSubtotal != inv.SubtotalCents || inv.SubtotalCents > math.MaxInt64-inv.TaxCents || inv.TotalCents != inv.SubtotalCents-inv.DiscountCents+inv.TaxCents || inv.PaidCents != 0 || inv.DueCents != inv.TotalCents {
 		return Invoice{}, ErrInvoiceInput
 	}
+	if own, e := franchiseTaxNumber(ctx, tx, scope.OrganizationID, scope.LocationID); e != nil {
+		return Invoice{}, e
+	} else if own != "" {
+		issuer.TaxRegistration = own
+	}
 	var customer InvoiceCustomerSnapshot
 	if err = tx.QueryRow(ctx, `SELECT name,email,phone FROM customers WHERE organization_id=$1 AND location_id=$2 AND id=$3 FOR SHARE`, scope.OrganizationID, scope.LocationID, inv.CustomerID).Scan(&customer.Name, &customer.Email, &customer.Phone); err != nil {
 		return Invoice{}, err
 	}
-	number := issuer.NumberPrefix + strconv.FormatInt(issuer.NextNumber, 10)
-	if _, err = tx.Exec(ctx, `UPDATE invoices SET invoice_number=$4,status='issued',issuer_id=$5,issuer_snapshot=$6,customer_snapshot=$7,issued_by=$8,issued_at=now(),updated_at=now() WHERE organization_id=$1 AND location_id=$2 AND id=$3`, scope.OrganizationID, scope.LocationID, id, number, issuer.ID, issuer.InvoiceIssuerSnapshot, customer, scope.ActorID); err != nil {
+	// A dealership invoice takes the dealership series (locked here), or the number staff typed, and its picked due date; others use
+	// the issuer's series.
+	prefix, next := issuer.NumberPrefix, issuer.NextNumber
+	dealerPrefix, dealerNext, manual, dealer, err := dealerNumbering(ctx, tx, scope.OrganizationID, id)
+	if err != nil {
+		return Invoice{}, err
+	}
+	if dealer {
+		prefix, next = dealerPrefix, dealerNext
+	}
+	// The owner can set the running number, so one that has already been used is stepped over rather than failing the invoice.
+	number := prefix + strconv.FormatInt(next, 10)
+	if manual != "" {
+		var taken bool
+		if err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM invoices WHERE organization_id=$1 AND invoice_number=$2 AND dealership_account_id IS NOT NULL AND id<>$3)`, scope.OrganizationID, manual, id).Scan(&taken); err != nil {
+			return Invoice{}, err
+		}
+		if taken {
+			return Invoice{}, ErrDealerNumberTaken
+		}
+		number = manual
+	}
+	for manual == "" {
+		var taken bool
+		// Dealership and customer invoices are numbered apart (owner, error404 #25); imported customer invoices count as customer numbers.
+		if err = tx.QueryRow(ctx, `SELECT CASE WHEN $3 THEN EXISTS(SELECT 1 FROM invoices WHERE organization_id=$1 AND invoice_number=$2 AND dealership_account_id IS NOT NULL)
+ ELSE EXISTS(SELECT 1 FROM invoices WHERE organization_id=$1 AND invoice_number=$2 AND dealership_account_id IS NULL) OR EXISTS(SELECT 1 FROM legacy_booking_billing WHERE organization_id=$1 AND invoice_number=$2) END`, scope.OrganizationID, number, dealer).Scan(&taken); err != nil {
+			return Invoice{}, err
+		}
+		if !taken {
+			break
+		}
+		next++
+		number = prefix + strconv.FormatInt(next, 10)
+	}
+	if _, err = tx.Exec(ctx, `UPDATE invoices SET invoice_number=$4,status='issued',issuer_id=$5,issuer_snapshot=$6,customer_snapshot=$7,issued_by=$8,issued_at=now(),updated_at=now(),
+ due_at=CASE WHEN $9 THEN coalesce((due_date+1)::timestamp AT TIME ZONE 'America/Toronto',now()+make_interval(days=>coalesce(terms_days,0))) ELSE due_at END,
+ invoice_date=CASE WHEN $9 THEN coalesce(invoice_date,(now() AT TIME ZONE 'America/Toronto')::date) ELSE invoice_date END WHERE organization_id=$1 AND location_id=$2 AND id=$3`, scope.OrganizationID, scope.LocationID, id, number, issuer.ID, issuer.InvoiceIssuerSnapshot, customer, scope.ActorID, dealer); err != nil {
 		return Invoice{}, issuerWriteError(err)
 	}
-	if _, err = tx.Exec(ctx, `UPDATE invoice_issuers SET next_number=next_number+1 WHERE id=$1`, issuer.ID); err != nil {
+	if dealer {
+		if manual == "" {
+			_, err = tx.Exec(ctx, `UPDATE dealer_invoice_series SET next_number=$2 WHERE organization_id=$1`, scope.OrganizationID, next+1)
+		}
+	} else {
+		_, err = tx.Exec(ctx, `UPDATE invoice_issuers SET next_number=$2 WHERE id=$1`, issuer.ID, next+1)
+	}
+	if err != nil {
 		return Invoice{}, err
 	}
 	if _, err = tx.Exec(ctx, `INSERT INTO invoice_events(invoice_id,organization_id,location_id,actor_id,from_status,to_status,notes) VALUES($1,$2,$3,$4,'draft','issued','Invoice explicitly issued with configured issuer and sequence')`, id, scope.OrganizationID, scope.LocationID, scope.ActorID); err != nil {

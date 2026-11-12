@@ -39,7 +39,8 @@ export default function AboutPage() {
       });
       ScrollTrigger.batch('[data-in]', { start: 'top 92%', once: true, onEnter: (els) => gsap.from(els, { y: 24, opacity: 0, duration: .55, stagger: .05, ease: 'expo.out', overwrite: true }) });
       // The founders' portraits open upward as they arrive.
-      gsap.utils.toArray<HTMLElement>('.af-frame').forEach((el) => gsap.fromTo(el, { clipPath: 'inset(100% 0 0 0)' }, { clipPath: 'inset(0% 0 0 0)', duration: .9, ease: 'expo.out', scrollTrigger: { trigger: el, start: 'top 88%', once: true } }));
+      // The picture wipes in, not its frame: the frame keeps the cut corner.
+      gsap.utils.toArray<HTMLElement>('.af-frame > *').forEach((el) => gsap.fromTo(el, { clipPath: 'inset(100% 0 0 0)' }, { clipPath: 'inset(0% 0 0 0)', duration: .9, ease: 'expo.out', scrollTrigger: { trigger: el, start: 'top 88%', once: true } }));
 
       // Text replacement: the service word morphs into the next one while the band is on screen.
       const word = wordRef.current!;
@@ -53,7 +54,7 @@ export default function AboutPage() {
     });
 
     // Why-trust cards: the one underneath shrinks back and dims as the next slides up over it.
-    mm.add('(prefers-reduced-motion: no-preference)', () => {
+    mm.add('(prefers-reduced-motion: no-preference) and (min-width: 1024px)', () => {
       const cards = gsap.utils.toArray<HTMLElement>('.aw-card');
       cards.forEach((card, i) => {
         if (i < cards.length - 1) gsap.to(card, { scale: .94, '--dim': .55, ease: 'none', scrollTrigger: { trigger: cards[i + 1], start: 'top 92%', end: 'top 28%', scrub: true } });
@@ -71,8 +72,7 @@ export default function AboutPage() {
       const dist = () => Math.max(0, strip.scrollWidth - innerWidth);
       el.classList.add('is-pinned');
       gsap.timeline({ defaults: { ease: 'none' }, scrollTrigger: { trigger: section, start: 'top top', end: () => '+=' + dist(), pin: true, scrub: .6, invalidateOnRefresh: true, refreshPriority: 1 } })
-        .to(strip, { x: () => -dist() }, 0)
-        .to('.a-story__bar i', { scaleX: 1 }, 0);
+        .to(strip, { x: () => -dist() }, 0);
       return () => el.classList.remove('is-pinned');
     });
     // Pinned panel with overscroll (as on Contact): the hero stays put and settles back as the story section slides over it.
@@ -97,7 +97,7 @@ export default function AboutPage() {
             <h1 id="a-title" className="c-h1 a-h1">Good people.<br /><em>Considered care.</em></h1>
             <div className="ah__aside">
               <p>Two childhood friends started Dapper as a mobile detailing business in 2022. Since 2026 it has had its own studio at {contact.street}, Peterborough. The care behind every vehicle has not changed.</p>
-              <a className="c-btn c-btn--red" href="/booking"><Roll>Book your detail</Roll><ArrowRight size={20} aria-hidden="true" /></a>
+              <a className="c-btn c-btn--red" href="/book-appointment"><Roll>Book your detail</Roll><ArrowRight size={20} aria-hidden="true" /></a>
             </div>
           </div>
         </div>
@@ -121,7 +121,6 @@ export default function AboutPage() {
               ))}
             </ol>
           </div>
-          <div className="a-story__bar" aria-hidden="true"><i /></div>
         </section>
 
         {/* A3 The founders: a portrait each, the role set large beside the name */}
@@ -152,7 +151,7 @@ export default function AboutPage() {
           <ul className="a-values__list" aria-label="What we detail">{words.map((w) => <li key={w}>{w}</li>)}</ul>
           <div className="a-values__foot">
             <p data-in>{values.text}</p>
-            <a className="c-btn c-btn--red" href="/booking" data-in><Roll>Book your detail</Roll><ArrowRight size={20} aria-hidden="true" /></a>
+            <a className="c-btn c-btn--red" href="/book-appointment" data-in><Roll>Book your detail</Roll><ArrowRight size={20} aria-hidden="true" /></a>
           </div>
         </section>
 
@@ -180,7 +179,7 @@ export default function AboutPage() {
           <h2 id="a-close-title" data-head>Ready for <em>precise detailing?</em></h2>
           <p className="c-muted a-close__lede" data-in>Choose mobile service or at-shop detailing and pick your date and time in seconds.</p>
           <div className="a-close__actions" data-in>
-            <a className="c-btn c-btn--red" href="/booking"><Roll>Book now</Roll><ArrowRight size={20} aria-hidden="true" /></a>
+            <a className="c-btn c-btn--red" href="/book-appointment"><Roll>Book now</Roll><ArrowRight size={20} aria-hidden="true" /></a>
             <a className="a-close__call" href={'tel:' + contact.tel}>or call <span>+1 {contact.phone}</span></a>
           </div>
         </section>

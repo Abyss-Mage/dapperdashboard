@@ -59,9 +59,9 @@ export function ProfileForm({ initial, onSaved }: { initial: Profile | null; onS
   return <form onSubmit={save} style={{ display: 'grid', gap: 14 }} noValidate>
     {initial?.email && <label className={glass.field}>Email (your sign-in)<input value={initial.email} readOnly aria-readonly="true" /></label>}
     <label className={glass.field}>Full name<input value={name} onChange={e => setName(e.target.value)} maxLength={120} autoComplete="name" required disabled={busy} /></label>
-    <label className={glass.field}>Mobile phone<input value={phone} onChange={e => setPhone(e.target.value)} inputMode="tel" autoComplete="tel" placeholder="+1 416 555 0123" required disabled={busy} /><span className={glass.lede}>Include the country code. The format is checked; it is not verified by text message.</span></label>
+    <label className={glass.field}>Mobile phone (optional)<input value={phone} onChange={e => setPhone(e.target.value)} inputMode="tel" autoComplete="tel" placeholder="+1 416 555 0123" disabled={busy} /><span className={glass.lede}>Include the country code. The format is checked; it is not verified by text message.</span></label>
     {error && <p className={glass.alert} role="alert">{error}</p>}{saved && !error && <p className={glass.notice} role="status">Your details are saved.</p>}
-    <div className={glass.actions}><button className={glass.button} disabled={busy || name.trim().length < 2 || phone.trim().length < 7}>{busy ? 'Saving…' : 'Save my details'}</button></div>
+    <div className={glass.actions}><button className={glass.button} disabled={busy || name.trim().length < 2 || (phone.trim() !== '' && phone.trim().length < 7)}>{busy ? 'Saving…' : 'Save my details'}</button></div>
   </form>;
 }
 

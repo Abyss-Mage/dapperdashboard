@@ -49,7 +49,7 @@ func registerSquareOAuthRoutes(mux *http.ServeMux, store *postgres.Store, origin
 			fail(w, err)
 			return
 		}
-		reply(w, 200, map[string]any{"connections": items, "available": map[string]bool{"sandbox": store.SquareOAuthAvailable("sandbox"), "production": store.SquareOAuthAvailable("production")}})
+		reply(w, 200, map[string]any{"connections": items, "available": map[string]bool{"sandbox": store.SquareOAuthAvailableFor(r.Context(), org, loc, "sandbox"), "production": store.SquareOAuthAvailableFor(r.Context(), org, loc, "production")}})
 	})
 	mux.HandleFunc("POST "+base+"/start", func(w http.ResponseWriter, r *http.Request) {
 		org, loc, ok := selectors(w, r)
@@ -63,25 +63,74 @@ func registerSquareOAuthRoutes(mux *http.ServeMux, store *postgres.Store, origin
 		}
 		reply(w, 200, map[string]string{"authorizeUrl": link})
 	})
-	// Sandbox only: connect the test account with its access token when Square's test sign-in page will not open.
-	mux.HandleFunc("POST "+base+"/token", func(w http.ResponseWriter, r *http.Request) {
+	// This franchise's own Square application keys (error404 #50): used instead of the shared ones for its sign-in and card form.
+	mux.HandleFunc("GET "+base+"/app-keys", func(w http.ResponseWriter, r *http.Request) {
+		org, loc, ok := selectors(w, r)
+		if !ok {
+			return
+		}
+		items, err := store.LocationSquareApps(r.Context(), requestSession(r).principalID, org, loc)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		reply(w, 200, map[string]any{"items": items})
+	})
+	mux.HandleFunc("PUT "+base+"/app-keys", func(w http.ResponseWriter, r *http.Request) {
 		org, loc, ok := selectors(w, r)
 		if !ok {
 			return
 		}
 		var in struct {
-			AccessToken string `json:"accessToken"`
+			Environment   string `json:"environment"`
+			ApplicationID string `json:"applicationId"`
+			Secret        string `json:"secret"`
 		}
 		if !decode(w, r, &in) {
 			return
 		}
-		if err := store.ConnectSquareSandboxToken(r.Context(), requestSession(r).principalID, org, loc, in.AccessToken); err != nil {
-			if errors.Is(err, postgres.ErrPaymentInput) {
-				reply(w, 422, map[string]string{"error": "That does not look like a Square sandbox access token."})
+		if err := store.SaveLocationSquareApp(r.Context(), requestSession(r).principalID, org, loc, in.Environment, in.ApplicationID, in.Secret); err != nil {
+			if errors.Is(err, postgres.ErrSquareKeysInput) {
+				reply(w, 422, map[string]string{"error": "Enter the Square Application ID and the Application secret from the Square Developer Console."})
+				return
+			}
+			fail(w, err)
+			return
+		}
+		reply(w, 200, map[string]bool{"saved": true})
+	})
+	mux.HandleFunc("DELETE "+base+"/app-keys", func(w http.ResponseWriter, r *http.Request) {
+		org, loc, ok := selectors(w, r)
+		if !ok {
+			return
+		}
+		if err := store.ClearLocationSquareApp(r.Context(), requestSession(r).principalID, org, loc, env(r)); err != nil {
+			fail(w, err)
+			return
+		}
+		reply(w, 200, map[string]bool{"removed": true})
+	})
+	// Connect this franchise's own Square account with its Application ID and Access token (test or live), owner 2026-11-13.
+	mux.HandleFunc("POST "+base+"/keys", func(w http.ResponseWriter, r *http.Request) {
+		org, loc, ok := selectors(w, r)
+		if !ok {
+			return
+		}
+		var in struct {
+			Environment   string `json:"environment"`
+			ApplicationID string `json:"applicationId"`
+			AccessToken   string `json:"accessToken"`
+		}
+		if !decode(w, r, &in) {
+			return
+		}
+		if err := store.ConnectSquareKeys(r.Context(), requestSession(r).principalID, org, loc, in.Environment, in.ApplicationID, in.AccessToken); err != nil {
+			if errors.Is(err, postgres.ErrSquareKeysInput) {
+				reply(w, 422, map[string]string{"error": "Enter the Application ID and Access token from the same Square app. Test ones start with sandbox-sq0idb- and EAAA; live ones with sq0idp- and EAAA."})
 				return
 			}
 			if errors.Is(err, square.ErrOAuth) {
-				reply(w, 422, map[string]string{"error": "Square did not accept that access token. Copy the Sandbox access token again from the Developer Console."})
+				reply(w, 422, map[string]string{"error": "Square did not accept that Access token. Copy it again from the Square Developer Console (Credentials page, the same Test or Live switch as here)."})
 				return
 			}
 			fail(w, err)

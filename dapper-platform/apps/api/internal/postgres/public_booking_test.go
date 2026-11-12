@@ -270,7 +270,10 @@ func verifyPublicBookFlow(t *testing.T, ctx context.Context, s *Store, a Scope, 
 	if err = s.CheckStaffCoupon(ctx, a, staff, couponCode); err != nil {
 		t.Fatal("staff booking refused a good coupon", err)
 	}
+	// The live app raises a draft invoice with every booking; the coupon invoice must replace it (it once clashed with it and failed).
+	autoInvoiceEnabled = true
 	staffBooking, err := s.ReserveBooking(ctx, a, staff)
+	autoInvoiceEnabled = false
 	if err != nil {
 		t.Fatal(err)
 	}

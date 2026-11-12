@@ -2,6 +2,7 @@ package workspace
 
 import (
 	"context"
+	"dapper.local/platform/internal/email"
 	"dapper.local/platform/internal/postgres"
 	"dapper.local/platform/internal/scheduling"
 	"dapper.local/platform/internal/square"
@@ -15,6 +16,21 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+type quoteMailRecorder struct {
+	to, subject string
+	att         *email.Attachment
+}
+
+func (m *quoteMailRecorder) SendEmail(_ context.Context, to, subject, _, _ string) (string, error) {
+	m.to, m.subject = to, subject
+	return "synthetic-ref", nil
+}
+
+func (m *quoteMailRecorder) SendEmailWithAttachment(_ context.Context, to, subject, _, _ string, att *email.Attachment) (string, error) {
+	m.to, m.subject, m.att = to, subject, att
+	return "synthetic-ref", nil
+}
 
 func verifyQuotationHTTP(t *testing.T, ctx context.Context, store *postgres.Store, setup *pgxpool.Pool, handler http.Handler, actor, org, loc, customer, token, origin string) {
 	t.Helper()
@@ -220,6 +236,29 @@ func verifyQuotationHTTP(t *testing.T, ctx context.Context, store *postgres.Stor
 	}
 	if issuedQuote.Status != "issued" {
 		t.Fatalf("expected status 'issued', got %s", issuedQuote.Status)
+	}
+	if !strings.Contains(issueRec.Body.String(), `"emailStatus":"`) {
+		t.Fatal("staff are not told whether the quotation was emailed", issueRec.Body.String())
+	}
+	var oldEmail string
+	if err := setup.QueryRow(ctx, `SELECT email FROM customers WHERE id=$1`, customer).Scan(&oldEmail); err != nil {
+		t.Fatal(err)
+	}
+	mail := &quoteMailRecorder{}
+	if _, err := setup.Exec(ctx, `UPDATE customers SET email='quote.mail@example.invalid' WHERE id=$1`, customer); err != nil {
+		t.Fatal(err)
+	}
+	if status, to := emailIssuedQuote(ctx, store, mail, issuedQuote); status != "sent" || to != "quote.mail@example.invalid" || mail.to != to || mail.att == nil || !strings.HasPrefix(string(mail.att.Data), "%PDF-") || !strings.Contains(mail.subject, issuedQuote.ReferenceNumber) {
+		t.Fatalf("quotation email: %s %s %+v", status, to, mail.to)
+	}
+	if _, err := setup.Exec(ctx, `UPDATE customers SET email='' WHERE id=$1`, customer); err != nil {
+		t.Fatal(err)
+	}
+	if status, _ := emailIssuedQuote(ctx, store, mail, issuedQuote); status != "no_email" {
+		t.Fatal("a customer without an email must be reported", status)
+	}
+	if _, err := setup.Exec(ctx, `UPDATE customers SET email=$2 WHERE id=$1`, customer, oldEmail); err != nil {
+		t.Fatal(err)
 	}
 
 	// 8. Customer portal: list and get quotes

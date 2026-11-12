@@ -4,8 +4,9 @@ import { useCallback, useEffect, useState } from 'react';
 import glass from '../glass.module.css';
 import Select from '../GlassSelect';
 
-/* Card payments for one franchise. Each franchise connects its OWN Square account (Square OAuth): the owner approves Dapper on
-   Square's page, then picks which of that account's Square locations this franchise charges to. Square confirms the location
+/* Card payments for one franchise. Each franchise connects its OWN Square account with two keys from its Square app (Application
+   ID and Access token, test or live; owner 2026-11-13: no Square sign-in page, no shared keys), then picks which of that account's
+   Square locations this franchise charges to. Square confirms the location
    (active, CAD, card processing) before it is saved, and every change is kept as a new version. */
 
 type Env = 'sandbox' | 'production';
@@ -21,7 +22,6 @@ export default function SquareMerchantPanel({ organizationId, locationId, canMan
   const scope = `/api/v1/organizations/${organizationId}/locations/${locationId}/square`;
   const [info, setInfo] = useState<Info | null>(null);
   const [connections, setConnections] = useState<Connection[]>([]);
-  const [available, setAvailable] = useState<Record<Env, boolean>>({ sandbox: false, production: false });
   const [env, setEnv] = useState<Env>('sandbox');
   const [places, setPlaces] = useState<{ merchantId: string; locations: SquareLocation[] } | null>(null);
   const [pick, setPick] = useState('');
@@ -30,16 +30,12 @@ export default function SquareMerchantPanel({ organizationId, locationId, canMan
   const load = useCallback(async () => {
     setInfo(await read<Info>(await fetch(`${scope}/binding`, { cache: 'no-store' })));
     if (canManage) {
-      const c = await read<{ connections: Connection[]; available: Record<Env, boolean> }>(await fetch(`${scope}/connection`, { cache: 'no-store' }));
-      setConnections(c.connections); setAvailable(c.available);
+      const c = await read<{ connections: Connection[] }>(await fetch(`${scope}/connection`, { cache: 'no-store' }));
+      setConnections(c.connections);
     }
   }, [scope, canManage]);
   useEffect(() => {
     setInfo(null); setPlaces(null); setPick(''); setError(''); setNotice('');
-    const result = new URLSearchParams(window.location.search).get('square');
-    if (result === 'connected') setNotice('Square account connected. Now choose the Square location this franchise charges to.');
-    if (result === 'declined') setError('The Square connection was cancelled on Square’s page.');
-    if (result === 'failed') setError('Square did not finish the connection. Try again.');
     load().catch((e) => setError(e.message));
   }, [load]);
 
@@ -52,16 +48,16 @@ export default function SquareMerchantPanel({ organizationId, locationId, canMan
     return () => { live = false; };
   }, [connection, env, scope]);
 
-  async function connect() {
+  const [keys, setKeys] = useState({ applicationId: '', accessToken: '' });
+  const [editing, setEditing] = useState(false);
+  async function saveKeys() {
     setBusy(true); setError(''); setNotice('');
-    try { const b = await read<{ authorizeUrl: string }>(await fetch(`${scope}/connection/start?environment=${env}`, { method: 'POST', headers: json, body: '{}' })); window.location.assign(b.authorizeUrl); }
-    catch (e) { setError((e as Error).message); setBusy(false); }
-  }
-  const [tok, setTok] = useState('');
-  async function connectToken() {
-    setBusy(true); setError(''); setNotice('');
-    try { const r = await fetch(`${scope}/connection/token`, { method: 'POST', headers: json, body: JSON.stringify({ accessToken: tok }) }); if (!r.ok && r.status !== 204) await read(r); setTok(''); setNotice('Test Square account connected. Now choose the Square location.'); await load(); }
-    catch (e) { setError((e as Error).message); } finally { setBusy(false); }
+    try {
+      const r = await fetch(`${scope}/connection/keys`, { method: 'POST', headers: json, body: JSON.stringify({ environment: env, ...keys }) });
+      if (!r.ok && r.status !== 204) await read(r);
+      setKeys({ applicationId: '', accessToken: '' }); setEditing(false);
+      setNotice('Square accepted the keys. Now choose the Square location this franchise charges to.'); await load();
+    } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   }
   async function disconnect() {
     setBusy(true); setError(''); setNotice('');
@@ -81,7 +77,7 @@ export default function SquareMerchantPanel({ organizationId, locationId, canMan
   return <section className={glass.stage} aria-labelledby="sq-merchant-title"><div className={glass.card}>
     <div className={glass.head}><h2 id="sq-merchant-title" className={glass.title}><Landmark size={18} aria-hidden="true" style={{ verticalAlign: '-3px', marginRight: 6 }} />Card payments (Square)</h2>
       <span className={`${glass.pill} ${info?.configured ? glass.pillOk : ''}`}>{info ? (info.configured ? 'Taking cards' : 'Not set up') : 'Loading'}</span></div>
-    <p className={glass.lede}>Each franchise uses its own Square account. Connect it once, then choose which Square location this franchise charges to.</p>
+    <p className={glass.lede}>Each franchise uses its own Square account. Paste its Square keys once, then choose which Square location this franchise charges to.</p>
     {error && <p className={glass.alert} role="alert">{error}</p>}{notice && <p className={glass.notice} role="status">{notice}</p>}
     {b && <ul className={glass.list}><li className={glass.row}><span className={glass.name}>{ENV_LABEL[b.environment]}</span><span className={`${glass.pill} ${b.environment === 'production' ? glass.pillWarn : ''}`}>Version {b.version}</span>
       <span className={glass.meta}>Square account {b.merchantId} · location {b.squareLocationId} · saved {new Date(b.reviewedAt).toLocaleDateString()}</span></li></ul>}
@@ -89,23 +85,28 @@ export default function SquareMerchantPanel({ organizationId, locationId, canMan
       <div className={glass.fields}>
         <label className={glass.field}>Square account type<Select disabled={busy} value={env} onChange={(e) => setEnv(e.target.value as Env)} style={{ minHeight: 46, borderRadius: 14, padding: '0 12px', font: 'inherit' }}><option value="sandbox">{ENV_LABEL.sandbox}</option><option value="production">{ENV_LABEL.production}</option></Select></label>
       </div>
-      {!available[env] && <p className={`${glass.notice} ${glass.warn}`}>The {env === 'production' ? 'live' : 'testing'} Square keys have not been added yet. Add the Application ID and secret under “Online payment keys” above.</p>}
-      {env === 'sandbox' && !connection && <div className={glass.notice} style={{ display: 'grid', gap: 10 }}>
-        <p style={{ margin: 0 }}><strong>Square&rsquo;s test sign-in page not opening?</strong> Connect the test account with its access token instead: in the Square Developer Console open your app, then <strong>Credentials</strong>, switch to <strong>Sandbox</strong>, and copy the <strong>Sandbox access token</strong>.</p>
-        <label className={glass.field}>Sandbox access token<input type="password" autoComplete="off" value={tok} onChange={(e) => setTok(e.target.value)} disabled={busy} placeholder="EAAA…" style={{ minHeight: 46, borderRadius: 14, padding: '0 12px', font: 'inherit' }} /></label>
-        <div className={glass.actions}><button type="button" className={glass.button} disabled={busy || tok.trim().length < 20} onClick={() => void connectToken()}>{busy ? 'Checking with Square…' : 'Connect with this token'}</button></div>
-      </div>}
+      {(!connection || editing) && <form className={glass.notice} style={{ display: 'grid', gap: 10 }} onSubmit={(e) => { e.preventDefault(); void saveKeys(); }}>
+        <p style={{ margin: 0 }}>In the <strong>Square Developer Console</strong> open this franchise&rsquo;s app, go to <strong>Credentials</strong>, set the switch at the top to <strong>{env === 'production' ? 'Production' : 'Sandbox'}</strong>, and copy the two keys.</p>
+        <label className={glass.field}>Application ID<input value={keys.applicationId} onChange={(e) => setKeys({ ...keys, applicationId: e.target.value })} autoComplete="off" required disabled={busy} placeholder={env === 'production' ? 'sq0idp-…' : 'sandbox-sq0idb-…'} style={{ minHeight: 46, borderRadius: 14, padding: '0 12px', font: 'inherit' }} /></label>
+        <label className={glass.field}>Access token<input type="password" value={keys.accessToken} onChange={(e) => setKeys({ ...keys, accessToken: e.target.value })} autoComplete="off" required disabled={busy} placeholder="EAAA…" style={{ minHeight: 46, borderRadius: 14, padding: '0 12px', font: 'inherit' }} /></label>
+        {env === 'production' && <p className={`${glass.notice} ${glass.warn}`} style={{ margin: 0 }}>Live keys charge real cards.</p>}
+        <div className={glass.actions} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button className={glass.button} disabled={busy || !keys.applicationId.trim() || keys.accessToken.trim().length < 20}>{busy ? 'Checking with Square…' : connection ? 'Replace the keys' : 'Save keys'}</button>
+          {editing && <button type="button" className={glass.button} disabled={busy} onClick={() => setEditing(false)}>Cancel</button>}
+        </div>
+      </form>}
       {connection ? <>
-        <p className={glass.notice}>Connected to Square account {connection.merchantId} on {new Date(connection.connectedAt).toLocaleDateString()}. The connection renews itself.</p>
+        <p className={glass.notice}>Connected to Square account {connection.merchantId} on {new Date(connection.connectedAt).toLocaleDateString()}.</p>
         {!places ? <p role="status" className={glass.lede}>Loading this account&rsquo;s Square locations…</p> : <>
           <label className={glass.field}>Square location for this franchise<Select disabled={busy} value={pick} onChange={(e) => setPick(e.target.value)} style={{ minHeight: 46, borderRadius: 14, padding: '0 12px', font: 'inherit' }}><option value="">Choose a location</option>{places.locations.map((l) => <option key={l.id} value={l.id} disabled={!l.cards || l.status !== 'ACTIVE' || l.currency !== 'CAD'}>{l.name} · {l.currency}{!l.cards ? ' · cannot take cards' : l.status !== 'ACTIVE' ? ' · inactive' : ''}</option>)}</Select></label>
           {env === 'production' && <p className={`${glass.notice} ${glass.warn}`}>Live mode charges real cards.</p>}
         </>}
         <div className={glass.actions} style={{ gap: 8, display: 'flex', flexWrap: 'wrap' }}>
           <button className={glass.button} disabled={busy || !pick} onClick={() => void useLocation()}>{busy ? 'Checking with Square…' : b ? 'Use this location (new version)' : 'Use this location'}</button>
+          {!editing && <button type="button" className={glass.button} disabled={busy} onClick={() => { setEditing(true); setNotice(''); }}>Change the keys</button>}
           <button type="button" className={glass.button} disabled={busy} onClick={() => void disconnect()}>Disconnect Square</button>
         </div>
-      </> : <div className={glass.actions}><button className={glass.button} disabled={busy || !available[env]} onClick={() => void connect()}>{busy ? 'Opening Square…' : `Connect a ${env === 'production' ? 'live' : 'test'} Square account`}</button></div>}
+      </> : null}
     </div> : <p className={glass.notice}>Only people who can configure invoices can change card payments.</p>}
   </div></section>;
 }

@@ -21,6 +21,9 @@ var (
 	ErrSquareDeclined      = errors.New("square payment card was declined")
 	ErrSquareBadRequest    = errors.New("invalid square payment request")
 	ErrSquareSignature     = errors.New("invalid square webhook signature")
+	// ErrSquareRejected: Square answered the payment request with an error (4xx), so nothing was charged. It is still a
+	// ErrSquarePaymentFailed for callers that only know that one.
+	ErrSquareRejected = fmt.Errorf("%w: square refused the request", ErrSquarePaymentFailed)
 )
 
 type Client interface {
@@ -43,6 +46,7 @@ type PaymentRequest struct {
 	LocationID     string `json:"locationId"`
 	ReferenceID    string `json:"referenceId,omitempty"`
 	Note           string `json:"note,omitempty"`
+	CustomerID     string `json:"customerId,omitempty"` // required by Square when SourceID is a saved card
 }
 
 type PaymentResponse struct {
@@ -125,6 +129,9 @@ func (c *squareClient) CreatePayment(ctx context.Context, req PaymentRequest) (P
 	if req.Note != "" {
 		bodyMap["note"] = req.Note
 	}
+	if req.CustomerID != "" {
+		bodyMap["customer_id"] = req.CustomerID
+	}
 
 	jsonBytes, err := json.Marshal(bodyMap)
 	if err != nil {
@@ -164,6 +171,9 @@ func (c *squareClient) CreatePayment(ctx context.Context, req PaymentRequest) (P
 			first := errResp.Errors[0]
 			if first.Category == "PAYMENT_METHOD_ERROR" || first.Code == "CARD_DECLINED" || first.Code == "CARD_EXPIRED" || first.Code == "INSUFFICIENT_FUNDS" {
 				return PaymentResponse{}, fmt.Errorf("%w: %s - %s", ErrSquareDeclined, first.Code, first.Detail)
+			}
+			if resp.StatusCode < 500 {
+				return PaymentResponse{}, fmt.Errorf("%w: %s (%s)", ErrSquareRejected, first.Detail, first.Code)
 			}
 			return PaymentResponse{}, fmt.Errorf("%w: %s (%s)", ErrSquarePaymentFailed, first.Detail, first.Code)
 		}

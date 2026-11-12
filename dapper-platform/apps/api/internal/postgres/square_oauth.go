@@ -42,7 +42,7 @@ func squareSealContext(org, loc, env string) string { return "square-oauth/" + o
 
 // StartSquareOAuth records a single-use state and returns Square's approval page for this franchise.
 func (s *Store) StartSquareOAuth(ctx context.Context, actor, org, loc, environment string) (string, error) {
-	app, ok := s.squareApp(environment)
+	app, ok := s.squareAppFor(ctx, org, loc, environment)
 	if !ok {
 		return "", ErrSquareOAuthUnavailable
 	}
@@ -86,7 +86,7 @@ func (s *Store) FinishSquareOAuth(ctx context.Context, state, code string) (stri
 	if err != nil {
 		return "", err
 	}
-	app, ok := s.squareApp(env)
+	app, ok := s.squareAppFor(ctx, org, loc, env)
 	if !ok {
 		return "", ErrSquareOAuthUnavailable
 	}
@@ -126,25 +126,31 @@ func (s *Store) storeSquareToken(ctx context.Context, actor, org, loc, env strin
 	return tx.Commit(ctx)
 }
 
-// ConnectSquareSandboxToken connects the franchise's Square TEST account with the sandbox access token from the Square Developer
-// Console, for when Square's sandbox sign-in page will not open. Sandbox only: a live token must always come through OAuth.
-// The token does not expire or refresh, so its refresh time is pushed far ahead to keep the renewal job away from it.
-func (s *Store) ConnectSquareSandboxToken(ctx context.Context, actor, org, loc, accessToken string) error {
-	accessToken = strings.TrimSpace(accessToken)
+// ConnectSquareKeys connects a franchise's own Square account, test or live, with the two keys from its app in the Square Developer
+// Console: the Application ID (for the card form) and the Access token (for charging). No Square sign-in page and no shared keys
+// (owner, 2026-11-13). Square checks the token before anything is saved. The token does not expire or refresh, so its refresh time
+// is pushed far ahead to keep the renewal job away from it.
+func (s *Store) ConnectSquareKeys(ctx context.Context, actor, org, loc, env, applicationID, accessToken string) error {
+	applicationID, accessToken = strings.TrimSpace(applicationID), strings.TrimSpace(accessToken)
 	if len(s.mfaKey) != 32 {
 		return ErrSquareOAuthUnavailable
 	}
-	if len(accessToken) < 20 || len(accessToken) > 400 {
-		return ErrPaymentInput
+	wantApp := map[string]string{"sandbox": "sandbox-sq0idb-", "production": "sq0idp-"}[env]
+	if wantApp == "" || !strings.HasPrefix(applicationID, wantApp) || len(applicationID) > 200 || len(accessToken) < 20 || len(accessToken) > 400 {
+		return ErrSquareKeysInput
 	}
-	merchant, err := square.MerchantMe(ctx, "sandbox", accessToken, nil)
+	merchant, err := square.MerchantMe(ctx, env, accessToken, nil)
 	if err != nil {
 		return err
 	}
-	if err = s.storeSquareToken(ctx, actor, org, loc, "sandbox", square.OAuthToken{AccessToken: accessToken, MerchantID: merchant, ExpiresAt: time.Now().AddDate(10, 0, 0)}); err != nil {
+	if err = s.storeSquareToken(ctx, actor, org, loc, env, square.OAuthToken{AccessToken: accessToken, MerchantID: merchant, ExpiresAt: time.Now().AddDate(10, 0, 0)}); err != nil {
 		return err
 	}
-	_, err = s.pool.Exec(ctx, `UPDATE square_oauth_connections SET refreshed_at=now()+interval '10 years' WHERE organization_id=$1 AND location_id=$2 AND environment='sandbox'`, org, loc)
+	if _, err = s.pool.Exec(ctx, `UPDATE square_oauth_connections SET refreshed_at=now()+interval '10 years' WHERE organization_id=$1 AND location_id=$2 AND environment=$3`, org, loc, env); err != nil {
+		return err
+	}
+	_, err = s.pool.Exec(ctx, `INSERT INTO location_square_apps(organization_id,location_id,environment,application_id,secret_sealed,updated_by) VALUES($1,$2,$3,$4,NULL,$5)
+ON CONFLICT (organization_id,location_id,environment) DO UPDATE SET application_id=excluded.application_id,secret_sealed=NULL,updated_by=excluded.updated_by,updated_at=now()`, org, loc, env, applicationID, actor)
 	return err
 }
 
@@ -198,7 +204,7 @@ func (s *Store) squareAccessToken(ctx context.Context, org, loc, env string) (st
 		plain, e := s.openSecret(squareSealContext(org, loc, env), access)
 		return string(plain), merchant, e
 	}
-	app, ok := s.squareApp(env)
+	app, ok := s.squareAppFor(ctx, org, loc, env)
 	if !ok {
 		return "", "", ErrSquareOAuthUnavailable
 	}
@@ -293,7 +299,7 @@ func (s *Store) DisconnectSquare(ctx context.Context, actor, org, loc, env strin
 	if err = tx.Commit(ctx); err != nil {
 		return err
 	}
-	if app, ok := s.squareApp(env); ok {
+	if app, ok := s.squareAppFor(ctx, org, loc, env); ok {
 		_ = app.Revoke(ctx, merchant)
 	}
 	return nil
@@ -303,12 +309,7 @@ func (s *Store) DisconnectSquare(ctx context.Context, actor, org, loc, env strin
 // connections ("oauth:<location id>"). The location in the reference must belong to an organization the binding is for,
 // which the binding itself guarantees (references are only written by SaveSquareMerchantBinding for that location).
 func (s *Store) SquareCredentialResolver() SquareCredentialResolver {
-	s.squareMu.RLock()
-	none := len(s.squareOAuth) == 0
-	s.squareMu.RUnlock()
-	if s.squareResolver == nil && none {
-		return nil
-	}
+	// Always on: each franchise's own keys are enough, no shared Square keys are needed (owner, 2026-11-13).
 	return func(ctx context.Context, environment, reference string) (VerifiedSquareClient, error) {
 		if loc, ok := strings.CutPrefix(reference, squareOAuthPrefix); ok {
 			var org string

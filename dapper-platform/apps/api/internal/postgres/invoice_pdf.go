@@ -11,6 +11,8 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 	"math"
+	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -28,10 +30,18 @@ type invoiceDocumentItem struct {
 	description               string
 	quantity                  int
 	unitPriceCents, lineCents int64
+	vin, stock, detail        string
 }
 
 type invoiceDocument struct {
 	number, status, date, coupon, taxLabel    string
+	serviceDate, serviceTime, payment         string
+	quote                                     bool
+	validUntil, note                          string
+	dueDate                                   string
+	overdue                                   bool
+	b2b                                       bool   // a dealership invoice: a table of item, description, qty, rate, amount
+	po, discountLabel, clientAddress          string
 	issuer                                    QuoteIssuer
 	customer                                  InvoiceCustomerSnapshot
 	items                                     []invoiceDocumentItem
@@ -54,9 +64,12 @@ func (s *Store) bookingInvoiceDocument(ctx context.Context, bookingID string) (i
 	var d invoiceDocument
 	var id, org, loc string
 	var when time.Time
+	var serviceAt *time.Time
+	var methods string
 	var issuerRaw, customerRaw []byte
-	err := s.pool.QueryRow(ctx, `SELECT id::text,organization_id::text,location_id::text,invoice_number,status,coalesce(issued_at,created_at),subtotal_cents,discount_cents,coalesce(coupon_code,''),tax_cents,total_cents,paid_cents,due_cents,coalesce(issuer_snapshot,'{}'::jsonb),coalesce(customer_snapshot,'{}'::jsonb) FROM invoices
- WHERE booking_id::text=$1 AND status IN ('issued','partially_paid','paid') ORDER BY created_at DESC LIMIT 1`, bookingID).Scan(&id, &org, &loc, &d.number, &d.status, &when, &d.subtotal, &d.discount, &d.coupon, &d.tax, &d.total, &d.paid, &d.due, &issuerRaw, &customerRaw)
+	err := s.pool.QueryRow(ctx, `SELECT id::text,organization_id::text,location_id::text,invoice_number,status,coalesce(issued_at,created_at),subtotal_cents,discount_cents,coalesce(coupon_code,''),tax_cents,total_cents,paid_cents,due_cents,coalesce(issuer_snapshot,'{}'::jsonb),coalesce(customer_snapshot,'{}'::jsonb),
+ (SELECT b.booking_time FROM bookings b WHERE b.id=invoices.booking_id),coalesce((SELECT string_agg(DISTINCT p.method,',') FROM payments p WHERE p.invoice_id=invoices.id AND p.status='completed'),'') FROM invoices
+ WHERE booking_id::text=$1 AND status IN ('issued','partially_paid','paid') ORDER BY created_at DESC LIMIT 1`, bookingID).Scan(&id, &org, &loc, &d.number, &d.status, &when, &d.subtotal, &d.discount, &d.coupon, &d.tax, &d.total, &d.paid, &d.due, &issuerRaw, &customerRaw, &serviceAt, &methods)
 	if err != nil {
 		return d, false
 	}
@@ -78,7 +91,106 @@ func (s *Store) bookingInvoiceDocument(ctx context.Context, bookingID string) (i
 	// The issued snapshot is the legal record; the rest is presentation, so a failure below still sends the invoice in the default look.
 	_ = json.Unmarshal(issuerRaw, &d.issuer)
 	_ = json.Unmarshal(customerRaw, &d.customer)
-	state, err := loadEffectiveInvoiceTemplate(ctx, s.pool, org, loc)
+	d.date = documentDate(when)
+	d.serviceDate, d.serviceTime = documentService(serviceAt)
+	d.payment = invoicePaymentWords(methods)
+	s.dressDocument(ctx, &d, org, loc, invoicePrint)
+	return d, true
+}
+
+// InvoicePDF draws an invoice the caller has already been allowed to read, with its file name.
+func (s *Store) InvoicePDF(ctx context.Context, inv Invoice) (string, []byte) {
+	d := invoiceDocument{number: inv.InvoiceNumber, status: inv.Status, coupon: inv.CouponCode, subtotal: inv.SubtotalCents, discount: inv.DiscountCents, tax: inv.TaxCents, total: inv.TotalCents, paid: inv.PaidCents, due: inv.DueCents,
+		customer: InvoiceCustomerSnapshot{Name: inv.CustomerName, Email: inv.CustomerEmail}, payment: invoicePaymentWords(inv.PaymentMethods)}
+	if inv.IssuerSnapshot != nil {
+		d.issuer = QuoteIssuer{LegalName: inv.IssuerSnapshot.LegalName, Address: inv.IssuerSnapshot.Address, TaxRegistration: inv.IssuerSnapshot.TaxRegistration}
+	}
+	if inv.CustomerSnapshot != nil {
+		d.customer = *inv.CustomerSnapshot
+	}
+	for _, it := range inv.Items {
+		d.items = append(d.items, invoiceDocumentItem{description: it.Description, quantity: it.Quantity, unitPriceCents: it.UnitPriceCents, lineCents: it.TotalPriceCents})
+	}
+	when := inv.CreatedAt
+	if inv.IssuedAt != nil {
+		when = *inv.IssuedAt
+	}
+	d.date = documentDate(when)
+	d.serviceDate, d.serviceTime = documentService(inv.ServiceAt)
+	kind := invoicePrint
+	// A dealership invoice prints with the dealership template, its due date and each car's VIN / stock number (presentation only: on a
+	// failed lookup it prints as a plain invoice).
+	var dealer bool
+	var invoiceDate, dueDate *time.Time
+	var pct *float64
+	if s.pool.QueryRow(ctx, `SELECT dealership_account_id IS NOT NULL,invoice_date,due_date,po_number,discount_percent::float8,coalesce((SELECT d.address FROM dealership_accounts d WHERE d.id=invoices.dealership_account_id),'') FROM invoices WHERE id=$1`, inv.ID).Scan(&dealer, &invoiceDate, &dueDate, &d.po, &pct, &d.clientAddress) == nil && dealer {
+		kind, d.b2b = dealerPrint, true
+		switch {
+		case dueDate != nil:
+			d.dueDate = dueDate.UTC().Format("02/Jan/2006")
+		case inv.DueAt != nil:
+			d.dueDate = documentDateShort(*inv.DueAt)
+		}
+		d.date = documentDateShort(when)
+		if invoiceDate != nil {
+			d.date = invoiceDate.UTC().Format("02/Jan/2006")
+		}
+		d.note = inv.Notes
+		if pct != nil {
+			d.discountLabel = "Discount (" + strconv.FormatFloat(*pct, 'f', -1, 64) + "%)"
+		}
+		if inv.Status == "draft" {
+			d.number = "Draft"
+		}
+		d.overdue = overdue(inv.Status, inv.DueAt)
+		if rows, err := s.pool.Query(ctx, `SELECT vin,stock_number,detail FROM invoice_items WHERE invoice_id=$1 ORDER BY created_at,id`, inv.ID); err == nil {
+			for i := 0; rows.Next() && i < len(d.items); i++ {
+				_ = rows.Scan(&d.items[i].vin, &d.items[i].stock, &d.items[i].detail)
+			}
+			rows.Close()
+		}
+	}
+	s.dressDocument(ctx, &d, inv.OrganizationID, inv.LocationID, kind)
+	return documentFileName("Invoice", d.number), invoicePDF(d)
+}
+
+// QuotePDF draws a quotation the caller has already been allowed to read, with its file name.
+func (s *Store) QuotePDF(ctx context.Context, q Quote) (string, []byte) {
+	d := invoiceDocument{quote: true, number: q.ReferenceNumber, status: q.Status, subtotal: q.SubtotalCents, tax: q.TaxCents, total: q.TotalCents, due: q.TotalCents, note: q.CustomerNote,
+		customer: InvoiceCustomerSnapshot{Name: q.CustomerName}}
+	// A quotation stores only who it is for, so the contact details come from the customer's record. Presentation only: on failure they are left off.
+	_ = s.pool.QueryRow(ctx, `SELECT coalesce(email,''),coalesce(phone,'') FROM customers WHERE organization_id=$1 AND location_id=$2 AND id=$3`, q.OrganizationID, q.LocationID, q.CustomerID).Scan(&d.customer.Email, &d.customer.Phone)
+	for _, it := range q.Items {
+		d.items = append(d.items, invoiceDocumentItem{description: it.Description, quantity: it.Quantity, unitPriceCents: it.UnitPriceCents, lineCents: it.LineTotalCents})
+	}
+	when := q.CreatedAt
+	if q.IssuedAt != nil {
+		when = *q.IssuedAt
+	}
+	d.date = documentDate(when)
+	if q.ExpiresAt != nil {
+		d.validUntil = documentDate(*q.ExpiresAt)
+	}
+	s.dressDocument(ctx, &d, q.OrganizationID, q.LocationID, quotePrint)
+	return documentFileName("Quotation", d.number), invoicePDF(d)
+}
+
+// QuoteEmailFacts is where an issued quotation's email goes (the address on the customer's record, empty when there is none) and its wording's values.
+func (s *Store) QuoteEmailFacts(ctx context.Context, q Quote) (string, map[string]string, error) {
+	var to string
+	if err := s.pool.QueryRow(ctx, `SELECT btrim(coalesce(email,'')) FROM customers WHERE organization_id=$1 AND location_id=$2 AND id=$3`, q.OrganizationID, q.LocationID, q.CustomerID).Scan(&to); err != nil {
+		return "", nil, err
+	}
+	vars := map[string]string{"name": q.CustomerName, "reference": q.ReferenceNumber, "total": invoiceMoney(q.TotalCents), "valid_until": ""}
+	if q.ExpiresAt != nil {
+		vars["valid_until"] = "Valid until: " + documentDate(*q.ExpiresAt)
+	}
+	return to, vars, nil
+}
+
+// dressDocument adds the franchise's look and details. It is presentation only, so a failure here still gives a document in the default look.
+func (s *Store) dressDocument(ctx context.Context, d *invoiceDocument, org, loc string, kind printKind) {
+	state, err := kind.effective(ctx, s.pool, org, loc)
 	if err != nil {
 		state = InvoicePrintTemplateState{Template: DefaultInvoicePrintTemplate()}
 	}
@@ -90,18 +202,38 @@ func (s *Store) bookingInvoiceDocument(ctx context.Context, bookingID string) (i
 	outlet, _ := outletOf(ctx, s.pool, org, loc)
 	d.franchise = outlet == "franchise"
 	d.taxLabel = invoiceTaxLabel(d.tax, d.subtotal-d.discount, state.TaxName)
-	zone, err := time.LoadLocation("America/Toronto") // the zone the rest of the booking email uses
-	if err != nil {
-		zone = time.UTC
-	}
-	d.date = when.In(zone).Format("January 2, 2006")
 	if d.template.ShowLogo {
 		d.logo = defaultInvoiceLogo
 		if _, own, _, found, e := s.readLocationLogo(ctx, org, loc); e == nil && found {
 			d.logo = own
 		}
 	}
-	return d, true
+}
+
+func documentZone() *time.Location {
+	zone, err := time.LoadLocation("America/Toronto") // the zone the rest of the booking email uses
+	if err != nil {
+		return time.UTC
+	}
+	return zone
+}
+
+func documentDate(t time.Time) string { return t.In(documentZone()).Format("January 2, 2006") }
+
+// documentDateShort is the dealership invoice's date style (21/Nov/2025), as in the owner's template.
+func documentDateShort(t time.Time) string { return t.In(documentZone()).Format("02/Jan/2006") }
+
+func documentService(at *time.Time) (date, clock string) {
+	if at == nil {
+		return "", ""
+	}
+	return documentDate(*at), at.In(documentZone()).Format("3:04 PM")
+}
+
+var unsafeFileName = regexp.MustCompile(`[^A-Za-z0-9._-]+`)
+
+func documentFileName(kind, number string) string {
+	return kind + "-" + unsafeFileName.ReplaceAllString(number, "-") + ".pdf"
 }
 
 func invoiceTaxLabel(tax, base int64, name string) string {
@@ -110,7 +242,7 @@ func invoiceTaxLabel(tax, base int64, name string) string {
 	}
 	pct := strconv.FormatFloat(math.Round(float64(tax)/float64(base)*10000)/100, 'f', -1, 64) + "%"
 	if name != "" {
-		return "Tax (" + name + " " + pct + ")"
+		return name + " (" + pct + ")"
 	}
 	return "Tax (" + pct + ")"
 }
@@ -127,14 +259,16 @@ func invoiceMoney(cents int64) string {
 	return fmt.Sprintf("%s$%s.%02d", sign, whole, cents%100)
 }
 
-func invoiceStatusWord(status string) string {
-	switch status {
-	case "paid":
-		return "Paid"
-	case "partially_paid":
-		return "Partially paid"
+// invoicePaymentWords turns the stored payment methods ("cash,square_card") into what the customer reads.
+func invoicePaymentWords(methods string) string {
+	words := map[string]string{"cash": "Cash", "square_card": "Card", "square_terminal": "Card", "bank_transfer": "Bank transfer", "cheque": "Cheque"}
+	var out []string
+	for _, m := range strings.Split(methods, ",") {
+		if w := words[m]; w != "" && !slices.Contains(out, w) {
+			out = append(out, w)
+		}
 	}
-	return "Issued"
+	return strings.Join(out, ", ")
 }
 
 // Advance widths of the built-in fonts for characters 32 to 126, in 1/1000 of the font size; needed to right-align amounts and wrap text.
@@ -146,12 +280,11 @@ const pdfRegular, pdfBold = "F1", "F2"
 type pdfColor [3]float64
 
 var (
-	pdfInk   = pdfColor{.043, .043, .047}
-	pdfMute  = pdfColor{.36, .36, .4}
-	pdfWhite = pdfColor{1, 1, 1}
-	pdfLine  = pdfColor{.89, .89, .91}
-	pdfZebra = pdfColor{.969, .969, .973}
-	pdfSoft  = pdfColor{.72, .71, .69}
+	pdfInk   = pdfColor{0, 0, 0}
+	pdfMute  = pdfColor{.4, .4, .4}
+	pdfLine  = pdfColor{.898, .898, .898}
+	pdfPanel = pdfColor{.98, .98, .98}
+	pdfLabel = pdfColor{.533, .533, .533}
 )
 
 func pdfAccent(hex string) pdfColor {
@@ -186,8 +319,9 @@ func (p *pdfCanvas) rect(c pdfColor, x, y, w, h float64) {
 	fmt.Fprintf(p.page(), "%.3f %.3f %.3f rg %.2f %.2f %.2f %.2f re f\n", c[0], c[1], c[2], x, y, w, h)
 }
 
-func (p *pdfCanvas) outline(c pdfColor, x, y, w, h float64) {
-	fmt.Fprintf(p.page(), "%.3f %.3f %.3f RG 1.5 w %.2f %.2f %.2f %.2f re S\n", c[0], c[1], c[2], x, y, w, h)
+// box fills a rectangle and draws a thin border round it.
+func (p *pdfCanvas) box(fill, stroke pdfColor, x, y, w, h float64) {
+	fmt.Fprintf(p.page(), "%.3f %.3f %.3f rg %.3f %.3f %.3f RG .75 w %.2f %.2f %.2f %.2f re B\n", fill[0], fill[1], fill[2], stroke[0], stroke[1], stroke[2], x, y, w, h)
 }
 
 func (p *pdfCanvas) text(font string, size, x, y float64, c pdfColor, s string) {
@@ -289,6 +423,9 @@ func pdfLogoImage(data []byte) (w, h int, rgb []byte, ok bool) {
 }
 
 func invoicePDF(d invoiceDocument) []byte {
+	if d.b2b {
+		return dealerInvoicePDF(d)
+	}
 	t := d.template
 	p := &pdfCanvas{w: 612, h: 792}
 	if t.PaperSize == "a4" {
@@ -299,186 +436,238 @@ func invoicePDF(d invoiceDocument) []byte {
 	width := p.w - 2*m
 	accent := pdfAccent(t.AccentColor)
 
-	// The black band across the top: logo and business name at the left, the title and its details at the right.
-	top := p.h
-	p.rect(pdfInk, 0, top-104, p.w, 104)
-	p.rect(accent, 0, top-110, p.w, 6)
-	nameX := m
+	// The heading: logo, business name and details at the left; the title, number and date at the right.
+	top, right := p.h, p.w-m
+	textX, logoBottom := m, top
 	logoW, logoH, logo, hasLogo := 0, 0, []byte(nil), false
 	if d.logo != nil {
 		logoW, logoH, logo, hasLogo = pdfLogoImage(d.logo)
 	}
 	if hasLogo {
-		p.rect(pdfWhite, m, top-88, 72, 72)
-		scale := 62 / float64(max(logoW, logoH))
+		scale := 72 / float64(max(logoW, logoH))
 		drawW, drawH := float64(logoW)*scale, float64(logoH)*scale
-		fmt.Fprintf(p.page(), "q %.2f 0 0 %.2f %.2f %.2f cm /Im1 Do Q\n", drawW, drawH, m+36-drawW/2, top-52-drawH/2)
-		nameX = m + 86
+		fmt.Fprintf(p.page(), "q %.2f 0 0 %.2f %.2f %.2f cm /Im1 Do Q\n", drawW, drawH, m, top-36-drawH)
+		textX, logoBottom = m+drawW+16, top-36-drawH
 	}
-	nameLines := pdfWrap(pdfBold, 14, 230, d.issuer.LegalName)
-	if len(nameLines) > 2 {
-		nameLines = nameLines[:2]
+	y := top - 50
+	for _, line := range pdfWrap(pdfBold, 15, 270, d.issuer.LegalName) {
+		p.text(pdfBold, 15, textX, y, pdfInk, line)
+		y -= 18
 	}
-	nameY := top - 52 - 5 + float64(len(nameLines)-1)*9
-	for _, line := range nameLines {
-		p.text(pdfBold, 14, nameX, nameY, pdfWhite, line)
-		nameY -= 18
+	y -= 2
+	details := d.issuer.Address + "\n" + t.BusinessDetails
+	if t.ShowTaxRegistration && d.issuer.TaxRegistration != "" {
+		details += "\nHST: " + d.issuer.TaxRegistration
 	}
-	right := p.w - m
-	p.right(pdfBold, 25, right, top-44, pdfWhite, strings.ToUpper(t.Title))
-	p.right(pdfBold, 10, right, top-63, pdfWhite, "No. "+d.number)
-	p.right(pdfRegular, 9.5, right, top-77, pdfSoft, "Issued "+d.date)
-	p.right(pdfRegular, 9.5, right, top-91, pdfSoft, invoiceStatusWord(d.status))
-	p.y = top - 136
-
-	// Who it is for and who it is from.
-	columnW := width/2 - 12
-	party := func(x float64, heading, name string, rest []string) float64 {
-		y := p.y
-		p.text(pdfBold, 8.5, x, y, pdfMute, strings.ToUpper(heading))
-		y -= 15
-		for _, line := range pdfWrap(pdfBold, 11, columnW, name) {
-			p.text(pdfBold, 11, x, y, pdfInk, line)
+	for _, line := range pdfWrap(pdfRegular, 9.5, 270, details) {
+		if line != "" {
+			p.text(pdfRegular, 9.5, textX, y, pdfInk, line)
 			y -= 14
 		}
-		for _, r := range rest {
-			for _, line := range pdfWrap(pdfRegular, 10, columnW, r) {
-				p.text(pdfRegular, 10, x, y, pdfInk, line)
-				y -= 13
-			}
-		}
-		return y
 	}
-	var contact []string
-	if t.ShowCustomerContact {
-		for _, v := range []string{d.customer.Email, d.customer.Phone} {
-			if v != "" {
-				contact = append(contact, v)
-			}
-		}
+	p.right(pdfBold, 30, right, top-62, accent, strings.ToUpper(t.Title))
+	metaY := top - 84
+	meta := [][2]string{{"INVOICE #", d.number}, {"DATE", d.date}}
+	if d.quote {
+		meta[0][0] = "QUOTE #"
 	}
-	var from []string
-	if d.issuer.Address != "" {
-		from = append(from, d.issuer.Address)
+	if d.validUntil != "" {
+		meta = append(meta, [2]string{"VALID UNTIL", d.validUntil})
 	}
-	if t.ShowTaxRegistration && d.issuer.TaxRegistration != "" {
-		from = append(from, "GST/HST: "+d.issuer.TaxRegistration)
+	if d.dueDate != "" {
+		meta = append(meta, [2]string{"DUE DATE", d.dueDate})
 	}
-	leftEnd, rightEnd := party(m, t.BillToLabel, d.customer.Name, contact), party(m+width/2+12, "From", d.issuer.LegalName, from)
-	p.y = min(leftEnd, rightEnd) - 6
-	p.rect(pdfLine, m, p.y, width, .75)
-	p.y -= 14
+	if d.po != "" {
+		meta = append(meta, [2]string{"PO #", d.po})
+	}
+	if !d.quote && d.status == "draft" {
+		meta = append(meta, [2]string{"STATUS", "Draft"})
+	} else if d.overdue {
+		meta = append(meta, [2]string{"STATUS", "Overdue"})
+	}
+	for _, row := range meta {
+		p.right(pdfRegular, 9.5, right, metaY, pdfInk, row[1])
+		p.right(pdfRegular, 9, right-pdfWidth(pdfRegular, 9.5, row[1])-8, metaY, pdfLabel, row[0])
+		metaY -= 15
+	}
+	p.y = min(y, logoBottom, metaY) - 10
+	p.rect(pdfLine, 0, p.y, p.w, .75)
 
-	// What is owed, large enough to see first.
-	paidInFull := d.total > 0 && d.due <= 0
-	label, note, amount := "BALANCE DUE", "Nothing has been paid yet.", d.due
-	if paidInFull {
-		label, note, amount = "PAID IN FULL", "Thank you. Nothing further is owed.", d.paid
-	} else if d.paid > 0 {
-		note = invoiceMoney(d.paid) + " received so far."
+	// Who it is for, and when the work was done.
+	var client []string
+	if d.customer.Name != "" {
+		client = append(client, "Name: "+d.customer.Name)
 	}
-	boxBottom := p.y - 50
-	if paidInFull {
-		p.rect(pdfZebra, m, boxBottom, width, 50)
-		p.outline(pdfInk, m, boxBottom, width, 50)
-	} else {
-		p.outline(accent, m, boxBottom, width, 50)
+	if t.ShowCustomerContact && d.customer.Email != "" {
+		client = append(client, "Email: "+d.customer.Email)
 	}
-	p.text(pdfBold, 10, m+14, boxBottom+29, pdfInk, label)
-	p.text(pdfRegular, 9, m+14, boxBottom+14, pdfMute, note)
-	p.right(pdfBold, 21, right-14, boxBottom+17, pdfInk, invoiceMoney(amount))
-	p.y = boxBottom - 20
+	if t.ShowCustomerContact && d.customer.Phone != "" {
+		client = append(client, "Phone Number: "+d.customer.Phone)
+	}
+	var clientLines []string
+	for _, c := range client {
+		clientLines = append(clientLines, pdfWrap(pdfRegular, 9.5, width/2-12, c)...)
+	}
+	var facts [][2]string
+	for _, f := range [][2]string{{"Service Date:", d.serviceDate}, {"Time:", d.serviceTime}, {"Payment:", d.payment}, {"Coupon:", d.coupon}} {
+		if f[1] != "" {
+			facts = append(facts, f)
+		}
+	}
+	bandH := float64(max(len(clientLines)*14+16, len(facts)*16)) + 44
+	p.rect(pdfPanel, 0, p.y-bandH, p.w, bandH)
+	cy := p.y - 28
+	p.text(pdfRegular, 9, m, cy, pdfLabel, strings.ToUpper(t.BillToLabel))
+	cy -= 18
+	for _, line := range clientLines {
+		p.text(pdfRegular, 9.5, m, cy, pdfInk, line)
+		cy -= 14
+	}
+	fy := p.y - 28
+	for _, f := range facts {
+		p.right(pdfRegular, 9.5, right, fy, pdfInk, f[1])
+		p.right(pdfRegular, 9.5, right-max(pdfWidth(pdfRegular, 9.5, f[1]), 96)-14, fy, pdfLabel, f[0])
+		fy -= 16
+	}
+	p.y -= bandH + 28
 
 	if t.HeaderNote != "" {
 		p.block(m, width, "", 10, pdfInk, t.HeaderNote)
-		p.y -= 8
+		p.y -= 10
 	}
 
-	// The items.
-	qtyRight, unitRight, amountRight := right-190, right-100, right-8
-	tableHead := func() {
-		p.rect(pdfInk, m, p.y-22, width, 22)
-		y := p.y - 15
-		p.text(pdfBold, 8.5, m+8, y, pdfWhite, strings.ToUpper(t.ItemLabel))
-		p.right(pdfBold, 8.5, qtyRight, y, pdfWhite, strings.ToUpper(t.QuantityLabel))
-		p.right(pdfBold, 8.5, unitRight, y, pdfWhite, strings.ToUpper(t.UnitPriceLabel))
-		p.right(pdfBold, 8.5, amountRight, y, pdfWhite, strings.ToUpper(t.AmountLabel))
-		p.y -= 22
-	}
-	p.room(70)
-	tableHead()
-	for i, it := range d.items {
-		lines := pdfWrap(pdfRegular, 10.5, width-250, it.description)
-		rowH := float64(len(lines))*13.5 + 12
-		if p.room(rowH) {
-			tableHead()
-		}
-		if i%2 == 1 {
-			p.rect(pdfZebra, m, p.y-rowH, width, rowH)
-		}
-		y := p.y - 17
-		p.right(pdfRegular, 10.5, qtyRight, y, pdfInk, strconv.Itoa(it.quantity))
-		p.right(pdfRegular, 10.5, unitRight, y, pdfInk, invoiceMoney(it.unitPriceCents))
-		p.right(pdfRegular, 10.5, amountRight, y, pdfInk, invoiceMoney(it.lineCents))
-		for _, line := range lines {
-			p.text(pdfRegular, 10.5, m+8, y, pdfInk, line)
-			y -= 13.5
-		}
-		p.y -= rowH
-		p.rect(pdfLine, m, p.y, width, .75)
-	}
-	p.y -= 12
+	serviceBreakdown(p, d, m, width, right)
 
 	// The totals, kept together at the right.
-	boxLeft := right - 250
-	p.room(130)
-	row := func(font, name, value string) {
-		p.text(font, 10.5, boxLeft+8, p.y-12, pdfInk, name)
-		p.right(font, 10.5, amountRight, p.y-12, pdfInk, value)
-		p.y -= 18
+	const totalsW = 250.0
+	boxLeft, boxH := right-totalsW, 120.0
+	if d.b2b && d.discount == 0 {
+		boxH = 98
 	}
-	row(pdfRegular, "Subtotal", invoiceMoney(d.subtotal))
-	if d.discount > 0 {
-		name := "Discount"
-		if d.coupon != "" {
-			name += " (" + d.coupon + ")"
+	p.room(boxH)
+	p.box(pdfPanel, pdfLine, boxLeft, p.y-boxH, totalsW, boxH)
+	ry := p.y - 26
+	row := func(name, value string) {
+		p.text(pdfRegular, 10, boxLeft+18, ry, pdfMute, name)
+		p.right(pdfRegular, 10, right-18, ry, pdfInk, value)
+		ry -= 22
+	}
+	row("Subtotal", invoiceMoney(d.subtotal))
+	if !d.b2b || d.discount > 0 {
+		label := "Discount"
+		if d.discountLabel != "" {
+			label = d.discountLabel
 		}
-		row(pdfRegular, name, "-"+invoiceMoney(d.discount))
+		row(label, "- "+invoiceMoney(d.discount))
 	}
-	row(pdfRegular, d.taxLabel, invoiceMoney(d.tax))
-	p.rect(pdfInk, boxLeft, p.y-2, 250, .9)
-	p.y -= 4
-	row(pdfBold, "Total", invoiceMoney(d.total))
-	if d.paid > 0 {
-		row(pdfRegular, "Paid", "-"+invoiceMoney(d.paid))
+	row(d.taxLabel, invoiceMoney(d.tax))
+	p.rect(pdfLine, boxLeft+18, ry+13, totalsW-36, .75)
+	ry -= 8
+	totalLabel := "TOTAL DUE"
+	if d.quote {
+		totalLabel = "QUOTED TOTAL"
 	}
-	if !paidInFull {
-		p.y -= 4
-		p.rect(pdfInk, boxLeft, p.y-28, 250, 28)
-		p.text(pdfBold, 12, boxLeft+8, p.y-19, pdfWhite, "Balance due")
-		p.right(pdfBold, 12, amountRight, p.y-19, pdfWhite, invoiceMoney(d.due))
-		p.y -= 28
-	}
-	p.y -= 24
+	p.text(pdfBold, 13, boxLeft+18, ry, pdfInk, totalLabel)
+	p.right(pdfBold, 13, right-18, ry, pdfInk, invoiceMoney(d.total))
+	p.y -= boxH + 20
+	return finishDocument(p, d, m, width, logoW, logoH, logo)
+}
 
-	if t.PaymentInstructions != "" {
+// serviceBreakdown is the customer invoice's and quotation's list: one box per service with its price.
+func serviceBreakdown(p *pdfCanvas, d invoiceDocument, m, width, right float64) {
+	p.room(70)
+	p.text(pdfBold, 9, m, p.y, pdfLabel, "SERVICE BREAKDOWN")
+	p.y -= 12
+	for _, it := range d.items {
+		name := it.description
+		if it.quantity > 1 {
+			name += " × " + strconv.Itoa(it.quantity)
+		}
+		var car []string
+		if it.vin != "" {
+			car = append(car, "VIN: "+it.vin)
+		}
+		if it.stock != "" {
+			car = append(car, "Stock: "+it.stock)
+		}
+		if len(car) > 0 {
+			name += "\n" + strings.Join(car, "   ")
+		}
+		lines := pdfWrap(pdfRegular, 10, width-130, name)
+		rowH := float64(len(lines))*13.5 + 22
+		p.room(rowH)
+		p.box(pdfPanel, pdfLine, m, p.y-rowH, width, rowH)
+		ty := p.y - 19
+		p.right(pdfRegular, 10, right-14, ty, pdfInk, invoiceMoney(it.lineCents))
+		for _, line := range lines {
+			p.text(pdfRegular, 10, m+14, ty, pdfInk, line)
+			ty -= 13.5
+		}
+		p.y -= rowH
+	}
+	p.y -= 20
+}
+
+// finishDocument draws what follows the totals: paid and owing, notes, and the footer.
+func finishDocument(p *pdfCanvas, d invoiceDocument, m, width float64, logoW, logoH int, logo []byte) []byte {
+	t := d.template
+	// What has been paid and what is still owed. A quotation has neither; a voided invoice says so instead.
+	lightRed, redEdge := pdfColor{.996, .949, .949}, pdfColor{.988, .647, .647}
+	halfW := width/2 - 8
+	status := func(x float64, fill, stroke, labelC, amountC pdfColor, label string, cents int64) {
+		p.box(fill, stroke, x, p.y-58, halfW, 58)
+		p.text(pdfBold, 8, x+halfW/2-pdfWidth(pdfBold, 8, label)/2, p.y-22, labelC, label)
+		amount := invoiceMoney(cents)
+		p.text(pdfBold, 17, x+halfW/2-pdfWidth(pdfBold, 17, amount)/2, p.y-44, amountC, amount)
+	}
+	switch {
+	case d.quote:
+	case d.status == "void":
+		const voided = "This invoice was voided, so nothing is owed on it."
+		p.room(44)
+		p.box(lightRed, redEdge, m, p.y-40, width, 40)
+		p.text(pdfBold, 10, p.w/2-pdfWidth(pdfBold, 10, voided)/2, p.y-24, pdfInk, voided)
+		p.y -= 40 + 20
+	default:
+		p.room(62)
+		status(m, pdfColor{.863, .988, .906}, pdfColor{.525, .937, .675}, pdfColor{.086, .639, .29}, pdfColor{.086, .396, .204}, "PAID AMOUNT", d.paid)
+		status(m+width/2+8, lightRed, redEdge, pdfColor{.863, .149, .149}, pdfColor{.6, .106, .106}, "OUTSTANDING BALANCE", d.due)
+		p.y -= 58 + 20
+	}
+
+	if d.quote && d.note != "" {
+		p.block(m, width, "Note", 10, pdfInk, d.note)
+		p.y -= 10
+	}
+	if d.quote && t.QuotationNote != "" {
+		p.block(m, width, "Terms", 10, pdfInk, t.QuotationNote)
+		p.y -= 10
+	}
+	if !d.quote && t.PaymentInstructions != "" {
 		p.block(m, width, "Payment", 10, pdfInk, t.PaymentInstructions)
 		p.y -= 10
 	}
-	owner := ""
-	if d.franchise && d.issuer.LegalName != "" {
-		owner = "Independently owned and operated by " + strings.TrimRight(d.issuer.LegalName, ".") + "."
+	centered := func(font string, size float64, c pdfColor, s string) {
+		for _, line := range pdfWrap(font, size, width, s) {
+			p.room(size + 4)
+			p.text(font, size, p.w/2-pdfWidth(font, size, line)/2, p.y, c, line)
+			p.y -= size + 5
+		}
 	}
-	if t.FooterNote != "" || owner != "" {
-		p.room(30)
-		p.rect(pdfLine, m, p.y+6, width, .75)
-		p.y -= 8
-		if t.FooterNote != "" {
-			p.block(m, width, "", 9.5, pdfMute, t.FooterNote)
-		}
-		if owner != "" {
-			p.block(m, width, "", 9.5, pdfMute, owner)
-		}
+	p.room(60)
+	p.rect(pdfLine, 0, p.y, p.w, .75)
+	p.y -= 22
+	if t.FooterNote != "" {
+		centered(pdfBold, 11, pdfInk, t.FooterNote)
+		p.y -= 3
+	}
+	kindWord := "invoice"
+	if d.quote {
+		kindWord = "quotation"
+	}
+	centered(pdfRegular, 8.5, pdfLabel, "This is a computer generated "+kindWord+". Signature is not required.")
+	if d.franchise && d.issuer.LegalName != "" {
+		centered(pdfRegular, 8.5, pdfLabel, "Independently owned and operated by "+strings.TrimRight(d.issuer.LegalName, ".")+".")
 	}
 	return p.bytes(logoW, logoH, logo)
 }

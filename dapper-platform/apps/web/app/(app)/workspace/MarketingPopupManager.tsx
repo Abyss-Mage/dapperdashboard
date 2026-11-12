@@ -377,7 +377,7 @@ export default function MarketingPopupManager({
                     type="text"
                     value={formPages}
                     onChange={(e) => setFormPages(e.target.value)}
-                    placeholder="/, /booking*"
+                    placeholder="/, /book-appointment*"
                     style={{ width: '100%', padding: '0.4rem' }}
                   />
                 </div>

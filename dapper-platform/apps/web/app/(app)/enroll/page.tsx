@@ -42,11 +42,11 @@ export default function EnrollmentPage() {
         <p>This invitation adds organization membership. It does not grant access to bookings, customer records or financial operations.</p>
         <p>If another account is signed in, <a href="/workspace" target="_blank" rel="noreferrer">manage or sign out of that session in another tab</a> before creating a new account.</p>
         {error && <p className="field-error" role="alert" tabIndex={-1} ref={errorRef}>{error}</p>}
-        <form onSubmit={accept} className="management-form">
-          <label style={{display: 'block'}}><input type="checkbox" checked={existing} disabled={busy} onChange={event => {setExisting(event.target.checked); setPassword(''); setConfirmation('');}} /> I already have a Dapper account</label>
+        <form onSubmit={accept} style={{display: 'grid', gap: 16}}>
+          <label style={{display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer'}}><input type="checkbox" checked={existing} disabled={busy} onChange={event => {setExisting(event.target.checked); setPassword(''); setConfirmation('');}} /><span>I already have a Dapper account</span></label>
           {existing ? <p><a href="/workspace" target="_blank" rel="noreferrer">Sign in to the invited existing account in another tab</a>, then return here and accept. Your current password will remain unchanged.</p> : <>
-            <label className="form-field">Choose your password<input type="password" autoComplete="new-password" required minLength={15} maxLength={1024} disabled={busy} value={password} onChange={event => setPassword(event.target.value)} /></label>
-            <label className="form-field">Confirm password<input type="password" autoComplete="new-password" required minLength={15} maxLength={1024} disabled={busy} value={confirmation} onChange={event => setConfirmation(event.target.value)} /></label>
+            <label className="form-field" style={{margin: 0}}>Choose your password<input type="password" autoComplete="new-password" required minLength={15} maxLength={1024} disabled={busy} value={password} onChange={event => setPassword(event.target.value)} /></label>
+            <label className="form-field" style={{margin: 0}}>Confirm password<input type="password" autoComplete="new-password" required minLength={15} maxLength={1024} disabled={busy} value={confirmation} onChange={event => setConfirmation(event.target.value)} /></label>
           </>}
           <button className="primary" disabled={busy}>{busy ? 'Accepting…' : 'Accept organization invitation'}</button>
         </form>

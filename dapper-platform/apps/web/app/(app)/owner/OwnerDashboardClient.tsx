@@ -19,18 +19,21 @@ import InvoiceTemplateEditor from '../workspace/InvoiceTemplateEditor';
 import WebsiteTrackingEditor from './WebsiteTrackingEditor';
 import InvoiceIssuerEditor from '../workspace/InvoiceIssuerEditor';
 import Enquiries from './Enquiries';
+import SalesBanner from './SalesBanner';
+import DealerInvoices from './DealerInvoices';
+import UpgradeOffers from './UpgradeOffers';
 import Coupons from './Coupons';
 import Reports from './Reports';
 import CustomScripts from './CustomScripts';
 import WebsiteImages from './WebsiteImages';
 import MessagingSettings from './MessagingSettings';
 import Employees from './Employees';
+import FranchiseEmployees from './FranchiseEmployees';
 import ActivityLog from './ActivityLog';
 import BookingManager from '../workspace/BookingManager';
 import CalendarFeeds from '../workspace/CalendarFeeds';
 import MyAccount from './MyAccount';
 import SquareMerchantPanel from '../workspace/SquareMerchantPanel';
-import SquareKeys from './SquareKeys';
 import BackupPanel from './BackupPanel';
 import { MfaSetup } from '../workspace/AccountSecurity';
 import QuoteManager from '../workspace/QuoteManager';
@@ -65,7 +68,7 @@ type Org = {
 type TabId =
   | 'overview' | 'calendar' | 'new-booking' | 'requests' | 'customers' | 'staff-hours' | 'availability' | 'dealership-tags' | 'customer-cars'
   | 'invoices' | 'quotes' | 'dealerships' | 'marketing'
-  | 'team' | 'franchises' | 'services' | 'hours' | 'taxes' | 'sop' | 'invoice-template' | 'payments' | 'backups' | 'tracking' | 'enquiries' | 'employees' | 'activity' | 'coupons' | 'reports' | 'scripts' | 'website-images' | 'messaging'
+  | 'team' | 'franchises' | 'services' | 'hours' | 'taxes' | 'sop' | 'invoice-template' | 'payments' | 'backups' | 'tracking' | 'enquiries' | 'employees' | 'activity' | 'coupons' | 'reports' | 'scripts' | 'website-images' | 'messaging' | 'sales-banner' | 'dealer-invoices'
   | 'account';
 
 type Ctx = { scope: Access | undefined; organizations: Org[]; orgActions: string[] };
@@ -91,9 +94,10 @@ const TABS: TabDefinition[] = [
   { id: 'dealership-tags', label: 'Dealership tags', icon: 'dealership', description: 'Key-tag photos your team posted at dealerships', show: (c) => has(c, 'attendance.read') },
   { id: 'customer-cars', label: 'Customer cars', icon: 'work', description: 'Before and after photos of customers\' cars', show: (c) => has(c, 'attendance.read') },
   { id: 'quotes', label: 'Quotes', icon: 'finance', description: 'Price quotes for customers', show: (c) => has(c, 'quotes.read') },
+  { id: 'dealer-invoices', label: 'Dealership invoices', icon: 'finance', description: 'B2B invoices to your dealerships', show: (c) => has(c, 'invoices.read') && has(c, 'dealership.read') },
   { id: 'dealerships', label: 'Dealerships', icon: 'dealership', description: 'Car dealerships you work with', show: (c) => has(c, 'dealership.read') },
   { id: 'messaging', label: 'Email & SMS', icon: 'marketing', description: 'Outgoing email (SMTP) and text messages (Twilio)', show: (c) => org(c, 'access.manage') },
-  { id: 'employees', label: 'Employees', icon: 'customers', description: 'People with the Employee role (workspace only)', show: (c) => org(c, 'access.manage') },
+  { id: 'employees', label: 'Employees', icon: 'customers', description: 'The people who work at this franchise', show: (c) => org(c, 'access.manage') || has(c, 'attendance.manage') },
   { id: 'activity', label: 'Activity log', icon: 'admin', description: 'Who signed in and what they changed', show: (c) => org(c, 'access.manage') },
   { id: 'team', label: 'Team', icon: 'customers', description: 'Your team, invitations and roles', show: (c) => org(c, 'access.manage') },
   { id: 'franchises', label: 'Franchises', icon: 'admin', description: 'Your franchises and their details', show: (c) => org(c, 'structure.read') },
@@ -105,6 +109,7 @@ const TABS: TabDefinition[] = [
   { id: 'reports', label: 'Reports', icon: 'overview', description: 'Appointments, revenue and customers', show: (c) => has(c, 'bookings.read', 'payments.read', 'customers.read') },
   { id: 'coupons', label: 'Coupons', icon: 'marketing', description: 'Discount codes for your customers', show: (c) => has(c, 'marketing.read') },
   { id: 'enquiries', label: 'Enquiries', icon: 'marketing', description: 'Messages from the website contact form', show: (c) => org(c, 'marketing.read') },
+  { id: 'sales-banner', label: 'Sales banner', icon: 'marketing', description: 'A strip above the website header for a sale or offer', show: (c) => has(c, 'content.manage') },
   { id: 'website-images', label: 'Website images', icon: 'marketing', description: 'Portfolio photos shown on the website', show: (c) => has(c, 'content.manage') },
   { id: 'scripts', label: 'Custom scripts', icon: 'marketing', description: 'Extra code for the public website', show: (c) => org(c, 'access.manage') },
   { id: 'backups', label: 'Backups', icon: 'admin', description: 'Download or bring back the whole system', show: (c) => org(c, 'access.manage') && org(c, 'invoices.configure') },
@@ -116,7 +121,7 @@ const TABS: TabDefinition[] = [
 const NAV_GROUPS: { label: string; ids: TabId[] }[] = [
   { label: 'Every day', ids: ['overview', 'calendar', 'new-booking', 'requests', 'customers', 'reports'] },
   { label: 'Team', ids: ['employees', 'staff-hours', 'availability', 'dealership-tags', 'customer-cars', 'sop'] },
-  { label: 'Money', ids: ['quotes', 'payments', 'dealerships', 'messaging', 'coupons', 'enquiries'] },
+  { label: 'Money', ids: ['quotes', 'payments', 'dealerships', 'dealer-invoices', 'messaging', 'coupons', 'sales-banner', 'enquiries'] },
   { label: 'Settings', ids: ['services', 'hours', 'taxes', 'franchises', 'team', 'activity', 'invoice-template', 'website-images', 'tracking', 'scripts', 'backups'] },
 ];
 const isTab = (v: string): v is TabId => TABS.some((t) => t.id === v);
@@ -193,11 +198,13 @@ export default function OwnerDashboardClient() {
     setOrganizations(access.organizations || []);
     setAccessRevision((v) => v + 1);
 
-    setSelectedLocationId((current) =>
-      access.locations?.some((l: Access) => l.locationId === current)
-        ? current
-        : access.locations?.[0]?.locationId ?? ''
-    );
+    // Keep the franchise chosen before a refresh (remembered in this browser), else the first one.
+    setSelectedLocationId((current) => {
+      const has = (id: string | null) => !!id && access.locations?.some((l: Access) => l.locationId === id);
+      if (has(current)) return current;
+      const remembered = typeof window === 'undefined' ? null : window.localStorage.getItem('dapper:owner-location');
+      return has(remembered) ? remembered! : access.locations?.[0]?.locationId ?? '';
+    });
   }, []);
 
   useEffect(() => {
@@ -439,6 +446,7 @@ export default function OwnerDashboardClient() {
                 value={selectedLocationId}
                 onChange={(e) => {
                   setSelectedLocationId(e.target.value);
+                  try { window.localStorage.setItem('dapper:owner-location', e.target.value); } catch { /* private mode: just not remembered */ }
                   setError('');
                 }}
               >
@@ -504,6 +512,8 @@ export default function OwnerDashboardClient() {
       </aside>
 
       <div className={styles.main}>
+        {/* The brand mark, faint in the corner where pages leave empty space (error404 #35); content sits above it. */}
+        <img className={styles.watermark} src="/site/assets/logo.webp" alt="" aria-hidden="true" width={240} height={240} />
         <header className={styles.topBar}>
           <div className={styles.topBarLeft}>
             <button
@@ -553,11 +563,11 @@ export default function OwnerDashboardClient() {
             <OwnerOverview base={base} location={scope.locationName} organizationName={scope.organizationName} onNavigate={(tab) => goTo(isTab(tab) ? tab : tab === 'operations' ? 'calendar' : tab === 'finance' ? 'invoices' : tab === 'bookings' ? 'calendar' : 'overview')} />
           )}
           {hasTabPermission && scope && <>
-            {activeTab === 'calendar' && <><BookingCalendar key={base} base={base} timezone={timezone} calendarLink={`${base}/calendar.ics`} /><CalendarFeeds key={'feeds-' + base} endpoint={`${base}/calendar-feeds`} title="Add this franchise’s bookings to Apple Calendar" hint="Make a private link and add it once to Apple Calendar, Google Calendar or Outlook. It then keeps updating by itself. Anyone with the link can see these bookings, so turn it off if it is shared by mistake." /></>}
+            {activeTab === 'calendar' && <><BookingCalendar key={base} base={base} timezone={timezone} calendarLink={`${base}/calendar.ics`} canManage={!!scope?.actions.includes('bookings.manage')} /><CalendarFeeds key={'feeds-' + base} endpoint={`${base}/calendar-feeds`} title="Add this franchise’s bookings to Apple Calendar" hint="Make a private link and add it once to Apple Calendar, Google Calendar or Outlook. It then keeps updating by itself. Anyone with the link can see these bookings, so turn it off if it is shared by mistake." /></>}
             {activeTab === 'new-booking' && <StaffBookingWizard mode="master" base={base} timezone={timezone} onBooked={refresh} />}
             {activeTab === 'requests' && <BookingManager key={'booking-mgr-' + base} base={base} canCreate={scope.actions.includes('bookings.create')} canManage={scope.actions.includes('bookings.manage')} canCreateWorkOrders={false} />}
-            {activeTab === 'customers' && <CustomerManager key={base} base={base} canCreate={scope.actions.includes('customers.create')} canDelete={scope.actions.includes('customer_accounts.manage')} onChanged={() => setCustomerRevision((v) => v + 1)} />}
-            {activeTab === 'staff-hours' && <StaffHours key={base} base={base} timezone={timezone} />}
+            {activeTab === 'customers' && <CustomerManager key={base} base={base} canCreate={scope.actions.includes('customers.create')} canDelete={scope.actions.includes('customer_accounts.manage')} canExport={!!currentOrg?.actions.includes('access.manage')} onChanged={() => setCustomerRevision((v) => v + 1)} />}
+            {activeTab === 'staff-hours' && <StaffHours key={base} base={base} timezone={timezone} canManage={scope.actions.includes('attendance.manage')} />}
             {activeTab === 'availability' && <AvailabilityReview key={scope.organizationId} organizationId={scope.organizationId} locationId={scope.locationId} />}
             {activeTab === 'dealership-tags' && <EmployeeUploadsReview key={'tags-' + base} base={base} fixedKind="dealership_tag" title="Dealership tags" canSeeLog={scope.actions.includes('attendance.manage')} />}
             {activeTab === 'customer-cars' && <EmployeeUploadsReview key={'cars-' + base} base={base} fixedKind="customer_car" title="Customer cars" canSeeLog={scope.actions.includes('attendance.manage')} />}
@@ -567,22 +577,23 @@ export default function OwnerDashboardClient() {
             {activeTab === 'backups' && <BackupPanel organizationId={scope.organizationId} />}
             {activeTab === 'payments' && (
               <div className={styles.stack}>
-                <SquareKeys organizationId={scope.organizationId} />
                 <SquareMerchantPanel organizationId={scope.organizationId} locationId={scope.locationId} canManage />
               </div>
             )}
+            {activeTab === 'dealer-invoices' && <DealerInvoices key={'dlinv-' + base} base={base} organizationId={scope.organizationId} canCreate={scope.actions.includes('invoices.create') && scope.actions.includes('invoices.manage')} canIssue={scope.actions.includes('invoices.issue')} canManage={scope.actions.includes('invoices.manage')} canConfigure={orgActions.includes('invoices.configure')} />}
             {activeTab === 'dealerships' && <Dealerships key={base} organizationId={scope.organizationId} locationId={scope.locationId} canManage={scope.actions.includes('dealership.manage')} canConfigure={orgActions.includes('invoices.configure')} />}
             {activeTab === 'marketing' && <MarketingPopupManager key={'marketing-' + base} organizationId={scope.organizationId} locationId={scope.locationId} canManage={scope.actions.includes('marketing.manage')} />}
             {activeTab === 'hours' && <OpeningHours key={base} base={base} franchiseName={scope.locationName} canManage={scope.actions.includes('scheduling.manage')} />}
             {activeTab === 'taxes' && <TaxSettings key={base} base={base} franchiseName={scope.locationName} canManage={orgActions.includes('invoices.configure')} />}
-            {activeTab === 'services' && currentOrg && (
+            {activeTab === 'services' && (
               <div className={styles.stack}>
                 {/* The central catalogue comes first: every change there applies to all franchises on its own. */}
-                {currentOrg.actions.includes('catalogue.read') && (
+                {currentOrg?.actions.includes('catalogue.read') && (
                   <ServicesManager key={'central-' + currentOrg.id} mode="central" listUrl={`/api/v1/organizations/${currentOrg.id}/central-services`} organizationId={currentOrg.id} canManage={currentOrg.actions.includes('catalogue.manage')} title="Central catalogue" locationBase={base} intro="Services and prices for every franchise. A change here applies to all franchises automatically, and a new service is switched on everywhere." />
                 )}
+                {currentOrg?.actions.includes('catalogue.read') && <UpgradeOffers key={'upsells-' + currentOrg.id} organizationId={currentOrg.id} canManage={currentOrg.actions.includes('catalogue.manage')} />}
                 {scope.actions.includes('catalogue.read') && (
-                  <ServicesManager key={'extras-' + base} mode="franchise" extrasOnly listUrl={`${base}/services`} organizationId={currentOrg.id} canManage={scope.actions.includes('catalogue.manage')} title={`Extra services only at ${scope.locationName}`} intro="Services this franchise offers on top of the central catalogue." />
+                  <ServicesManager key={'extras-' + base} mode="franchise" canSlots={scope.actions.includes('scheduling.manage')} extrasOnly={!!currentOrg?.actions.includes('catalogue.read')} listUrl={`${base}/services`} organizationId={scope.organizationId} canManage={scope.actions.includes('catalogue.manage')} title={currentOrg?.actions.includes('catalogue.read') ? `Extra services only at ${scope.locationName}` : `Services at ${scope.locationName}`} intro={currentOrg?.actions.includes('catalogue.read') ? 'Services this franchise offers on top of the central catalogue.' : 'Everything this franchise offers. You can set each service\'s slots here; the services themselves are managed centrally.'} />
                 )}
               </div>
             )}
@@ -592,11 +603,12 @@ export default function OwnerDashboardClient() {
           {hasTabPermission && activeTab === 'invoice-template' && currentOrg && <InvoiceIssuerEditor key={'issuer-' + currentOrg.id} organizationId={currentOrg.id} revision={accessRevision} />}
           {hasTabPermission && activeTab === 'invoice-template' && currentOrg && <InvoiceTemplateEditor key={'template-' + currentOrg.id} organizationId={currentOrg.id} revision={accessRevision} locationId={scope?.locationId} locationName={scope?.locationName} />}
           {hasTabPermission && activeTab === 'messaging' && currentOrg && <MessagingSettings key={'messaging-' + currentOrg.id} organizationId={currentOrg.id} revision={accessRevision} />}
+          {hasTabPermission && activeTab === 'sales-banner' && scope && <SalesBanner key={'banner-' + base} base={base} />}
           {hasTabPermission && activeTab === 'website-images' && scope && <WebsiteImages key={'images-' + base} base={base} franchiseName={scope.locationName} franchiseCode="" />}
           {hasTabPermission && activeTab === 'scripts' && currentOrg && <CustomScripts key={'scripts-' + currentOrg.id} organizationId={currentOrg.id} revision={accessRevision} />}
           {hasTabPermission && activeTab === 'tracking' && currentOrg && <WebsiteTrackingEditor key={'tracking-' + currentOrg.id} organizationId={currentOrg.id} revision={accessRevision} />}
           {hasTabPermission && activeTab === 'enquiries' && currentOrg && <Enquiries key={'enquiries-' + currentOrg.id} organizationId={currentOrg.id} canManage={currentOrg.actions.includes('marketing.manage')} />}
-          {hasTabPermission && activeTab === 'employees' && currentOrg && <Employees key={'employees-' + currentOrg.id} organizationId={currentOrg.id} onChanged={refresh} />}
+          {hasTabPermission && activeTab === 'employees' && (currentOrg?.actions.includes('access.manage') ? <Employees key={'employees-' + currentOrg.id} organizationId={currentOrg.id} franchiseName={scope?.locationName} onChanged={refresh} /> : scope && <FranchiseEmployees key={'team-' + base} base={base} franchiseName={scope.locationName} />)}
           {hasTabPermission && activeTab === 'activity' && currentOrg && <ActivityLog key={'activity-' + currentOrg.id} organizationId={currentOrg.id} />}
           {activeTab === 'reports' && scope && <Reports key={'reports-' + base} base={base} />}
           {activeTab === 'coupons' && scope && <Coupons key={'coupons-' + base} base={base} canManage={scope.actions.includes('marketing.manage')} />}

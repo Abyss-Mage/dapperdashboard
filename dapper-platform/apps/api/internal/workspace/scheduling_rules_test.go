@@ -21,7 +21,7 @@ func verifySchedulingRulesHTTP(t *testing.T, send func(string, string, string, s
 		t.Fatal("rule addon fixture failed")
 	}
 	path := base + "scheduling/resources/" + resource + "/rules"
-	payload := `{"serviceId":"` + main.ID + `","addonIds":["` + addon.ID + `"],"durationMinutes":60,"beforeMinutes":0,"afterMinutes":15,"units":1}`
+	payload := `{"serviceId":"` + main.ID + `","addonIds":["` + addon.ID + `"],"durationMinutes":60,"beforeMinutes":0,"afterMinutes":15,"units":1,"slots":2}`
 	if send("GET", path, "", "", origin).Code != 401 {
 		t.Fatal("anonymous rule list accepted")
 	}

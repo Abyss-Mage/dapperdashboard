@@ -111,6 +111,10 @@ func verifyInvoiceIssuance(t *testing.T, ctx context.Context, s *Store, a, b Sco
 	if err != nil || issued.InvoiceNumber != "FINAL-101" || issued.IssuerSnapshot.Version != 2 {
 		t.Fatal("issuance after rollback failed", err)
 	}
+	// A running number set back onto one already used is stepped over: the next draft below still becomes FINAL-102.
+	if _, err = s.pool.Exec(ctx, `UPDATE invoice_issuers SET next_number=101 WHERE id=$1`, issuer.ID); err != nil {
+		t.Fatal(err)
+	}
 	var otherLocation, otherCustomer string
 	if err = s.pool.QueryRow(ctx, `INSERT INTO locations(organization_id,name) VALUES($1,'Isolated shared issuer location') RETURNING id::text`, a.OrganizationID).Scan(&otherLocation); err != nil {
 		t.Fatal(err)

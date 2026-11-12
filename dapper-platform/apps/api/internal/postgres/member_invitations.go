@@ -81,6 +81,10 @@ func (s *InvitationService) Create(ctx context.Context, actor, org, email string
 
 // CreateWithRole queues an invitation; when preset is given, the new member gets that role at that franchise on accepting.
 func (s *InvitationService) CreateWithRole(ctx context.Context, actor, org, email string, lifetime time.Duration, preset *InvitationRole) (MemberInvitation, error) {
+	return s.create(ctx, actor, org, email, lifetime, preset, func(tx pgx.Tx) error { return accessManagementGrant(ctx, tx, actor, org) })
+}
+
+func (s *InvitationService) create(ctx context.Context, actor, org, email string, lifetime time.Duration, preset *InvitationRole, gate func(pgx.Tx) error) (MemberInvitation, error) {
 	email, valid := normalizedEmail(email)
 	if !valid || lifetime < 15*time.Minute || lifetime > 24*time.Hour {
 		return MemberInvitation{}, ErrInvitationInput
@@ -97,7 +101,7 @@ func (s *InvitationService) CreateWithRole(ctx context.Context, actor, org, emai
 		return MemberInvitation{}, err
 	}
 	defer tx.Rollback(ctx)
-	if err = accessManagementGrant(ctx, tx, actor, org); err != nil {
+	if err = gate(tx); err != nil {
 		return MemberInvitation{}, err
 	}
 	if _, err = tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, org+"/invite/"+email); err != nil {
@@ -194,12 +198,16 @@ func (s *InvitationService) List(ctx context.Context, actor, org string) ([]Memb
 }
 
 func (s *InvitationService) Revoke(ctx context.Context, actor, org, id string) error {
+	return s.revoke(ctx, actor, org, id, func(tx pgx.Tx) error { return accessManagementGrant(ctx, tx, actor, org) })
+}
+
+func (s *InvitationService) revoke(ctx context.Context, actor, org, id string, gate func(pgx.Tx) error) error {
 	tx, err := s.store.pool.Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback(ctx)
-	if err = accessManagementGrant(ctx, tx, actor, org); err != nil {
+	if err = gate(tx); err != nil {
 		return err
 	}
 	var status string
@@ -270,7 +278,7 @@ func (s *InvitationService) ProcessDeliveries(ctx context.Context, sender EmailS
 		SELECT d.invitation_id::text, d.organization_id::text, d.payload_ciphertext, i.email, i.status, (i.expires_at <= now())
 		FROM member_invitation_deliveries d
 		JOIN member_invitations i ON i.id = d.invitation_id
-		WHERE d.state = 'queued'
+		WHERE d.state = 'queued' OR (d.state = 'failed' AND d.send_failures < 6 AND d.retry_at <= now())
 		ORDER BY d.created_at
 		LIMIT $1
 		FOR UPDATE OF d SKIP LOCKED`, limit)
@@ -371,7 +379,7 @@ func (s *InvitationService) ProcessDeliveries(ctx context.Context, sender EmailS
 			} else {
 				errMsg = "missing provider reference"
 			}
-			if _, e := tx.Exec(ctx, `UPDATE member_invitation_deliveries SET state='failed' WHERE invitation_id=$1`, pd.invitationID); e != nil {
+			if _, e := tx.Exec(ctx, `UPDATE member_invitation_deliveries SET state='failed', send_failures=send_failures+1, retry_at=now()+make_interval(mins => 15*(send_failures+1)) WHERE invitation_id=$1`, pd.invitationID); e != nil {
 				return nil, e
 			}
 			results = append(results, DeliveryResult{
@@ -465,7 +473,8 @@ func (s *InvitationService) Accept(ctx context.Context, token, password, session
 		return err
 	}
 	var id, org, creator, lockedEmail string
-	err = tx.QueryRow(ctx, `SELECT id::text,organization_id::text,created_by::text,email FROM member_invitations WHERE token_hash=$1 AND status='pending' AND expires_at>now() FOR UPDATE`, digest[:]).Scan(&id, &org, &creator, &lockedEmail)
+	var employeeAt *string
+	err = tx.QueryRow(ctx, `SELECT i.id::text,i.organization_id::text,i.created_by::text,i.email,CASE WHEN lower(r.name)='employee' THEN i.preset_location_id::text END FROM member_invitations i LEFT JOIN roles r ON r.id=i.preset_role_id WHERE i.token_hash=$1 AND i.status='pending' AND i.expires_at>now() FOR UPDATE OF i`, digest[:]).Scan(&id, &org, &creator, &lockedEmail, &employeeAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrInvitationUnavailable
 	}
@@ -475,7 +484,12 @@ func (s *InvitationService) Accept(ctx context.Context, token, password, session
 	if lockedEmail != email {
 		return ErrInvitationUnavailable
 	}
-	if err = accessManagementGrant(ctx, tx, creator, org); err != nil {
+	// Whoever sent it must still be allowed to: an administrator, or for an Employee invitation the owner of that franchise.
+	err = accessManagementGrant(ctx, tx, creator, org)
+	if errors.Is(err, ErrForbidden) && employeeAt != nil {
+		err = authorizeTransaction(ctx, tx, Scope{OrganizationID: org, LocationID: *employeeAt, ActorID: creator}, franchiseTeamAction)
+	}
+	if err != nil {
 		if errors.Is(err, ErrForbidden) {
 			return ErrInvitationUnavailable
 		}
@@ -536,6 +550,12 @@ func (s *InvitationService) Accept(ctx context.Context, token, password, session
   RETURNING role_id, scope_id)
  INSERT INTO role_assignment_events(organization_id,actor_id,principal_id,role_id,scope_type,scope_id,action,version)
   SELECT $2,$4,$3,role_id,'location',scope_id,'assigned',1 FROM added`, id, org, actor, creator); err != nil {
+		return err
+	}
+	// Someone invited as an Employee of a franchise can start work there straight away.
+	if _, err = tx.Exec(ctx, `INSERT INTO employee_worksite_assignments(principal_id,organization_id,location_id,timezone,assigned_by)
+ SELECT $2::uuid,i.organization_id,i.preset_location_id,COALESCE((SELECT r.timezone FROM scheduling_resources r WHERE r.organization_id=i.organization_id AND r.location_id=i.preset_location_id ORDER BY r.id LIMIT 1),'America/Toronto'),$3::uuid
+ FROM member_invitations i JOIN roles ro ON ro.id=i.preset_role_id AND lower(ro.name)='employee' WHERE i.id=$1 ON CONFLICT (principal_id) DO NOTHING`, id, actor, creator); err != nil {
 		return err
 	}
 	if _, err = tx.Exec(ctx, `UPDATE member_invitation_deliveries SET state='cancelled' WHERE invitation_id=$1 AND state IN ('queued','failed')`, id); err != nil {

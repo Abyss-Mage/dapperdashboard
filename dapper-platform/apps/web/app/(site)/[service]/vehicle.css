@@ -223,3 +223,26 @@
 .v-addons ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr));gap:10px}
 .v-addons li{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:52px;padding:0 16px;border:1px solid #0b0b0c1f;font:600 15px/1.2 'Manrope',sans-serif;color:#0b0b0c}
 .v-addons b{color:var(--red,#e4202e);font-weight:700;white-space:nowrap}
+/* The outline follows the cut corner: the card is the line colour and a white copy sits 1px inside it */
+.v-light .v-row,.v-cards .v-card{position:relative;isolation:isolate;background:#0b0b0c1f;border:0;box-shadow:none;clip-path:polygon(0 0,100% 0,100% 100%,18px 100%,0 calc(100% - 18px))}
+.v-light .v-row:hover{background:#0b0b0c1f}
+.v-light .v-row::after,.v-cards .v-card::after{content:"";position:absolute;inset:1px;z-index:-1;background:#fff;clip-path:polygon(0 0,100% 0,100% 100%,17.5px 100%,0 calc(100% - 17.5px))}
+/* Phones: price, button and phone number line up on the left with the headline */
+@media(max-width:700px){.v-buy,.v-buy .s-close__call{align-items:flex-start}.v-buy .s-btn,.v-buy .s-close__call{align-self:flex-start;justify-content:flex-start;text-align:left}.v-buy .s-close__call{align-items:center}}
+/* The tab outline follows the cut corner, the same way the package cards do */
+.v-tabs button:not(.is-on){position:relative;isolation:isolate;border:0;background:#0b0b0c40}
+.v-tabs button:not(.is-on)::after{content:"";position:absolute;inset:1px;z-index:-1;background:#fff;clip-path:polygon(0 0,100% 0,100% 100%,11.5px 100%,0 calc(100% - 11.5px))}
+@media(hover:hover) and (pointer:fine){.v-tabs button:not(.is-on):hover{background:var(--red)}}
+/* The star package: first in its category, with a red outline and a label */
+/* The shadow sits on the wrapper because the row's cut corner would clip a shadow of its own */
+.v-star{filter:drop-shadow(0 16px 26px rgba(11,11,12,.16))}
+.v-light .v-row.is-star,.v-light .v-row.is-star:hover{background:#fff;padding:0;gap:0;grid-template-columns:minmax(0,.95fr) minmax(0,1.5fr) auto;align-items:stretch}
+.v-light .v-row.is-star::after{display:none}
+.v-row.is-star .v-row__main{align-content:center;gap:12px;padding:clamp(26px,2.8vw,44px);background:var(--red)}
+.v-light .v-row.is-star h3{color:#fff;font-size:clamp(20px,2.1vw,34px)}
+.v-light .v-row.is-star .v-row__price b{color:#fff;font-size:clamp(34px,3.4vw,54px)}
+.v-row .v-row__star{display:inline-flex;align-items:center;gap:6px;justify-self:start;padding:7px 11px;background:#fff;color:var(--red);font:500 12px/1 var(--cd);letter-spacing:.08em;text-transform:uppercase}
+.v-row.is-star .v-row__inc{align-self:center;padding:clamp(22px,2.4vw,36px)}
+.v-row.is-star .v-row__book{align-self:center;margin-right:clamp(20px,2.4vw,36px);background:#0b0b0c}
+@media(hover:hover) and (pointer:fine){.v-row.is-star .v-row__book:hover{background:var(--red)}}
+@media(max-width:900px){.v-light .v-row.is-star,.v-light .v-row.is-star:hover{grid-template-columns:minmax(0,1fr)}.v-row.is-star .v-row__book{margin:0 clamp(20px,2.4vw,36px) 24px;align-self:stretch}}

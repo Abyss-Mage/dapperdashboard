@@ -8,7 +8,7 @@ import styles from './booking.module.css';
 export const metadata = { title: 'Book now | Dapper Detailing Pros', description: 'Choose mobile service or at-shop detailing and pick your date and time with Dapper Detailing Pros in Peterborough.' };
 
 /* The booking page: the site's header, a film-frame headline, the booking steps and the footer. It is a page of its own (not a popup) so
-   the ad tags see the visit, and a finished booking sends the customer on to /booking/thank-you. */
+   the ad tags see the visit, and a finished booking sends the customer on to /book-appointment/thank-you. */
 export default function PublicBookingPortal() {
   return (
     <div className={styles.page}>

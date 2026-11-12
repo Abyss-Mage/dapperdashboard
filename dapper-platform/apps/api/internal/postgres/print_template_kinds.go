@@ -13,18 +13,43 @@ import (
 // stored the same way (quote_templates.sql mirrors the invoice tables); printKind names the tables.
 type printKind struct {
 	orgTable, locTable string
-	quote              bool
+	quote, dealer      bool
 }
 
 var (
 	invoicePrint = printKind{orgTable: "invoice_print_templates", locTable: "location_invoice_templates"}
 	quotePrint   = printKind{orgTable: "quote_print_templates", locTable: "location_quote_templates", quote: true}
+	dealerPrint  = printKind{orgTable: "dealer_print_templates", locTable: "location_dealer_templates", dealer: true}
 )
+
+// PrintKindNamed picks the quotation ("quote") or dealership invoice ("dealer") template, the two that start from the invoice template.
+func PrintKindNamed(name string) (printKind, bool) {
+	switch name {
+	case "quote":
+		return quotePrint, true
+	case "dealer":
+		return dealerPrint, true
+	}
+	return printKind{}, false
+}
+
+// fromInvoice is what a never-saved quotation or dealership template starts as.
+func (k printKind) fromInvoice(t InvoicePrintTemplate) InvoicePrintTemplate {
+	if k.quote {
+		return quoteFromInvoice(t)
+	}
+	if k.dealer {
+		// The owner's dealership layout (error404 #29): "Client Details" over the dealership, no booking payment wording.
+		t.BillToLabel = "Client Details"
+		t.CustomHTML, t.CustomCSS = "", ""
+	}
+	return t
+}
 
 // effective is what a franchise prints with. A quotation template that was never saved starts from the invoice template the
 // franchise prints with, titled with its quotation title, so quotes look the same until someone edits them.
 func (k printKind) effective(ctx context.Context, q rowQuerier, org, loc string) (InvoicePrintTemplateState, error) {
-	if !k.quote {
+	if !k.quote && !k.dealer {
 		return loadEffectivePrintTemplate(ctx, q, k, org, loc)
 	}
 	out, err := loadEffectivePrintTemplate(ctx, q, k, org, loc)
@@ -35,7 +60,7 @@ func (k printKind) effective(ctx context.Context, q rowQuerier, org, loc string)
 	if err != nil {
 		return out, err
 	}
-	return InvoicePrintTemplateState{Template: quoteFromInvoice(base.Template), Scope: "organization"}, nil
+	return InvoicePrintTemplateState{Template: k.fromInvoice(base.Template), Scope: "organization"}, nil
 }
 
 func quoteFromInvoice(t InvoicePrintTemplate) InvoicePrintTemplate {
@@ -49,31 +74,36 @@ func quoteFromInvoice(t InvoicePrintTemplate) InvoicePrintTemplate {
 
 // QuotePrintTemplate is the organization's quotation template (to any member), started from the invoice template until saved.
 func (s *Store) QuotePrintTemplate(ctx context.Context, actor, org string) (InvoicePrintTemplateState, error) {
+	return s.KindPrintTemplate(ctx, quotePrint, actor, org)
+}
+
+// KindPrintTemplate is the organization's quotation or dealership template (to any member), started from the invoice template until saved.
+func (s *Store) KindPrintTemplate(ctx context.Context, k printKind, actor, org string) (InvoicePrintTemplateState, error) {
 	if err := s.memberOf(ctx, actor, org); err != nil {
 		return InvoicePrintTemplateState{}, err
 	}
-	out, err := loadOrgPrintTemplate(ctx, s.pool, quotePrint, org)
+	out, err := loadOrgPrintTemplate(ctx, s.pool, k, org)
 	if err != nil || out.Version > 0 {
 		return out, err
 	}
 	base, err := loadInvoiceTemplate(ctx, s.pool, org)
-	return InvoicePrintTemplateState{Template: quoteFromInvoice(base.Template)}, err
+	return InvoicePrintTemplateState{Template: k.fromInvoice(base.Template)}, err
 }
 
-func (s *Store) SaveQuotePrintTemplate(ctx context.Context, actor, org string, t InvoicePrintTemplate, version int) (InvoicePrintTemplateState, error) {
-	return s.saveOrgPrintTemplate(ctx, quotePrint, actor, org, t, version)
+func (s *Store) SaveKindPrintTemplate(ctx context.Context, k printKind, actor, org string, t InvoicePrintTemplate, version int) (InvoicePrintTemplateState, error) {
+	return s.saveOrgPrintTemplate(ctx, k, actor, org, t, version)
 }
 
-func (s *Store) LocationQuotePrintTemplate(ctx context.Context, actor, org, loc string) (InvoicePrintTemplateState, error) {
-	return s.locationPrintTemplate(ctx, quotePrint, actor, org, loc)
+func (s *Store) LocationKindPrintTemplate(ctx context.Context, k printKind, actor, org, loc string) (InvoicePrintTemplateState, error) {
+	return s.locationPrintTemplate(ctx, k, actor, org, loc)
 }
 
-func (s *Store) SaveLocationQuotePrintTemplate(ctx context.Context, actor, org, loc string, t InvoicePrintTemplate, version int) (InvoicePrintTemplateState, error) {
-	return s.saveLocationPrintTemplate(ctx, quotePrint, actor, org, loc, t, version)
+func (s *Store) SaveLocationKindPrintTemplate(ctx context.Context, k printKind, actor, org, loc string, t InvoicePrintTemplate, version int) (InvoicePrintTemplateState, error) {
+	return s.saveLocationPrintTemplate(ctx, k, actor, org, loc, t, version)
 }
 
-func (s *Store) DeleteLocationQuotePrintTemplate(ctx context.Context, actor, org, loc string) error {
-	return s.deleteLocationPrintTemplate(ctx, quotePrint, actor, org, loc)
+func (s *Store) DeleteLocationKindPrintTemplate(ctx context.Context, k printKind, actor, org, loc string) error {
+	return s.deleteLocationPrintTemplate(ctx, k, actor, org, loc)
 }
 
 type partyQuerier interface {
@@ -85,7 +115,7 @@ type partyQuerier interface {
 // named together and their rates added, e.g. "GST + PST" at 12 per cent).
 func printParties(ctx context.Context, q partyQuerier, org, loc string, out *InvoicePrintTemplateState) error {
 	var issuer QuoteIssuer
-	err := q.QueryRow(ctx, `SELECT i.legal_name,i.address,i.tax_registration FROM location_invoice_issuers l JOIN invoice_issuers i ON i.id=l.issuer_id WHERE l.organization_id=$1 AND l.location_id=$2`, org, loc).Scan(&issuer.LegalName, &issuer.Address, &issuer.TaxRegistration)
+	err := q.QueryRow(ctx, `SELECT i.legal_name,i.address,COALESCE(NULLIF((SELECT x.tax_registration FROM locations x WHERE x.organization_id=l.organization_id AND x.id=l.location_id),''),i.tax_registration) FROM location_invoice_issuers l JOIN invoice_issuers i ON i.id=l.issuer_id WHERE l.organization_id=$1 AND l.location_id=$2`, org, loc).Scan(&issuer.LegalName, &issuer.Address, &issuer.TaxRegistration)
 	if err == nil {
 		out.Issuer = &issuer
 	} else if !errors.Is(err, pgx.ErrNoRows) {
@@ -115,4 +145,18 @@ func printParties(ctx context.Context, q partyQuerier, org, loc string, out *Inv
 		out.TaxRatePercent = math.Round(float64(total)) / 100
 	}
 	return nil
+}
+
+// The quotation template by its own names (used by the quotation tests and callers that predate the dealership template).
+func (s *Store) SaveQuotePrintTemplate(ctx context.Context, actor, org string, t InvoicePrintTemplate, version int) (InvoicePrintTemplateState, error) {
+	return s.SaveKindPrintTemplate(ctx, quotePrint, actor, org, t, version)
+}
+func (s *Store) LocationQuotePrintTemplate(ctx context.Context, actor, org, loc string) (InvoicePrintTemplateState, error) {
+	return s.LocationKindPrintTemplate(ctx, quotePrint, actor, org, loc)
+}
+func (s *Store) SaveLocationQuotePrintTemplate(ctx context.Context, actor, org, loc string, t InvoicePrintTemplate, version int) (InvoicePrintTemplateState, error) {
+	return s.SaveLocationKindPrintTemplate(ctx, quotePrint, actor, org, loc, t, version)
+}
+func (s *Store) DeleteLocationQuotePrintTemplate(ctx context.Context, actor, org, loc string) error {
+	return s.DeleteLocationKindPrintTemplate(ctx, quotePrint, actor, org, loc)
 }

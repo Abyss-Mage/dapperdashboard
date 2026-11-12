@@ -11,14 +11,14 @@ import { SiteHeader } from '../../_chrome/SiteHeader';
 import { SiteFooter } from '../../_chrome/SiteFooter';
 import ForceDark from '../../_chrome/ForceDark';
 import a from './account.module.css';
-import { fillInvoiceWindow, loadPrintTemplate, openInvoiceWindow } from '../workspace/InvoicePrint';
+import { openPdf } from '../workspace/InvoicePrint';
 
 type Account = {customerId: string; name: string; locationName: string; email?: string; phone?: string; address?: string};
 type Records = {
   account: Account;
   vehicles: {id: string; description: string; categoryDescription: string; identifier: string}[];
   bookings: {id: string; serviceName: string; status: string; bookingTime: string}[];
-  invoices: {id: string; number: string; status: string; currency: string; totalCents: number; dueCents: number; bookingId: string}[];
+  invoices: {id: string; number: string; status: string; currency: string; totalCents: number; dueCents: number; bookingId: string; issuedAt?: string; dueAt?: string; overdue?: boolean}[];
   addresses: SavedAddress[];
   hasAvatar: boolean;
   limit: number;
@@ -42,6 +42,14 @@ export default function CustomerAccount() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [revision, setRevision] = useState(0);
+  // Invoice filters (dealerships have many invoices), and the invoice an emailed "View and pay" link points at.
+  const [invStatus, setInvStatus] = useState<'all' | 'unpaid' | 'overdue' | 'paid'>('all');
+  const [invFrom, setInvFrom] = useState(''), [invTo, setInvTo] = useState('');
+  const [linked] = useState(() => (typeof window === 'undefined' ? '' : new URLSearchParams(window.location.search).get('invoice') ?? ''));
+  useEffect(() => {
+    if (!linked || !records?.invoices.some((i) => i.id === linked)) return;
+    document.getElementById('invoice-' + linked)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [linked, records]);
   const [detailName, setDetailName] = useState(''), [detailPhone, setDetailPhone] = useState(''), [detailAddress, setDetailAddress] = useState('');
   useEffect(() => { if (records) { setDetailName(records.account.name); setDetailPhone(records.account.phone ?? ''); setDetailAddress(records.account.address ?? ''); } }, [records]);
   async function saveDetails(event: React.FormEvent) {
@@ -57,12 +65,7 @@ export default function CustomerAccount() {
   }
   function openInvoice(invoiceId: string) {
     setError('');
-    const w = openInvoiceWindow();
-    if (!w) { setError('Allow pop-ups for this site to open the invoice in a new window.'); return; }
-    fetch(`/api/v1/portal/accounts/${encodeURIComponent(selected)}/invoices/${encodeURIComponent(invoiceId)}`, {cache: 'no-store'})
-      .then(async (response) => { const body = await response.json().catch(() => ({})); if (!response.ok) throw new Error(body.error ?? 'The invoice could not be opened.'); return body; })
-      .then(async (body) => fillInvoiceWindow(w, body, await loadPrintTemplate(`/api/v1/portal/accounts/${encodeURIComponent(selected)}/invoice-template`)))
-      .catch((err) => { w.close(); setError(err instanceof Error ? err.message : 'The invoice could not be opened.'); });
+    openPdf(`/api/v1/portal/accounts/${encodeURIComponent(selected)}/invoices/${encodeURIComponent(invoiceId)}/pdf`);
   }
   const [notice, setNotice] = useState('');
 
@@ -145,7 +148,7 @@ export default function CustomerAccount() {
           <label className="form-field">Password<input type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} disabled={busy || !ready} /></label>
           <p style={{ margin: 0 }}><a href="/reset-password" style={{ textDecoration: 'underline' }}>Forgot your password?</a></p>
           <button className="primary" disabled={busy || !ready}>{busy ? 'Signing in…' : 'Sign in'}</button>
-          <p style={{ margin: 0, opacity: .75 }}>Use your Dapper customer account to access your records. New here? <a href="/booking" style={{ textDecoration: 'underline' }}>Book a detail</a> and we will set you up.</p>
+          <p style={{ margin: 0, opacity: .75 }}>Use your Dapper customer account to access your records. New here? <a href="/book-appointment" style={{ textDecoration: 'underline' }}>Book a detail</a> and we will set you up.</p>
         </form>
       </AuthShell>
     );
@@ -172,7 +175,7 @@ export default function CustomerAccount() {
           <div><small>Bookings</small><b>{records.bookings.length}</b></div>
         </div>}
         <div className={a.actions}>
-          <a className={a.book} href="/booking">Book a detail</a>
+          <a className={a.book} href="/book-appointment">Book a detail</a>
           <button type="button" className={a.out} onClick={signOut} disabled={busy}>Sign out</button>
         </div>
       </section>
@@ -201,15 +204,32 @@ export default function CustomerAccount() {
           <div id="invoices" className={a.sec}>
           <section className="panel detail-card">
             <h3>Your invoices</h3>
+            {records.invoices.length > 3 && (
+              <div className={a.invFilters} role="group" aria-label="Filter invoices">
+                <label>Show<Select value={invStatus} onChange={(e) => setInvStatus(e.target.value as typeof invStatus)}><option value="all">All invoices</option><option value="unpaid">Unpaid</option><option value="overdue">Overdue</option><option value="paid">Paid</option></Select></label>
+                <label>From<input type="date" value={invFrom} onChange={(e) => setInvFrom(e.target.value)} /></label>
+                <label>To<input type="date" value={invTo} onChange={(e) => setInvTo(e.target.value)} /></label>
+              </div>
+            )}
             {records.invoices.length ? (
-              records.invoices.map((i) => (
-                <article key={i.id} style={{ borderBottom: '1px solid var(--border, #f0dcde)', padding: '0.75rem 0' }}>
+              records.invoices.filter((i) => {
+                const day = (i.issuedAt ?? '').slice(0, 10);
+                if (invStatus === 'unpaid' && !(i.dueCents > 0 && i.status !== 'void')) return false;
+                if (invStatus === 'overdue' && !i.overdue) return false;
+                if (invStatus === 'paid' && i.status !== 'paid') return false;
+                if (invFrom && (!day || day < invFrom)) return false;
+                if (invTo && (!day || day > invTo)) return false;
+                return true;
+              }).map((i) => (
+                <article key={i.id} id={'invoice-' + i.id} className={i.id === linked ? a.invLinked : undefined} style={{ borderBottom: '1px solid var(--border, #f0dcde)', padding: '0.75rem 0' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
                     <h4 style={{ margin: 0 }}>Invoice #{i.number}</h4>
-                    <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{i.status.replaceAll('_', ' ').toUpperCase()}</span>
+                    <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{i.overdue ? <span className={a.invOverdue}>OVERDUE</span> : i.status.replaceAll('_', ' ').toUpperCase()}</span>
                   </div>
                   <p style={{ margin: '0.3rem 0' }}>
                     Total: {amount(i.totalCents, i.currency)} · Balance Due: {amount(i.dueCents, i.currency)}
+                    {i.issuedAt && <> · Issued {new Date(i.issuedAt).toLocaleDateString('en-CA', { dateStyle: 'medium' })}</>}
+                    {i.dueAt && <> · Due {new Date(i.dueAt).toLocaleDateString('en-CA', { dateStyle: 'medium' })}</>}
                   </p>
                   <button type="button" className="secondary" onClick={() => openInvoice(i.id)}>View or download invoice</button>
                   {i.dueCents > 0 && !i.id.startsWith('legacy-') && (

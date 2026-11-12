@@ -21,6 +21,16 @@ const kind = (key: string) => (key === 'ceramic' ? 'Coating' : key === 'ppf' ? '
    generic booking line; once the team writes a real summary in the dashboard (one item per line) that is shown instead. */
 const GENERIC = /book online, or call the team/i;
 const INCLUDES: [RegExp, string[]][] = [
+  [/front ppf/i, ['Full hood', 'Full front bumper', 'Both front fenders', 'Professional installation and edge finishing']],
+  [/full ppf/i, ['Full exterior paint coverage', 'Hood, bumpers, fenders and doors', 'Quarter panels, roof and trunk', 'Other painted exterior panels', 'Professional installation and edge finishing']],
+  [/express interior/i, ['Full interior vacuum: seats, carpets and floor mats', 'Trunk or cargo area vacuumed', 'Dash, console and door panels wiped down', 'Cupholders, vents and crevices dusted out', 'Interior glass cleaned, streak-free', 'Floor mats pulled, shaken and cleaned', 'Light deodorize for a fresh finish']],
+  [/armour up/i, ['Full 3-stage paint correction', 'Swirl marks, scratches, oxidation and paint imperfections removed', 'Premium ceramic coating applied', '5-Year Manufacturer Warranty', 'Before-and-after photos of the transformation']],
+  [/^3 stage paint correction/i, ['Removes heavy swirl marks, scratches, oxidation and paint defects', 'Restores gloss, clarity and depth', 'Mirror-like reflections']],
+  [/fortress/i, ['Premium-grade ceramic coating', 'Complete paint decontamination and surface preparation', 'Enhanced hydrophobic protection', 'Superior resistance to minor scratches', 'Protection against UV rays and chemical contaminants', 'Annual maintenance reminders', '5-Year Manufacturer Warranty']],
+  [/shield package/i, ['Professional ceramic coating application', 'Complete paint decontamination and surface preparation', 'Hydrophobic water-repelling layer', 'Protection against harmful UV rays', '6-hour professional installation', 'Post-cure care guidance', '3-Year Manufacturer Warranty']],
+  [/5 year ceramic/i, ['Professional ceramic coating', 'High-gloss hydrophobic finish', 'Protection against UV rays and contaminants', '5-Year Ceramic Coating Warranty']],
+  [/single window/i, ['Replace or upgrade the tint on a single window', 'Ideal for small fixes and privacy', 'Heat and UV protection on a specific window']],
+  [/4-window/i, ['Complete tinting for all four side windows', 'Enhances privacy', 'Reduces interior heat and blocks harmful UV rays', 'A sleek, uniform look']],
   [/^(boat|aircraft).*signature/i, ['Full interior detail', 'Full exterior detail', 'Surfaces cleaned, decontaminated and dried', 'Protective wax finish']],
   [/^(boat|aircraft).*paint correction/i, ['Surface washed and decontaminated', 'Machine polishing to reduce swirls and light scratches', 'Gloss restored across the paint']],
   [/^(boat|aircraft).*ceramic/i, ['Surface washed and decontaminated', 'Ceramic coating applied to the exterior', 'A glossy, water-repellent finish']],
@@ -44,7 +54,7 @@ function Packages({ category, name }: { category: string; name: string }) {
   const { price, addons } = useLiveCatalog();
   const [tab, setTab] = useState('');
   // Cheapest first (unpriced last).
-  const items = services.filter((s) => s.category === category).sort((a, b) => (price[a.serviceId] ?? Infinity) - (price[b.serviceId] ?? Infinity));
+  const items = services.filter((s) => s.category === category).sort((a, b) => Number(!!b.starred) - Number(!!a.starred) || (price[b.serviceId] ?? -1) - (price[a.serviceId] ?? -1));
   // Film is priced per vehicle ("Sedan - Front PPF"): choose the vehicle first, then its packages open.
   const typeOf = (n: string) => (n.includes(' - ') ? n.split(' - ')[0].trim() : '');
   const sized = category === 'boat' || category === 'aircraft';
@@ -78,15 +88,18 @@ function Packages({ category, name }: { category: string; name: string }) {
         {shown.map((s) => {
           const inc = includes(s.name, s.summary);
           return (
-            <li key={s.serviceId} className="v-row">
+            <li key={s.serviceId} className={s.starred ? 'v-star' : undefined}>
+              <div className={'v-row' + (s.starred ? ' is-star' : '')}>
               <div className="v-row__main">
+                {s.starred && <p className="v-row__star"><Star size={14} fill="currentColor" strokeWidth={0} aria-hidden="true" />Bestseller</p>}
                 <h3>{types.length || category === 'window-tint' ? s.name.replace(/^.*? - /, '') : s.name}</h3>
                 {price[s.serviceId] !== undefined && <p className="v-row__price"><b>${money(price[s.serviceId])}</b></p>}
               </div>
               <div className="v-row__inc">
                 {inc.list.length ? <><small>What’s included</small><ul>{inc.list.map((x) => <li key={x}><Check size={16} strokeWidth={3} aria-hidden="true" />{x}</li>)}</ul></> : inc.text ? <p>{inc.text}</p> : null}
               </div>
-              <a className="v-row__book" href={'/booking?package=' + encodeURIComponent(s.serviceId)}>Book now<ArrowRight size={18} aria-hidden="true" /></a>
+              <a className="v-row__book" href={'/book-appointment?package=' + encodeURIComponent(s.serviceId)}>Book now<ArrowRight size={18} aria-hidden="true" /></a>
+              </div>
             </li>
           );
         })}
@@ -168,7 +181,7 @@ export default function VehiclePage({ slug }: { slug: string }) {
           {fromPrice
             ? <p className="v-price"><small>Starting from</small><b aria-label={'$' + money(fromPrice)}>${money(fromPrice)}</b></p>
             : <p className="v-price v-price--ask"><small>Pricing</small><b>Ask the team</b></p>}
-          <a className="s-btn" href={'/booking?category=' + c.key}><span className="s-roll"><span>Book now</span><span aria-hidden="true">Book now</span></span><ArrowRight size={22} aria-hidden="true" /></a>
+          <a className="s-btn" href={'/book-appointment?category=' + c.key}><span className="s-roll"><span>Book now</span><span aria-hidden="true">Book now</span></span><ArrowRight size={22} aria-hidden="true" /></a>
           <a className="s-close__call" href={'tel:' + contact.tel}>or call <span>+1 {contact.phone}</span></a>
         </div>
       </section>

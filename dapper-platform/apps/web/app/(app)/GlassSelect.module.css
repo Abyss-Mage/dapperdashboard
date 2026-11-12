@@ -21,6 +21,8 @@
 /* Keeps native "required" validation working without showing a second control. */
 .proxy { position: absolute; left: 0; bottom: 0; width: 100%; height: 1px; opacity: 0; pointer-events: none; border: 0; padding: 0; }
 
+/* Over a dialog's own text the glass would let the words show through, so there the menu is solid. */
+:global(dialog) .pop { background: var(--gs-solid, var(--surface)); -webkit-backdrop-filter: none; backdrop-filter: none; }
 .scrim { position: fixed; inset: 0; z-index: 1999; background: rgba(0, 0, 0, .42); }
 .pop {
   --gs-bg: rgba(255, 255, 255, .76); --gs-edge: rgba(255, 255, 255, .75); --gs-line: rgba(26, 11, 13, .12); --gs-hover: rgba(26, 11, 13, .075); --gs-accent: var(--brand, #d10f1f); --gs-muted: #6b5558; --gs-text: #1a0b0d;
@@ -31,8 +33,8 @@
   -webkit-backdrop-filter: blur(26px) saturate(180%); backdrop-filter: blur(26px) saturate(180%);
   will-change: transform, opacity; font-family: inherit;
 }
-:global(:root[data-theme=dark]) .pop { --gs-bg: rgba(26, 26, 33, .66); --gs-edge: rgba(255, 255, 255, .13); --gs-line: rgba(255, 255, 255, .15); --gs-hover: rgba(255, 255, 255, .09); --gs-accent: #ff6a76; --gs-muted: #a1a1ab; --gs-text: #f5f5f7; box-shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 28px 56px -18px rgba(0, 0, 0, .8); }
-@media (prefers-color-scheme: dark) { :global(:root:not([data-theme=light])) .pop { --gs-bg: rgba(26, 26, 33, .66); --gs-edge: rgba(255, 255, 255, .13); --gs-line: rgba(255, 255, 255, .15); --gs-hover: rgba(255, 255, 255, .09); --gs-accent: #ff6a76; --gs-muted: #a1a1ab; --gs-text: #f5f5f7; } }
+:global(:root[data-theme=dark]) .pop { --gs-bg: rgba(26, 26, 33, .66); --gs-solid: #1a1a21; --gs-edge: rgba(255, 255, 255, .13); --gs-line: rgba(255, 255, 255, .15); --gs-hover: rgba(255, 255, 255, .09); --gs-accent: #ff6a76; --gs-muted: #a1a1ab; --gs-text: #f5f5f7; box-shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 28px 56px -18px rgba(0, 0, 0, .8); }
+@media (prefers-color-scheme: dark) { :global(:root:not([data-theme=light])) .pop { --gs-bg: rgba(26, 26, 33, .66); --gs-solid: #1a1a21; --gs-edge: rgba(255, 255, 255, .13); --gs-line: rgba(255, 255, 255, .15); --gs-hover: rgba(255, 255, 255, .09); --gs-accent: #ff6a76; --gs-muted: #a1a1ab; --gs-text: #f5f5f7; } }
 .measuring { visibility: hidden; top: 0; left: 0; }
 .sheet { left: 0; right: 0; bottom: 0; top: auto; width: 100%; border-radius: 22px 22px 0 0; padding-bottom: max(12px, env(safe-area-inset-bottom)); }
 .grab { align-self: center; width: 40px; height: 4px; border-radius: 4px; margin: 4px 0 8px; background: var(--gs-line); flex: none; }

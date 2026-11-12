@@ -8,6 +8,7 @@ import Select from '../GlassSelect';
 import Collapse from '../motion/Collapse';
 import NumberField from '../NumberField';
 import ServiceSlots from './ServiceSlots';
+import FormPopup from '../FormPopup';
 import { categories as websiteCategories } from '../../(site)/content';
 
 type Service = { id: string; name: string; kind: string; parentId: string | null; parentIds?: string[]; version: number; archived: boolean; centralServiceId?: string | null; priceCents?: number | null; durationMinutes?: number | null };
@@ -29,7 +30,7 @@ const UNITS = { minutes: 1, hours: 60, days: 1440 } as const;
 type Unit = keyof typeof UNITS;
 const bestUnit = (m: number): Unit => (m % 1440 === 0 ? 'days' : m % 60 === 0 ? 'hours' : 'minutes');
 
-export default function ServicesManager({ mode, listUrl, organizationId, canManage, title, intro, extrasOnly = false, locationBase }: { mode: 'central' | 'franchise'; listUrl: string; organizationId: string; canManage: boolean; title: string; intro: string; extrasOnly?: boolean; locationBase?: string }) {
+export default function ServicesManager({ mode, listUrl, organizationId, canManage, title, intro, extrasOnly = false, locationBase, canSlots = false }: { canSlots?: boolean; mode: 'central' | 'franchise'; listUrl: string; organizationId: string; canManage: boolean; title: string; intro: string; extrasOnly?: boolean; locationBase?: string }) {
   const [items, setItems] = useState<Service[] | null>(null);
   const [central, setCentral] = useState<Service[]>([]);
   const [filter, setFilter] = useState<Filter>('active');
@@ -69,8 +70,8 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
   const [notice, setNotice] = useState('');
   // The website category of a service: which page of the website lists it and the description shown there (the selected franchise's website entry).
   const wbase = locationBase ?? (mode === 'franchise' ? listUrl.slice(0, -'/services'.length) : undefined);
-  type Pub = { serviceId: string; category: string; summary: string; published: boolean; version: number };
-  const [web, setWeb] = useState<{ state: 'idle' | 'loading' | 'ready' | 'nosite' | 'missing'; local?: Service; pub?: Pub; cat: string; summary: string }>({ state: 'idle', cat: '', summary: '' });
+  type Pub = { serviceId: string; category: string; summary: string; published: boolean; version: number; starred?: boolean };
+  const [web, setWeb] = useState<{ state: 'idle' | 'loading' | 'ready' | 'nosite' | 'missing'; local?: Service; pub?: Pub; cat: string; summary: string; star?: boolean }>({ state: 'idle', cat: '', summary: '' });
   const [webTags, setWebTags] = useState<Record<string, { cat: string; published: boolean }>>({});
   const catTitle = (key: string) => websiteCategories.find((x) => x.key === key)?.short ?? key;
   async function websiteLookup(id: string) {
@@ -126,21 +127,21 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
       const { local, pub, site } = await websiteLookup(s.id);
       if (!site) setWeb({ state: 'nosite', cat: '', summary: '' });
       else if (!local) setWeb({ state: 'missing', cat: '', summary: '' });
-      else setWeb({ state: 'ready', local, pub, cat: pub?.published ? pub.category : '', summary: pub?.summary ?? '' });
+      else setWeb({ state: 'ready', local, pub, cat: pub?.published ? pub.category : '', summary: pub?.summary ?? '', star: !!pub?.starred });
     } catch { setWeb({ state: 'idle', cat: '', summary: '' }); }
   }
   // After the service itself is saved: put it on (or take it off) its website category.
   async function applyWebsite(id: string) {
     if (web.state !== 'ready') return;
     const was = web.pub?.published ? web.pub.category : '';
-    if (web.cat === was && (web.summary.trim() === (web.pub?.summary ?? '').trim() || !web.cat)) return;
+    if (web.cat === was && !!web.star === !!web.pub?.starred && (web.summary.trim() === (web.pub?.summary ?? '').trim() || !web.cat)) return;
     const { local, pub, site } = await websiteLookup(id);
     if (!site) throw new Error('Set up the website entry under Website images first.');
     if (!local) throw new Error('This service is not switched on at the selected franchise, so it cannot be placed on its website yet.');
     const category = web.cat || pub?.category || '';
     if (!category) return;
     const summary = web.summary.trim() || pub?.summary || websiteCategories.find((x) => x.key === category)?.summary || local.name;
-    await readJson(await fetch(`${wbase}/content/services/${local.id}`, send('PUT', { category, summary, published: web.cat !== '', version: pub?.version ?? 0, serviceVersion: local.version })));
+    await readJson(await fetch(`${wbase}/content/services/${local.id}`, send('PUT', { category, summary, published: web.cat !== '', starred: !!web.star && web.cat !== '', version: pub?.version ?? 0, serviceVersion: local.version })));
   }
   // The whole catalogue can be folded away, and each main service can hide its add-ons; both are remembered on this device.
   const memory = `dapper-collapse:${mode}:${organizationId}`;
@@ -335,13 +336,13 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
       <span className={styles.svcCell}>{s.archived ? 'Archived' : s.kind === 'addon' ? 'Add-on' : 'Main'}</span>
       <span className={styles.svcCell}>{s.priceCents != null ? money(s.priceCents) : 'No price'}</span>
       <span className={styles.svcCell}>{s.durationMinutes != null ? minutesText(s.durationMinutes) : 'No time'}</span>
-      {canManage && !s.archived && (
+      {(canManage || canSlots) && !s.archived && (
         <div className={styles.svcActions}>
-          {(mode === 'central' || !s.centralServiceId) && <button type="button" className="secondary" disabled={busy || !!editing} onClick={() => open(s)}>Edit</button>}
+          {canManage && (mode === 'central' || !s.centralServiceId) && <button type="button" className="secondary" disabled={busy || !!editing} onClick={() => open(s)}>Edit</button>}
           {(mode === 'franchise' || !!locationBase) && s.kind === 'main' && <button type="button" className="secondary" disabled={busy || !!editing} onClick={() => void openSlots(s)}>Slots</button>}
-          {(mode === 'central' || !s.centralServiceId) && <button type="button" className="secondary" disabled={busy || !!editing} onClick={() => void duplicate(s)}>Duplicate</button>}
-          <button type="button" className="secondary" disabled={busy} onClick={() => setTarget({ action: 'archive', item: s })}>Archive</button>
-          <button type="button" className="secondary" disabled={busy} onClick={() => setTarget({ action: 'delete', item: s })}>Delete</button>
+          {canManage && (mode === 'central' || !s.centralServiceId) && <button type="button" className="secondary" disabled={busy || !!editing} onClick={() => void duplicate(s)}>Duplicate</button>}
+          {canManage && <button type="button" className="secondary" disabled={busy} onClick={() => setTarget({ action: 'archive', item: s })}>Archive</button>}
+          {canManage && <button type="button" className="secondary" disabled={busy} onClick={() => setTarget({ action: 'delete', item: s })}>Delete</button>}
         </div>
       )}
     </li>
@@ -364,7 +365,7 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
       </div>
       <Collapse open={!folded} className={styles.stack}>
 
-      {error && <p role="alert" className="field-error">{error}</p>}
+      {error && !editing && <p role="alert" className="field-error">{error}</p>}
       {notice && <p role="status" className={styles.status}>{notice}</p>}
 
       {auto && (
@@ -443,7 +444,8 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
       )}
 
       {editing && (
-        <form onSubmit={save} className={styles.resource}>
+        <FormPopup label={editing === 'new' ? 'New service' : `Edit ${editing.name}`} onClose={() => { if (!busy) { setEditing(null); setError(''); } }}>
+        <form onSubmit={save}>
           <h3>{editing === 'new' ? 'New service' : `Edit “${editing.name}”`}</h3>
           <div className={styles.inlineForm}>
             <label className="form-field">Name<input required minLength={2} maxLength={120} value={name} onChange={(e) => setName(e.target.value)} disabled={busy} /></label>
@@ -461,7 +463,7 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
             {kind === 'main' && (
               <label className="form-field">Time to complete
                 <span className={styles.durationRow}>
-                  <NumberField inputMode="decimal" min="0.5" step={unit === 'minutes' ? '5' : '0.5'} placeholder="Not set" value={duration} onChange={(e) => setDuration(e.target.value)} disabled={busy} />
+                  <NumberField inputMode="decimal" min={unit === 'minutes' ? '1' : '0.5'} step={unit === 'minutes' ? '5' : '0.5'} placeholder="Not set" value={duration} onChange={(e) => setDuration(e.target.value)} disabled={busy} />
                   <Select value={unit} onChange={(e) => setUnit(e.target.value as Unit)} disabled={busy} aria-label="Time unit">
                     <option value="minutes">Minutes</option><option value="hours">Hours</option><option value="days">Days</option>
                   </Select>
@@ -498,7 +500,7 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
             )}
           </div>
           {kind === 'main' && editing !== 'new' && web.state !== 'idle' && (
-            <fieldset className={styles.parentPick}>
+            <fieldset className={styles.parentPick} style={{ maxHeight: 'none', overflow: 'visible', marginTop: 12 }}>
               <legend>On the website</legend>
               {web.state === 'loading' && <p className={styles.personSub}>Loading the website settings…</p>}
               {web.state === 'nosite' && <p className={styles.personSub}>Set up the website entry under Website images first, then choose a category here.</p>}
@@ -516,17 +518,25 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
                       <textarea rows={3} maxLength={2000} value={web.summary} disabled={busy} onChange={(e) => setWeb({ ...web, summary: e.target.value })} />
                     </label>
                   )}
+                  {web.cat && (
+                    <label className={styles.parentOpt}>
+                      <input type="checkbox" checked={!!web.star} disabled={busy} onChange={(e) => setWeb({ ...web, star: e.target.checked })} />
+                      <span>Bestseller for {websiteCategories.find((x) => x.key === web.cat)?.short ?? 'this category'}. It shows first with a Bestseller label, and replaces any other bestseller in this category.</span>
+                    </label>
+                  )}
                   <p className={styles.footnote}>Saved with the service. The name and price on the website always come from this screen.</p>
                 </>
               )}
             </fieldset>
           )}
+          {error && <p role="alert" className="field-error">{error}</p>}
           <div className={styles.rowBetween}>
             <button className="primary" disabled={busy || name.trim().length < 2 || (kind === 'addon' && parentIds.length === 0) || (price.trim() !== '' && !(Number(price) >= 0)) || (durationMinutes !== null && !(durationMinutes >= 1 && durationMinutes <= 10080))}>{busy ? 'Saving…' : editing === 'new' ? 'Add service' : 'Save revision'}</button>
-            <button type="button" className="secondary" disabled={busy} onClick={() => setEditing(null)}>Cancel</button>
+            <button type="button" className="secondary" disabled={busy} onClick={() => { setEditing(null); setError(''); }}>Cancel</button>
           </div>
           <p className={styles.footnote}>{mode === 'central' ? 'The price is entered before tax; each franchise adds its own taxes. ' : 'Prices come from the central catalogue. '}Each save keeps a revision; past work orders and invoices keep the name they were created with.</p>
         </form>
+        </FormPopup>
       )}
 
       {slotsFor && <ServiceSlots base={slotsBase} service={slotsFor} onClose={() => setSlotsFor(null)} />}

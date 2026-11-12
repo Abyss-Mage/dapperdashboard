@@ -4,7 +4,7 @@ import InvoiceDraftEditor from './InvoiceDraftEditor';
 import InvoiceDraftHistory from './InvoiceDraftHistory';
 import SquareCardPayment from './SquareCardPayment';
 import SquareReaderPayment from './SquareReaderPayment';
-import { printInvoiceDocument, usePrintTemplate } from './InvoicePrint';
+import { openPdf, ownLayout, printInvoiceDocument, usePrintTemplate } from './InvoicePrint';
 import Select from '../GlassSelect';
 import { askConfirm } from '../confirm';
 import NumberField from '../NumberField';
@@ -174,6 +174,7 @@ export default function InvoiceManager({
   // Prints an already generated invoice straight from the list (the list rows lack the line items, so load the full invoice first).
   const printListedInvoice = async (id: string) => {
     setError('');
+    if (!ownLayout(printTemplate)) { openPdf(`${base}/invoices/${id}/pdf`); return; }
     try {
       const res = await fetch(`${base}/invoices/${id}`, {cache: 'no-store'});
       if (!res.ok) throw new Error('This invoice could not be opened for printing.');
@@ -637,7 +638,7 @@ export default function InvoiceManager({
                     style={{padding: '0.25rem 0.6rem', fontSize: '0.8rem'}}
                     onClick={() => void printListedInvoice(inv.id)}
                   >
-                    Print
+                    PDF
                   </button>
                 )}
               </div>
@@ -828,8 +829,8 @@ export default function InvoiceManager({
                 )}
               </div>
               <div style={{display: 'flex', gap: '0.5rem'}}>
-                <button type="button" className="secondary" onClick={() => printInvoiceDocument(activeInvoice, printTemplate)}>
-                  Print invoice
+                <button type="button" className="secondary" onClick={() => (ownLayout(printTemplate) ? printInvoiceDocument(activeInvoice, printTemplate) : openPdf(`${base}/invoices/${activeInvoice.id}/pdf`))}>
+                  Open PDF
                 </button>
                 <button type="button" className="primary" onClick={() => setActiveInvoice(null)}>
                   Done

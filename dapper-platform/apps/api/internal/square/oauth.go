@@ -20,7 +20,8 @@ import (
 const OAuthVersion = "2025-12-17"
 
 // Scopes: take card payments, read them back, and read the merchant's locations to pick and verify one.
-var OAuthScopes = []string{"PAYMENTS_WRITE", "PAYMENTS_READ", "MERCHANT_PROFILE_READ"}
+// CUSTOMERS_* let dealerships save cards on file (error404 #42); a business connected before 2026-11-12 reconnects Square to grant them.
+var OAuthScopes = []string{"PAYMENTS_WRITE", "PAYMENTS_READ", "MERCHANT_PROFILE_READ", "CUSTOMERS_WRITE", "CUSTOMERS_READ"}
 
 var ErrOAuth = errors.New("Square did not complete the account connection")
 

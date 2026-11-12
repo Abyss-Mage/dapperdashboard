@@ -3,17 +3,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import styles from './owner.module.css';
 import RangeBar, { resolveRange, type Custom, type RangePresetId } from './DateRange';
-import StaffMap, { type MapPoint } from './StaffMap';
+import ShopClockSetup from './ShopClockSetup';
 import Select from '../GlassSelect';
 
-/* Staff hours for the owner: where clocked-in staff are right now, and how long each person worked per day, week or month
-   in the chosen dates. Clocking in and out happens in the staff app, not here. */
+/* Staff hours for the owner: who is on shift now, the shop iPad (its login, link and each person's PIN), and how long each person worked per
+   day, week or month in the chosen dates. Staff punch on the shop iPad; location tracking was retired with the personal clock-in (2026-11-11). */
 
 type Day = { date: string; minutes: number; shifts: number; clockIn?: string | null; clockOut?: string | null; open?: boolean };
 type Staff = { principalId: string; name: string; email: string; totalMinutes: number; clockedIn: boolean; days: Day[] };
-type Entry = { attendanceId: string; employee: string; shiftStatus: string; stale: boolean; latitude?: number | null; longitude?: number | null };
+type Entry = { attendanceId: string; employee: string; shiftStatus: string };
 type By = 'day' | 'week' | 'month';
-type GpsSettings = { enabled: boolean; sampleIntervalSeconds: number; retentionDays: number; version: number };
 
 const hours = (m: number) => (m < 60 ? `${m} min` : `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''}`);
 const weekOf = (date: string) => { const d = new Date(`${date}T12:00:00`); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.toISOString().slice(0, 10); };
@@ -26,28 +25,29 @@ const label = (key: string, by: By) => {
 
 const clock = (iso: string, zone: string) => new Date(iso).toLocaleTimeString('en-CA', { hour: 'numeric', minute: '2-digit', timeZone: zone });
 
-export default function StaffHours({ base, timezone }: { base: string; timezone: string }) {
+export default function StaffHours({ base, timezone, canManage }: { base: string; timezone: string; canManage: boolean }) {
   const [preset, setPreset] = useState<RangePresetId>('last7');
   const [custom, setCustom] = useState<Custom>({ from: '', to: '' });
   const [by, setBy] = useState<By>('day');
   const [who, setWho] = useState('');
   const [staff, setStaff] = useState<Staff[] | null>(null);
   const [live, setLive] = useState<Entry[]>([]);
-  const [gps, setGps] = useState<GpsSettings | null>(null);
-  const [gpsBusy, setGpsBusy] = useState(false);
-  const [gpsNote, setGpsNote] = useState('');
   const [error, setError] = useState('');
   const range = resolveRange(preset, custom);
 
   const load = useCallback(async () => {
-    const r = await fetch(`${base}/attendance/totals?from=${range.from}&to=${range.to}&tz=${encodeURIComponent(timezone)}`, { cache: 'no-store' });
+    const url = `${base}/attendance/totals?from=${range.from}&to=${range.to}&tz=${encodeURIComponent(timezone)}`;
+    // One quiet retry: a passing server hiccup should not leave an error on the page (error404 #40).
+    let r = await fetch(url, { cache: 'no-store' });
+    if (r.status >= 500) r = await fetch(url, { cache: 'no-store' });
     const b = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(b.error ?? 'Staff hours could not be loaded.');
     setStaff(b.staff);
+    setError('');
   }, [base, range.from, range.to, timezone]);
   const loadLive = useCallback(async () => {
     const r = await fetch(`${base}/gps/live`, { cache: 'no-store' });
-    if (r.ok) { const b = await r.json(); setLive(b.entries ?? []); setGps(b.settings ?? null); }
+    if (r.ok) { const b = await r.json(); setLive(b.entries ?? []); }
   }, [base]);
   useEffect(() => { setStaff(null); setError(''); load().catch((e) => setError(e.message)); }, [load]);
   useEffect(() => {
@@ -56,21 +56,6 @@ export default function StaffHours({ base, timezone }: { base: string; timezone:
     return () => window.clearInterval(id);
   }, [loadLive, load]);
 
-  // Location sharing is off until someone with attendance.manage turns it on for this franchise.
-  async function switchGps(enabled: boolean) {
-    if (!gps) return;
-    setGpsBusy(true); setGpsNote('');
-    try {
-      const r = await fetch(`${base}/gps/settings`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled, sampleIntervalSeconds: gps.sampleIntervalSeconds || 300, retentionDays: gps.retentionDays || 30, version: gps.version ?? 0 }) });
-      const b = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(r.status === 403 ? 'You do not have permission to change location sharing.' : b.error ?? 'Location sharing could not be changed.');
-      setGps(b); setGpsNote(enabled ? 'Location sharing is on. Staff are asked to share their location when they clock in.' : 'Location sharing is off. Nothing new is recorded.');
-      void loadLive();
-    } catch (e) { setGpsNote(e instanceof Error ? e.message : 'Location sharing could not be changed.'); }
-    finally { setGpsBusy(false); }
-  }
-
-  const points: MapPoint[] = live.filter((e) => e.latitude != null && e.longitude != null).map((e) => ({ id: e.attendanceId, label: e.employee, lat: e.latitude as number, lon: e.longitude as number, stale: e.stale }));
   const shown = (staff ?? []).filter((s) => !who || s.principalId === who);
   const periods = useMemo(() => {
     const keys = new Set<string>();
@@ -83,20 +68,12 @@ export default function StaffHours({ base, timezone }: { base: string; timezone:
   return (
     <div className={styles.stack}>
       <section className={styles.card} style={{ padding: 20 }}>
-        <div className={styles.rowBetween}>
-          <div>
-            <h2 className={styles.setupTitle} style={{ fontSize: 20, margin: 0 }}>Where your team is now</h2>
-            <p className={styles.personSub}>{live.filter((e) => e.shiftStatus === 'clocked_in').length} on shift · updates every minute while this page is open</p>
-          </div>
-        </div>
-        {gps && !gps.enabled ? <div className={styles.stack} style={{ gap: 8, margin: '12px 0' }}>
-          <p className={styles.status}>Location sharing is off for this franchise, so staff are never asked to share where they are.</p>
-          <div><button type="button" className="primary" disabled={gpsBusy} onClick={() => void switchGps(true)}>{gpsBusy ? 'Turning on…' : 'Turn on location sharing'}</button></div>
-        </div> : <StaffMap points={points} />}
-        {gps?.enabled && <p className={styles.personSub} style={{ marginTop: 8 }}>Sharing is on while staff are clocked in, about every {Math.max(1, Math.round((gps.sampleIntervalSeconds || 300) / 60))} min; locations are kept {gps.retentionDays || 30} days. <button type="button" className="secondary" disabled={gpsBusy} onClick={() => void switchGps(false)}>Turn off</button></p>}
-        {gpsNote && <p role="status" className={styles.personSub}>{gpsNote}</p>}
-        {live.length > 0 && <ul className={styles.svcTags} style={{ marginTop: 10 }}>{live.map((e) => <li key={e.attendanceId} className={styles.chip}>{e.employee} · {e.shiftStatus === 'on_break' ? 'On break' : e.latitude == null ? 'No location shared' : e.stale ? 'Location not updated recently' : 'Sharing location'}</li>)}</ul>}
+        <h2 className={styles.setupTitle} style={{ fontSize: 20, margin: 0 }}>On shift now</h2>
+        <p className={styles.personSub}>{live.filter((e) => e.shiftStatus === 'clocked_in').length} working · {live.filter((e) => e.shiftStatus === 'on_break').length} on break · updates every minute while this page is open</p>
+        {live.length > 0 ? <ul className={styles.svcTags} style={{ marginTop: 10 }}>{live.map((e) => <li key={e.attendanceId} className={styles.chip}>{e.employee} · {e.shiftStatus === 'on_break' ? 'On break' : 'Working'}</li>)}</ul> : <p className={styles.status}>No one is clocked in.</p>}
       </section>
+
+      <ShopClockSetup base={base} canManage={canManage} />
 
       <section className={styles.card} style={{ padding: 20 }}>
         <h2 className={styles.setupTitle} style={{ fontSize: 20, margin: '0 0 12px' }}>Time worked</h2>

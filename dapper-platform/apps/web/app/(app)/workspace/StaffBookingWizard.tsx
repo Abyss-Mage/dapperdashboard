@@ -1,7 +1,7 @@
 'use client';
 
-import { useRef } from 'react';
-import BookingWizard, { type WizardAvailability, type WizardBooking, type WizardCustomer, type WizardRule, type WizardService, type WizardTaxes } from './BookingWizard';
+import { useEffect, useRef, useState } from 'react';
+import BookingWizard, { type WizardAvailability, type WizardBooking, type WizardCustomer, type WizardRule, type WizardService, type WizardTaxes, type WizardUpsell } from './BookingWizard';
 
 /* Connects the guided booking flow to the staff APIs. "employee" = the Workspace (the signed-in employee's own franchise);
    "master" = Master (the franchise picked at the top, reached through its organization and location). */
@@ -26,10 +26,20 @@ export default function StaffBookingWizard(props: StaffBookingWizardProps) {
 
   const employee = props.mode === 'employee';
   const base = props.mode === 'master' ? props.base : '';
+  // Master: the organization's switched-on upgrade offers (the Workspace books without them).
+  const [upsells, setUpsells] = useState<WizardUpsell[]>([]);
+  const orgBase = /^\/api\/v1\/organizations\/[^/]+/.exec(base)?.[0];
+  useEffect(() => {
+    if (!orgBase) return;
+    let live = true;
+    fetch(`${orgBase}/package-upsells`, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).then((b: { items?: (WizardUpsell & { active: boolean })[] } | null) => { if (live) setUpsells((b?.items ?? []).filter((u) => u.active).map((u) => ({ ...u, discountPercent: 0, discountCents: 0 }))) /* the upgrade discount is for online bookings (error404 #34) */ }).catch(() => undefined);
+    return () => { live = false; };
+  }, [orgBase]);
 
   return (
     <BookingWizard
       timezone={props.timezone}
+      upsells={upsells}
       allowCoupon={!employee}
       checkCoupon={employee ? undefined : async (code, serviceId, subtotalCents) => json(await fetch(`${base}/bookings/coupon-check`, post({ code, serviceId, subtotalCents })))}
       loadOptions={async () => (employee ? json<{ rules: WizardRule[] }>(await fetch('/api/v1/employee/walk-in/options', { cache: 'no-store' })) : json<{ rules: WizardRule[] }>(await fetch(`${base}/bookings/reservation-options`, { cache: 'no-store' })))}

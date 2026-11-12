@@ -147,6 +147,16 @@ func TestEmployeeWorkspacePersistence(t *testing.T) {
 	if _, err = s.EmployeeWorksiteAdministration(ctx, employee, org); !errors.Is(err, ErrForbidden) {
 		t.Fatal("employee review others", err)
 	}
+	// A franchise owner sees their own franchise's availability, and nobody without attendance.manage sees any.
+	if _, err = s.AvailabilityForReview(ctx, employee, org); !errors.Is(err, ErrForbidden) {
+		t.Fatal("employee read others' availability", err)
+	}
+	exec(`INSERT INTO location_grants(principal_id,organization_id,location_id,action) VALUES($1,$2,$3,'attendance.manage')`, employee, org, loc)
+	own, err := s.AvailabilityForReview(ctx, employee, org)
+	if err != nil || len(own.Submissions) != 1 {
+		t.Fatal("franchise owner availability", own, err)
+	}
+	exec(`DELETE FROM location_grants WHERE principal_id=$1 AND location_id=$2 AND action='attendance.manage'`, employee, loc)
 	exec(`CREATE FUNCTION reject_employee_test_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'synthetic audit rollback'; END $$`)
 	exec(`CREATE TRIGGER reject_employee_test_audit BEFORE INSERT ON employee_workspace_events FOR EACH ROW EXECUTE FUNCTION reject_employee_test_audit()`)
 	saved.Notes = "Should rollback"

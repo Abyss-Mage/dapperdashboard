@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import BookingWizard, { type WizardAvailability, type WizardBooking, type WizardCustomer, type WizardRule, type WizardService, type WizardTaxes } from './BookingWizard';
+import BookingWizard, { type WizardAvailability, type WizardBooking, type WizardCustomer, type WizardRule, type WizardService, type WizardTaxes, type WizardUpsell } from './BookingWizard';
 import SquareCardField from './SquareCardField';
 import styles from './bookingWizard.module.css';
 import { categories as siteCategories } from '../../(site)/content';
@@ -32,6 +32,7 @@ function BookingFlow({ site, place, onBack }: { site: string; place: Place; onBa
   const [error, setError] = useState('');
   // The website categories set in the dashboard (service id -> category); without any, the wizard falls back to its built-in groups.
   const [cats, setCats] = useState<Map<string, string> | null>(null);
+  const [upsells, setUpsells] = useState<WizardUpsell[]>([]);
   // A signed-in customer's saved details (silently skipped when nobody is signed in).
   // Where a Book now button on the website pointed: ?package=<service id> or ?category=<kind of vehicle>.
   const [preselect] = useState<{ serviceId?: string; category?: string } | undefined>(() => {
@@ -49,7 +50,7 @@ function BookingFlow({ site, place, onBack }: { site: string; place: Place; onBa
     let live = true;
     fetch(`${api}/square`, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).then((b: { configured?: boolean; credentialsConfigured?: boolean } | null) => { if (live) setSquareOn(!!b?.configured && !!b?.credentialsConfigured); }).catch(() => undefined);
     fetch(`${api}/options`, { cache: 'no-store' }).then((r) => json<Options>(r)).then((o) => live && setOptions(o)).catch((e) => live && setError(e.message));
-    fetch(`/api/v1/public/sites/${site}`, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : Promise.reject())).then((site: { services: { serviceId: string; category: string }[] }) => { if (live) { const m = new Map(site.services.filter((s) => s.category).map((s) => [s.serviceId, s.category])); setCats(m.size ? m : null); } }).catch(() => undefined);
+    fetch(`/api/v1/public/sites/${site}`, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : Promise.reject())).then((site: { services: { serviceId: string; category: string }[]; upsells?: WizardUpsell[] }) => { if (live) { const m = new Map(site.services.filter((s) => s.category).map((s) => [s.serviceId, s.category])); setCats(m.size ? m : null); setUpsells(site.upsells ?? []); } }).catch(() => undefined);
     (async () => {
       try {
         const list = await fetch('/api/v1/portal/accounts', { cache: 'no-store', credentials: 'same-origin' });
@@ -78,6 +79,7 @@ function BookingFlow({ site, place, onBack }: { site: string; place: Place; onBa
       locationLabel={niceName(place.name) + (shopAddress ? ' · ' + shopAddress : '')}
       checkCoupon={async (code, serviceId, subtotalCents) => json(await fetch(`${api}/coupon`, post({ code, serviceId, subtotalCents })))}
       preselect={preselect}
+      upsells={upsells}
       categories={cats ? { list: siteCategories.map((c) => ({ key: c.key, title: c.title })), of: (id) => cats.get(id) ?? '' } : undefined}
       timezone={options.timezone}
       loadOptions={async () => ({ rules: options.rules })}
@@ -98,7 +100,7 @@ function BookingFlow({ site, place, onBack }: { site: string; place: Place; onBa
         ],
       })}
       submit={async (b: WizardBooking) => {
-        const body = { requestKey: key.current, resourceId: b.rule.resourceId, ruleId: b.rule.id, ruleVersion: b.rule.version, start: b.startIso, addonIds: b.addonIds, name: b.customer.name, email: b.customer.email, phone: b.customer.phone, notes: b.notes, serviceAddress: b.serviceAddress, couponCode: b.couponCode, depositMethod: b.deposit?.method ?? 'cash', sourceId: b.deposit?.sourceId };
+        const body = { requestKey: key.current, resourceId: b.rule.resourceId, ruleId: b.rule.id, ruleVersion: b.rule.version, start: b.startIso, addonIds: b.addonIds, name: b.customer.name, email: b.customer.email, phone: b.customer.phone, notes: b.notes, serviceAddress: b.serviceAddress, couponCode: b.couponCode, upgradeFrom: b.upgradeFrom, depositMethod: b.deposit?.method ?? 'cash', sourceId: b.deposit?.sourceId };
         try {
           const res = await json<{ bookingId: string; invoiceNumber: string; totalCents: number; paidCents: number; paymentPending: boolean; serviceName: string }>(await fetch(`${api}/book`, post(body)));
           key.current = crypto.randomUUID();
@@ -108,7 +110,7 @@ function BookingFlow({ site, place, onBack }: { site: string; place: Place; onBa
             sessionStorage.setItem('dapper:booked', saved);
             localStorage.setItem('dapper:booked', saved); // a second copy, in case the browser clears the first on the way to the next page
           } catch { /* the thank-you page still opens, with fewer details */ }
-          window.location.assign('/booking/thank-you?b=' + encodeURIComponent(res.bookingId));
+          window.location.assign('/book-appointment/thank-you?b=' + encodeURIComponent(res.bookingId));
         } catch (e) {
           key.current = crypto.randomUUID();
           throw e;

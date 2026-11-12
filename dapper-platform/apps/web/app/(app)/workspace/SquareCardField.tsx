@@ -26,7 +26,7 @@ function loadSdk(environment: string): Promise<void> {
   return p;
 }
 
-export default function SquareCardField({ infoUrl, register }: { infoUrl: string; register: (tokenize: (() => Promise<string>) | null) => void }) {
+export default function SquareCardField({ infoUrl, register, unavailable = 'Card payments are not available yet. Please choose to pay on the day.', errorHint = 'You can choose to pay on the day instead.' }: { infoUrl: string; register: (tokenize: (() => Promise<string>) | null) => void; unavailable?: string; errorHint?: string }) {
   const [info, setInfo] = useState<Info | null>(null);
   const [error, setError] = useState('');
   const host = useRef<HTMLDivElement>(null);
@@ -64,9 +64,9 @@ export default function SquareCardField({ infoUrl, register }: { infoUrl: string
     return () => { live = false; registerRef.current(null); void card?.destroy().catch(() => undefined); };
   }, [ready, info?.applicationId, info?.binding]);
 
-  if (error) return <p role="alert" style={{ color: 'var(--error)', margin: 0 }}>{error} You can choose to pay on the day instead.</p>;
+  if (error) return <p role="alert" style={{ color: 'var(--error)', margin: 0 }}>{error} {errorHint}</p>;
   if (!info) return <p style={{ margin: 0, color: 'var(--text-muted)' }}>Loading the secure card form…</p>;
-  if (!ready) return <p style={{ margin: 0, color: 'var(--text-muted)' }}>Card payments are not available yet. Please choose to pay on the day.</p>;
+  if (!ready) return <p style={{ margin: 0, color: 'var(--text-muted)' }}>{unavailable}</p>;
   const sandbox = info.binding?.environment === 'sandbox';
   return (
     <div style={{ display: 'grid', gap: 8 }}>

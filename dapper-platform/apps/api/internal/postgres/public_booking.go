@@ -206,6 +206,8 @@ type PublicBookingInput struct {
 	ServiceAddress string `json:"serviceAddress"`
 	// CouponCode is an optional discount code; an invalid one stops the booking before anything is held.
 	CouponCode string `json:"couponCode"`
+	// UpgradeFrom is the package the customer upgraded from with an upgrade offer; its discount comes off the package (error404 #34).
+	UpgradeFrom string `json:"upgradeFrom"`
 }
 type PublicBookingResult struct {
 	BookingID     string `json:"bookingId"`
@@ -290,19 +292,7 @@ func (s *Store) PublicBook(ctx context.Context, slug string, in PublicBookingInp
 		return out, err
 	}
 	// Replace the automatic draft with the website invoice, which is priced from the package and coupon the customer chose and then issued.
-	if rows, qerr := s.pool.Query(ctx, `SELECT id::text FROM invoices WHERE organization_id=$1 AND location_id=$2 AND booking_id=$3 AND status='draft' AND notes LIKE 'Created automatically with the booking%'`, scope.OrganizationID, scope.LocationID, bookingID); qerr == nil {
-		var drafts []string
-		for rows.Next() {
-			var d string
-			if rows.Scan(&d) == nil {
-				drafts = append(drafts, d)
-			}
-		}
-		rows.Close()
-		for _, d := range drafts {
-			_, _ = s.VoidInvoice(context.WithoutCancel(ctx), scope, d, "Replaced by the website invoice")
-		}
-	}
+	s.voidAutoDraft(ctx, scope, bookingID, "Replaced by the website invoice")
 	inv, err := s.CreateInvoice(ctx, scope, CreateInvoiceInput{CustomerID: customerID, BookingID: &bookingID, TaxCents: tax, Notes: "Booked on the website", Items: items})
 	if err != nil {
 		release()
@@ -313,6 +303,18 @@ func (s *Store) PublicBook(ctx context.Context, slug string, in PublicBookingInp
 			_, _ = s.VoidInvoice(context.WithoutCancel(ctx), scope, inv.ID, "The coupon could not be applied")
 			release()
 			return out, err
+		}
+	}
+	// An upgrade offer's discount, when the customer took one (a coupon replaces it).
+	if strings.TrimSpace(in.CouponCode) == "" && in.UpgradeFrom != "" {
+		off, e := upsellDiscount(ctx, s.pool, scope.OrganizationID, in.UpgradeFrom, serviceName, items[0].UnitPriceCents)
+		if e == nil && off > 0 {
+			e = s.applyUpgradeDiscount(ctx, scope, inv.ID, off)
+		}
+		if e != nil {
+			_, _ = s.VoidInvoice(context.WithoutCancel(ctx), scope, inv.ID, "The upgrade discount could not be applied")
+			release()
+			return out, e
 		}
 	}
 	issued, err := s.IssueInvoice(ctx, scope, inv.ID)
@@ -388,6 +390,8 @@ func (s *Store) InvoiceStaffBooking(ctx context.Context, scope Scope, in Reserve
 	if err != nil {
 		return fmt.Errorf("tax: %w", err)
 	}
+	// A booking may hold only one open invoice, so the automatic draft gives way to this one (priced with the coupon and issued).
+	s.voidAutoDraft(ctx, scope, bookingID, "Replaced by the invoice with the coupon")
 	inv, err := s.CreateInvoice(ctx, scope, CreateInvoiceInput{CustomerID: in.CustomerID, BookingID: &bookingID, TaxCents: tax, Notes: "Booked by staff", Items: items})
 	if err != nil {
 		return fmt.Errorf("invoice: %w", err)
@@ -401,6 +405,25 @@ func (s *Store) InvoiceStaffBooking(ctx context.Context, scope Scope, in Reserve
 		return fmt.Errorf("issue: %w", err)
 	}
 	return nil
+}
+
+// voidAutoDraft voids the draft a booking raised for itself ("Created automatically…"), so a priced invoice can take its place.
+func (s *Store) voidAutoDraft(ctx context.Context, scope Scope, bookingID, reason string) {
+	rows, err := s.pool.Query(ctx, `SELECT id::text FROM invoices WHERE organization_id=$1 AND location_id=$2 AND booking_id=$3 AND status='draft' AND notes LIKE 'Created automatically with the booking%'`, scope.OrganizationID, scope.LocationID, bookingID)
+	if err != nil {
+		return
+	}
+	var drafts []string
+	for rows.Next() {
+		var d string
+		if rows.Scan(&d) == nil {
+			drafts = append(drafts, d)
+		}
+	}
+	rows.Close()
+	for _, d := range drafts {
+		_, _ = s.VoidInvoice(context.WithoutCancel(ctx), scope, d, reason)
+	}
 }
 
 // PublicBookingScope is the website's scope for a published site (used to take the deposit with the card processor).
@@ -565,7 +588,7 @@ type BookingLocation struct {
 
 // PublicBookingLocations lists the published locations, the main website's first, with the address from the franchise's invoice details.
 func (s *Store) PublicBookingLocations(ctx context.Context) ([]BookingLocation, error) {
-	rows, err := s.pool.Query(ctx, `SELECT ps.slug,l.name,coalesce(ii.address,'') FROM public_sites ps JOIN locations l ON l.organization_id=ps.organization_id AND l.id=ps.location_id
+	rows, err := s.pool.Query(ctx, `SELECT ps.slug,l.name,coalesce(NULLIF(ii.address,''),concat_ws(', ',NULLIF(l.address_street,''),NULLIF(l.address_city,''),NULLIF(l.address_region,''),NULLIF(l.address_postal_code,''))) FROM public_sites ps JOIN locations l ON l.organization_id=ps.organization_id AND l.id=ps.location_id
  LEFT JOIN location_invoice_issuers li ON li.organization_id=ps.organization_id AND li.location_id=ps.location_id LEFT JOIN invoice_issuers ii ON ii.id=li.issuer_id
  WHERE ps.published ORDER BY (ps.slug=$1) DESC, l.name`, mainSiteSlug())
 	if err != nil {

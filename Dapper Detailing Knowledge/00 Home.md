@@ -20,6 +20,8 @@ This Obsidian vault is the single source of project knowledge. Start here before
 - [[03 Engineering/LEGACY_INVENTORY]]
 - [[03 Engineering/SECURITY_MODEL]]
 - [[03 Engineering/INTEGRATION_PLAN]]
+- [[03 Engineering/B2B_DEALERSHIP_INVOICING_PLAN]] (error404 #17, built and deployed 2026-11-11)
+- [[03 Engineering/SHOP_IPAD_CLOCK]] (error404 #15, #20: shop login, worker list, 6-digit PIN opens the worker's dashboard; deployed 2026-11-11)
 - [[04 Delivery/MASTER_PLAN]]
 - [[04 Delivery/SPRINT_BACKLOG]]
 - [[04 Delivery/TEST_PLAN]]

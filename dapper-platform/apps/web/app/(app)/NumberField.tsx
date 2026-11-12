@@ -25,6 +25,8 @@ export default function NumberField({ value, defaultValue, onChange, min, max, s
   latest.current = { current, min, max, step };
 
   const stepSize = step === undefined || step === 'any' ? 1 : Number(step) || 1;
+  // The browser counts valid values up from min, so a +5 button must not make 50 "invalid" just because min is 1.
+  const wholeOnly = step !== 'any' && Number.isInteger(stepSize) && Number.isInteger(Number(min ?? 0));
   const decimals = (String(step ?? '').split('.')[1] ?? '').length;
   const lo = min === undefined || min === '' ? -Infinity : Number(min), hi = max === undefined || max === '' ? Infinity : Number(max);
 
@@ -63,7 +65,7 @@ export default function NumberField({ value, defaultValue, onChange, min, max, s
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M2.5 7h9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
       </button>
       <input
-        {...rest} ref={inputRef} type="number" name={name} min={min} max={max} step={step} disabled={disabled} readOnly={readOnly}
+        {...rest} ref={inputRef} type="number" name={name} min={min} max={max} step={wholeOnly ? 1 : 'any'} disabled={disabled} readOnly={readOnly}
         className={`${styles.input} ${className ?? ''}`} style={style} value={current}
         onChange={(e) => emit(e.target.value)}
       />

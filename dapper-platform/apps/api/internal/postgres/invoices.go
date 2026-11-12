@@ -56,6 +56,8 @@ type Invoice struct {
 	UpdatedAt        time.Time                `json:"updatedAt"`
 	CustomerName     string                   `json:"customerName,omitempty"`
 	CustomerEmail    string                   `json:"customerEmail,omitempty"`
+	ServiceAt        *time.Time               `json:"serviceAt,omitempty"`
+	PaymentMethods   string                   `json:"paymentMethods,omitempty"`
 	Items            []InvoiceItem            `json:"items,omitempty"`
 	Payments         []Payment                `json:"payments,omitempty"`
 	Events           []InvoiceEvent           `json:"events,omitempty"`
@@ -137,7 +139,9 @@ func generateDefaultInvoiceNumber() (string, error) {
 const invoiceSelectColumns = `i.id::text, i.organization_id::text, i.location_id::text, i.customer_id::text,
 i.booking_id::text, i.job_id::text, i.invoice_number, i.status, i.currency, i.subtotal_cents,
 i.tax_cents, i.total_cents, i.paid_cents, i.due_cents, i.notes, i.issued_at, i.due_at, i.paid_at,
-i.created_at, i.updated_at, c.name, c.email, i.issuer_id::text,i.issuer_snapshot,i.customer_snapshot,i.issued_by::text,i.version,i.discount_cents,i.coupon_code`
+i.created_at, i.updated_at, c.name, c.email, i.issuer_id::text,i.issuer_snapshot,i.customer_snapshot,i.issued_by::text,i.version,i.discount_cents,i.coupon_code,
+(SELECT b.booking_time FROM bookings b WHERE b.id=i.booking_id),
+coalesce((SELECT string_agg(DISTINCT p.method,',') FROM payments p WHERE p.invoice_id=i.id AND p.status='completed'),'')`
 
 func scanInvoice(row pgx.Row) (Invoice, error) {
 	var inv Invoice
@@ -148,7 +152,7 @@ func scanInvoice(row pgx.Row) (Invoice, error) {
 		&inv.Notes, &inv.IssuedAt, &inv.DueAt, &inv.PaidAt,
 		&inv.CreatedAt, &inv.UpdatedAt, &inv.CustomerName, &inv.CustomerEmail,
 		&inv.IssuerID, &inv.IssuerSnapshot, &inv.CustomerSnapshot, &inv.IssuedBy, &inv.Version,
-		&inv.DiscountCents, &inv.CouponCode,
+		&inv.DiscountCents, &inv.CouponCode, &inv.ServiceAt, &inv.PaymentMethods,
 	)
 	if inv.CustomerSnapshot != nil {
 		inv.CustomerName = inv.CustomerSnapshot.Name

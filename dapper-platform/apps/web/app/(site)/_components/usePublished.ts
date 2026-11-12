@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { SITE_SLUG } from './site';
 
 // Only published public projections enter the website: service summaries and portfolio photos. No staff or customer records.
-export type PublishedService = { serviceId: string; kind: string; name: string; summary: string; category: string };
+export type PublishedService = { serviceId: string; kind: string; name: string; summary: string; category: string; starred?: boolean };
 export type PublishedImage = { mediaId: string; title: string; alt: string; category: string };
 type State = { status: 'loading' | 'ready' | 'error'; services: PublishedService[]; portfolio: PublishedImage[] };
 

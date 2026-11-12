@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "time/tzdata" // the browser's time zone names work even where the server lacks them
 	"context"
 	"dapper.local/platform/internal/email"
 	"dapper.local/platform/internal/identity"
@@ -172,6 +173,9 @@ func main() {
 	}
 	var emailSender postgres.EmailSender = liveEmail
 	go workspace.RetryBookingEmails(store, emailSender, origin)
+	if invitations != nil {
+		go workspace.DeliverInvitations(invitations, emailSender)
+	}
 	sqWebhookURL := os.Getenv("DAPPER_SQUARE_WEBHOOK_URL")
 	sqSignatureKey := os.Getenv("DAPPER_SQUARE_WEBHOOK_SIGNATURE_KEY")
 

@@ -22,6 +22,8 @@ export type PrintTemplate = {
   issuer?: { legalName: string; address: string; taxRegistration: string } | null; taxName?: string; taxRatePercent?: number;
   /** 'franchise' outlets print the line saying who independently owns them. */
   outlet?: string;
+  /** Extra lines under the address: phone, email, website, corporation number. */
+  businessDetails?: string;
 };
 export type PrintInvoice = {
   /** 'quotation' prints a quotation: no paid or pending lines, a valid-until date and the quotation terms. */
@@ -29,6 +31,8 @@ export type PrintInvoice = {
   invoiceNumber: string; status: string; currency: string; issuedAt?: string | null; createdAt?: string;
   subtotalCents: number; taxCents: number; totalCents: number; paidCents: number; dueCents: number; taxRatePercent?: number;
   discountCents?: number; couponCode?: string;
+  /** When the booking is for, and how it was paid ("cash,square_card"). */
+  serviceAt?: string | null; paymentMethods?: string;
   customerName?: string;
   issuerSnapshot?: { legalName: string; address: string; taxRegistration: string } | null;
   customerSnapshot?: { name: string; email: string; phone: string } | null;
@@ -36,8 +40,8 @@ export type PrintInvoice = {
 };
 
 export const DEFAULT_PRINT_TEMPLATE: PrintTemplate = {
-  title: 'Invoice', accentColor: '#e4202e', showLogo: true, headerNote: '', billToLabel: 'Bill to', itemLabel: 'Item', quantityLabel: 'Qty',
-  unitPriceLabel: 'Unit price', amountLabel: 'Amount', showTaxRegistration: true, showCustomerContact: true, paymentInstructions: '', footerNote: 'Thank you for choosing Dapper Detailing Pros.', paperSize: 'letter',
+  title: 'Invoice', accentColor: '#fb1a2b', showLogo: true, headerNote: '', billToLabel: 'Bill to', itemLabel: 'Item', quantityLabel: 'Qty',
+  unitPriceLabel: 'Unit price', amountLabel: 'Amount', showTaxRegistration: true, showCustomerContact: true, paymentInstructions: '', footerNote: 'Thank you for choosing us', paperSize: 'letter',
   customHtml: '', customCss: '', quotationTitle: 'Quotation', quotationNote: '', validDays: 0,
 };
 
@@ -51,7 +55,7 @@ export function taxLabel(invoice: PrintInvoice, t: PrintTemplate): string {
   const rate = invoice.taxRatePercent ?? (derived || t.taxRatePercent || 0);
   if (!rate) return 'Tax';
   const pct = (Math.round(rate * 100) / 100).toString() + '%';
-  return t.taxName ? `Tax (${t.taxName} ${pct})` : `Tax (${pct})`;
+  return t.taxName ? `${t.taxName} (${pct})` : `Tax (${pct})`;
 }
 const issuerOf = (invoice: PrintInvoice, t: PrintTemplate) => (invoice.issuerSnapshot?.legalName ? invoice.issuerSnapshot : t.issuer?.legalName ? t.issuer : null);
 const ownerLine = (invoice: PrintInvoice, t: PrintTemplate) => { const name = t.outlet === 'franchise' ? issuerOf(invoice, t)?.legalName : ''; return name ? `Independently owned and operated by ${name.replace(/\.+$/, '')}.` : ''; };
@@ -59,47 +63,61 @@ const ownerLine = (invoice: PrintInvoice, t: PrintTemplate) => { const name = t.
 const money = (cents: number, currency = 'CAD') => `${(cents / 100).toLocaleString('en-CA', { style: 'currency', currency })}`;
 const day = (iso?: string | null) => (iso ? new Date(iso).toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' }) : '');
 
+const ZONE = 'America/Toronto';
+const serviceDay = (iso?: string | null) => (iso ? new Date(iso).toLocaleDateString('en-CA', { timeZone: ZONE, year: 'numeric', month: 'long', day: 'numeric' }) : '');
+const serviceTime = (iso?: string | null) => (iso ? new Date(iso).toLocaleTimeString('en-CA', { timeZone: ZONE, hour: 'numeric', minute: '2-digit' }) : '');
+const PAYMENT_WORDS: Record<string, string> = { cash: 'Cash', square_card: 'Card', square_terminal: 'Card', bank_transfer: 'Bank transfer', cheque: 'Cheque' };
+const paymentWords = (methods?: string) => [...new Set((methods ?? '').split(',').map((m) => PAYMENT_WORDS[m]).filter(Boolean))].join(', ');
+
 const css = (t: PrintTemplate) => `
-.ddInv{font:14px/1.5 'Manrope',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:#17171a;background:#fff;padding:0;max-width:780px;margin:0 auto}
+.ddInv{font:13px/1.5 Arial,Helvetica,sans-serif;background:#fff;max-width:816px;margin:0 auto}
 .ddInv *{box-sizing:border-box;background:transparent;border-radius:0;box-shadow:none;backdrop-filter:none}
-.ddInv,.ddInv *{color:#17171a!important;opacity:1!important;text-shadow:none!important}
-.ddInv .ddHead{display:flex;justify-content:space-between;align-items:center;gap:28px;padding:20px 24px;background:#0b0b0c;border-bottom:6px solid ${t.accentColor}}
-.ddInv .ddHead,.ddInv .ddHead *{color:#fff!important}
-.ddInv .ddBrand{display:flex;gap:16px;align-items:center}
-.ddInv .ddBrand img{width:72px;height:72px;object-fit:contain;background:#fff;padding:5px}
-.ddInv .ddIssuer p{margin:0}
-.ddInv .ddIssuer .ddName{font-size:18px;line-height:1.25;font-weight:800}
-.ddInv h1{margin:0;font-size:34px;line-height:1;font-weight:800;letter-spacing:.04em;text-transform:uppercase}
-.ddInv .ddMeta{text-align:right}
-.ddInv .ddMeta dl{display:grid;grid-template-columns:auto auto;gap:3px 14px;margin:10px 0 0;justify-content:end;font-size:13px}
-.ddInv .ddMeta dt{color:#b8b5ae!important;text-align:right}
-.ddInv .ddMeta dd{margin:0;font-weight:700;text-align:right}
-.ddInv .ddStatus{display:inline-block;margin-top:10px;padding:3px 12px;border:1.5px solid #fff;border-radius:999px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em}
-.ddInv .ddStatus.paid{background:#fff;color:#0b0b0c!important}
-.ddInv .ddParties{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin:14px 0 18px;padding:14px 0;border-bottom:1px solid #e4e4e8}
-.ddInv h2{margin:0 0 5px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#6b6b74!important}
-.ddInv p{margin:0 0 2px;white-space:pre-line}
-.ddInv .ddNote{margin:0 0 14px;color:#33333a!important}
-.ddInv .ddBanner{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:0 0 18px;padding:14px 18px;border:2px solid ${t.accentColor}}
-.ddInv .ddBanner b{font-size:12px;letter-spacing:.1em;text-transform:uppercase}
-.ddInv .ddBanner strong{font-size:24px;font-weight:800;font-variant-numeric:tabular-nums}
-.ddInv .ddBanner.paid{border-color:#17171a;background:#f1f1f3}
-.ddInv .ddBanner small{display:block;font-size:12px;color:#4a4a52!important}
-.ddInv table{width:100%;border-collapse:collapse;margin-top:4px}
-.ddInv th{text-align:left;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;background:#0b0b0c;color:#fff!important;padding:9px 10px;border:0}
-.ddInv th.r{text-align:right}
-.ddInv td{padding:11px 10px;border-bottom:1px solid #e4e4e8;vertical-align:top}
-.ddInv tbody tr:nth-child(even) td{background:#f7f7f8}
-.ddInv .r{text-align:right;font-variant-numeric:tabular-nums}
-.ddInv .ddTotals{margin:16px 0 0 auto;width:min(340px,100%)}
-.ddInv .ddTotals div{display:flex;justify-content:space-between;padding:4px 10px;font-variant-numeric:tabular-nums}
-.ddInv .ddTotals .ddTot{border-top:1px solid #17171a;margin-top:4px;padding-top:8px;font-weight:800}
-.ddInv .ddDue{background:#17171a;margin-top:8px;padding:10px!important;font-size:17px;font-weight:800}
-.ddInv .ddDue,.ddInv .ddDue *{color:#fff!important}
-.ddInv .ddPay,.ddInv .ddFoot{margin-top:22px;padding-top:12px;border-top:1px solid #e4e4e8}
-.ddInv .ddFoot,.ddInv .ddFoot *{color:#4a4a52!important}
-.ddInv .ddFoot{font-size:12.5px}
-@media print{.ddInv .ddHead,.ddInv .ddBrand img,.ddInv .ddStatus.paid,.ddInv th,.ddInv .ddDue,.ddInv tbody tr:nth-child(even) td,.ddInv .ddBanner.paid{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+.ddInv,.ddInv *{color:#000!important;opacity:1!important;text-shadow:none!important}
+.ddInv p{margin:0;white-space:pre-line}
+.ddInv .ddHead{display:flex;justify-content:space-between;gap:24px;padding:40px 40px 30px;border-bottom:1px solid #e5e5e5}
+.ddInv .ddBrand{display:flex;gap:20px;align-items:flex-start}
+.ddInv .ddBrand img{height:90px;width:auto;max-width:150px;object-fit:contain;display:block}
+.ddInv .ddName{font-size:20px;line-height:1.25;font-weight:700;letter-spacing:-.5px;margin-bottom:10px}
+.ddInv .ddIssuer p:not(.ddName){font-size:12px;line-height:1.8}
+.ddInv .ddMeta{text-align:right;flex:none}
+.ddInv h1{margin:0 0 15px;font-size:38px;line-height:1.1;font-weight:700;letter-spacing:-1px;text-transform:uppercase;color:${t.accentColor}!important}
+.ddInv dl{display:grid;grid-template-columns:auto auto;gap:6px 8px;margin:0;justify-content:end;font-size:12px}
+.ddInv dt{color:#888!important;text-align:right}
+.ddInv dd{margin:0;text-align:right}
+.ddInv .ddMeta dt{text-transform:uppercase;letter-spacing:1px}
+.ddInv .ddClient{display:flex;justify-content:space-between;gap:24px;padding:30px 40px;background:#fafafa;font-size:12px}
+.ddInv .ddClient dl{gap:6px 15px;align-self:flex-start}
+.ddInv h2{margin:0 0 10px;font-size:12px;font-weight:400;text-transform:uppercase;letter-spacing:2px;color:#888!important}
+.ddInv .ddClient p{line-height:1.7}
+.ddInv .ddNote{padding:24px 40px 0}
+.ddInv .ddBreak{padding:30px 40px 20px}
+.ddInv .ddBreak h2{font-weight:700;margin-bottom:15px}
+.ddInv .ddItem{display:flex;justify-content:space-between;gap:24px;padding:20px;background:#fafafa;border:1px solid #e5e5e5;font-size:12px}
+.ddInv .ddItem+.ddItem{border-top:0}
+.ddInv .ddItem span:last-child{flex:none;font-variant-numeric:tabular-nums}
+.ddInv .ddSum{margin:10px 40px 30px auto;width:min(340px,calc(100% - 80px));padding:20px;background:#fafafa;border:1px solid #e5e5e5;font-size:12px}
+.ddInv .ddSum div{display:flex;justify-content:space-between;padding:6px 0;font-variant-numeric:tabular-nums}
+.ddInv .ddSum div span:first-child{color:#666!important}
+.ddInv .ddSum .ddLast{border-bottom:1px solid #ddd}
+.ddInv .ddSum .ddTot{padding:12px 0 0;font-size:16px;font-weight:700}
+.ddInv .ddSum .ddTot span:first-child{color:#000!important;text-transform:uppercase;letter-spacing:1px}
+.ddInv .ddBoxes{display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:0 40px 30px}
+.ddInv .ddBox{padding:18px;text-align:center}
+.ddInv .ddBox small{display:block;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:2px;margin-bottom:4px}
+.ddInv .ddBox strong{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
+.ddInv .ddPaid{background:#dcfce7;border:1px solid #86efac}
+.ddInv .ddPaid small{color:#16a34a!important}
+.ddInv .ddPaid strong{color:#166534!important}
+.ddInv .ddOwed{background:#fef2f2;border:1px solid #fca5a5}
+.ddInv .ddOwed small{color:#dc2626!important}
+.ddInv .ddOwed strong{color:#991b1b!important}
+.ddInv .ddVoid{margin:0 40px 30px;padding:14px 18px;border:1px solid #fca5a5;background:#fef2f2;font-weight:700;text-align:center}
+.ddInv .ddPay{padding:0 40px 24px;font-size:12px}
+.ddInv .ddFoot{padding:30px 40px;border-top:1px solid #e5e5e5;text-align:center}
+.ddInv .ddFoot b{display:block;font-size:14px;margin-bottom:8px}
+.ddInv .ddFoot p{font-size:10px;line-height:1.6;color:#888!important}
+@media(max-width:600px){.ddInv .ddHead,.ddInv .ddClient,.ddInv .ddBrand{flex-direction:column}.ddInv .ddMeta{text-align:left}.ddInv dl{justify-content:start}.ddInv dt,.ddInv dd{text-align:left}.ddInv .ddBoxes{grid-template-columns:1fr}.ddInv .ddSum{width:calc(100% - 80px);margin-left:40px}}
+@media print{.ddInv *{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 `;
 
 /* The placeholders a custom layout can use. Every value is escaped, so invoice text can never become markup. */
@@ -170,7 +188,7 @@ export function customInvoicePage(invoice: PrintInvoice, t: PrintTemplate): stri
     valid_until: esc(day(invoice.validUntil)), terms: quote ? esc(t.quotationNote ?? '') : '', note: esc(invoice.note ?? ''), ownership_note: esc(ownerLine(invoice, t)),
   };
   const body = t.customHtml.replace(/\{\{\s*([a-z_]+)\s*\}\}/g, (_all, key: string) => (key in values ? values[key] : ''));
-  return `<!doctype html><html><head><meta charset="utf-8"><style>@page{size:${t.paperSize === 'a4' ? 'A4' : 'letter'};margin:16mm}\n${t.customCss.replace(/<\/style/gi, '')}</style></head><body>${body}</body></html>`;
+  return `<!doctype html><html><head><meta charset="utf-8"><style>@page{size:${t.paperSize === 'a4' ? 'A4' : 'letter'};margin:0}@media print{html{padding:16mm}}\n${t.customCss.replace(/<\/style/gi, '')}</style></head><body>${body}</body></html>`;
 }
 
 // No allow-scripts, so nothing in a layout can run; same-origin only so this page can call print() on the frame.
@@ -181,87 +199,77 @@ export function InvoiceDocument({ invoice, template }: { invoice: PrintInvoice; 
   if (t.customHtml?.trim()) return <iframe title="Invoice preview" sandbox={FRAME_SANDBOX} srcDoc={customInvoicePage(invoice, t)} style={{ width: '100%', minHeight: 900, border: 0, background: '#fff' }} />;
   const customer = invoice.customerSnapshot ?? (invoice.customerName ? { name: invoice.customerName, email: '', phone: '' } : null);
   const quote = invoice.kind === 'quotation';
-  const paidInFull = !quote && invoice.totalCents > 0 && invoice.dueCents <= 0;
   const issuer = issuerOf(invoice, t);
   const owner = ownerLine(invoice, t);
+  const facts = ([['Service Date:', serviceDay(invoice.serviceAt)], ['Time:', serviceTime(invoice.serviceAt)], ['Payment:', paymentWords(invoice.paymentMethods)], ['Coupon:', invoice.couponCode ?? '']] as [string, string][]).filter(([, v]) => v);
   return (
     <div className="ddInv">
       <style>{css(t)}</style>
       <div className="ddHead">
         <div className="ddBrand">
           {t.showLogo && <img src={t.logoUrl || '/site/assets/logo.webp'} alt="" />}
-          <div className="ddIssuer">
-            {issuer && <p className="ddName">{issuer.legalName}</p>}
-          </div>
+          {issuer && <div className="ddIssuer">
+            <p className="ddName">{issuer.legalName}</p>
+            {issuer.address && <p>{issuer.address}</p>}
+            {t.businessDetails && <p>{t.businessDetails}</p>}
+            {t.showTaxRegistration && issuer.taxRegistration && <p>HST: {issuer.taxRegistration}</p>}
+          </div>}
         </div>
         <div className="ddMeta">
           <h1>{t.title}</h1>
           <dl>
-            <dt>Number</dt><dd>{invoice.invoiceNumber}</dd>
-            <dt>Currency</dt><dd>{invoice.currency}</dd>
-            {(invoice.issuedAt || invoice.createdAt) && <><dt>{invoice.issuedAt ? 'Issued' : 'Created'}</dt><dd>{day(invoice.issuedAt ?? invoice.createdAt)}</dd></>}
+            <dt>{quote ? 'Quote #' : 'Invoice #'}</dt><dd>{invoice.invoiceNumber}</dd>
+            {(invoice.issuedAt || invoice.createdAt) && <><dt>Date</dt><dd>{day(invoice.issuedAt ?? invoice.createdAt)}</dd></>}
             {quote && invoice.validUntil && <><dt>Valid until</dt><dd>{day(invoice.validUntil)}</dd></>}
+            {!quote && invoice.status === 'draft' && <><dt>Status</dt><dd>{statusWord(invoice.status)}</dd></>}
           </dl>
-          {!quote && <span className={'ddStatus' + (paidInFull ? ' paid' : '')}>{paidInFull ? 'Paid' : statusWord(invoice.status)}</span>}
         </div>
       </div>
-      <div className="ddParties">
+      <div className="ddClient">
         <div>
           {customer && <>
             <h2>{t.billToLabel}</h2>
-            <p><strong>{customer.name}</strong></p>
-            {t.showCustomerContact && customer.email && <p>{customer.email}</p>}
-            {t.showCustomerContact && customer.phone && <p>{customer.phone}</p>}
+            <p>Name: {customer.name}</p>
+            {t.showCustomerContact && customer.email && <p>Email: {customer.email}</p>}
+            {t.showCustomerContact && customer.phone && <p>Phone Number: {customer.phone}</p>}
           </>}
         </div>
-        <div>
-          {issuer && <>
-            <h2>From</h2>
-            <p><strong>{issuer.legalName}</strong></p>
-            {issuer.address && <p>{issuer.address}</p>}
-            {t.showTaxRegistration && issuer.taxRegistration && <p>GST/HST: {issuer.taxRegistration}</p>}
-          </>}
-        </div>
+        {facts.length > 0 && <dl>{facts.map(([k, v]) => <div key={k} style={{ display: 'contents' }}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>}
       </div>
-      {!quote && invoice.status === 'void' && <div className="ddBanner">
-        <div><b>Void</b><small>This invoice was voided, so nothing is owed on it.</small></div>
-        <strong>{money(0, invoice.currency)}</strong>
-      </div>}
-      {!quote && invoice.status !== 'void' && <div className={'ddBanner' + (paidInFull ? ' paid' : '')}>
-        <div><b>{paidInFull ? 'Paid in full' : 'Balance due'}</b><small>{paidInFull ? 'Thank you. Nothing further is owed.' : invoice.paidCents > 0 ? `${money(invoice.paidCents, invoice.currency)} received so far.` : 'Nothing has been paid yet.'}</small></div>
-        <strong>{paidInFull ? money(invoice.paidCents, invoice.currency) : money(invoice.dueCents, invoice.currency)}</strong>
-      </div>}
       {t.headerNote && <p className="ddNote">{t.headerNote}</p>}
-      <table>
-        <thead><tr><th>{t.itemLabel}</th><th className="r">{t.quantityLabel}</th><th className="r">{t.unitPriceLabel}</th><th className="r">{t.amountLabel}</th></tr></thead>
-        <tbody>
-          {(invoice.items ?? []).map((it, n) => (
-            <tr key={n}>
-              <td>{it.description}</td>
-              <td className="r">{it.quantity}</td>
-              <td className="r">{money(it.unitPriceCents ?? Math.round(it.totalPriceCents / Math.max(1, it.quantity)), invoice.currency)}</td>
-              <td className="r">{money(it.totalPriceCents, invoice.currency)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <div className="ddTotals">
-        <div><span>Subtotal</span><span>{money(invoice.subtotalCents, invoice.currency)}</span></div>
-        {(invoice.discountCents ?? 0) > 0 && <div><span>Discount{invoice.couponCode ? ` (${invoice.couponCode})` : ''}</span><span>−{money(invoice.discountCents ?? 0, invoice.currency)}</span></div>}
-        <div><span>{taxLabel(invoice, t)}</span><span>{money(invoice.taxCents, invoice.currency)}</span></div>
-        <div className="ddTot"><span>Total</span><span>{money(invoice.totalCents, invoice.currency)}</span></div>
-        {!quote && invoice.paidCents > 0 && <div><span>Paid</span><span>−{money(invoice.paidCents, invoice.currency)}</span></div>}
-        {!quote && !paidInFull && invoice.status !== 'void' && <div className="ddDue"><span>Balance due</span><span>{money(invoice.dueCents, invoice.currency)}</span></div>}
-        {quote && <div className="ddDue"><span>Quoted total</span><span>{money(invoice.totalCents, invoice.currency)}</span></div>}
+      <div className="ddBreak">
+        <h2>Service Breakdown</h2>
+        {(invoice.items ?? []).map((it, n) => (
+          <div className="ddItem" key={n}>
+            <span>{it.description}{it.quantity > 1 ? ` × ${it.quantity}` : ''}</span>
+            <span>{money(it.totalPriceCents, invoice.currency)}</span>
+          </div>
+        ))}
       </div>
+      <div className="ddSum">
+        <div><span>Subtotal</span><span>{money(invoice.subtotalCents, invoice.currency)}</span></div>
+        <div><span>Discount</span><span>- {money(invoice.discountCents ?? 0, invoice.currency)}</span></div>
+        <div className="ddLast"><span>{taxLabel(invoice, t)}</span><span>{money(invoice.taxCents, invoice.currency)}</span></div>
+        <div className="ddTot"><span>{quote ? 'Quoted Total' : 'Total Due'}</span><span>{money(invoice.totalCents, invoice.currency)}</span></div>
+      </div>
+      {!quote && invoice.status === 'void' && <p className="ddVoid">This invoice was voided, so nothing is owed on it.</p>}
+      {!quote && invoice.status !== 'void' && <div className="ddBoxes">
+        <div className="ddBox ddPaid"><small>Paid Amount</small><strong>{money(invoice.paidCents, invoice.currency)}</strong></div>
+        <div className="ddBox ddOwed"><small>Outstanding Balance</small><strong>{money(invoice.dueCents, invoice.currency)}</strong></div>
+      </div>}
       {quote && invoice.note && <div className="ddPay"><h2>Note</h2><p>{invoice.note}</p></div>}
       {quote && t.quotationNote && <div className="ddPay"><h2>Terms</h2><p>{t.quotationNote}</p></div>}
       {!quote && t.paymentInstructions && <div className="ddPay"><h2>Payment</h2><p>{t.paymentInstructions}</p></div>}
-      {(t.footerNote || owner) && <div className="ddFoot">{t.footerNote && <p>{t.footerNote}</p>}{owner && <p>{owner}</p>}</div>}
+      <div className="ddFoot">
+        {t.footerNote && <b>{t.footerNote}</b>}
+        <p>This is a computer generated {quote ? 'quotation' : 'invoice'}. Signature is not required.</p>
+        {owner && <p>{owner}</p>}
+      </div>
     </div>
   );
 }
 
+// shortcut: @page margin 0 is what stops the browser printing its date, title, address and page number; a second printed page has no top margin, so give the sheet repeating spacers if long invoices become common.
 /* Prints through a temporary layer so the app chrome never appears on paper: everything else in <body> is hidden while printing. */
 export function printInvoiceDocument(invoice: PrintInvoice, template: PrintTemplate) {
   if (template.customHtml?.trim()) {
@@ -282,7 +290,7 @@ export function printInvoiceDocument(invoice: PrintInvoice, template: PrintTempl
   const host = document.createElement('div');
   host.className = 'dd-invoice-print-root';
   const style = document.createElement('style');
-  style.textContent = `@page{size:${template.paperSize === 'a4' ? 'A4' : 'letter'};margin:16mm}
+  style.textContent = `@page{size:${template.paperSize === 'a4' ? 'A4' : 'letter'};margin:0}
 .dd-invoice-print-root{display:none}
 @media print{body>*:not(.dd-invoice-print-root){display:none!important}.dd-invoice-print-root{display:block!important;background:#fff}html,body{background:#fff!important}}`;
   document.head.appendChild(style);
@@ -295,6 +303,11 @@ export function printInvoiceDocument(invoice: PrintInvoice, template: PrintTempl
   const go = () => setTimeout(() => { window.print(); }, 50);
   if (logo && !logo.complete) { logo.addEventListener('load', go, { once: true }); logo.addEventListener('error', go, { once: true }); } else go();
 }
+
+/* The real PDF, drawn by the server and opened in a new tab to view, save or print. Call it straight from the click so the browser allows the
+   new tab. A custom HTML layout cannot be drawn as a PDF, so those keep printing through the browser (ownLayout). */
+export const openPdf = (url: string) => { window.open(url, '_blank', 'noopener'); };
+export const ownLayout = (t: PrintTemplate) => !!t.customHtml?.trim();
 
 /* The invoice as its own page in a new browser window, with a Print or save as PDF button. Open the window straight away from the
    click (browsers block windows opened after a wait), then fill it once the invoice has loaded. */
@@ -318,7 +331,7 @@ export function fillInvoiceWindow(w: Window, invoice: PrintInvoice, template: Pr
     flushSync(() => root.render(<InvoiceDocument invoice={invoice} template={template} />));
     const inner = host.innerHTML;
     root.unmount();
-    html = '<!doctype html><html><head><meta charset="utf-8"><title>Invoice ' + esc(invoice.invoiceNumber) + '</title><style>@page{size:' + (template.paperSize === 'a4' ? 'A4' : 'letter') + ';margin:14mm}body{margin:0;background:#e9e9ec;font-family:system-ui,sans-serif}.ddSheet{max-width:820px;margin:24px auto;background:#fff;padding:32px;box-shadow:0 6px 30px rgba(0,0,0,.18)}' + barCss + '</style></head><body>' + toolbar + '<div class="ddSheet">' + inner + '</div></body></html>';
+    html = '<!doctype html><html><head><meta charset="utf-8"><title>Invoice ' + esc(invoice.invoiceNumber) + '</title><style>@page{size:' + (template.paperSize === 'a4' ? 'A4' : 'letter') + ';margin:0}body{margin:0;background:#e9e9ec;font-family:system-ui,sans-serif}.ddSheet{max-width:820px;margin:24px auto;background:#fff;box-shadow:0 6px 30px rgba(0,0,0,.18)}' + barCss + '</style></head><body>' + toolbar + '<div class="ddSheet">' + inner + '</div></body></html>';
   }
   w.document.open();
   w.document.write(html);

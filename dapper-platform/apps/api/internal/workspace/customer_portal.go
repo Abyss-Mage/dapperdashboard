@@ -57,7 +57,7 @@ func registerCustomerPortalRoutes(mux *http.ServeMux, store *postgres.Store) {
 			return
 		}
 		w.Header().Set("Cache-Control", "no-store")
-		reply(w, 200, map[string]any{"configured": true, "credentialsConfigured": store.SquareCredentialResolver() != nil, "applicationId": store.SquareApplicationID(b.Environment), "binding": map[string]any{"environment": b.Environment, "squareLocationId": b.SquareLocationID}})
+		reply(w, 200, map[string]any{"configured": true, "credentialsConfigured": store.SquareCredentialResolver() != nil, "applicationId": store.SquareApplicationIDFor(r.Context(), scope, b.Environment), "binding": map[string]any{"environment": b.Environment, "squareLocationId": b.SquareLocationID}})
 	})
 	mux.HandleFunc("POST /api/v1/portal/accounts/{customer}/vehicles", func(w http.ResponseWriter, r *http.Request) {
 		customer := r.PathValue("customer")

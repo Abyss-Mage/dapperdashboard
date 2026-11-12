@@ -74,7 +74,7 @@ export function SiteHeader() {
           </nav>
           <div className={s.actions}>
             <Link className={s.callBtn} href="/account" aria-current={pathname === '/account' ? 'page' : undefined}><UserRound size={15} aria-hidden="true" />My account</Link>
-            <a className={s.book} href="/booking">Book now<ArrowRight size={16} aria-hidden="true" /></a>
+            <a className={s.book} href="/book-appointment">Book now<ArrowRight size={16} aria-hidden="true" /></a>
           </div>
           <button type="button" className={s.menuBtn} aria-expanded={open} aria-controls="site-menu" aria-label={open ? 'Close menu' : 'Open menu'} onClick={() => setOpen((o) => !o)}>
             {open ? <X size={24} aria-hidden="true" /> : <Menu size={24} aria-hidden="true" />}
@@ -122,14 +122,14 @@ export function SiteHeader() {
         </nav>
         <div className={s.menuActs}>
           <a className={s.callBtn} href={'tel:' + contact.tel}><Phone size={18} aria-hidden="true" />{contact.phone}</a>
-          <a className={s.book + ' ' + s.menuBook} href="/booking">Book now<ArrowRight size={18} aria-hidden="true" /></a>
+          <a className={s.book + ' ' + s.menuBook} href="/book-appointment">Book now<ArrowRight size={18} aria-hidden="true" /></a>
         </div>
       </div>
 
       {/* The booking pages have their own bar at the bottom of the screen, so the quick-action bar steps aside there. */}
-      {!pathname.startsWith('/booking') && !open && <nav className={s.dock} aria-label="Quick actions">
+      {!pathname.startsWith('/book-appointment') && !open && <nav className={s.dock} aria-label="Quick actions">
         <a href="/services"><Wrench size={20} aria-hidden="true" />Services</a>
-        <a className={s.dockBook} href="/booking"><CalendarCheck size={20} aria-hidden="true" />Book now</a>
+        <a className={s.dockBook} href="/book-appointment"><CalendarCheck size={20} aria-hidden="true" />Book now</a>
         <a href={'tel:' + contact.tel}><Phone size={20} aria-hidden="true" />Call</a>
         <a href="/account"><UserRound size={20} aria-hidden="true" />Account</a>
       </nav>}

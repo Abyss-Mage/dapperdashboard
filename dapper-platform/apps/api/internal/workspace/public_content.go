@@ -155,6 +155,26 @@ func registerPublicContentRoutes(mux *http.ServeMux, store *postgres.Store) {
 		}
 		reply(w, 200, data)
 	})
+	mux.HandleFunc("PUT "+base+"/banner", func(w http.ResponseWriter, r *http.Request) {
+		scope, ok := scopeFor(w, r, "content.manage")
+		if !ok {
+			return
+		}
+		var input postgres.SiteBanner
+		if !decode(w, r, &input) {
+			return
+		}
+		data, err := store.SaveSiteBanner(r.Context(), scope, input)
+		if errors.Is(err, postgres.ErrContentInput) {
+			reply(w, 422, map[string]string{"error": "Write the banner text (3 to 160 characters). A link needs a button label and must be a page on this site (starting with /) or an https:// address."})
+			return
+		}
+		if err != nil {
+			contentFailure(w, err)
+			return
+		}
+		reply(w, 200, data)
+	})
 	mux.HandleFunc("PUT "+base+"/services/{service}", func(w http.ResponseWriter, r *http.Request) {
 		scope, ok := scopeFor(w, r, "catalogue.manage")
 		if !ok {
@@ -171,6 +191,7 @@ func registerPublicContentRoutes(mux *http.ServeMux, store *postgres.Store) {
 			Published      *bool  `json:"published"`
 			Version        int    `json:"version"`
 			ServiceVersion int    `json:"serviceVersion"`
+			Starred        *bool  `json:"starred"`
 		}
 		if !decode(w, r, &input) {
 			return
@@ -179,7 +200,7 @@ func registerPublicContentRoutes(mux *http.ServeMux, store *postgres.Store) {
 			reply(w, 422, map[string]string{"error": "Choose draft or published explicitly"})
 			return
 		}
-		data, err := store.SaveServicePublication(r.Context(), scope, postgres.ServicePublication{ServiceID: id, Category: input.Category, Summary: input.Summary, Published: *input.Published, Version: input.Version, ServiceVersion: input.ServiceVersion})
+		data, err := store.SaveServicePublication(r.Context(), scope, postgres.ServicePublication{ServiceID: id, Category: input.Category, Summary: input.Summary, Published: *input.Published, Version: input.Version, ServiceVersion: input.ServiceVersion, SetStar: input.Starred})
 		if err != nil {
 			contentFailure(w, err)
 			return
