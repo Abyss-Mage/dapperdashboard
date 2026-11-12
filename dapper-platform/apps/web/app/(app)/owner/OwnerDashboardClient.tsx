@@ -34,6 +34,7 @@ import BookingManager from '../workspace/BookingManager';
 import CalendarFeeds from '../workspace/CalendarFeeds';
 import MyAccount from './MyAccount';
 import SquareMerchantPanel from '../workspace/SquareMerchantPanel';
+import SearchSettings from './SearchSettings';
 import BackupPanel from './BackupPanel';
 import { MfaSetup } from '../workspace/AccountSecurity';
 import QuoteManager from '../workspace/QuoteManager';
@@ -68,7 +69,7 @@ type Org = {
 type TabId =
   | 'overview' | 'calendar' | 'new-booking' | 'requests' | 'customers' | 'staff-hours' | 'availability' | 'dealership-tags' | 'customer-cars'
   | 'invoices' | 'quotes' | 'dealerships' | 'marketing'
-  | 'team' | 'franchises' | 'services' | 'hours' | 'taxes' | 'sop' | 'invoice-template' | 'payments' | 'backups' | 'tracking' | 'enquiries' | 'employees' | 'activity' | 'coupons' | 'reports' | 'scripts' | 'website-images' | 'messaging' | 'sales-banner' | 'dealer-invoices'
+  | 'team' | 'franchises' | 'services' | 'hours' | 'taxes' | 'sop' | 'invoice-template' | 'payments' | 'backups' | 'tracking' | 'enquiries' | 'employees' | 'activity' | 'coupons' | 'reports' | 'scripts' | 'website-images' | 'messaging' | 'sales-banner' | 'dealer-invoices' | 'search'
   | 'account';
 
 type Ctx = { scope: Access | undefined; organizations: Org[]; orgActions: string[] };
@@ -111,6 +112,7 @@ const TABS: TabDefinition[] = [
   { id: 'enquiries', label: 'Enquiries', icon: 'marketing', description: 'Messages from the website contact form', show: (c) => org(c, 'marketing.read') },
   { id: 'sales-banner', label: 'Sales banner', icon: 'marketing', description: 'A strip above the website header for a sale or offer', show: (c) => has(c, 'content.manage') },
   { id: 'website-images', label: 'Website images', icon: 'marketing', description: 'Portfolio photos shown on the website', show: (c) => has(c, 'content.manage') },
+  { id: 'search', label: 'Search & sitemaps', icon: 'marketing', description: 'SEO keywords and descriptions, and the XML sitemaps', show: (c) => org(c, 'access.manage') },
   { id: 'scripts', label: 'Custom scripts', icon: 'marketing', description: 'Extra code for the public website', show: (c) => org(c, 'access.manage') },
   { id: 'backups', label: 'Backups', icon: 'admin', description: 'Download or bring back the whole system', show: (c) => org(c, 'access.manage') && org(c, 'invoices.configure') },
   { id: 'tracking', label: 'Website tracking', icon: 'marketing', description: 'Google Tag, Meta Pixel and the Mailchimp popup', show: (c) => org(c, 'content.manage') },
@@ -122,7 +124,7 @@ const NAV_GROUPS: { label: string; ids: TabId[] }[] = [
   { label: 'Every day', ids: ['overview', 'calendar', 'new-booking', 'requests', 'customers', 'reports'] },
   { label: 'Team', ids: ['employees', 'staff-hours', 'availability', 'dealership-tags', 'customer-cars', 'sop'] },
   { label: 'Money', ids: ['quotes', 'payments', 'dealerships', 'dealer-invoices', 'messaging', 'coupons', 'sales-banner', 'enquiries'] },
-  { label: 'Settings', ids: ['services', 'hours', 'taxes', 'franchises', 'team', 'activity', 'invoice-template', 'website-images', 'tracking', 'scripts', 'backups'] },
+  { label: 'Settings', ids: ['services', 'hours', 'taxes', 'franchises', 'team', 'activity', 'invoice-template', 'website-images', 'search', 'tracking', 'scripts', 'backups'] },
 ];
 const isTab = (v: string): v is TabId => TABS.some((t) => t.id === v);
 const ORDER: TabId[] = [...NAV_GROUPS.flatMap((g) => g.ids), 'account'];
@@ -575,6 +577,7 @@ export default function OwnerDashboardClient() {
             {activeTab === 'invoices' && <InvoiceManager base={base} canCreate={scope.actions.includes('invoices.create')} canManage={scope.actions.includes('invoices.manage')} canRecordPayment={scope.actions.includes('payments.record')} canIssue={scope.actions.includes('invoices.issue')} />}
             {activeTab === 'quotes' && <QuoteManager organizationId={scope.organizationId} locationId={scope.locationId} canCreate={scope.actions.includes('quotes.create')} canManage={scope.actions.includes('quotes.manage')} canIssue={scope.actions.includes('quotes.issue')} />}
             {activeTab === 'backups' && <BackupPanel organizationId={scope.organizationId} />}
+            {activeTab === 'search' && <SearchSettings organizationId={scope.organizationId} />}
             {activeTab === 'payments' && (
               <div className={styles.stack}>
                 <SquareMerchantPanel organizationId={scope.organizationId} locationId={scope.locationId} canManage />

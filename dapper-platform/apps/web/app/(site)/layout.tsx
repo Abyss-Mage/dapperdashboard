@@ -14,10 +14,11 @@ import SmoothScroll from './_components/SmoothScroll';
 import Tracking from './_components/Tracking';
 import RemovedImages from './_components/RemovedImages';
 import SalesStrip from './_components/SalesStrip';
+import { siteSEO } from './_components/seo';
 
 const indexing = process.env.DAPPER_PUBLIC_INDEXING === 'enabled';
 
-export const metadata: Metadata = {
+const base: Metadata = {
   metadataBase: new URL('https://dapperdetailing.ca'),
   title: { default: 'Dapper Detailing Pros | Vehicle care in Peterborough', template: '%s | Dapper Detailing Pros' },
   description: 'Detailing, ceramic coating, paint protection film and window tint in Peterborough, Ontario.',
@@ -26,6 +27,21 @@ export const metadata: Metadata = {
   openGraph: { type: 'website', images: ['/site/assets/services/suv.webp'] },
   twitter: { card: 'summary_large_image' },
 };
+
+// Site-wide search settings from the dashboard (owner 2026-11-13) over the defaults above.
+export async function generateMetadata(): Promise<Metadata> {
+  const seo = await siteSEO();
+  if (!seo) return base;
+  const keywords = seo.keywords.split(',').map((k) => k.trim()).filter(Boolean);
+  return {
+    ...base,
+    ...(seo.title ? { title: { default: seo.title, template: '%s | Dapper Detailing Pros' } } : {}),
+    ...(seo.description ? { description: seo.description } : {}),
+    ...(keywords.length ? { keywords } : {}),
+    ...(seo.image ? { openGraph: { type: 'website', images: [seo.image] } } : {}),
+    ...(seo.googleVerification || seo.bingVerification ? { verification: { ...(seo.googleVerification ? { google: seo.googleVerification } : {}), ...(seo.bingVerification ? { other: { 'msvalidate.01': seo.bingVerification } } : {}) } } : {}),
+  };
+}
 
 export const viewport: Viewport = { themeColor: '#f6f4f1', width: 'device-width', initialScale: 1 };
 

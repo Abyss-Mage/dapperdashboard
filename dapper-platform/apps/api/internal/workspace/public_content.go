@@ -155,6 +155,43 @@ func registerPublicContentRoutes(mux *http.ServeMux, store *postgres.Store) {
 		}
 		reply(w, 200, data)
 	})
+	// Search settings for the public website, named by its slug (owner 2026-11-13): the owner and administrators (access.manage).
+	seo := "/api/v1/organizations/{organization}/sites/{site}/seo"
+	seoFail := func(w http.ResponseWriter, err error) {
+		if errors.Is(err, postgres.ErrContentInput) {
+			reply(w, 422, map[string]string{"error": "Check the search settings: titles up to 70 characters, descriptions up to 320, keywords up to 500, no < or >. A share image must be a page address starting with / or an https:// address, and a verification code only letters, numbers, - and _."})
+			return
+		}
+		contentFailure(w, err)
+	}
+	mux.HandleFunc("GET "+seo, func(w http.ResponseWriter, r *http.Request) {
+		if !uuid(r.PathValue("organization")) {
+			reply(w, 400, map[string]string{"error": "Valid organization required"})
+			return
+		}
+		data, err := store.SiteSEOFor(r.Context(), requestSession(r).principalID, r.PathValue("organization"), r.PathValue("site"))
+		if err != nil {
+			seoFail(w, err)
+			return
+		}
+		reply(w, 200, data)
+	})
+	mux.HandleFunc("PUT "+seo, func(w http.ResponseWriter, r *http.Request) {
+		if !uuid(r.PathValue("organization")) {
+			reply(w, 400, map[string]string{"error": "Valid organization required"})
+			return
+		}
+		var input postgres.SiteSEO
+		if !decodeLimited(w, r, &input, 256*1024) {
+			return
+		}
+		data, err := store.SaveSiteSEO(r.Context(), requestSession(r).principalID, r.PathValue("organization"), r.PathValue("site"), input)
+		if err != nil {
+			seoFail(w, err)
+			return
+		}
+		reply(w, 200, data)
+	})
 	mux.HandleFunc("PUT "+base+"/banner", func(w http.ResponseWriter, r *http.Request) {
 		scope, ok := scopeFor(w, r, "content.manage")
 		if !ok {

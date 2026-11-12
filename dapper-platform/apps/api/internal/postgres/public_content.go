@@ -66,6 +66,7 @@ type SiteBanner struct {
 type PublishedContent struct {
 	Site      PublicSite           `json:"site"`
 	Banner    *SiteBanner          `json:"banner,omitempty"`
+	SEO       SiteSEO              `json:"seo"`
 	Upsells   []PackageUpsell      `json:"upsells"`
 	Services  []ServicePublication `json:"services"`
 	Portfolio []PortfolioImage     `json:"portfolio"`
@@ -276,7 +277,7 @@ func (s *Store) PublicContent(ctx context.Context, slug string) (PublishedConten
 func readSiteContent(ctx context.Context, tx pgx.Tx, org, loc string, public bool) (PublishedContent, error) {
 	out := PublishedContent{Services: []ServicePublication{}, Portfolio: []PortfolioImage{}, Dealers: []WebsiteDealer{}, Upsells: []PackageUpsell{}, Limit: 200}
 	var banner SiteBanner
-	err := tx.QueryRow(ctx, `SELECT slug,name,published,version,banner FROM public_sites WHERE organization_id=$1 AND location_id=$2`, org, loc).Scan(&out.Site.Slug, &out.Site.Name, &out.Site.Published, &out.Site.Version, &banner)
+	err := tx.QueryRow(ctx, `SELECT slug,name,published,version,banner,seo FROM public_sites WHERE organization_id=$1 AND location_id=$2`, org, loc).Scan(&out.Site.Slug, &out.Site.Name, &out.Site.Published, &out.Site.Version, &banner, &out.SEO)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return out, nil
 	}

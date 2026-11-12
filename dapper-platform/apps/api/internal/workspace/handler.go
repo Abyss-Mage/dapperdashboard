@@ -319,7 +319,7 @@ func NewHandlerWithFullServices(store *postgres.Store, origin string, invitation
 			mux.ServeHTTP(w, r)
 			return
 		}
-		if r.Method != http.MethodGet && r.Method != http.MethodHead && r.Header.Get("Origin") != origin {
+		if r.Method != http.MethodGet && r.Method != http.MethodHead && !identity.OriginAllowed(r.Header.Get("Origin"), origin) {
 			reply(w, 403, map[string]string{"error": "Same-origin request required"})
 			return
 		}

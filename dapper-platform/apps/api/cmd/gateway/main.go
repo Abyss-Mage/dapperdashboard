@@ -13,6 +13,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"dapper.local/platform/internal/identity"
 )
 
 func main() {
@@ -31,6 +33,9 @@ func main() {
 	hosts := map[string]bool{"127.0.0.1:" + port: true, "localhost:" + port: true}
 	if public := os.Getenv("DAPPER_PUBLIC_HOST"); public != "" {
 		hosts[public] = true
+	}
+	for _, h := range identity.ExtraHosts() {
+		hosts[h] = true
 	}
 	apiURL, _ := url.Parse("http://127.0.0.1:8121")
 	webURL, _ := url.Parse("http://127.0.0.1:3006")

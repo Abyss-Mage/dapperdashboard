@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"strings"
 	"bytes"
 	"context"
 	"errors"
@@ -146,6 +147,26 @@ func TestPublicContentPersistence(t *testing.T) {
 	}
 	if managed, err := s.ContentForManagement(ctx, scope); err != nil || managed.Banner == nil || managed.Banner.EndsAt == nil {
 		t.Fatal("the dashboard lost the ended banner", err)
+	}
+	// Search settings (owner 2026-11-13): access.manage only, checked input, empty page entries dropped, served to the website.
+	seo := SiteSEO{Title: "Synthetic detailing", Description: "Synthetic description", Keywords: "detailing, ceramic", GoogleVerification: "abc_123-XYZ",
+		Pages: map[string]PageSEO{"/services": {Title: "Synthetic services", Hidden: true}, "/about-us": {}}}
+	if _, err = s.SaveSiteSEO(ctx, actor, org, site.Slug, seo); !errors.Is(err, ErrForbidden) {
+		t.Fatal("search settings saved with content rights only", err)
+	}
+	if _, err = pool.Exec(ctx, `INSERT INTO organization_grants(principal_id,organization_id,action) VALUES($1,$2,'access.manage')`, actor, org); err != nil {
+		t.Fatal(err)
+	}
+	for _, bad := range []SiteSEO{{Title: strings.Repeat("x", 71)}, {Description: "<script>"}, {Image: "javascript:alert(1)"}, {GoogleVerification: "\"><b>"}, {Pages: map[string]PageSEO{"/../x": {Title: "x"}}}, {Pages: map[string]PageSEO{"/x": {Image: "//evil.example/a.png"}}}} {
+		if _, err = s.SaveSiteSEO(ctx, actor, org, site.Slug, bad); !errors.Is(err, ErrContentInput) {
+			t.Fatal("bad search settings accepted", bad, err)
+		}
+	}
+	if _, err = s.SaveSiteSEO(ctx, actor, org, site.Slug, seo); err != nil {
+		t.Fatal(err)
+	}
+	if public, err = s.PublicContent(ctx, site.Slug); err != nil || public.SEO.Keywords != seo.Keywords || !public.SEO.Pages["/services"].Hidden || len(public.SEO.Pages) != 1 {
+		t.Fatal("search settings not served", public.SEO, err)
 	}
 	// Upgrade offers: checked input, one per package (matched without case), only switched-on ones reach the website.
 	upsellOrg := scope.OrganizationID

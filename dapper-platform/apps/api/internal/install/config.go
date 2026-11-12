@@ -40,6 +40,9 @@ type Site struct {
 	Timezone string `json:"timezone"`
 	Listen   string `json:"listen"` // gateway address, for example 127.0.0.1:8443 or 0.0.0.0:443
 	TLS      TLS    `json:"tls"`
+	// ExtraOrigins are further addresses the same app answers on, comma separated (owner 2026-11-13: the dashboard and the workspace
+	// on their own subdomains). Optional; added to .env by hand as DAPPER_EXTRA_ORIGINS.
+	ExtraOrigins string `json:"extraOrigins,omitempty"`
 }
 type TLS struct {
 	Mode     string `json:"mode"`
@@ -157,7 +160,7 @@ func Load(home string) (Config, error) {
 	port, _ := strconv.Atoi(e["DAPPER_SMTP_PORT"])
 	c = Config{
 		Version: ConfigVersion, Created: e["DAPPER_CREATED"],
-		Site:     Site{Name: e["DAPPER_SITE_NAME"], URL: e["DAPPER_SITE_URL"], Timezone: e["DAPPER_TIMEZONE"], Listen: e["DAPPER_LISTEN"], TLS: TLS{Mode: e["DAPPER_TLS_MODE"], CertFile: e["DAPPER_TLS_CERT"], KeyFile: e["DAPPER_TLS_KEY"]}},
+		Site:     Site{Name: e["DAPPER_SITE_NAME"], URL: e["DAPPER_SITE_URL"], Timezone: e["DAPPER_TIMEZONE"], Listen: e["DAPPER_LISTEN"], ExtraOrigins: e["DAPPER_EXTRA_ORIGINS"], TLS: TLS{Mode: e["DAPPER_TLS_MODE"], CertFile: e["DAPPER_TLS_CERT"], KeyFile: e["DAPPER_TLS_KEY"]}},
 		Database: Database{URL: e["DAPPER_DATABASE_URL"]},
 		SMTP:     SMTP{Host: e["DAPPER_SMTP_HOST"], Port: port, Username: e["DAPPER_SMTP_USERNAME"], Password: e["DAPPER_SMTP_PASSWORD"], FromAddress: e["DAPPER_SMTP_FROM_ADDRESS"], FromName: e["DAPPER_SMTP_FROM_NAME"]},
 		Keys:     Keys{MFA: e["DAPPER_MFA_KEY"], Invitation: e["DAPPER_INVITATION_ENCRYPTION_KEY"]},
@@ -216,6 +219,17 @@ func parseOrigin(raw string) (*url.URL, error) {
 	return &url.URL{Scheme: u.Scheme, Host: u.Host}, nil
 }
 
+// extraOrigins keeps the valid https addresses from Site.ExtraOrigins (scheme and host only), comma separated.
+func (c Config) extraOrigins() string {
+	var keep []string
+	for _, raw := range strings.Split(c.Site.ExtraOrigins, ",") {
+		if u, err := parseOrigin(raw); err == nil && u.Scheme == "https" {
+			keep = append(keep, u.String())
+		}
+	}
+	return strings.Join(keep, ",")
+}
+
 // Env is the environment the API, gateway and web app are started with.
 func (c Config) Env(home string) []string {
 	origin, _ := c.Origin()
@@ -226,6 +240,9 @@ func (c Config) Env(home string) []string {
 		"DAPPER_MFA_KEY=" + c.Keys.MFA, "DAPPER_INVITATION_ENCRYPTION_KEY=" + c.Keys.Invitation,
 		"DAPPER_UPLOAD_DIR=" + UploadDir(home), "DAPPER_SOP_DIR=" + filepath.Join(home, "dapper-platform", "apps", "api", "data", "sops"),
 		"DAPPER_LISTEN=" + c.Site.Listen, "DAPPER_PUBLIC_HOST=" + origin.Host, "DAPPER_TIMEZONE=" + c.Site.Timezone, "DAPPER_BUSINESS_NAME=" + c.Site.Name,
+	}
+	if extra := c.extraOrigins(); extra != "" {
+		env = append(env, "DAPPER_EXTRA_ORIGINS="+extra)
 	}
 	switch c.Site.TLS.Mode {
 	case TLSProxy:

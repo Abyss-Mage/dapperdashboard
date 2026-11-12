@@ -94,7 +94,7 @@ func (p *PasswordLogin) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		passwordReply(w, 405, "Use POST to sign in")
 		return
 	}
-	if r.Header.Get("Origin") != p.origin {
+	if !OriginAllowed(r.Header.Get("Origin"), p.origin) {
 		passwordReply(w, 403, "Same-origin request required")
 		return
 	}
