@@ -321,7 +321,7 @@ def undo_batch(batch: str, confirm: str = "") -> dict:
 def status() -> dict:
     out = {
         "liveSiteSignIn": bool(setting("DAPPER_LEGACY_WP_USER") and setting("DAPPER_LEGACY_WP_APP_PASSWORD")),
-        "targetDatabaseSet": bool(setting("DAPPER_IMPORT_DATABASE_URL")),
+        "targetDatabaseSet": bool(setting("DAPPER_IMPORT_DATABASE_URL") or setting("DAPPER_DATABASE_URL")),
         "psql": Path(psql()).exists(),
         "go": bool(shutil.which("go")),
         "exports": [p.name for p in sorted(CACHE.glob("export-*.json"))],
