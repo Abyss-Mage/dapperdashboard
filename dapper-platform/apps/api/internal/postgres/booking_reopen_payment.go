@@ -97,6 +97,10 @@ WHERE p.organization_id=$1 AND p.location_id=$2 AND i.booking_id=$3 AND (NOT $5 
 // settleCancelledBooking takes back the money recorded by hand on a cancelled booking and voids its invoices that have nothing paid on
 // them, so a cancelled booking leaves nothing owed and no takings in the reports. Card payments stay; those are refunded in Square. The
 // returned sentence is shown to staff and kept in the booking's history.
+// keepDraftsKey marks a cancel that is about to erase the booking: its draft invoices are deleted with it, so they are not voided first
+// (a voided invoice can no longer be deleted).
+type keepDraftsKey struct{}
+
 func (s *Store) settleCancelledBooking(ctx context.Context, scope Scope, booking string) string {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -110,7 +114,11 @@ func (s *Store) settleCancelledBooking(ctx context.Context, scope Scope, booking
 	if err != nil || tx.Commit(ctx) != nil {
 		return ""
 	}
-	rows, err := s.pool.Query(ctx, `SELECT id::text FROM invoices WHERE organization_id=$1 AND location_id=$2 AND booking_id=$3 AND status IN ('draft','issued') AND paid_cents=0`, scope.OrganizationID, scope.LocationID, booking)
+	voidable := []string{"draft", "issued"}
+	if ctx.Value(keepDraftsKey{}) != nil {
+		voidable = []string{"issued"}
+	}
+	rows, err := s.pool.Query(ctx, `SELECT id::text FROM invoices WHERE organization_id=$1 AND location_id=$2 AND booking_id=$3 AND status=ANY($4) AND paid_cents=0`, scope.OrganizationID, scope.LocationID, booking, voidable)
 	if err == nil {
 		var ids []string
 		for rows.Next() {

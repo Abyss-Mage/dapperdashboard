@@ -127,4 +127,24 @@ func TestReopenReversesCompletionPayment(t *testing.T) {
 	if status != "void" || paid != 0 || pstatus != "refunded" || refunded != 15000 {
 		t.Fatalf("cancelled booking still holds money: invoice %s paid %d, payment %s refunded %d", status, paid, pstatus, refunded)
 	}
+
+	// Deleting: a booking with money records is kept (cancelled); one with only a draft invoice is erased with everything on it.
+	if err = s.DeleteBooking(ctx, scope, paidBooking); err != ErrBookingKept {
+		t.Fatal("a booking with a payment was erased", err)
+	}
+	var draftOnly string
+	must(pool.QueryRow(ctx, `INSERT INTO bookings(organization_id,location_id,customer_id,service_name,channel,status,booking_time) VALUES($1,$2,$3,'Synthetic Detail','internal','confirmed',now()+interval '3 days') RETURNING id::text`, org, loc, customer).Scan(&draftOnly))
+	_, err = s.CreateInvoice(ctx, scope, CreateInvoiceInput{CustomerID: customer, BookingID: &draftOnly, Items: []CreateInvoiceItemInput{{Description: "Synthetic Detail", Quantity: 1, UnitPriceCents: 9000}}})
+	must(err)
+	if err = s.DeleteBooking(ctx, scope, draftOnly); err != nil {
+		t.Fatal("a booking with only a draft invoice was not erased", err)
+	}
+	var left int
+	must(pool.QueryRow(ctx, `SELECT (SELECT count(*) FROM bookings WHERE id=$1)+(SELECT count(*) FROM invoices WHERE booking_id=$1)`, draftOnly).Scan(&left))
+	if left != 0 {
+		t.Fatal("erased booking left records behind", left)
+	}
+	if err = s.DeleteBooking(ctx, scope, draftOnly); err != ErrBookingNotFound {
+		t.Fatal("deleting twice should say not found", err)
+	}
 }

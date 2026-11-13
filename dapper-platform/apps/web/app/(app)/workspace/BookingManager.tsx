@@ -3,6 +3,7 @@ import { ChevronDown } from 'lucide-react';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import BookingRescheduler from './BookingRescheduler';
 import FormPopup from '../FormPopup';
+import ConfirmDialog from './ConfirmDialog';
 import { fillInvoiceWindow, openInvoiceWindow, openPdf, ownLayout, usePrintTemplate } from './InvoicePrint';
 import Select from '../GlassSelect';
 import { DatePicker, DateTimePicker } from '../Pickers';
@@ -353,6 +354,20 @@ export default function BookingManager({
     if (inv?.issuedAt && inv.paidAt && new Date(inv.paidAt).getTime() - new Date(inv.issuedAt).getTime() < 10 * 60 * 1000) return 'Online · paid by card';
     return 'Online · pay local';
   };
+  // Deleting an appointment: erased for good, or cancelled when it has money or work records the books keep.
+  const [erasing, setErasing] = useState<Booking | null>(null);
+  async function eraseBooking(b: Booking) {
+    setBusy(true); setError(''); setNotice('');
+    try {
+      const r = await fetch(`${base}/bookings/${b.id}`, { method: 'DELETE' });
+      const body = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(body.error ?? 'The appointment could not be deleted.');
+      setNotice(body.erased ? `Appointment ${bookingRef(b)} deleted.` : body.notice);
+      setErasing(null);
+      await loadBookings();
+    } catch (e) { setError(e instanceof Error ? e.message : 'The appointment could not be deleted.'); setErasing(null); }
+    finally { setBusy(false); }
+  }
   const [completing, setCompleting] = useState<Booking | null>(null);
   const [completeBusy, setCompleteBusy] = useState(false);
   const [completeError, setCompleteError] = useState('');
@@ -740,6 +755,7 @@ export default function BookingManager({
                       {canManage && !final && !b.reservationId && <button className="secondary" disabled={busy} onClick={() => { setMoveError(''); setMoveTime(''); setMoving(b); }}>Reschedule</button>}
                       {canManage && !final && b.reservationId && <button className="secondary" disabled={busy} onClick={(event) => { rescheduleTrigger.current = event.currentTarget; setReschedulingBooking(b); }}>Reschedule</button>}
                       {canManage && !final && <button className="secondary" disabled={busy} onClick={(event) => { cancellationTrigger.current = event.currentTarget; setCancellationReason(''); setError(''); setCancellingBooking(b); }}>Cancel</button>}
+                      {canManage && <button className="secondary" disabled={busy} onClick={() => { setError(''); setErasing(b); }}>Delete</button>}
                       {canCreateWorkOrders && !final && <button className="secondary" disabled={busy} onClick={() => createWorkOrder(b)}>Start the job</button>}
                     </div>
                   </div>
@@ -806,6 +822,9 @@ export default function BookingManager({
           </div>
         </FormPopup>
       ); })()}
+      <ConfirmDialog isOpen={erasing !== null} title="Delete appointment" entityName={erasing ? `${bookingRef(erasing)} · ${erasing.serviceName}` : ''} entityType="Appointment" actionType="delete"
+        message="This erases the appointment for good. Cash and e-transfer payments on it are reversed and its invoice voided. If it has an issued invoice, a payment or work records, those are kept for your books and the appointment is cancelled instead. Card payments must be refunded in Square."
+        isBusy={busy} confirmLabel="Delete appointment" onConfirm={() => { if (erasing) void eraseBooking(erasing); }} onCancel={() => setErasing(null)} />
       {reschedulingBooking && <BookingRescheduler base={base} booking={reschedulingBooking} onSaved={loadBookings} onClose={() => setReschedulingBooking(null)}/>}
       {cancellingBooking && (
         <dialog ref={cancellationDialog} aria-labelledby="booking-cancel-title" onCancel={(event) => {event.preventDefault(); if (!busy) closeCancellation();}} style={{maxWidth:'min(32rem, calc(100vw - 2rem))',padding:'1.5rem',background:'var(--surface, #fff)',color:'var(--text, var(--text, #1a0b0d))',border:'1px solid var(--border, #f0dcde)',borderRadius:'12px'}}>

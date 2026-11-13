@@ -433,6 +433,28 @@ func registerBookingRoutes(mux *http.ServeMux, store *postgres.Store) {
 		reply(w, 200, map[string]any{"booking": item, "events": events})
 	})
 
+	// Erase a booking for good (managers). One with money or work records is cancelled instead; the answer says which happened.
+	mux.HandleFunc("DELETE "+base+"/{booking}", func(w http.ResponseWriter, r *http.Request) {
+		org, loc, id := r.PathValue("organization"), r.PathValue("location"), r.PathValue("booking")
+		if !uuid(org) || !uuid(loc) || !uuid(id) {
+			reply(w, 400, map[string]string{"error": "Valid selectors required"})
+			return
+		}
+		scope, err := store.ResolveScope(r.Context(), requestSession(r).principalID, org, loc, "bookings.manage")
+		if err != nil {
+			failure(w, err)
+			return
+		}
+		switch err = store.DeleteBooking(r.Context(), scope, id); {
+		case err == nil:
+			reply(w, 200, map[string]any{"erased": true})
+		case errors.Is(err, postgres.ErrBookingKept):
+			reply(w, 200, map[string]any{"erased": false, "notice": "This appointment has an issued invoice, a payment or work records, which are kept for your books. It has been cancelled: cash and e-transfer payments were reversed and the invoice voided. Card payments must be refunded in Square."})
+		default:
+			bookingFailure(w, err)
+		}
+	})
+
 	mux.HandleFunc("POST "+base+"/{booking}/status", func(w http.ResponseWriter, r *http.Request) {
 		org, loc, id := r.PathValue("organization"), r.PathValue("location"), r.PathValue("booking")
 		if !uuid(org) || !uuid(loc) || !uuid(id) {
