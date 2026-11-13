@@ -2,8 +2,6 @@ package postgres
 
 import (
 	"context"
-	"strings"
-	"time"
 )
 
 // Booking emails. The store only announces what happened ("cancelled", "rescheduled"); the web layer, which owns the mail sender, writes and sends the
@@ -25,23 +23,6 @@ func (s *Store) emitBooking(ctx context.Context, kind, bookingID string) {
 		return
 	}
 	go s.bookingHook(BookingEmailEvent{Kind: kind, BookingID: bookingID})
-}
-
-// BookingEmailFacts is what a booking email says about the booking.
-type BookingEmailFacts struct {
-	Name, Email, Phone, Service, Where string
-	When                               time.Time
-}
-
-func (s *Store) BookingEmailFacts(ctx context.Context, bookingID string) (BookingEmailFacts, error) {
-	var f BookingEmailFacts
-	var address string
-	err := s.pool.QueryRow(ctx, `SELECT c.name,c.email,c.phone,b.service_name,b.booking_time,coalesce(b.service_address,'') FROM bookings b JOIN customers c ON (c.organization_id,c.location_id,c.id)=(b.organization_id,b.location_id,b.customer_id) WHERE b.id::text=$1`, bookingID).Scan(&f.Name, &f.Email, &f.Phone, &f.Service, &f.When, &address)
-	f.Where = "At the Dapper shop"
-	if strings.TrimSpace(address) != "" {
-		f.Where = address
-	}
-	return f, err
 }
 
 // ClaimBookingEmail is true for the first caller to claim this kind of email for the booking. A booking is told "cancelled" once; other kinds

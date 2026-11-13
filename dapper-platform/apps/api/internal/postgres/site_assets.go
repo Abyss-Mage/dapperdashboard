@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"os"
+	"sync/atomic"
 	"regexp"
 	"strings"
 	"time"
@@ -101,11 +102,41 @@ func (s *Store) SiteAssets(ctx context.Context, scope Scope) ([]SiteAsset, error
 }
 
 // mainSiteSlug is the public website everything below belongs to. Another franchise's uploads never reach it.
+// defaultSiteSlug is the website entry name the public site asks for when it was not built with another one.
+const defaultSiteSlug = "dapper-detailing-pros-peterborough"
+
+// resolvedSite is the website entry this database actually has (see RefreshMainSite): a database set up from the dashboard may have named
+// it something else ("ddp"), and everything tied to the main site (replaced images, email wording, alerts, the public catalogue) follows it.
+var resolvedSite atomic.Value
+
 func mainSiteSlug() string {
 	if v := os.Getenv("DAPPER_SITE_SLUG"); v != "" {
 		return v
 	}
-	return "dapper-detailing-pros-peterborough"
+	if v, _ := resolvedSite.Load().(string); v != "" {
+		return v
+	}
+	return defaultSiteSlug
+}
+
+// siteSlugFor maps the public site's built-in entry name to the main entry, so a site built with the default name still finds its data.
+func siteSlugFor(slug string) string {
+	if slug == defaultSiteSlug {
+		return mainSiteSlug()
+	}
+	return slug
+}
+
+// RefreshMainSite finds the main website entry: the one named DAPPER_SITE_SLUG, else the default name, else the published entry.
+// shortcut: with several published entries and no DAPPER_SITE_SLUG it takes the first by name; set DAPPER_SITE_SLUG once there are more franchises online.
+func (s *Store) RefreshMainSite(ctx context.Context) {
+	if os.Getenv("DAPPER_SITE_SLUG") != "" {
+		return
+	}
+	var slug string
+	if err := s.pool.QueryRow(ctx, `SELECT slug FROM public_sites WHERE slug=$1 OR published ORDER BY (slug=$1) DESC, slug LIMIT 1`, defaultSiteSlug).Scan(&slug); err == nil {
+		resolvedSite.Store(slug)
+	}
 }
 
 const onMainSite = ` JOIN public_sites ps ON ps.organization_id=a.organization_id AND ps.location_id=a.location_id AND ps.slug=$1 `

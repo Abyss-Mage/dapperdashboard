@@ -43,6 +43,7 @@ var websiteGrants = []string{"customers.read", "customers.create", "catalogue.re
 // websiteScope returns the scope the website acts under for a published public site, creating its principal and minimal grants on
 // first use. Publishing the site is the owner's decision to take online bookings.
 func (s *Store) websiteScope(ctx context.Context, slug string) (Scope, error) {
+	slug = siteSlugFor(slug)
 	if !siteSlug.MatchString(slug) {
 		return Scope{}, ErrPublicSite
 	}

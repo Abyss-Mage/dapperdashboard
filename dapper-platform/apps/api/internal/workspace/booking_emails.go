@@ -9,15 +9,6 @@ import (
 	"dapper.local/platform/internal/postgres"
 )
 
-var bookingEmailZone = func() *time.Location {
-	if z, err := time.LoadLocation("America/Toronto"); err == nil {
-		return z
-	}
-	return time.UTC
-}()
-
-func whenText(t time.Time) string { return t.In(bookingEmailZone).Format("Monday, January 2 at 3:04 PM") }
-
 // sendWithInvoicePDF sends a customer email with the booking's invoice attached as a PDF, or without it when there is no issued
 // invoice yet or the sender cannot attach files (test senders).
 func sendWithInvoicePDF(ctx context.Context, store *postgres.Store, sender postgres.EmailSender, bookingID, to, subject, body, text string) (string, error) {
@@ -41,20 +32,17 @@ var bookingAlerts = map[string]struct{ template, setting string }{
 // deliverBookingEmail writes one booking email from what is saved on the booking and sends it to the address saved on the customer, never one
 // typed into the form. An error means the customer's email did not go out; the business alert follows it, so a retry does not repeat the alert.
 func deliverBookingEmail(ctx context.Context, store *postgres.Store, sender postgres.EmailSender, origin, bookingID, kind string) error {
-	f, err := store.BookingEmailFacts(ctx, bookingID)
+	vars, to, err := store.BookingEmailVars(ctx, bookingID, origin)
 	if err != nil {
 		return err
 	}
-	vars := map[string]string{"name": f.Name, "phone": f.Phone, "email": f.Email, "service": f.Service, "when": whenText(f.When), "where": f.Where, "invoice": store.BookingInvoiceText(ctx, bookingID, origin+"/account")}
-	if kind == "booking_confirmation" {
-		vars["total"], vars["payment"] = store.BookingPaymentText(ctx, bookingID)
-	}
-	if f.Email != "" {
+	vars["invoice"] = store.BookingInvoiceText(ctx, bookingID, origin+"/account")
+	if to != "" {
 		subject, body, text := store.RenderEmail(ctx, kind, vars)
 		if kind == "booking_confirmation" || kind == "booking_completed" {
-			_, err = sendWithInvoicePDF(ctx, store, sender, bookingID, f.Email, subject, body, text)
+			_, err = sendWithInvoicePDF(ctx, store, sender, bookingID, to, subject, body, text)
 		} else {
-			_, err = sender.SendEmail(ctx, f.Email, subject, body, text)
+			_, err = sender.SendEmail(ctx, to, subject, body, text)
 		}
 		if err != nil {
 			log.Printf("Booking email %s for booking %s could not be sent; it will be tried again", kind, bookingID)

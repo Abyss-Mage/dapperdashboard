@@ -252,6 +252,7 @@ func (s *Store) ContentForManagement(ctx context.Context, scope Scope) (Publishe
 	return out, tx.Commit(ctx)
 }
 func (s *Store) PublicContent(ctx context.Context, slug string) (PublishedContent, error) {
+	slug = siteSlugFor(slug)
 	if !siteSlug.MatchString(slug) {
 		return PublishedContent{}, ErrContentNotFound
 	}

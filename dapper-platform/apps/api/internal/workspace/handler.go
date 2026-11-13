@@ -151,6 +151,7 @@ func NewHandlerWithFullServices(store *postgres.Store, origin string, invitation
 	registerRuleAvailabilityRoutes(mux, store)
 	registerPublicBookingRoutes(mux, store, emailSender, origin)
 	registerSiteAssetRoutes(mux, store)
+	postgres.SetEmailOrigin(origin)
 	installBookingEmails(store, emailSender, origin)
 	registerMemberInvitationRoutes(mux, store, invitations, emailSender)
 	registerAccountCredentialRoutes(mux, store, emailSender, origin)

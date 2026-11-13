@@ -33,6 +33,15 @@ func main() {
 	if err = store.ValidateSchema(ctx); err != nil {
 		log.Fatal("Scoped API requires explicit schema migration and matching checksums; no automatic migration performed")
 	}
+	// Which website entry is the main site; checked again every minute so one made later in the dashboard is picked up.
+	store.RefreshMainSite(ctx)
+	go func() {
+		for range time.Tick(time.Minute) {
+			c, done := context.WithTimeout(context.Background(), 5*time.Second)
+			store.RefreshMainSite(c)
+			done()
+		}
+	}()
 	// Optional Redis cache for the public website's data (owner 2026-11-13); without it, or while it is down, the database is read.
 	if c, err := cache.New(os.Getenv("DAPPER_REDIS_URL")); err != nil {
 		log.Printf("DAPPER_REDIS_URL is not a valid Redis address; running without the cache")

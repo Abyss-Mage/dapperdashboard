@@ -211,6 +211,16 @@ func verifyPublicBookFlow(t *testing.T, ctx context.Context, s *Store, a Scope, 
 	if text := s.BookingInvoiceText(ctx, got.BookingID, "https://example.invalid/account"); !strings.Contains(text, "Add-on: ") || !strings.Contains(text, "Total: $282.50") || !strings.Contains(text, "example.invalid/account") {
 		t.Fatal("invoice text for the email is wrong:", text)
 	}
+	// The email values: a booking number, the add-on, and where the work happens spelled out (never "At the Dapper shop").
+	vars, to, err := s.BookingEmailVars(ctx, got.BookingID, "https://example.invalid")
+	if err != nil || to != "web.guest@example.invalid" || !strings.HasPrefix(vars["booking_id"], "#") || vars["extras"] == "None" || vars["first_name"] != "Synthetic" ||
+		strings.Contains(vars["where"], "Dapper shop") || vars["logo_url"] != "https://example.invalid/icon-192.png" || vars["total"] != "$282.50" {
+		t.Fatalf("booking email values wrong: %v %q %+v", err, to, vars)
+	}
+	// The built-in designs are HTML and get the business details without the sender passing them.
+	if sub, body, text := s.RenderEmail(ctx, "booking_confirmation", vars); sub == "" || !strings.Contains(body, "<table") || !strings.Contains(body, vars["booking_id"]) || !strings.Contains(text, "+1 (705) 977-6217") || strings.Contains(body, "{{") {
+		t.Fatalf("booking confirmation did not render: %q %q", sub, text)
+	}
 	if got.TotalCents != 28250 || !strings.HasPrefix(got.InvoiceNumber, "T") && !strings.Contains(got.InvoiceNumber, "-") {
 		t.Fatalf("totals wrong (want 28250 total, 8475 deposit): %+v", got)
 	}

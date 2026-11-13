@@ -61,6 +61,7 @@ func (s *Store) seoGrant(ctx context.Context, tx pgx.Tx, actor, org string) erro
 // SiteSEOFor reads a website's search settings for editing (access.manage). The site is named by its slug, so the owner edits the
 // public website whichever franchise the dashboard has open.
 func (s *Store) SiteSEOFor(ctx context.Context, actor, org, slug string) (SiteSEO, error) {
+	slug = siteSlugFor(slug)
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return SiteSEO{}, err
@@ -79,6 +80,7 @@ func (s *Store) SiteSEOFor(ctx context.Context, actor, org, slug string) (SiteSE
 
 // SaveSiteSEO stores the website's search settings (access.manage: the owner and administrators, owner 2026-11-13).
 func (s *Store) SaveSiteSEO(ctx context.Context, actor, org, slug string, in SiteSEO) (SiteSEO, error) {
+	slug = siteSlugFor(slug)
 	site := PageSEO{Title: in.Title, Description: in.Description, Keywords: in.Keywords, Image: in.Image}
 	if !site.clean() || len(in.Pages) > 100 {
 		return SiteSEO{}, ErrContentInput

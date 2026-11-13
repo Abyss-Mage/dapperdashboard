@@ -10,7 +10,12 @@ async function readJson(r: Response) {
   if (!r.ok) throw new Error(b.error ?? 'That could not be done.');
   return b;
 }
-const SAMPLE: Record<string, string> = { name: 'Alex Morgan', phone: '+1 705 555 0123', email: 'alex@example.com', service: 'Hatchback - VIP Interior Detail', when: 'Monday, November 9 at 8:30 AM', where: 'At the Dapper shop', total: '$190.97', payment: 'Pay on the day', link: 'https://example.com/reset', organization: 'Dapper Detailing Pros' };
+const NL = String.fromCharCode(10);
+const SAMPLE: Record<string, string> = { name: 'Alex Morgan', first_name: 'Alex', last_name: 'Morgan', phone: '+1 705 555 0123', email: 'alex@example.com', booking_id: '#4312', service: 'Hatchback - VIP Interior Detail', extras: 'Engine Bay, Pet hairs', when: 'Monday, November 9 at 8:30 AM', date: 'Monday, November 9, 2026', time: '8:30 AM',
+  location: 'At our shop', address: '660 The Kingsway, Peterborough, ON K9J 7C8', where: 'At our shop - 660 The Kingsway, Peterborough, ON K9J 7C8', total: '$190.97', discount: '$0.00', coupon: 'None', tax: '$21.97', paid: '$0.00', due: '$190.97', refund: '$0.00',
+  payment: 'Pay on the day', status: 'APPROVED', invoice: 'Invoice DDP12' + NL + 'Hatchback - VIP Interior Detail: $169.00' + NL + 'Tax: $21.97' + NL + 'Total: $190.97', link: 'https://example.com/reset', organization: 'Dapper Detailing Pros',
+  number: 'DDP12', due_date: 'November 23, 2026', reference: 'Q-1042', valid_until: 'Valid until November 30, 2026',
+  company_name: 'Dapper Detailing Pros', company_phone: '+1 (705) 977-6217', company_website: 'https://dapperdetailing.ca', company_email: 'info@dapperdetailing.ca', logo_url: '/icon-192.png', review_link: 'https://share.google/avpHywVq7AkU0QNas', year: String(new Date().getFullYear()) };
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const fill = (s: string, safe: boolean) => s.replace(/\{\{(\w+)\}\}/g, (_, k: string) => (safe ? esc(SAMPLE[k] ?? '') : SAMPLE[k] ?? ''));
 // Switching a plain-text email to HTML keeps its words: each blank-line paragraph becomes a <p>.

@@ -27,6 +27,17 @@ type emailDefault struct {
 	label, subject, body string
 	placeholders         []string
 	needsLink            bool
+	html                 bool // the built-in wording is HTML (see email_designs.go)
+}
+
+// emailOrigin is the app's own address, for the logo and links every email may use; set once when the API starts.
+var emailOrigin = "https://dashboard.dapperdetailing.ca"
+
+// SetEmailOrigin sets the address the emails' logo is loaded from.
+func SetEmailOrigin(origin string) {
+	if strings.HasPrefix(origin, "https://") {
+		emailOrigin = origin
+	}
 }
 
 // The built-in wording. Plain text with {{placeholders}}; the HTML version is made from it when the email is sent.
@@ -151,7 +162,13 @@ func renderEmail(subject, body string, isHTML bool, vars map[string]string) (str
 // RenderEmail returns the owner's wording for this email if they saved one, else the built-in wording, filled in with the values.
 func (s *Store) RenderEmail(ctx context.Context, key string, vars map[string]string) (subject, bodyHTML, bodyText string) {
 	d := emailDefaults[key]
-	sub, body, isHTML := d.subject, d.body, false
+	sub, body, isHTML := d.subject, d.body, d.html
+	// The business details and logo are there for every email without each sender passing them.
+	all := CompanyVars(emailOrigin)
+	for k, v := range vars {
+		all[k] = v
+	}
+	vars = all
 	var savedSub, savedBody string
 	var savedHTML bool
 	if err := s.pool.QueryRow(ctx, `SELECT a.subject,a.body,a.is_html FROM email_templates a JOIN public_sites ps ON ps.organization_id=a.organization_id AND ps.slug=$2 WHERE a.template_key=$1 LIMIT 1`, key, mainSiteSlug()).Scan(&savedSub, &savedBody, &savedHTML); err == nil {
@@ -193,7 +210,7 @@ func (s *Store) EmailTemplates(ctx context.Context, actor, org string) ([]EmailT
 	out := []EmailTemplate{}
 	for _, k := range EmailKeys {
 		d := emailDefaults[k]
-		t := EmailTemplate{Key: k, Label: d.label, Subject: d.subject, Body: d.body, Placeholders: d.placeholders}
+		t := EmailTemplate{Key: k, Label: d.label, Subject: d.subject, Body: d.body, IsHTML: d.html, Placeholders: d.placeholders}
 		if v, ok := have[k]; ok {
 			t.Subject, t.Body, t.IsHTML, t.Custom = v.sub, v.body, v.html, true
 		}
