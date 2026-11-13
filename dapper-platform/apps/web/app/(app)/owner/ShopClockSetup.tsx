@@ -16,7 +16,8 @@ async function readJson(r: Response) {
 /* The shop iPad set-up (error404 #20): the franchise's own shop username and password (they open only the worker list on the iPad), the
    link to open there, and each person's 6-digit PIN (set by the owner; only whether one is set is shown). */
 export default function ShopClockSetup({ base, canManage }: { base: string; canManage: boolean }) {
-  const link = typeof window === 'undefined' ? '' : `${window.location.origin}/workspace`;
+  // The workspace has its own address next to the dashboard's (error404 #95): dashboard.… → workspace.….
+  const link = typeof window === 'undefined' ? '' : `${window.location.origin.replace('://dashboard.', '://workspace.')}/workspace`;
   const [people, setPeople] = useState<Person[] | null>(null);
   const [username, setUsername] = useState<string | null>(null);
   const [login, setLogin] = useState({ username: '', password: '' });

@@ -14,7 +14,7 @@ type Trends = {
   generatedAt: string;
   from: string;
   to: string;
-  bookings: { byDay: { date: string; count: number }[]; byStatus: Key[]; byChannel: Key[]; topServices: Key[]; total: number } | null;
+  bookings: { byDay: { date: string; count: number }[]; byStatus: Key[]; byChannel: Key[]; topServices: Key[]; total: number; createdByDay: { date: string; count: number }[]; completedByDay: { date: string; count: number }[]; created: number; completed: number } | null;
   payments: { byDay: { date: string; cents: number }[]; byMethod: Key[]; netCents: number } | null;
   invoices: { byStatus: Key[] } | null;
   jobs: { createdByDay: { date: string; count: number }[]; completedByDay: { date: string; count: number }[]; created: number; completed: number; open: number } | null;
@@ -167,8 +167,8 @@ export default function OwnerOverview({ base, location, organizationName, onNavi
           <div className={styles.tiles}>
             {tile('Bookings', trends?.bookings ? wholeNumber.format(trends.bookings.total) : null, rangeText, 'bookings', 'calendar', trends?.bookings?.byDay.map((d) => d.count), 'bookings.read')}
             {tile('Net recorded payments', trends?.payments ? dollars(trends.payments.netCents) : null, rangeText, 'finance', 'finance', trends?.payments?.byDay.map((d) => d.cents), 'payments.read')}
-            {tile('Bookings completed', trends?.jobs ? wholeNumber.format(trends.jobs.completed) : null, `${trends?.jobs?.created ?? 0} created · ${rangeText}`, 'operations', 'work', trends?.jobs?.completedByDay.map((d) => d.count), 'jobs.read')}
-            {tile('Outstanding balance', money('outstandingCents') === null ? null : dollars(money('outstandingCents') as number), 'Issued and partly paid, right now', 'finance', 'finance', undefined, 'invoices.read')}
+            {tile('Bookings completed', trends?.bookings ? wholeNumber.format(trends.bookings.completed) : null, `${trends?.bookings?.created ?? 0} made · ${rangeText}`, 'bookings', 'work', trends?.bookings?.completedByDay.map((d) => d.count), 'bookings.read')}
+            {tile('Outstanding balance', money('outstandingCents') === null ? null : dollars(money('outstandingCents') as number), 'Approved bookings and unpaid invoices, right now', 'finance', 'finance', undefined, 'invoices.read')}
             {tile('Customers', money('customers') === null ? null : wholeNumber.format(money('customers') as number), 'Recorded at this franchise, all time', 'customers', 'customers', undefined, 'customers.read')}
           </div>
 
@@ -189,7 +189,7 @@ export default function OwnerOverview({ base, location, organizationName, onNavi
 
             {trends?.payments ? (
               <>
-                <Card title="Net recorded payments per day" sub={`${rangeText} · completed payments less refunds · not revenue or bank settlement`} span={2}>
+                <Card title="Net recorded payments per day" sub={`${rangeText} · completed payments less refunds, and what imported WordPress bookings recorded as paid (on the appointment day) · not bank settlement`} span={2}>
                   <LineChart
                     labels={payPts.map((p) => p.date)}
                     series={[{ name: 'Net payments', values: payPts.map((p) => p.cents / 100), cls: 'seriesStroke1', dot: 'seriesFill1' }]}
@@ -207,25 +207,25 @@ export default function OwnerOverview({ base, location, organizationName, onNavi
               <Locked down={trendsDown} title="Payments" grant="payments.read" />
             )}
 
-            {trends?.jobs ? (
-              <Card title="Bookings started and completed" sub={rangeText} span={2} legend={
+            {trends?.bookings ? (
+              <Card title="Bookings made and completed" sub={`${rangeText} · made by the day they were booked, completed by the appointment day`} span={2} legend={
                 <ul className={styles.legend} aria-label="Legend">
-                  <li><i className={styles.seriesKey1} aria-hidden="true" />Created</li>
+                  <li><i className={styles.seriesKey1} aria-hidden="true" />Made</li>
                   <li><i className={styles.seriesKey2} aria-hidden="true" />Completed</li>
                 </ul>
               }>
                 <LineChart
-                  labels={trends.jobs.createdByDay.map((d) => d.date)}
+                  labels={trends.bookings.createdByDay.map((d) => d.date)}
                   series={[
-                    { name: 'Created', values: trends.jobs.createdByDay.map((d) => d.count), cls: 'seriesStroke1', dot: 'seriesFill1' },
-                    { name: 'Completed', values: trends.jobs.completedByDay.map((d) => d.count), cls: 'seriesStroke2', dot: 'seriesFill2' },
+                    { name: 'Made', values: trends.bookings.createdByDay.map((d) => d.count), cls: 'seriesStroke1', dot: 'seriesFill1' },
+                    { name: 'Completed', values: trends.bookings.completedByDay.map((d) => d.count), cls: 'seriesStroke2', dot: 'seriesFill2' },
                   ]}
-                  ariaLabel={`Bookings started and completed per day, ${rangeText}`}
+                  ariaLabel={`Bookings made and completed per day, ${rangeText}`}
                 />
-                <DataTable caption="Bookings per day" head={['Date', 'Created', 'Completed']} rows={trends.jobs.createdByDay.map((d, i) => [d.date, d.count, trends.jobs?.completedByDay[i]?.count ?? 0])} />
+                <DataTable caption="Bookings made and completed per day" head={['Date', 'Made', 'Completed']} rows={trends.bookings.createdByDay.map((d, i) => [d.date, d.count, trends.bookings?.completedByDay[i]?.count ?? 0])} />
               </Card>
             ) : (
-              <Locked down={trendsDown} title="Bookings completed" grant="jobs.read" />
+              <Locked down={trendsDown} title="Bookings completed" grant="bookings.read" />
             )}
 
             {trends?.invoices ? (

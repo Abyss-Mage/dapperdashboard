@@ -258,6 +258,10 @@ type GPSLiveEntry struct {
 	Latitude     *float64   `json:"latitude,omitempty"`
 	Longitude    *float64   `json:"longitude,omitempty"`
 	Accuracy     *float32   `json:"accuracyMeters,omitempty"`
+	// For the On shift now cards (error404 #97): when the shift began, the break in progress, and breaks taken so far.
+	ClockInAt    time.Time  `json:"clockInAt"`
+	BreakStarted *time.Time `json:"breakStartedAt,omitempty"`
+	BreakMinutes int        `json:"breakMinutes"`
 }
 
 type GPSLive struct {
@@ -280,7 +284,7 @@ func (s *Store) GPSLive(ctx context.Context, scope Scope) (GPSLive, error) {
 	if out.Settings, err = loadGPSSettings(ctx, tx, scope.OrganizationID, scope.LocationID, false); err != nil {
 		return out, err
 	}
-	rows, err := tx.Query(ctx, `SELECT a.id::text,COALESCE(NULLIF(mp.full_name,''),NULLIF(c_p.email,''),p.external_subject),a.status,COALESCE(st.state,'none'),st.last_sample_at,ls.latitude,ls.longitude,ls.accuracy_meters
+	rows, err := tx.Query(ctx, `SELECT a.id::text,COALESCE(NULLIF(mp.full_name,''),NULLIF(c_p.email,''),p.external_subject),a.status,COALESCE(st.state,'none'),st.last_sample_at,ls.latitude,ls.longitude,ls.accuracy_meters,a.clock_in_at,a.current_break_start,a.total_break_minutes
 FROM employee_attendance a JOIN principals p ON p.id=a.principal_id LEFT JOIN member_profiles mp ON mp.principal_id=p.id LEFT JOIN password_credentials c_p ON c_p.principal_id=p.id
 LEFT JOIN gps_shift_state st ON st.attendance_id=a.id
 LEFT JOIN LATERAL (SELECT latitude,longitude,accuracy_meters FROM gps_samples g WHERE g.attendance_id=a.id AND g.received_at >= clock_timestamp() - make_interval(days => $3) ORDER BY captured_at DESC LIMIT 1) ls ON true
@@ -292,7 +296,7 @@ WHERE a.organization_id=$1 AND a.location_id=$2 AND a.clock_out_at IS NULL ORDER
 	staleAfter := time.Duration(2*out.Settings.SampleIntervalSeconds+60) * time.Second
 	for rows.Next() {
 		var e GPSLiveEntry
-		if err = rows.Scan(&e.AttendanceID, &e.Employee, &e.ShiftStatus, &e.State, &e.LastSampleAt, &e.Latitude, &e.Longitude, &e.Accuracy); err != nil {
+		if err = rows.Scan(&e.AttendanceID, &e.Employee, &e.ShiftStatus, &e.State, &e.LastSampleAt, &e.Latitude, &e.Longitude, &e.Accuracy, &e.ClockInAt, &e.BreakStarted, &e.BreakMinutes); err != nil {
 			return out, err
 		}
 		if e.ShiftStatus != "clocked_in" || !out.Settings.Enabled {

@@ -71,6 +71,14 @@ export default function DealerInvoices({ base, organizationId, canCreate, canIss
     try { const msg = await fn(); if (msg) setNotice(msg); await load(); } catch (e) { setError(e instanceof Error ? e.message : 'The change could not be saved.'); } finally { setBusy(false); }
   }
   const rateOf = (id: string) => dealers.find((d) => d.id === id)?.perCarRateCents ?? null;
+  // error404 #96: switching dealership moves each line still at the old dealership's rate (or with no rate) to the new one's rate per car;
+  // a rate typed by hand is kept.
+  const money2 = (cents: number | null) => (cents != null ? (cents / 100).toFixed(2) : '');
+  const changeDealer = (id: string) => setDraft((d) => {
+    if (!d) return d;
+    const before = money2(rateOf(d.dealershipId)), after = money2(rateOf(id));
+    return { ...d, dealershipId: id, lines: d.lines.map((l) => (l.price === '' || l.price === before ? { ...l, price: after } : l)) };
+  });
   const blankLine = (dealer: string): Line => { const r = rateOf(dealer); return { description: '', detail: '', quantity: '1', price: r != null ? (r / 100).toFixed(2) : '', vin: '', stockNumber: '' }; };
   const startNew = () => {
     const d = filter.dealershipId || dealers.find((x) => x.active)?.id || '';
@@ -143,7 +151,7 @@ export default function DealerInvoices({ base, organizationId, canCreate, canIss
           <h3 className={styles.dlH3}>{draft.id ? 'Edit draft invoice' : 'New dealership invoice'}</h3>
           {error && <p role="alert" className={`field-error ${styles.dlMsg}`}>{error}</p>}
           <div className={styles.dlGrid}>
-            <label className={styles.dlField}>Dealership<Select value={draft.dealershipId} onChange={(e) => set('dealershipId', e.target.value)} disabled={busy || !!draft.id} required><option value="">Choose a dealership</option>{dealers.filter((d) => d.active || d.id === draft.dealershipId).map((d) => <option key={d.id} value={d.id}>{d.accountName}</option>)}</Select></label>
+            <label className={styles.dlField}>Dealership<Select value={draft.dealershipId} onChange={(e) => changeDealer(e.target.value)} disabled={busy || !!draft.id} required><option value="">Choose a dealership</option>{dealers.filter((d) => d.active || d.id === draft.dealershipId).map((d) => <option key={d.id} value={d.id}>{d.accountName}</option>)}</Select></label>
             <label className={styles.dlField}>Invoice number<input value={draft.invoiceNumber} onChange={(e) => set('invoiceNumber', e.target.value)} maxLength={40} placeholder={`Automatic (${nextNumber})`} disabled={busy} /><small>Leave empty to use {nextNumber}.</small></label>
             <label className={styles.dlField}>PO number<input value={draft.poNumber} onChange={(e) => set('poNumber', e.target.value)} maxLength={40} placeholder="Optional" disabled={busy} /></label>
             <div className={styles.dlField}><span id="dl-inv-date">Invoice date</span><DatePicker value={draft.invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} aria-labelledby="dl-inv-date" required disabled={busy} /></div>

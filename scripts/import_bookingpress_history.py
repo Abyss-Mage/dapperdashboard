@@ -102,6 +102,9 @@ def main():
             f"INSERT INTO legacy_import_map(source_system,source_kind,source_id,organization_id,target_id,batch) SELECT 'bookingpress','booking',{q(bid)},{q(a.org)},id,{q(a.batch)} FROM bookings WHERE id={q(tid)} ON CONFLICT DO NOTHING;")
         out.append(
             f"INSERT INTO booking_events(booking_id,organization_id,location_id,from_status,to_status,notes) SELECT id,organization_id,location_id,NULL,status,'Imported from BookingPress' FROM bookings WHERE id={q(tid)} AND NOT EXISTS(SELECT 1 FROM booking_events WHERE booking_id={q(tid)});")
+        # Staff screens show a booking through its worksite row (no dealership = this location's work), error404 #88.
+        out.append(
+            f"INSERT INTO employee_booking_worksites(booking_id,organization_id,location_id,dealership_id,linked_by) SELECT b.id,b.organization_id,b.location_id,NULL,m.principal_id FROM bookings b JOIN LATERAL (SELECT principal_id FROM organization_memberships WHERE organization_id=b.organization_id ORDER BY created_at,principal_id LIMIT 1) m ON true WHERE b.id={q(tid)} ON CONFLICT(booking_id) DO NOTHING;")
         rep["bookings " + st] += 1
     open(a.out, "w", encoding="utf8").write("-- BookingPress history import. Contains customer details; do not commit.\nBEGIN;\n" + "\n".join(out) + "\nCOMMIT;\n")
     print(json.dumps(dict(rep), indent=1))

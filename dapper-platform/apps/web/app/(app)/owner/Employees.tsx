@@ -43,7 +43,7 @@ export default function Employees({ organizationId, franchiseName = '', onChange
   const [open, setOpen] = useState<Person | null>(null);
   const [newRole, setNewRole] = useState('');
   const [newScope, setNewScope] = useState('organization');
-  const [confirm, setConfirm] = useState<{ person: Person; action: 'terminate' | 'reinstate' } | null>(null);
+  const [confirm, setConfirm] = useState<{ person: Person; action: 'terminate' | 'reinstate' | 'remove' } | null>(null);
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState('');
 
   const load = useCallback(async () => {
@@ -82,10 +82,11 @@ export default function Employees({ organizationId, franchiseName = '', onChange
     return 'Role added.';
   });
   const revoke = (a: Assignment) => run(async () => { await readJson(await fetch(`${base}/role-assignments/${a.id}?version=${a.version}`, send('DELETE'))); return `${a.roleName} removed.`; });
-  const setActive = (p: Person, action: 'terminate' | 'reinstate') => run(async () => {
+  const setActive = (p: Person, action: 'terminate' | 'reinstate' | 'remove') => run(async () => {
     await readJson(await fetch(`${base}/members/${p.principalId}/${action}`, send('POST', {})));
     setConfirm(null);
-    return action === 'terminate' ? `${p.fullName || p.email} was terminated and signed out.` : `${p.fullName || p.email} was reinstated.`;
+    if (action === 'remove') setOpen(null);
+    return action === 'terminate' ? `${p.fullName || p.email} was terminated and signed out.` : action === 'remove' ? `${p.fullName || p.email} was removed from the team.` : `${p.fullName || p.email} was reinstated.`;
   });
 
   const mine = open ? assignments.filter((a) => a.principalId === open.principalId) : [];
@@ -172,13 +173,15 @@ export default function Employees({ organizationId, franchiseName = '', onChange
             {open.active
               ? <button type="button" className="secondary" disabled={busy} onClick={() => setConfirm({ person: open, action: 'terminate' })}>Terminate employee</button>
               : <button type="button" className="primary" disabled={busy} onClick={() => setConfirm({ person: open, action: 'reinstate' })}>Reinstate employee</button>}
+            {/* error404 #90: take them off the team for good; their records stay. */}
+            <button type="button" className="secondary" disabled={busy} onClick={() => setConfirm({ person: open, action: 'remove' })} style={{ marginLeft: 8 }}>Remove from team</button>
           </div>
         </aside>
       </>}
 
-      <ConfirmDialog isOpen={confirm !== null} title={confirm?.action === 'terminate' ? 'Terminate employee' : 'Reinstate employee'} entityName={confirm?.person.fullName || confirm?.person.email || ''} entityType="Employee" actionType="archive" isBusy={busy}
-        explanation={confirm?.action === 'terminate' ? 'They are signed out everywhere and cannot sign in again. Everything they did stays in your records. You can reinstate them later.' : 'They can sign in again with their existing password and roles.'}
-        confirmLabel={confirm?.action === 'terminate' ? 'Terminate' : 'Reinstate'}
+      <ConfirmDialog isOpen={confirm !== null} title={confirm?.action === 'terminate' ? 'Terminate employee' : confirm?.action === 'remove' ? 'Remove from team' : 'Reinstate employee'} entityName={confirm?.person.fullName || confirm?.person.email || ''} entityType="Employee" actionType={confirm?.action === 'remove' ? 'delete' : 'archive'} isBusy={busy}
+        explanation={confirm?.action === 'terminate' ? 'They are signed out everywhere and cannot sign in again. Everything they did stays in your records. You can reinstate them later.' : confirm?.action === 'remove' ? 'They are signed out, cannot sign in, lose all their roles and leave the Team and Employees lists. Bookings, payments and hours they recorded stay in your records under their name. To have them back, invite them again.' : 'They can sign in again with their existing password and roles.'}
+        confirmLabel={confirm?.action === 'terminate' ? 'Terminate' : confirm?.action === 'remove' ? 'Remove from team' : 'Reinstate'}
         onConfirm={async () => { if (confirm) await setActive(confirm.person, confirm.action); }} onCancel={() => { if (!busy) setConfirm(null); }} />
     </div>
   );

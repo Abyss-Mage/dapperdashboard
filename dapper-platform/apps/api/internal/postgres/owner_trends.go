@@ -30,6 +30,11 @@ type TrendBookings struct {
 	ByChannel   []KeyCount `json:"byChannel"` // ignores the channel filter so channels stay comparable
 	TopServices []KeyCount `json:"topServices"`
 	Total       int64      `json:"total"`
+	// Bookings made per day (by when they were made) and completed per day (by appointment day), error404 #94; channel filter applies.
+	CreatedByDay   []DayCount `json:"createdByDay"`
+	CompletedByDay []DayCount `json:"completedByDay"`
+	Created        int64      `json:"created"`
+	Completed      int64      `json:"completed"`
 }
 type TrendPayments struct {
 	ByDay    []DayCents `json:"byDay"`
@@ -57,6 +62,12 @@ type OwnerTrends struct {
 	Invoices    *TrendInvoices `json:"invoices"`
 	Jobs        *TrendJobs     `json:"jobs"`
 }
+
+// netPayments is every recorded payment as (day, method, cents): the new system's payments net of refunds, and the amounts the imported
+// WordPress bookings recorded as paid (not void), on their appointment day (error404 #92). $1 org, $2 location, $5 timezone, $6 channel.
+const netPayments = `SELECT (p.recorded_at AT TIME ZONE $5)::date AS day, p.method, p.amount_cents-p.refunded_cents AS cents FROM payments p WHERE p.organization_id=$1 AND p.location_id=$2 AND p.status IN ('completed','refunded') AND ($6='' OR EXISTS(SELECT 1 FROM invoices i JOIN bookings b ON b.id=i.booking_id WHERE i.id=p.invoice_id AND b.channel=$6))
+ UNION ALL
+ SELECT (b.booking_time AT TIME ZONE $5)::date, CASE WHEN l.payment_method='' THEN 'cash' ELSE l.payment_method END, l.paid_cents FROM legacy_booking_billing l JOIN bookings b ON b.id=l.booking_id WHERE l.organization_id=$1 AND l.location_id=$2 AND l.status<>'void' AND l.paid_cents>0 AND ($6='' OR b.channel=$6)`
 
 // Only the two ways a customer actually books are offered as filters; other channels still appear in the "by channel" split.
 var trendChannels = map[string]bool{"": true, "online": true, "walk_in": true}
@@ -148,13 +159,23 @@ func (s *Store) OwnerTrends(ctx context.Context, scope Scope, from, to, tz, chan
 		for _, d := range b.ByDay {
 			b.Total += d.Count
 		}
+		if b.CreatedByDay, err = days(`SELECT g.d::date::text, count(b.id) FROM `+series+` LEFT JOIN bookings b ON b.organization_id=$1 AND b.location_id=$2 AND (b.created_at AT TIME ZONE $5)::date=g.d::date AND ($6='' OR b.channel=$6) GROUP BY g.d ORDER BY g.d`, org, loc, from, to, tz, channel); err != nil {
+			return OwnerTrends{}, err
+		}
+		if b.CompletedByDay, err = days(`SELECT g.d::date::text, count(b.id) FROM `+series+` LEFT JOIN bookings b ON b.organization_id=$1 AND b.location_id=$2 AND b.status='completed' AND (b.booking_time AT TIME ZONE $5)::date=g.d::date AND ($6='' OR b.channel=$6) GROUP BY g.d ORDER BY g.d`, org, loc, from, to, tz, channel); err != nil {
+			return OwnerTrends{}, err
+		}
+		for i := range b.CreatedByDay {
+			b.Created += b.CreatedByDay[i].Count
+			b.Completed += b.CompletedByDay[i].Count
+		}
 		out.Bookings = b
 	}
 	if ok, err = allowed("payments.read"); err != nil {
 		return OwnerTrends{}, err
 	} else if ok {
 		p := &TrendPayments{}
-		rows, qerr := tx.Query(ctx, `SELECT g.d::date::text, COALESCE(sum(p.amount_cents-p.refunded_cents),0) FROM `+series+` LEFT JOIN payments p ON p.organization_id=$1 AND p.location_id=$2 AND (p.recorded_at AT TIME ZONE $5)::date=g.d::date AND p.status IN ('completed','refunded') GROUP BY g.d ORDER BY g.d`, org, loc, from, to, tz)
+		rows, qerr := tx.Query(ctx, `SELECT g.d::date::text, COALESCE(sum(p.cents),0) FROM `+series+` LEFT JOIN (`+netPayments+`) p ON p.day=g.d::date GROUP BY g.d ORDER BY g.d`, org, loc, from, to, tz, channel)
 		if qerr != nil {
 			return OwnerTrends{}, qerr
 		}
@@ -171,7 +192,7 @@ func (s *Store) OwnerTrends(ctx context.Context, scope Scope, from, to, tz, chan
 		if err = rows.Err(); err != nil {
 			return OwnerTrends{}, err
 		}
-		if p.ByMethod, err = keys(`SELECT method,count(*),COALESCE(sum(amount_cents-refunded_cents),0),0::bigint FROM payments WHERE organization_id=$1 AND location_id=$2 AND status IN ('completed','refunded') AND (recorded_at AT TIME ZONE $5)::date BETWEEN $3::date AND $4::date AND ($6='' OR EXISTS(SELECT 1 FROM invoices i JOIN bookings b ON b.id=i.booking_id WHERE i.id=payments.invoice_id AND b.channel=$6)) GROUP BY method ORDER BY 3 DESC,method`, org, loc, from, to, tz, channel); err != nil {
+		if p.ByMethod, err = keys(`SELECT method,count(*),COALESCE(sum(cents),0),0::bigint FROM (`+netPayments+`) p WHERE day BETWEEN $3::date AND $4::date GROUP BY method ORDER BY 3 DESC,method`, org, loc, from, to, tz, channel); err != nil {
 			return OwnerTrends{}, err
 		}
 		out.Payments = p
@@ -180,7 +201,12 @@ func (s *Store) OwnerTrends(ctx context.Context, scope Scope, from, to, tz, chan
 		return OwnerTrends{}, err
 	} else if ok {
 		i := &TrendInvoices{}
-		if i.ByStatus, err = keys(`SELECT status,count(*),COALESCE(sum(total_cents),0),COALESCE(sum(due_cents),0) FROM invoices WHERE organization_id=$1 AND location_id=$2 AND (created_at AT TIME ZONE $5)::date BETWEEN $3::date AND $4::date AND NOT (status='void' AND issued_at IS NULL) AND ($6='' OR EXISTS(SELECT 1 FROM bookings b WHERE b.id=invoices.booking_id AND b.channel=$6)) GROUP BY status ORDER BY count(*) DESC,status`, org, loc, from, to, tz, channel); err != nil {
+		// Imported WordPress invoices count too, dated by their appointment (error404 #94).
+		if i.ByStatus, err = keys(`SELECT status,count(*),COALESCE(sum(total),0),COALESCE(sum(due),0) FROM (
+ SELECT status,total_cents AS total,due_cents AS due FROM invoices WHERE organization_id=$1 AND location_id=$2 AND (created_at AT TIME ZONE $5)::date BETWEEN $3::date AND $4::date AND NOT (status='void' AND issued_at IS NULL) AND ($6='' OR EXISTS(SELECT 1 FROM bookings b WHERE b.id=invoices.booking_id AND b.channel=$6))
+ UNION ALL
+ SELECT l.status,l.total_cents,CASE WHEN l.status='void' THEN 0 ELSE l.total_cents-l.paid_cents END FROM legacy_booking_billing l JOIN bookings b ON b.id=l.booking_id WHERE l.organization_id=$1 AND l.location_id=$2 AND (b.booking_time AT TIME ZONE $5)::date BETWEEN $3::date AND $4::date AND ($6='' OR b.channel=$6)
+) x GROUP BY status ORDER BY count(*) DESC,status`, org, loc, from, to, tz, channel); err != nil {
 			return OwnerTrends{}, err
 		}
 		out.Invoices = i

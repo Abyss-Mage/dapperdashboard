@@ -79,8 +79,14 @@ func TestFirstFranchiseSetup(t *testing.T) {
 		t.Fatal("the franchise has no published website entry", slug, published)
 	}
 	// the new Super Admin can run the roles screen and the content screens
-	if roles, e := s.ListRoles(ctx, owner.PrincipalID, owner.OrganizationID); e != nil || len(roles) != 2 {
-		t.Fatal("the Super Admin cannot list roles", e)
+	if roles, e := s.ListRoles(ctx, owner.PrincipalID, owner.OrganizationID); e != nil || len(roles) != 3 {
+		t.Fatal("the Super Admin cannot list the three built-in roles", len(roles), e)
+	}
+	// error404 #89: the Franchise Owner role is there from the start, with its full list of capabilities.
+	var ownerCaps int
+	must(pool.QueryRow(ctx, `SELECT count(*) FROM roles r JOIN role_capabilities c ON c.role_id=r.id WHERE r.organization_id=$1 AND r.name=$2`, owner.OrganizationID, FranchiseOwnerRoleName).Scan(&ownerCaps))
+	if ownerCaps != len(FranchiseOwnerRoleCapabilities) || ownerCaps != 37 {
+		t.Fatal("Franchise Owner role incomplete", ownerCaps)
 	}
 	scope, err := s.ResolveScope(ctx, owner.PrincipalID, owner.OrganizationID, franchise.ID, "content.manage")
 	if err != nil || scope.LocationID != franchise.ID {

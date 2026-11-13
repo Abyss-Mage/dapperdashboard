@@ -173,7 +173,7 @@ func (s *InvitationService) List(ctx context.Context, actor, org string) ([]Memb
 	if err = accessManagementGrant(ctx, tx, actor, org); err != nil {
 		return nil, err
 	}
-	rows, err := tx.Query(ctx, `SELECT `+memberInvitationColumns+` FROM member_invitations i JOIN member_invitation_deliveries d ON d.invitation_id=i.id WHERE i.organization_id=$1 ORDER BY i.created_at DESC,i.id LIMIT 100`, org)
+	rows, err := tx.Query(ctx, `SELECT `+memberInvitationColumns+` FROM member_invitations i JOIN member_invitation_deliveries d ON d.invitation_id=i.id WHERE i.organization_id=$1 AND i.hidden_at IS NULL ORDER BY i.created_at DESC,i.id LIMIT 100`, org)
 	if err != nil {
 		return nil, err
 	}

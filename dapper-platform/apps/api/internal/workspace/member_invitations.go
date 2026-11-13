@@ -238,6 +238,23 @@ func registerMemberInvitationRoutes(mux *http.ServeMux, store *postgres.Store, s
 		}
 		w.WriteHeader(204)
 	})
+	// error404 #91: take an accepted, revoked or expired invitation off the list.
+	mux.HandleFunc("POST "+base+"/{invitation}/hide", func(w http.ResponseWriter, r *http.Request) {
+		org, id := r.PathValue("organization"), r.PathValue("invitation")
+		if !uuid(org) || !uuid(id) {
+			reply(w, 400, map[string]string{"error": "Valid invitation selector required"})
+			return
+		}
+		err := store.HideMemberInvitation(r.Context(), requestSession(r).principalID, org, id)
+		switch {
+		case errors.Is(err, postgres.ErrInvitationStillOpen):
+			reply(w, 409, map[string]string{"error": "This invitation can still be accepted. Revoke it first, then remove it."})
+		case err != nil:
+			invitationFailure(w, err)
+		default:
+			w.WriteHeader(204)
+		}
+	})
 	mux.HandleFunc("POST "+base+"/dispatch", func(w http.ResponseWriter, r *http.Request) {
 		org := r.PathValue("organization")
 		if !uuid(org) {

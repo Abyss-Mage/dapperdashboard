@@ -109,4 +109,46 @@ func TestOwnerTrendsAreScopedFilteredAndAuthorizedPerBlock(t *testing.T) {
 	if _, err = s.OwnerTrends(ctx, Scope{ActorID: actor, OrganizationID: org, LocationID: otherSite}, "2026-10-19", "2026-10-22", "UTC", ""); !errors.Is(err, ErrForbidden) {
 		t.Fatal("another site's trends were readable", err)
 	}
+	// error404 #94: completed bookings are counted from bookings themselves, not work orders.
+	if got.Bookings.Completed != 1 || got.Bookings.Created != 0 { // made today, outside the October range
+		t.Fatalf("completed/created bookings wrong: %+v", got.Bookings)
+	}
+
+	// error404 #92 #93: what imported WordPress bookings recorded as paid counts as recorded payments, by method, and what they still owe
+	// counts as outstanding.
+	for _, a := range []string{"payments.read", "invoices.read"} {
+		exec(`INSERT INTO location_grants(principal_id,organization_id,location_id,action) VALUES($1,$2,$3,$4)`, actor, org, site, a)
+	}
+	paidOld := id(`INSERT INTO bookings(organization_id,location_id,customer_id,service_name,channel,status,booking_time) VALUES($1,$2,$3,'Imported wash','online','completed',$4) RETURNING id::text`, org, site, customer, day)
+	owingOld := id(`INSERT INTO bookings(organization_id,location_id,customer_id,service_name,channel,status,booking_time) VALUES($1,$2,$3,'Imported polish','online','confirmed',$4) RETURNING id::text`, org, site, customer, day)
+	exec(`INSERT INTO legacy_booking_billing(booking_id,organization_id,location_id,source_id,invoice_number,status,items,subtotal_cents,tax_cents,total_cents,paid_cents,payment_method) VALUES($1,$2,$3,'901','DDP901','paid','[]',10000,1300,11300,11300,'square_card')`, paidOld, org, site)
+	exec(`INSERT INTO legacy_booking_billing(booking_id,organization_id,location_id,source_id,invoice_number,status,items,subtotal_cents,tax_cents,total_cents,paid_cents,payment_method) VALUES($1,$2,$3,'902','DDP902','partially_paid','[]',20000,2600,22600,5000,'cash')`, owingOld, org, site)
+	money, err := s.OwnerTrends(ctx, scope, "2026-10-19", "2026-10-22", "America/Toronto", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if money.Payments == nil || money.Payments.NetCents != 16300 {
+		t.Fatalf("imported payments missing from net recorded payments: %+v", money.Payments)
+	}
+	methods := map[string]int64{}
+	for _, m := range money.Payments.ByMethod {
+		methods[m.Key] = m.Cents
+	}
+	if methods["square_card"] != 11300 || methods["cash"] != 5000 {
+		t.Fatalf("imported payments missing from the method split: %+v", money.Payments.ByMethod)
+	}
+	statuses := map[string]int64{}
+	for _, k := range money.Invoices.ByStatus {
+		statuses[k.Key] = k.Count
+	}
+	if statuses["paid"] != 1 || statuses["partially_paid"] != 1 {
+		t.Fatalf("imported invoices missing from invoices by status: %+v", money.Invoices.ByStatus)
+	}
+	overview, err := s.OwnerOverview(ctx, scope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if overview.Metrics["outstandingCents"] == nil || *overview.Metrics["outstandingCents"] != 17600 || *overview.Metrics["netPaymentsCents"] != 16300 {
+		t.Fatalf("overview money wrong: outstanding %v net %v", overview.Metrics["outstandingCents"], overview.Metrics["netPaymentsCents"])
+	}
 }

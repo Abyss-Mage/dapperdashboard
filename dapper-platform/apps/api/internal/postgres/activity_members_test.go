@@ -118,4 +118,41 @@ func TestActivityLogAndTermination(t *testing.T) {
 	if err = s.SetMemberActive(ctx, second, org, boss, false); !errors.Is(err, ErrForbidden) && !errors.Is(err, ErrMemberLastAdmin) {
 		t.Fatal("the last administrator could be terminated", err)
 	}
+
+	// error404 #90: removing a person takes them off the team (no membership, grants or sign-in); yourself and outsiders cannot.
+	_, err = pool.Exec(ctx, `INSERT INTO organization_grants(organization_id,principal_id,action) VALUES($1,$2,'bookings.read')`, org, worker)
+	must(err)
+	if err = s.RemoveMember(ctx, worker, org, boss); !errors.Is(err, ErrForbidden) {
+		t.Fatal("a member without access.manage removed someone", err)
+	}
+	if err = s.RemoveMember(ctx, boss, org, boss); !errors.Is(err, ErrMemberSelf) {
+		t.Fatal("an administrator removed themselves", err)
+	}
+	must(s.RemoveMember(ctx, boss, org, worker))
+	var left int
+	must(pool.QueryRow(ctx, `SELECT (SELECT count(*) FROM organization_memberships WHERE principal_id=$1)+(SELECT count(*) FROM organization_grants WHERE principal_id=$1)`, worker).Scan(&left))
+	if left != 0 {
+		t.Fatal("a removed member kept membership or grants", left)
+	}
+	if _, err = auth.SignIn(ctx, "act-worker@example.invalid", password, time.Hour); err == nil {
+		t.Fatal("a removed member can sign in")
+	}
+	if err = s.RemoveMember(ctx, boss, org, worker); !errors.Is(err, ErrMemberNotFound) {
+		t.Fatal("removing twice should say not found", err)
+	}
+
+	// error404 #91: an accepted or expired invitation can be taken off the list; an open one cannot.
+	var open, used string
+	must(pool.QueryRow(ctx, `INSERT INTO member_invitations(organization_id,email,token_hash,created_by,expires_at) VALUES($1,'open@example.invalid',decode(md5('open')||md5('open'),'hex'),$2,now()+interval '1 day') RETURNING id::text`, org, boss).Scan(&open))
+	must(pool.QueryRow(ctx, `INSERT INTO member_invitations(organization_id,email,token_hash,created_by,created_at,expires_at) VALUES($1,'old@example.invalid',decode(md5('old')||md5('old'),'hex'),$2,now()-interval '2 days',now()-interval '1 day') RETURNING id::text`, org, boss).Scan(&used))
+	if err = s.HideMemberInvitation(ctx, boss, org, open); !errors.Is(err, ErrInvitationStillOpen) {
+		t.Fatal("an open invitation was removed from the list", err)
+	}
+	must(s.HideMemberInvitation(ctx, boss, org, used))
+	var status string
+	var hidden bool
+	must(pool.QueryRow(ctx, `SELECT status,hidden_at IS NOT NULL FROM member_invitations WHERE id=$1`, used).Scan(&status, &hidden))
+	if status != "revoked" || !hidden {
+		t.Fatal("expired invitation not revoked and hidden", status, hidden)
+	}
 }

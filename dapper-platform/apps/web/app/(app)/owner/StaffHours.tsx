@@ -11,7 +11,7 @@ import Select from '../GlassSelect';
 
 type Day = { date: string; minutes: number; shifts: number; clockIn?: string | null; clockOut?: string | null; open?: boolean };
 type Staff = { principalId: string; name: string; email: string; totalMinutes: number; clockedIn: boolean; days: Day[] };
-type Entry = { attendanceId: string; employee: string; shiftStatus: string };
+type Entry = { attendanceId: string; employee: string; shiftStatus: string; clockInAt?: string; breakStartedAt?: string; breakMinutes?: number };
 type By = 'day' | 'week' | 'month';
 
 const hours = (m: number) => (m < 60 ? `${m} min` : `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''}`);
@@ -67,10 +67,41 @@ export default function StaffHours({ base, timezone, canManage }: { base: string
 
   return (
     <div className={styles.stack}>
+      {/* error404 #97: a clear card per person (who, working or on break, since when, how long) instead of small tags. */}
       <section className={styles.card} style={{ padding: 20 }}>
-        <h2 className={styles.setupTitle} style={{ fontSize: 20, margin: 0 }}>On shift now</h2>
-        <p className={styles.personSub}>{live.filter((e) => e.shiftStatus === 'clocked_in').length} working · {live.filter((e) => e.shiftStatus === 'on_break').length} on break · updates every minute while this page is open</p>
-        {live.length > 0 ? <ul className={styles.svcTags} style={{ marginTop: 10 }}>{live.map((e) => <li key={e.attendanceId} className={styles.chip}>{e.employee} · {e.shiftStatus === 'on_break' ? 'On break' : 'Working'}</li>)}</ul> : <p className={styles.status}>No one is clocked in.</p>}
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+          <h2 className={styles.setupTitle} style={{ fontSize: 22, margin: 0 }}>On shift now</h2>
+          <span className={styles.personSub}>Updates every minute while this page is open</span>
+        </div>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', margin: '14px 0 4px' }}>
+          {[{ label: 'Working', value: live.filter((e) => e.shiftStatus === 'clocked_in').length, color: '#22c55e' }, { label: 'On break', value: live.filter((e) => e.shiftStatus === 'on_break').length, color: '#f59e0b' }].map((c) => (
+            <div key={c.label} style={{ flex: '1 1 160px', border: '1px solid var(--glass-line, rgba(255,255,255,.12))', borderRadius: 16, padding: '14px 18px' }}>
+              <div style={{ fontSize: 36, fontWeight: 800, lineHeight: 1, color: c.color }}>{c.value}</div>
+              <div style={{ fontSize: 15, fontWeight: 600, marginTop: 6 }}>{c.label}</div>
+            </div>
+          ))}
+        </div>
+        {live.length === 0 ? <p className={styles.status} style={{ fontSize: 16 }}>No one is clocked in.</p> : (
+          <ul style={{ listStyle: 'none', padding: 0, margin: '14px 0 0', display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}>
+            {live.map((e) => {
+              const onBreak = e.shiftStatus === 'on_break';
+              const now = Date.now();
+              const worked = e.clockInAt ? Math.max(0, Math.round((now - new Date(e.clockInAt).getTime()) / 60000) - (e.breakMinutes ?? 0) - (onBreak && e.breakStartedAt ? Math.round((now - new Date(e.breakStartedAt).getTime()) / 60000) : 0)) : null;
+              const breakFor = onBreak && e.breakStartedAt ? Math.max(0, Math.round((now - new Date(e.breakStartedAt).getTime()) / 60000)) : null;
+              const initials = e.employee.split(/[\s@.]+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('');
+              return (
+                <li key={e.attendanceId} style={{ display: 'flex', gap: 14, alignItems: 'center', border: '1px solid var(--glass-line, rgba(255,255,255,.12))', borderLeft: `5px solid ${onBreak ? '#f59e0b' : '#22c55e'}`, borderRadius: 16, padding: '14px 16px' }}>
+                  <span aria-hidden="true" style={{ flex: 'none', width: 48, height: 48, borderRadius: '50%', display: 'grid', placeItems: 'center', fontSize: 18, fontWeight: 800, background: onBreak ? 'rgba(245,158,11,.18)' : 'rgba(34,197,94,.18)', color: onBreak ? '#f59e0b' : '#22c55e' }}>{initials || '?'}</span>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 18, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.employee}</div>
+                    <div style={{ marginTop: 4 }}><span style={{ display: 'inline-block', fontSize: 13, fontWeight: 700, padding: '3px 10px', borderRadius: 999, background: onBreak ? 'rgba(245,158,11,.18)' : 'rgba(34,197,94,.18)', color: onBreak ? '#f59e0b' : '#22c55e' }}>{onBreak ? `On break${breakFor !== null ? ` · ${hours(breakFor)}` : ''}` : 'Working'}</span></div>
+                    {e.clockInAt && <div className={styles.personSub} style={{ fontSize: 14, marginTop: 6 }}>Clocked in {clock(e.clockInAt, timezone)}{worked !== null ? ` · ${hours(worked)} worked` : ''}</div>}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </section>
 
       <ShopClockSetup base={base} canManage={canManage} />

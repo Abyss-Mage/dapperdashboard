@@ -50,6 +50,16 @@ export default function MemberInvitations({organizationId}: {organizationId: str
     } catch (failure) {setError(failure instanceof Error ? failure.message : 'Invitation could not be queued.');}
     finally {setBusy(false);}
   }
+  // error404 #91: take an accepted, revoked or expired invitation off the list (it stays in the history).
+  async function hide(invitation: Invitation) {
+    setBusy(true); setError(''); setNotice('');
+    try {
+      const response = await fetch(`${base}/${invitation.id}/hide`, {method: 'POST'});
+      if (!response.ok) {const body = await response.json().catch(() => ({})); throw new Error(body.error ?? 'Invitation could not be removed.');}
+      setNotice(`Invitation for ${invitation.email} removed from the list.`); await load();
+    } catch (failure) {setError(failure instanceof Error ? failure.message : 'Invitation could not be removed.');}
+    finally {setBusy(false);}
+  }
   async function revoke(invitation: Invitation) {
     setBusy(true); setError(''); setNotice('');
     try {
@@ -73,8 +83,9 @@ export default function MemberInvitations({organizationId}: {organizationId: str
         <button className="primary" disabled={busy || (!!roleId && !locationId)}>{busy ? 'Saving…' : 'Send invitation'}</button>
       </form>
       <ul>{items.map(invitation => <li key={invitation.id} style={{paddingBlock: '.75rem', overflowWrap: 'anywhere'}}>
-        <strong>{invitation.email}</strong>{invitation.roleName ? ` · ${invitation.roleName} at ${invitation.locationName}` : ''} · {invitation.status === 'pending' && new Date(invitation.expiresAt).getTime() <= Date.now() ? 'expired' : invitation.status}{` · email ${invitation.deliveryState}`} · Email: {invitation.deliveryState} · Expires {new Date(invitation.expiresAt).toLocaleString()}
+        <strong>{invitation.email}</strong>{invitation.roleName ? ` · ${invitation.roleName} at ${invitation.locationName}` : ''} · {invitation.status === 'pending' && new Date(invitation.expiresAt).getTime() <= Date.now() ? 'expired' : invitation.status}{` · email ${invitation.deliveryState}`} · Expires {new Date(invitation.expiresAt).toLocaleString()}
         {invitation.status === 'pending' && <button className="secondary" disabled={busy} onClick={() => revoke(invitation)} style={{marginLeft: '.5rem'}}>Revoke invitation</button>}
+        {(invitation.status !== 'pending' || new Date(invitation.expiresAt).getTime() <= Date.now()) && <button className="secondary" disabled={busy} onClick={() => hide(invitation)} style={{marginLeft: '.5rem'}}>Remove</button>}
       </li>)}</ul>
       {items.length === 100 && <p>Showing the most recent 100 invitations.</p>}
     </>}
