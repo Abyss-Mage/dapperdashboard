@@ -15,7 +15,7 @@
 ## Still to do on the server (not done: production config changes were not permitted from the agent session)
 1. DNS at the domain registrar: A records `dashboard` and `workspace` → `201.18.205.129`.
 2. In `/opt/dapper/app/.env`, add `DAPPER_EXTRA_ORIGINS=https://dashboard.dapperdetailing.ca,https://workspace.dapperdetailing.ca`.
-3. In `/etc/caddy/Caddyfile`, add a site for `dashboard.dapperdetailing.ca, workspace.dapperdetailing.ca` with the same `reverse_proxy` as the existing IP site (automatic HTTPS). Reload Caddy and restart `dapper`.
+3. Production uses Apache (owner, 2026-11-13): sites for `dashboard.` and `workspace.` from `scripts/server/apache-dapper.conf` with certbot certificates. See `04 Delivery/NEW_PRODUCTION_SERVER_SETUP.md`, which supersedes the Caddy note that was here.
 
 ## Evidence
 - Static checks: Go build/vet and the TypeScript check passed.

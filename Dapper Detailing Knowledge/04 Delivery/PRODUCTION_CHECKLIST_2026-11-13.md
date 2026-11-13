@@ -24,13 +24,13 @@ Legend: `[x]` done and checked · `[ ]` to do. **Who:** *You* (owner, needs your
 - [ ] *You*: change the root password (it was shared in chat on 2026-10-30).
 - [ ] *You + Claude*: turn off SSH password login and direct root login (currently **both on**), keys only. First confirm a second key session works, so you can't be locked out.
 - [ ] *Claude*: install fail2ban for SSH.
-- [ ] *You*: apply the 4 pending updates and **reboot** (kernel 6.8.0-149 is waiting; the server has been up 13 days). *Claude* then checks that `dapper`, `caddy` and `postgresql` all come back on their own. A reboot has never been tested.
+- [ ] *You*: apply the 4 pending updates and **reboot** (kernel 6.8.0-149 is waiting; the server has been up 13 days). Then check that `dapper`, `apache2`, `postgresql` and `dapper-import-mcp` all come back on their own. A reboot has never been tested.
 - [ ] *Claude*: make the extra `pre-*.dump` files in `/opt/dapper/backups` private (three are group-readable).
 
 ## 3. Domain and HTTPS
 - [ ] *You*: a day before, lower the DNS TTL of `dapperdetailing.ca` to 300 s so a switch or rollback spreads fast.
 - [ ] *You*: DNS A records → 201.18.205.129: `@`, `www`, `dashboard`, `workspace`.
-- [ ] *You/Claude*: Caddy sites for `dapperdetailing.ca`, `www` (redirect to the main site), `dashboard.` and `workspace.`, each with automatic HTTPS. Keep the IP site until DNS has settled.
+- [ ] *You*: Apache sites with Let's Encrypt (certbot) for `dashboard.` and `workspace.` at setup. On go-live day add `dapperdetailing.ca` and `www` (redirect to the main site). See `NEW_PRODUCTION_SERVER_SETUP.md` and `scripts/server/apache-dapper.conf`.
 - [ ] *Claude*: `.env`: set `DAPPER_SITE_URL=https://dapperdetailing.ca`, which drives email links, invitations, pay links and the sign-in origin. Also `DAPPER_EXTRA_ORIGINS=https://dashboard.dapperdetailing.ca,https://workspace.dapperdetailing.ca`. Then restart.
 - [ ] *Claude*: after all four addresses load with valid certificates, turn on HSTS.
 - [ ] Note: sign-ins are per address, so staff sign in again after the switch.
@@ -116,3 +116,6 @@ Legend: `[x]` done and checked · `[ ]` to do. **Who:** *You* (owner, needs your
     - Not verified: live-site sign-in (no Application Password yet) and the catalogue parts against a database.
 - [x] Section 4 code item: `DAPPER_PUBLIC_INDEXING`, `DAPPER_SQUARE_WEBHOOK_URL` and `DAPPER_SQUARE_WEBHOOK_SIGNATURE_KEY` now pass from `.env` to the services (install test). Not deployed yet.
 - [ ] **Blocked:** at about 20:30 on 2026-11-13 every SSH host key of 201.18.205.129 had changed (ED25519 `SHA256:OP/ZS5lF…`, ECDSA `SHA256:WOd4M+1X…`; on record: ED25519 `SHA256:FDOf0C3n…`, ECDSA `SHA256:U52tWOZo…`), and HTTPS no longer answered. Server work (fail2ban, making the old dumps private, adding uploads to the nightly backup, deploy) stopped until the owner confirms the server was rebuilt and its new key fingerprint matches the provider console. The pre-production backups are on the owner's PC, so a rebuilt server can be restored from them.
+
+## Platform change (2026-11-13, owner)
+Full production runs on a **brand-new Ubuntu 26.04 LTS server with Apache 2.4** (Let's Encrypt through certbot) and a **clean database**. Setup steps are in `NEW_PRODUCTION_SERVER_SETUP.md`. Claude has no shell access there; its way in is the legacy import MCP server over HTTPS with a token. Server items above marked *Claude* are now done by the owner from that guide. The old dev server at 201.18.205.129 was rebuilt; its data is in the pre-production backup on the owner's PC.

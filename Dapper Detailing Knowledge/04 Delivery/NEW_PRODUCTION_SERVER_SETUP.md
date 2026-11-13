@@ -1,5 +1,7 @@
 # New production server: step-by-step setup (2026-11-13)
 
+**Platform (owner decision, 2026-11-13): Ubuntu 26.04 LTS with Apache 2.4** as the HTTPS front door, using Let's Encrypt certificates through certbot. This replaces Caddy, which the dev server used.
+
 User direction (2026-11-13): a brand-new server for full production, set up with a **new, clean database**. The legacy website's data comes in through the legacy import MCP server. Claude gets no shell access to this server. Its only way in is the import MCP server, once step 10 is done. Every step below is run by you.
 
 **Conventions**
@@ -24,8 +26,8 @@ Log in again after the reboot.
 
 ## 2. Packages, firewall, fail2ban
 ```bash
-apt install -y git curl ufw fail2ban postgresql python3-venv rsync debian-keyring debian-archive-keyring apt-transport-https gnupg
-ufw allow OpenSSH && ufw allow 80/tcp && ufw allow 443/tcp && ufw --force enable
+apt install -y git curl ufw fail2ban postgresql python3-venv rsync apache2 certbot python3-certbot-apache
+ufw allow OpenSSH && ufw allow 'Apache Full' && ufw --force enable
 printf '[sshd]\nenabled = true\nmaxretry = 6\nfindtime = 10m\nbantime = 1h\n' > /etc/fail2ban/jail.d/dapper-sshd.local
 systemctl enable --now fail2ban
 ```
@@ -39,12 +41,12 @@ curl -fLO https://nodejs.org/dist/v24.16.0/node-v24.16.0-linux-x64.tar.xz && mkd
 /usr/local/go/bin/go version && /usr/local/node/bin/node -v
 ```
 
-## 4. Caddy (HTTPS front door)
+## 4. Apache modules
 ```bash
-curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' > /etc/apt/sources.list.d/caddy-stable.list
-apt update && apt install -y caddy
+a2enmod proxy proxy_http headers ssl rewrite
+apache2 -v && psql --version && python3 --version
 ```
+Note the PostgreSQL version this prints. Ubuntu 26.04 ships a newer PostgreSQL than the 16 on your PC, so for restore checks on the PC install that same major version's tools. `pg_restore` can't read a dump made by a newer `pg_dump`. Ubuntu 26.04 also uses `sudo-rs` as `sudo`. The commands below use only the common options it supports.
 
 ## 5. The clean database
 ```bash
@@ -95,13 +97,22 @@ cp /opt/dapper/app/scripts/server/dapper.service /etc/systemd/system/dapper.serv
 systemctl daemon-reload && systemctl enable --now dapper && sleep 15 && curl -s http://127.0.0.1:8443/api/v1/health -H 'Host: 127.0.0.1:8443'
 ```
 
-## 8. HTTPS addresses
+## 8. HTTPS addresses (Apache + Let's Encrypt)
 ```bash
-cp /opt/dapper/app/scripts/server/Caddyfile.example /etc/caddy/Caddyfile
-nano /etc/caddy/Caddyfile        # put your e-mail on the "email" line (for certificate notices), save
-systemctl reload caddy
+cp /opt/dapper/app/scripts/server/apache-dapper.conf /etc/apache2/sites-available/dapper.conf
+a2ensite dapper && a2dissite 000-default
+apachectl configtest && systemctl reload apache2
+certbot --apache -d dashboard.dapperdetailing.ca -d workspace.dapperdetailing.ca
 ```
-Wait a minute, then open **https://dashboard.dapperdetailing.ca** and sign in as the owner. https://workspace.dapperdetailing.ca opens the staff workspace. If a certificate fails, check that DNS points at this server (`dig +short dashboard.dapperdetailing.ca`).
+certbot asks for your e-mail (certificate notices) and whether to redirect HTTP to HTTPS. Choose **redirect**. It renews the certificates by itself (`systemctl list-timers | grep certbot`). If it fails, check that DNS points at this server (`dig +short dashboard.dapperdetailing.ca`).
+
+Open **https://dashboard.dapperdetailing.ca** and sign in as the owner. https://workspace.dapperdetailing.ca opens the staff workspace.
+
+What the Apache site does:
+- keeps the original address (`ProxyPreserveHost On`), because the app refuses addresses it doesn't know
+- allows long requests (`ProxyTimeout 7200`) for photo uploads and owner backups
+- streams `/legacy-import/` unbuffered and uncompressed for the import MCP server
+- sends everything else to the app on `127.0.0.1:8443`
 
 ## 9. Backups
 ```bash

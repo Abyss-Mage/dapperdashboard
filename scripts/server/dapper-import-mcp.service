@@ -1,5 +1,5 @@
 # The legacy import MCP server (tools/legacy-import-mcp): Claude Code reaches it at https://<dashboard domain>/legacy-import/mcp with the
-# token from /etc/dapper/import-mcp.env. It listens on 127.0.0.1:8765 only; Caddy is the only way in.
+# token from /etc/dapper/import-mcp.env. It listens on 127.0.0.1:8765 only; Apache (scripts/server/apache-dapper.conf) is the only way in.
 [Unit]
 Description=Dapper legacy import MCP server
 After=network-online.target postgresql.service
