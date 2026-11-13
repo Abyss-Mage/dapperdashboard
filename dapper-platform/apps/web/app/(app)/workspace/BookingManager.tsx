@@ -63,6 +63,7 @@ export default function BookingManager({
   canCreateWorkOrders,
   onJobSpawned,
   revision = 0,
+  canPurge = false,
 }: {
   base: string;
   canCreate: boolean;
@@ -70,6 +71,8 @@ export default function BookingManager({
   canCreateWorkOrders: boolean;
   onJobSpawned?: () => Promise<void>;
   revision?: number;
+  /** Owner and administrators (organization access.manage): permanently delete a test booking with its invoice and payments. */
+  canPurge?: boolean;
 }) {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [bookingsLoading, setBookingsLoading] = useState(false);
@@ -366,6 +369,23 @@ export default function BookingManager({
       setErasing(null);
       await loadBookings();
     } catch (e) { setError(e instanceof Error ? e.message : 'The appointment could not be deleted.'); setErasing(null); }
+    finally { setBusy(false); }
+  }
+  // Permanent delete of a test booking (owner 2026-11-14, error404 #82 #84 #86): the booking number is typed to confirm.
+  const [purging, setPurging] = useState<Booking | null>(null);
+  const [purgeNumber, setPurgeNumber] = useState(''), [purgeError, setPurgeError] = useState('');
+  async function purgeBooking(e: React.FormEvent) {
+    e.preventDefault();
+    if (!purging) return;
+    setBusy(true); setPurgeError(''); setNotice('');
+    try {
+      const r = await fetch(`${base}/bookings/${purging.id}/purge`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ number: purgeNumber }) });
+      const body = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(body.error ?? 'The appointment could not be deleted permanently.');
+      setNotice(`Appointment ${bookingRef(purging)} and its invoice and payments were deleted permanently.`);
+      setPurging(null);
+      await loadBookings();
+    } catch (err) { setPurgeError(err instanceof Error ? err.message : 'The appointment could not be deleted permanently.'); }
     finally { setBusy(false); }
   }
   const [completing, setCompleting] = useState<Booking | null>(null);
@@ -756,6 +776,7 @@ export default function BookingManager({
                       {canManage && !final && b.reservationId && <button className="secondary" disabled={busy} onClick={(event) => { rescheduleTrigger.current = event.currentTarget; setReschedulingBooking(b); }}>Reschedule</button>}
                       {canManage && !final && <button className="secondary" disabled={busy} onClick={(event) => { cancellationTrigger.current = event.currentTarget; setCancellationReason(''); setError(''); setCancellingBooking(b); }}>Cancel</button>}
                       {canManage && <button className="secondary" disabled={busy} onClick={() => { setError(''); setErasing(b); }}>Delete</button>}
+                      {canPurge && <button className="secondary" disabled={busy} onClick={() => { setPurgeNumber(''); setPurgeError(''); setPurging(b); }}>Delete permanently</button>}
                       {canCreateWorkOrders && !final && <button className="secondary" disabled={busy} onClick={() => createWorkOrder(b)}>Start the job</button>}
                     </div>
                   </div>
@@ -822,6 +843,22 @@ export default function BookingManager({
           </div>
         </FormPopup>
       ); })()}
+      {purging && (
+        <FormPopup label="Delete appointment permanently" onClose={() => { if (!busy) setPurging(null); }} width={520}>
+          <form onSubmit={purgeBooking} style={{ display: 'grid', gap: 12 }}>
+            <h3 style={{ margin: 0 }}>Delete appointment {bookingRef(purging)} permanently?</h3>
+            <p style={{ margin: 0 }}>For test bookings only. This removes the appointment with its invoice, its recorded payments and their history. It cannot be undone, and the invoice number is not reused. Card payments taken through Square cannot be removed this way.</p>
+            <label className="form-field" style={{ margin: 0 }}>Type the booking number ({bookingRef(purging).slice(1)}) to confirm
+              <input value={purgeNumber} onChange={(e) => setPurgeNumber(e.target.value)} inputMode="numeric" autoComplete="off" disabled={busy} autoFocus />
+            </label>
+            {purgeError && <p role="alert" className="field-error" style={{ margin: 0 }}>{purgeError}</p>}
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button type="button" className="secondary" disabled={busy} onClick={() => setPurging(null)}>Keep it</button>
+              <button className="primary" disabled={busy || purgeNumber.replace('#', '').trim() !== bookingRef(purging).slice(1)}>{busy ? 'Deleting…' : 'Delete permanently'}</button>
+            </div>
+          </form>
+        </FormPopup>
+      )}
       <ConfirmDialog isOpen={erasing !== null} title="Delete appointment" entityName={erasing ? `${bookingRef(erasing)} · ${erasing.serviceName}` : ''} entityType="Appointment" actionType="delete"
         message="This erases the appointment for good. Cash and e-transfer payments on it are reversed and its invoice voided. If it has an issued invoice, a payment or work records, those are kept for your books and the appointment is cancelled instead. Card payments must be refunded in Square."
         isBusy={busy} confirmLabel="Delete appointment" onConfirm={() => { if (erasing) void eraseBooking(erasing); }} onCancel={() => setErasing(null)} />

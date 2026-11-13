@@ -147,4 +147,32 @@ func TestReopenReversesCompletionPayment(t *testing.T) {
 	if err = s.DeleteBooking(ctx, scope, draftOnly); err != ErrBookingNotFound {
 		t.Fatal("deleting twice should say not found", err)
 	}
+
+	// Permanent delete of a test booking (owner 2026-11-14, error404 #82 #84 #86): the kept, cancelled paidBooking above still has its
+	// voided invoice and refunded payment. Outside a purge the database keeps refusing to drop the issued invoice.
+	if _, err = pool.Exec(ctx, `DELETE FROM invoices WHERE id=$1`, inv2.ID); err == nil {
+		t.Fatal("an issued invoice was deleted without a purge")
+	}
+	var number int64
+	must(pool.QueryRow(ctx, `SELECT number FROM bookings WHERE id=$1`, paidBooking).Scan(&number))
+	if err = s.PurgeBooking(ctx, scope, paidBooking, fmt.Sprint(number)); err != ErrForbidden {
+		t.Fatal("staff without access.manage purged a booking", err)
+	}
+	_, err = pool.Exec(ctx, `INSERT INTO organization_memberships(organization_id,principal_id) VALUES($1,$2) ON CONFLICT DO NOTHING`, org, staff)
+	must(err)
+	_, err = pool.Exec(ctx, `INSERT INTO organization_grants(principal_id,organization_id,action) VALUES($1,$2,'access.manage')`, staff, org)
+	must(err)
+	if err = s.PurgeBooking(ctx, scope, paidBooking, fmt.Sprint(number+1)); err != ErrBookingPurgeNumber {
+		t.Fatal("a wrong booking number was accepted", err)
+	}
+	if err = s.PurgeBooking(ctx, scope, paidBooking, "#"+fmt.Sprint(number)); err != nil {
+		t.Fatal("permanent delete failed", err)
+	}
+	must(pool.QueryRow(ctx, `SELECT (SELECT count(*) FROM bookings WHERE id=$1)+(SELECT count(*) FROM invoices WHERE booking_id=$1)+(SELECT count(*) FROM payments WHERE invoice_id=$2)+(SELECT count(*) FROM invoice_items WHERE invoice_id=$2)`, paidBooking, inv2.ID).Scan(&left))
+	if left != 0 {
+		t.Fatal("permanent delete left records behind", left)
+	}
+	if _, err = pool.Exec(ctx, `DELETE FROM invoices WHERE id=$1`, inv.ID); err == nil {
+		t.Fatal("the purge switch outlived its transaction: another issued invoice could be deleted")
+	}
 }

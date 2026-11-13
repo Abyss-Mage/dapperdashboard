@@ -151,7 +151,7 @@ select{font:inherit}.vehicle-form{max-width:650px;padding-top:12px}.form-field s
 .booking-reschedule select, .booking-reschedule input, .booking-reschedule textarea { width: 100%; min-width: 0; box-sizing: border-box; padding: .65rem; font: inherit; border: 1px solid #f0dcde; border-radius: 6px; background: #fff; color: #1a0b0d; }
 .booking-reschedule textarea { min-height: 5rem; resize: vertical; }
 .booking-reschedule p, .booking-reschedule h3 { margin: 0; overflow-wrap: anywhere; }
-.booking-reschedule { max-height: calc(100dvh - 2rem); box-sizing: border-box; overflow: auto; }
+.booking-reschedule { max-height: calc(100dvh - 2rem); box-sizing: border-box; overflow-x: hidden; overflow-y: auto; } /* error404 #83: no sideways scroll; the date picker opens outside the popup */
 .booking-reschedule::backdrop { background: rgb(0 0 0 / 35%); }
 
 /* Dialogs and the controls inside them follow the theme (light and dark). */

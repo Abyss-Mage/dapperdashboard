@@ -42,6 +42,17 @@ export default function CustomerManager({ base, canCreate, canDelete, canExport,
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  // Emails the customer a 72-hour link to choose their account password (error404 #85); it also works as a reset for an existing account.
+  async function sendSetup(id: string) {
+    setBusy(true); setNotice('');
+    try {
+      const r = await fetch(`${base}/customers/${id}/account-setup`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      const b = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(b.error ?? 'The email could not be sent.');
+      setNotice(b.status === 'sent' ? `Account setup email sent to ${b.email}. The link works for 3 days.` : b.status === 'no_email' ? 'This customer has no email address. Add one with Edit details first.' : b.status === 'not_configured' ? 'Email sending is not set up, so nothing was sent.' : 'The email could not be sent. Check the email settings and try again.');
+    } catch (e) { setNotice(e instanceof Error ? e.message : 'The email could not be sent.'); }
+    finally { setBusy(false); }
+  }
 
   const load = useCallback(async () => {
     try {
@@ -220,6 +231,7 @@ export default function CustomerManager({ base, canCreate, canDelete, canExport,
           </>}
           <div className={styles.rowBetween} style={{ marginTop: 24 }}>
             {canCreate && <button type="button" className="secondary" onClick={() => { const c = open; setOpen(null); edit(c); }}>Edit details</button>}
+            {canCreate && open.email && <button type="button" className="secondary" disabled={busy} onClick={() => void sendSetup(open.id)}>Send account setup email</button>}
             {canDelete && <button type="button" className="secondary" onClick={() => setTarget(open)}>Delete customer</button>}
           </div>
         </aside>

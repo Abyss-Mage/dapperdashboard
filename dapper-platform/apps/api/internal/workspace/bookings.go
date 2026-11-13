@@ -4,6 +4,7 @@ import (
 	"context"
 	"dapper.local/platform/internal/postgres"
 	"errors"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -452,6 +453,38 @@ func registerBookingRoutes(mux *http.ServeMux, store *postgres.Store) {
 			reply(w, 200, map[string]any{"erased": false, "notice": "This appointment has an issued invoice, a payment or work records, which are kept for your books. It has been cancelled: cash and e-transfer payments were reversed and the invoice voided. Card payments must be refunded in Square."})
 		default:
 			bookingFailure(w, err)
+		}
+	})
+
+	// Permanently delete a test booking with its invoices and hand-recorded payments (owner and administrators, organization
+	// access.manage; error404 #82 #84 #86). The booking's number must be typed to confirm. Bookings with Square card records are refused.
+	mux.HandleFunc("POST "+base+"/{booking}/purge", func(w http.ResponseWriter, r *http.Request) {
+		org, loc, id := r.PathValue("organization"), r.PathValue("location"), r.PathValue("booking")
+		if !uuid(org) || !uuid(loc) || !uuid(id) {
+			reply(w, 400, map[string]string{"error": "Valid selectors required"})
+			return
+		}
+		var in struct {
+			Number string `json:"number"`
+		}
+		if !decode(w, r, &in) {
+			return
+		}
+		err := store.PurgeBooking(r.Context(), postgres.Scope{OrganizationID: org, LocationID: loc, ActorID: requestSession(r).principalID}, id, in.Number)
+		switch {
+		case err == nil:
+			reply(w, 200, map[string]any{"purged": true})
+		case errors.Is(err, postgres.ErrBookingPurgeNumber):
+			reply(w, 422, map[string]string{"error": "That is not this booking's number. Type the number shown on the booking (for example 666)."})
+		case errors.Is(err, postgres.ErrBookingPurgeSquare):
+			reply(w, 409, map[string]string{"error": "A Square card payment was attempted or taken for this booking. Card history has to match Square, so it can't be deleted permanently; refund it in Square and keep it cancelled."})
+		case errors.Is(err, postgres.ErrForbidden):
+			reply(w, 403, map[string]string{"error": "Only the owner and administrators can delete a booking permanently."})
+		case errors.Is(err, postgres.ErrBookingNotFound):
+			reply(w, 404, map[string]string{"error": "Booking not found"})
+		default:
+			log.Printf("Permanent delete of booking %s failed: %v", id, err)
+			reply(w, 500, map[string]string{"error": "The booking could not be deleted permanently; nothing was removed. " + err.Error()})
 		}
 	})
 

@@ -70,6 +70,7 @@ func registerEmployeeWorkspaceRoutes(mux *http.ServeMux, store *postgres.Store) 
 			employeeFailure(w, err)
 			return
 		}
+		accountSetupAfterWalkIn(data, requestSession(r).principalID) // error404 #85
 		reply(w, 201, data)
 	})
 	mux.HandleFunc("GET /api/v1/employee/services", func(w http.ResponseWriter, r *http.Request) {

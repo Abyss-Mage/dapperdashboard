@@ -79,6 +79,7 @@ func registerAccountCredentialRoutes(mux *http.ServeMux, store *postgres.Store, 
 		return
 	}
 	limiter := &resetLimiter{hits: map[[32]byte][]time.Time{}, max: 5, horizon: time.Hour}
+	setUpCustomerAccountSetup(mux, store, auth, sender, origin)
 
 	mux.HandleFunc("PUT /api/v1/account/password", func(w http.ResponseWriter, r *http.Request) {
 		var input struct {
