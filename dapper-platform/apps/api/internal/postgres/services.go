@@ -232,6 +232,45 @@ func (s *Store) ArchiveService(ctx context.Context, scope Scope, id string, vers
 	return current, nil
 }
 
+// RestoreService brings an archived franchise service back. A copy of a central service waits for the central one to be restored, and an
+// add-on comes back only while its main service is active.
+func (s *Store) RestoreService(ctx context.Context, scope Scope, id string, version int) (CatalogService, error) {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return CatalogService{}, err
+	}
+	defer tx.Rollback(ctx)
+	if err = authorizeTransaction(ctx, tx, scope, "catalogue.manage"); err != nil {
+		return CatalogService{}, err
+	}
+	current, err := scanService(tx.QueryRow(ctx, `SELECT `+serviceColumns+` FROM catalog_services WHERE organization_id=$1 AND location_id=$2 AND id=$3 FOR UPDATE`, scope.OrganizationID, scope.LocationID, id))
+	if errors.Is(err, pgx.ErrNoRows) || err == nil && (!current.Archived || current.Version != version) {
+		return CatalogService{}, ErrServiceConflict
+	}
+	if err != nil {
+		return CatalogService{}, err
+	}
+	var blocked bool
+	if err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM catalog_services s LEFT JOIN central_catalog_services c ON c.id=s.central_service_id LEFT JOIN catalog_services p ON p.id=s.parent_id
+ WHERE s.id=$1 AND (c.archived OR p.archived))`, id).Scan(&blocked); err != nil {
+		return CatalogService{}, err
+	}
+	if blocked {
+		return CatalogService{}, ErrServiceConflict
+	}
+	current, err = scanService(tx.QueryRow(ctx, `UPDATE catalog_services SET archived=false,version=version+1 WHERE id=$1 RETURNING `+serviceColumns, id))
+	if err != nil {
+		return CatalogService{}, err
+	}
+	if err = serviceRevision(ctx, tx, scope, current); err != nil {
+		return CatalogService{}, err
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return CatalogService{}, err
+	}
+	return current, nil
+}
+
 func (s *Store) DeleteService(ctx context.Context, scope Scope, id string, version int) (DeleteResult, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {

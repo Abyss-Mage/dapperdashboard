@@ -24,7 +24,7 @@ func centralServiceFailure(w http.ResponseWriter, err error) {
 
 func registerCentralServiceRoutes(mux *http.ServeMux, store *postgres.Store) {
 	base := "/api/v1/organizations/{organization}/central-services"
-	for _, route := range []string{"GET " + base, "POST " + base, "PUT " + base + "/{service}", "POST " + base + "/{service}/archive"} {
+	for _, route := range []string{"GET " + base, "POST " + base, "PUT " + base + "/{service}", "POST " + base + "/{service}/archive", "POST " + base + "/{service}/restore"} {
 		mux.HandleFunc(route, func(w http.ResponseWriter, r *http.Request) {
 			org, id := r.PathValue("organization"), r.PathValue("service")
 			if !uuid(org) || (id != "" && !uuid(id)) {
@@ -41,7 +41,7 @@ func registerCentralServiceRoutes(mux *http.ServeMux, store *postgres.Store) {
 				reply(w, 200, map[string]any{"items": items, "limit": 1000})
 				return
 			}
-			if strings.HasSuffix(r.URL.Path, "/archive") {
+			if restore := strings.HasSuffix(r.URL.Path, "/restore"); restore || strings.HasSuffix(r.URL.Path, "/archive") {
 				var input struct {
 					Version int `json:"version"`
 				}
@@ -52,7 +52,11 @@ func registerCentralServiceRoutes(mux *http.ServeMux, store *postgres.Store) {
 					reply(w, 422, map[string]any{"errors": map[string]string{"version": "Send current service version"}})
 					return
 				}
-				item, err := store.ArchiveCentralService(r.Context(), actor, org, id, input.Version)
+				change := store.ArchiveCentralService
+				if restore {
+					change = store.RestoreCentralService
+				}
+				item, err := change(r.Context(), actor, org, id, input.Version)
 				if err != nil {
 					centralServiceFailure(w, err)
 					return

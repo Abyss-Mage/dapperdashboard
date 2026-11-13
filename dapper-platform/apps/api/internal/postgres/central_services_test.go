@@ -114,6 +114,25 @@ func verifyCentralServices(t *testing.T, ctx context.Context, s *Store, a, b Sco
 		t.Fatalf("expected archived main version 3, got %+v", archivedMain)
 	}
 
+	// 9b. Restore: an add-on waits for its main; the main comes back with its franchise copies, then the add-on.
+	if _, err = s.RestoreCentralService(ctx, a.ActorID, a.OrganizationID, addon.ID, 2); err != ErrCentralServiceConflict {
+		t.Fatalf("an add-on was restored while its main is archived: %v", err)
+	}
+	restoredMain, err := s.RestoreCentralService(ctx, a.ActorID, a.OrganizationID, main.ID, 3)
+	if err != nil || restoredMain.Archived || restoredMain.Version != 4 {
+		t.Fatalf("main not restored: %+v %v", restoredMain, err)
+	}
+	var stillArchived int
+	if err = s.pool.QueryRow(ctx, `SELECT count(*) FROM catalog_services WHERE central_service_id=$1 AND archived`, main.ID).Scan(&stillArchived); err != nil || stillArchived != 0 {
+		t.Fatalf("franchise copies stayed archived: %d %v", stillArchived, err)
+	}
+	if _, err = s.RestoreCentralService(ctx, a.ActorID, a.OrganizationID, addon.ID, 2); err != nil {
+		t.Fatalf("add-on not restored after its main: %v", err)
+	}
+	if _, err = s.RestoreCentralService(ctx, a.ActorID, a.OrganizationID, main.ID, 4); err != ErrCentralServiceConflict {
+		t.Fatalf("restoring an active service should conflict: %v", err)
+	}
+
 	// 10. List central services
 	list, err := s.ListCentralServices(ctx, a.ActorID, a.OrganizationID)
 	if err != nil {

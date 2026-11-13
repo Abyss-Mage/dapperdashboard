@@ -285,6 +285,57 @@ func (s *Store) ArchiveCentralService(ctx context.Context, actor, org, id string
 	return current, nil
 }
 
+// RestoreCentralService brings an archived service back into the catalogue, and its franchise copies with it (archiving it had archived
+// them). An add-on comes back only while its main service is active.
+func (s *Store) RestoreCentralService(ctx context.Context, actor, org, id string, version int) (CentralService, error) {
+	if actor == "" || org == "" || id == "" || version <= 0 {
+		return CentralService{}, ErrCentralServiceInput
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return CentralService{}, err
+	}
+	defer tx.Rollback(ctx)
+	if err = centralCatalogueGrant(ctx, tx, actor, org, "catalogue.manage"); err != nil {
+		return CentralService{}, err
+	}
+	current, err := scanCentralService(tx.QueryRow(ctx, `SELECT `+centralServiceColumns+` FROM central_catalog_services WHERE organization_id=$1 AND id=$2 FOR UPDATE`, org, id))
+	if errors.Is(err, pgx.ErrNoRows) || err == nil && (!current.Archived || current.Version != version) {
+		return CentralService{}, ErrCentralServiceConflict
+	}
+	if err != nil {
+		return CentralService{}, err
+	}
+	if current.ParentID != nil {
+		var parentActive bool
+		if err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM central_catalog_services WHERE organization_id=$1 AND id=$2 AND NOT archived)`, org, *current.ParentID).Scan(&parentActive); err != nil {
+			return CentralService{}, err
+		}
+		if !parentActive {
+			return CentralService{}, ErrCentralServiceConflict
+		}
+	}
+	// The franchise copies come back too; the revision below then syncs them as usual.
+	if _, err = tx.Exec(ctx, `UPDATE catalog_services SET archived=false WHERE central_service_id=$1 AND archived`, id); err != nil {
+		return CentralService{}, err
+	}
+	current, err = scanCentralService(tx.QueryRow(ctx, `UPDATE central_catalog_services SET archived=false,version=version+1 WHERE id=$1 RETURNING `+centralServiceColumns, id))
+	if err != nil {
+		return CentralService{}, err
+	}
+	snapshot, _ := json.Marshal(current)
+	if _, err = tx.Exec(ctx, `INSERT INTO central_catalog_service_revisions(service_id,version,actor_id,snapshot) VALUES($1,$2,$3,$4)`, current.ID, current.Version, actor, snapshot); err != nil {
+		return CentralService{}, centralLinkFailure(err)
+	}
+	if err = centralCatalogueAudit(ctx, tx, actor, org, "central_service.restored", current.ID); err != nil {
+		return CentralService{}, err
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return CentralService{}, err
+	}
+	return current, nil
+}
+
 func (s *Store) DeleteCentralService(ctx context.Context, actor, org, id string, version int) (DeleteResult, error) {
 	if actor == "" || org == "" || id == "" {
 		return DeleteResult{}, ErrCentralServiceInput

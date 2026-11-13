@@ -313,6 +313,7 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
       return `${chosen.length} service${chosen.length === 1 ? '' : 's'} archived.`;
     });
   };
+  const restore = (s: Service) => run(async () => { await readJson(await fetch(`${listUrl}/${s.id}/restore`, send('POST', { version: s.version }))); return `“${s.name}” restored.`; });
   const archive = (s: Service) => run(async () => { await readJson(await fetch(`${listUrl}/${s.id}/archive`, send('POST', { version: s.version }))); return `“${s.name}” archived.`; });
   const del = (s: Service) => run(async () => { const b = await readJson(await fetch(`${listUrl}/${s.id}?version=${s.version}`, send('DELETE'))); return b.message ?? `“${s.name}” removed.`; });
   const duplicate = (s: Service) => run(async () => {
@@ -336,6 +337,12 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
       <span className={styles.svcCell}>{s.archived ? 'Archived' : s.kind === 'addon' ? 'Add-on' : 'Main'}</span>
       <span className={styles.svcCell}>{s.priceCents != null ? money(s.priceCents) : 'No price'}</span>
       <span className={styles.svcCell}>{s.durationMinutes != null ? minutesText(s.durationMinutes) : 'No time'}</span>
+      {canManage && s.archived && (
+        <div className={styles.svcActions}>
+          <button type="button" className="secondary" disabled={busy} onClick={() => void restore(s)}>Restore</button>
+          <button type="button" className="secondary" disabled={busy} onClick={() => setTarget({ action: 'delete', item: s })}>Delete</button>
+        </div>
+      )}
       {(canManage || canSlots) && !s.archived && (
         <div className={styles.svcActions}>
           {canManage && (mode === 'central' || !s.centralServiceId) && <button type="button" className="secondary" disabled={busy || !!editing} onClick={() => open(s)}>Edit</button>}
