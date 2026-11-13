@@ -25,6 +25,21 @@ func (s *Store) emitBooking(ctx context.Context, kind, bookingID string) {
 	go s.bookingHook(BookingEmailEvent{Kind: kind, BookingID: bookingID})
 }
 
+// AnnounceBooking reports a booking made by the team, so the customer gets the confirmation and the business its alert, like a website
+// booking. A booking still waiting for approval is announced when it is approved instead.
+func (s *Store) AnnounceBooking(ctx context.Context, b Booking) {
+	if b.Status == "confirmed" {
+		s.emitBooking(ctx, "booking_confirmation", b.ID)
+	}
+}
+
+// statusOf is a booking's current status ("" if it cannot be read), so an approval can be told apart from a reopened booking.
+func (s *Store) statusOf(ctx context.Context, id string) string {
+	var st string
+	_ = s.pool.QueryRow(ctx, `SELECT status FROM bookings WHERE id::text=$1`, id).Scan(&st)
+	return st
+}
+
 // ClaimBookingEmail is true for the first caller to claim this kind of email for the booking. A booking is told "cancelled" once; other kinds
 // are not repeated within two minutes, so two code paths reporting one change send one email.
 func (s *Store) ClaimBookingEmail(ctx context.Context, bookingID, kind string) (bool, error) {

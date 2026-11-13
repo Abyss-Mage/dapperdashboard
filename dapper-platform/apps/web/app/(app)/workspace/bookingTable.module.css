@@ -48,7 +48,13 @@
   .filters { grid-template-columns: 1fr 1fr; }
   .filters2 { grid-template-columns: 1fr 1fr; }
   .head { display: none; }
-  .row { grid-template-columns: 32px 26px 1fr; row-gap: 4px; }
+  /* Tablet: the opener and tick on the left, then the booking in two even columns (number | date, customer | service, length | status,
+     payment | made on), so nothing is squeezed into the narrow first columns. */
+  .row { grid-template-columns: 32px 26px minmax(0, 1fr) minmax(0, 1fr); column-gap: 14px; row-gap: 8px; align-items: start; }
+  .row > :nth-child(n+3):nth-child(odd) { grid-column: 3; }
+  .row > :nth-child(n+4):nth-child(even) { grid-column: 4; }
+  .row > :nth-child(-n+2) { grid-row: 1; }
+  .row .status { max-width: 220px; }
   .detail { padding-left: 18px; }
   .detailCols { grid-template-columns: 1fr; }
 }
@@ -68,3 +74,9 @@
 :global(:root) .row .chev svg { display: block; transition: transform .25s cubic-bezier(.23, 1, .32, 1); }
 :global(:root) .row .chev[aria-expanded='true'] { background: #34d399 !important; color: #06281a !important; }
 :global(:root) .row .chev[aria-expanded='true'] svg { transform: rotate(180deg); }
+
+/* Phones: one column of details beside the opener and tick. */
+@media (max-width: 600px) {
+  .row { grid-template-columns: 32px 26px minmax(0, 1fr); }
+  .row > :nth-child(n+3):nth-child(odd), .row > :nth-child(n+4):nth-child(even) { grid-column: 3; }
+}

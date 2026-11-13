@@ -238,6 +238,7 @@ func registerBookingRoutes(mux *http.ServeMux, store *postgres.Store) {
 				return
 			}
 		}
+		store.AnnounceBooking(r.Context(), booking)
 		reply(w, 201, booking)
 	})
 	mux.HandleFunc("POST "+base+"/{booking}/work-orders", func(w http.ResponseWriter, r *http.Request) {
@@ -358,6 +359,7 @@ func registerBookingRoutes(mux *http.ServeMux, store *postgres.Store) {
 			bookingFailure(w, err)
 			return
 		}
+		store.AnnounceBooking(r.Context(), item)
 		reply(w, 201, item)
 	})
 
