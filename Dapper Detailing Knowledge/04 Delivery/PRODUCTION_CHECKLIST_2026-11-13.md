@@ -119,3 +119,13 @@ Legend: `[x]` done and checked · `[ ]` to do. **Who:** *You* (owner, needs your
 
 ## Platform change (2026-11-13, owner)
 Full production runs on a **brand-new Ubuntu 26.04 LTS server with Apache 2.4** (Let's Encrypt through certbot) and a **clean database**. Setup steps are in `NEW_PRODUCTION_SERVER_SETUP.md`. Claude has no shell access there; its way in is the legacy import MCP server over HTTPS with a token. Server items above marked *Claude* are now done by the owner from that guide. The old dev server at 201.18.205.129 was rebuilt; its data is in the pre-production backup on the owner's PC.
+
+## Production import (2026-11-13, through the import MCP server at dashboard.dapperdetailing.ca)
+Target: the new clean database `ddp` (migration 120), organization "Dapper Detailing Pros", franchise "Dapper Detailing Pros" (code DDP). Source: the BookingPress export downloaded on 2026-11-13 (477 customers, 609 appointments, 79 services, 12 categories, 228 add-ons). Every step was a dry run first, then applied after the owner's yes.
+- [x] Customers and bookings: batch `bookingpress-customers_bookings-20261113-162521`. 477 customers (6 shared phone numbers kept on the first customer only); 609 bookings (364 completed, 167 confirmed, 78 cancelled; 105 with the service name kept as text). Vehicles are not imported. A count check after applying found all 609 bookings, 477 customers and 609 billing rows. The batch can be undone with `undo_import`.
+- [x] Billing: batch `bookingpress-billing-20261113-162525`. 609 invoices (525 paid, 6 part-paid, 78 void; 33 shared old numbers given a suffix). New numbering continues after 630.
+- [x] Catalogue: 70 central services (9 hidden ones skipped) and 228 add-ons. They reached the franchise automatically when saved.
+- [x] Prices: **owner decision 2026-11-13: the legacy website's prices are approved as the live prices** (before tax). 298 set, all matched. This settles DEC-05 for prices; durations and resources are still open.
+- [ ] *You*: check the confirmed bookings dated from today onward in the calendar. Imported bookings don't hold their time slot, so block or re-book any real upcoming jobs.
+- [ ] Website content and media: fetch with `fetch_live_site` for review and place them by hand (the new site's pages are built in code).
+- [ ] Replace the import token (it was pasted in chat). New value in `/etc/dapper/import-mcp.env`, then `systemctl restart dapper-import-mcp`. On the PC, set `DAPPER_IMPORT_MCP_TOKEN` to the same value.
