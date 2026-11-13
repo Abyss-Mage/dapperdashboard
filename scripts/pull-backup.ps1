@@ -12,10 +12,13 @@ if (-not $dump) { throw 'No backup found on the server.' }
 $day = [regex]::Match($dump, '\d{4}-\d{2}-\d{2}').Value
 scp -o BatchMode=yes "${HostAlias}:$dump" (Join-Path $Folder (Split-Path $dump -Leaf))
 scp -o BatchMode=yes "${HostAlias}:/opt/dapper/backups/env-$day" (Join-Path $Folder "env-$day")
+# Uploaded photos and SOP documents (nightly since 2026-11-13; older servers have no such file).
+scp -o BatchMode=yes "${HostAlias}:/opt/dapper/backups/files-$day.tar.gz" (Join-Path $Folder "files-$day.tar.gz") 2>$null
 # A dump that did not copy completely is of no use: compare sizes with the server's copy.
 $remote = [int64](ssh -o BatchMode=yes $HostAlias "stat -c %s $dump")
 $local = (Get-Item (Join-Path $Folder (Split-Path $dump -Leaf))).Length
 if ($remote -ne $local) { throw "The copy is incomplete ($local of $remote bytes)." }
 Get-ChildItem $Folder -Filter 'dapper-*.dump' | Sort-Object LastWriteTime -Descending | Select-Object -Skip 30 | Remove-Item -Force
 Get-ChildItem $Folder -Filter 'env-*' | Sort-Object LastWriteTime -Descending | Select-Object -Skip 30 | Remove-Item -Force
+Get-ChildItem $Folder -Filter 'files-*.tar.gz' | Sort-Object LastWriteTime -Descending | Select-Object -Skip 30 | Remove-Item -Force
 Write-Output "Saved $(Split-Path $dump -Leaf) ($local bytes) to $Folder"

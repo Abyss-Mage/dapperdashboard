@@ -1,0 +1,3 @@
+# Nightly backup at 03:15: the database (custom format), the .env it needs, and the uploaded files and SOP documents. Keeps 14 days.
+# Copy to /etc/cron.d/dapper-backup (root-owned, mode 644). This is the same disk: also copy backups off the server (see the setup guide).
+15 3 * * * dapper cd /opt/dapper/backups && pg_dump -Fc -d dapper -f dapper-$(date +\%F).dump && cp /opt/dapper/app/.env env-$(date +\%F) && tar -czf files-$(date +\%F).tar.gz -C /opt/dapper/app .dapper/uploads dapper-platform/apps/api/data/sops 2>/dev/null; chmod 600 /opt/dapper/backups/*; find /opt/dapper/backups -type f -mtime +14 -delete

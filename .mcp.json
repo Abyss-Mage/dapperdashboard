@@ -3,6 +3,13 @@
     "dapper-legacy-import": {
       "command": "python",
       "args": ["tools/legacy-import-mcp/server.py"]
+    },
+    "dapper-legacy-import-prod": {
+      "type": "http",
+      "url": "https://dashboard.dapperdetailing.ca/legacy-import/mcp",
+      "headers": {
+        "Authorization": "Bearer ${DAPPER_IMPORT_MCP_TOKEN}"
+      }
     }
   }
 }

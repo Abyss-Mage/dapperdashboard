@@ -1,0 +1,21 @@
+[Unit]
+Description=Dapper platform (API, web app and gateway)
+After=network-online.target postgresql.service
+Wants=network-online.target
+Requires=postgresql.service
+# Setup writes .env; until then this service does not start (the wizard is run by hand once).
+ConditionPathExists=/opt/dapper/app/.env
+
+[Service]
+User=dapper
+Group=dapper
+WorkingDirectory=/opt/dapper/app
+Environment=PATH=/usr/local/node/bin:/usr/local/go/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/opt/dapper/app/.dapper/bin/dapper start --home /opt/dapper/app --no-browser
+Restart=always
+RestartSec=5
+KillMode=mixed
+TimeoutStopSec=20
+
+[Install]
+WantedBy=multi-user.target

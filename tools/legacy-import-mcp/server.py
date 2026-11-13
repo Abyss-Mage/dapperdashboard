@@ -8,9 +8,13 @@ Brings the live legacy website's data into the new clean Dapper database, in two
      the plan's checksum, in one transaction, with a batch id so the run can be reviewed or undone. The mapping is the approved one in
      scripts/import_bookingpress_history.py, scripts/import_bookingpress_invoices.py and cmd/seed-catalogue.
 
-Settings (Windows user environment variables, never in files or chat):
+Settings (environment variables, never in chat; on Windows the user environment, on the server a root-only environment file):
   DAPPER_LEGACY_WP_USER, DAPPER_LEGACY_WP_APP_PASSWORD  the WordPress admin user and its Application Password
-  DAPPER_IMPORT_DATABASE_URL                             the target database, e.g. through an SSH tunnel to the production server
+  DAPPER_IMPORT_DATABASE_URL                             the target database (on the server it defaults to the app's DAPPER_DATABASE_URL)
+  DAPPER_IMPORT_MCP_TOKEN                                with --http only: the secret every request must carry (32+ characters)
+
+Run locally over stdio (Claude Code starts it from .mcp.json), or on the production server with --http: it then listens on
+127.0.0.1:8765 only, at /legacy-import/mcp, behind Caddy's HTTPS, and refuses any request without the token.
 Tools return counts, checksums and file locations only, never customer details or credentials.
 """
 from __future__ import annotations
@@ -189,7 +193,7 @@ def latest_export() -> Path:
 # ---------- planning and applying ----------
 
 def target_url() -> str:
-    url = setting("DAPPER_IMPORT_DATABASE_URL")
+    url = setting("DAPPER_IMPORT_DATABASE_URL") or setting("DAPPER_DATABASE_URL")
     if not url.startswith(("postgres://", "postgresql://")):
         raise RuntimeError("Set DAPPER_IMPORT_DATABASE_URL (postgres://…) to the database the import goes into.")
     return url
@@ -333,6 +337,9 @@ def status() -> dict:
     if out["targetDatabaseSet"] and out["psql"]:
         try:
             out["targetDatabase"] = run([psql(), "-At", "-c", "SELECT current_database()||', migration '||coalesce((SELECT max(version) FROM dapper_schema_migrations)::text,'unknown')", target_url()]).strip()
+            # Where an import can go: organization and franchise ids with their names (no customer data).
+            rows = run([psql(), "-At", "-F", "|", "-c", "SELECT o.id, o.name, l.id, l.name FROM organizations o JOIN locations l ON l.organization_id=o.id ORDER BY o.name, l.name LIMIT 50", target_url()])
+            out["franchises"] = [dict(zip(("organizationId", "organization", "locationId", "franchise"), r.split("|", 3))) for r in rows.splitlines() if r.count("|") == 3]
         except RuntimeError as e:
             out["targetDatabase"] = "not reachable: " + str(e)[:200]
     return out
@@ -340,10 +347,16 @@ def status() -> dict:
 
 # ---------- MCP ----------
 
-def build_server():
-    from mcp.server.fastmcp import FastMCP
+HTTP_PATH = "/legacy-import/mcp"
 
-    mcp = FastMCP("dapper-legacy-import")
+
+def build_server(http: bool = False):
+    from mcp.server.fastmcp import FastMCP
+    from mcp.server.transport_security import TransportSecuritySettings
+
+    # Behind Caddy the Host is the public domain, so the library's localhost-only host check is off; the token guards every request.
+    mcp = FastMCP("dapper-legacy-import", host="127.0.0.1", port=8765, streamable_http_path=HTTP_PATH,
+                  transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False) if http else None)
 
     @mcp.tool()
     def legacy_import_status() -> dict:
@@ -404,5 +417,33 @@ def build_server():
     return mcp
 
 
+def token_guard(app, token: str):
+    """Every HTTP request must carry 'Authorization: Bearer <token>' (compared in constant time); anything else gets 401."""
+    import hmac
+    want = ("Bearer " + token).encode()
+
+    async def guarded(scope, receive, send):
+        if scope["type"] == "http":
+            got = dict(scope.get("headers") or []).get(b"authorization", b"")
+            if not hmac.compare_digest(got, want):
+                await send({"type": "http.response.start", "status": 401, "headers": [(b"content-type", b"text/plain")]})
+                await send({"type": "http.response.body", "body": b"Unauthorized"})
+                return
+        await app(scope, receive, send)
+    return guarded
+
+
+def serve_http():
+    token = setting("DAPPER_IMPORT_MCP_TOKEN")
+    if len(token) < 32:
+        sys.exit("Set DAPPER_IMPORT_MCP_TOKEN (at least 32 random characters) before serving over HTTP.")
+    import uvicorn
+    app = token_guard(build_server(http=True).streamable_http_app(), token)
+    uvicorn.run(app, host="127.0.0.1", port=8765, log_level="warning")
+
+
 if __name__ == "__main__":
-    build_server().run()
+    if "--http" in sys.argv:
+        serve_http()
+    else:
+        build_server().run()
