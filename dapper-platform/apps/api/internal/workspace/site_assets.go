@@ -168,7 +168,8 @@ func registerSiteAssetRoutes(mux *http.ServeMux, store *postgres.Store) {
 		// The browser keeps the file for two minutes, then asks with the version it has; only a changed file is read from the database.
 		etag := `"` + strconv.FormatInt(at.UnixNano(), 36) + `"`
 		w.Header().Set("ETag", etag)
-		w.Header().Set("Cache-Control", "public, max-age=120")
+		// Browsers check again on every visit (a cheap 304 while unchanged), so a replaced picture shows at once.
+		w.Header().Set("Cache-Control", "no-cache")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		if r.Header.Get("If-None-Match") == etag {
 			w.WriteHeader(http.StatusNotModified)

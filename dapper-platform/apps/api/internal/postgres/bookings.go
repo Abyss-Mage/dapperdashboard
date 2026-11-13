@@ -453,6 +453,7 @@ func (s *Store) UpdateBookingStatus(ctx context.Context, scope Scope, id string,
 				s.emitBooking(ctx, "booking_confirmation", id)
 			}
 		case "cancelled":
+			b.PaymentNotice = s.settleCancelledBooking(ctx, scope, id)
 			s.emitBooking(ctx, "booking_cancelled", id)
 		case "completed":
 			s.emitBooking(ctx, "booking_completed", id)

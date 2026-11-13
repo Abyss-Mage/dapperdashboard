@@ -120,6 +120,9 @@ func (s *Store) CorrectBookingStatus(ctx context.Context, scope Scope, id, toSta
 				s.emitBooking(ctx, "booking_confirmation", id)
 			}
 		case "cancelled":
+			if notice := s.settleCancelledBooking(ctx, scope, id); notice != "" {
+				b.PaymentNotice = notice
+			}
 			s.emitBooking(ctx, "booking_cancelled", id)
 		case "completed":
 			s.emitBooking(ctx, "booking_completed", id)

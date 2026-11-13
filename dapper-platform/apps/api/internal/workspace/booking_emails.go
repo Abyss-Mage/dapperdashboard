@@ -32,6 +32,9 @@ var bookingAlerts = map[string]struct{ template, setting string }{
 // deliverBookingEmail writes one booking email from what is saved on the booking and sends it to the address saved on the customer, never one
 // typed into the form. An error means the customer's email did not go out; the business alert follows it, so a retry does not repeat the alert.
 func deliverBookingEmail(ctx context.Context, store *postgres.Store, sender postgres.EmailSender, origin, bookingID, kind string) error {
+	if kind == "booking_confirmation" {
+		store.IssueBookingDraft(ctx, bookingID)
+	}
 	vars, to, err := store.BookingEmailVars(ctx, bookingID, origin)
 	if err != nil {
 		return err

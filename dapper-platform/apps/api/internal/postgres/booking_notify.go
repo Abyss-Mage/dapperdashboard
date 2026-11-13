@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"strings"
 	"context"
 )
 
@@ -31,6 +32,21 @@ func (s *Store) AnnounceBooking(ctx context.Context, b Booking) {
 	if b.Status == "confirmed" {
 		s.emitBooking(ctx, "booking_confirmation", b.ID)
 	}
+}
+
+// IssueBookingDraft issues the booking's draft invoice, so the confirmation can carry the invoice with the balance due (a website booking's
+// invoice is already issued). It acts as the website's own account, which may issue invoices (only at a location with a published website); any failure (no business details set up yet)
+// just leaves the draft, and the email goes without the attachment.
+func (s *Store) IssueBookingDraft(ctx context.Context, bookingID string) {
+	var id, org, loc string
+	if err := s.pool.QueryRow(ctx, `SELECT i.id::text,i.organization_id::text,i.location_id::text FROM invoices i WHERE i.booking_id::text=$1 AND i.status='draft' AND EXISTS(SELECT 1 FROM public_sites ps WHERE ps.organization_id=i.organization_id AND ps.location_id=i.location_id AND ps.published) ORDER BY i.created_at DESC LIMIT 1`, bookingID).Scan(&id, &org, &loc); err != nil {
+		return
+	}
+	scope, err := s.websiteScopeAt(ctx, org, loc)
+	if err != nil {
+		return
+	}
+	_, _ = s.IssueInvoice(ctx, scope, id)
 }
 
 // statusOf is a booking's current status ("" if it cannot be read), so an approval can be told apart from a reopened booking.
@@ -79,18 +95,25 @@ func (s *Store) UndeliveredBookingEmails(ctx context.Context) ([]BookingEmailEve
 func (s *Store) BookingPaymentText(ctx context.Context, bookingID string) (total, payment string) {
 	var totalCents, paid int64
 	var confirming bool
-	if err := s.pool.QueryRow(ctx, `SELECT i.total_cents,i.paid_cents,EXISTS(SELECT 1 FROM square_payment_intents p WHERE p.invoice_id=i.id AND p.state IN ('submitting','uncertain')) FROM invoices i WHERE i.booking_id::text=$1 ORDER BY i.created_at DESC LIMIT 1`, bookingID).Scan(&totalCents, &paid, &confirming); err != nil {
+	var method string
+	// The booking's live invoice (a voided draft is not the bill), and how the money on it was actually taken.
+	if err := s.pool.QueryRow(ctx, `SELECT i.total_cents,i.paid_cents,EXISTS(SELECT 1 FROM square_payment_intents p WHERE p.invoice_id=i.id AND p.state IN ('submitting','uncertain')),
+ coalesce((SELECT p.method FROM payments p WHERE p.invoice_id=i.id AND p.status IN ('completed','refunded') ORDER BY p.recorded_at DESC LIMIT 1),'')
+ FROM invoices i WHERE i.booking_id::text=$1 AND i.status<>'void' ORDER BY i.created_at DESC LIMIT 1`, bookingID).Scan(&totalCents, &paid, &confirming, &method); err != nil {
 		return "", "Pay on the day"
 	}
+	how := map[string]string{"square_card": "by card online", "square_terminal": "by card (Square Reader)", "cash": "in cash", "bank_transfer": "by e-transfer", "cheque": "by cheque"}[method]
 	switch {
 	case paid > 0 && paid >= totalCents:
-		payment = "Paid in full online"
+		payment = "Paid in full " + how
+	case paid > 0:
+		payment = "Part paid " + how + ", " + emailMoney(totalCents-paid) + " due"
 	case confirming:
 		payment = "Card payment is being confirmed"
 	default:
 		payment = "Pay on the day"
 	}
-	return emailMoney(totalCents), payment
+	return emailMoney(totalCents), strings.TrimSpace(strings.ReplaceAll(payment, "  ", " "))
 }
 
 // AdminNotifyEmails lists where a business alert of this kind ("new", "cancelled" or "rescheduled") goes: the addresses saved for alerts,

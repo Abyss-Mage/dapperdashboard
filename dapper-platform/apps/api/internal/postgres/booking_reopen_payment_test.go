@@ -106,4 +106,25 @@ func TestReopenReversesCompletionPayment(t *testing.T) {
 	if b, e := s.CorrectBookingStatus(ctx, scope, other, "confirmed", "", ""); e != nil || b.PaymentNotice != "" {
 		t.Fatal("reopen without a payment misbehaved", b.PaymentNotice, e)
 	}
+
+	// Cancelling a paid booking takes the hand-recorded money back and voids its invoice, so nothing is owed and nothing counts as takings.
+	_, err = pool.Exec(ctx, `INSERT INTO location_grants(principal_id,organization_id,location_id,action) VALUES($1,$2,$3,'invoices.manage')`, staff, org, loc)
+	must(err)
+	var paidBooking string
+	must(pool.QueryRow(ctx, `INSERT INTO bookings(organization_id,location_id,customer_id,service_name,channel,status,booking_time) VALUES($1,$2,$3,'Synthetic Detail','internal','confirmed',now()+interval '2 days') RETURNING id::text`, org, loc, customer).Scan(&paidBooking))
+	inv2, err := s.CreateInvoice(ctx, scope, CreateInvoiceInput{CustomerID: customer, BookingID: &paidBooking, Items: []CreateInvoiceItemInput{{Description: "Synthetic Detail", Quantity: 1, UnitPriceCents: 15000}}})
+	must(err)
+	_, err = pool.Exec(ctx, `UPDATE invoices SET status='paid',invoice_number='SYN2',issuer_id=$2,issuer_snapshot='{}',customer_snapshot='{}',issued_by=$3,issued_at=now(),paid_cents=total_cents,due_cents=0,paid_at=now() WHERE id=$1`, inv2.ID, issuer, staff)
+	must(err)
+	_, err = pool.Exec(ctx, `INSERT INTO payments(organization_id,location_id,invoice_id,customer_id,actor_id,amount_cents,method,status,idempotency_key) VALUES($1,$2,$3,$4,$5,15000,'bank_transfer','completed','deposit-synthetic')`, org, loc, inv2.ID, customer, staff)
+	must(err)
+	gone, err := s.CorrectBookingStatus(ctx, scope, paidBooking, "cancelled", "Customer asked", "")
+	if err != nil || gone.Status != "cancelled" || !strings.Contains(gone.PaymentNotice, "$150.00") {
+		t.Fatalf("cancel failed or said nothing about the payment: %+v %v", gone.PaymentNotice, err)
+	}
+	must(pool.QueryRow(ctx, `SELECT status,paid_cents FROM invoices WHERE id=$1`, inv2.ID).Scan(&status, &paid))
+	must(pool.QueryRow(ctx, `SELECT status,refunded_cents FROM payments WHERE invoice_id=$1`, inv2.ID).Scan(&pstatus, &refunded))
+	if status != "void" || paid != 0 || pstatus != "refunded" || refunded != 15000 {
+		t.Fatalf("cancelled booking still holds money: invoice %s paid %d, payment %s refunded %d", status, paid, pstatus, refunded)
+	}
 }

@@ -2,6 +2,7 @@
 import { ChevronDown } from 'lucide-react';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import BookingRescheduler from './BookingRescheduler';
+import FormPopup from '../FormPopup';
 import { fillInvoiceWindow, openInvoiceWindow, openPdf, ownLayout, usePrintTemplate } from './InvoicePrint';
 import Select from '../GlassSelect';
 import { DatePicker, DateTimePicker } from '../Pickers';
@@ -775,8 +776,8 @@ export default function BookingManager({
       </div>
 
       {moving && (
-        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Reschedule appointment">
-          <div className="modal" style={{ padding: 24, display: 'grid', gap: 14 }}>
+        <FormPopup label="Reschedule appointment" width={520} onClose={() => { if (!moveBusy) setMoving(null); }}>
+          <div style={{ display: 'grid', gap: 14 }}>
             <h3 style={{ margin: 0 }}>Reschedule “{moving.serviceName}”</h3>
             <p>Currently {formatTime(moving.bookingTime)}. This appointment holds no calendar slot, so choose the new date and time yourself.</p>
             <label className="form-field">New date and time<DateTimePicker value={moveTime} onChange={(e) => setMoveTime(e.target.value)} /></label>
@@ -786,11 +787,11 @@ export default function BookingManager({
               <button className="secondary" disabled={moveBusy} onClick={() => setMoving(null)}>Back</button>
             </div>
           </div>
-        </div>
+        </FormPopup>
       )}
       {completing && (() => { const inv = invoices[completing.id]; const owed = inv ? inv.totalCents - inv.paidCents : 0; return (
-        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Complete booking">
-          <div className="modal" style={{ padding: 24, display: 'grid', gap: 14 }}>
+        <FormPopup label="Complete booking" width={560} onClose={() => { if (!completeBusy) setCompleting(null); }}>
+          <div style={{ display: 'grid', gap: 14 }}>
             <h3 style={{ margin: 0 }}>Complete “{completing.serviceName}”</h3>
             {!inv && <p>This booking has no invoice, so there is nothing to collect here.</p>}
             {inv && owed > 0 && <p>{money(owed)} is still owed on invoice {inv.invoiceNumber}. {inv.status === 'draft' ? 'Recording a payment will issue the invoice first.' : ''}</p>}
@@ -803,7 +804,7 @@ export default function BookingManager({
               <button className="secondary" disabled={completeBusy} onClick={() => setCompleting(null)}>Back</button>
             </div>
           </div>
-        </div>
+        </FormPopup>
       ); })()}
       {reschedulingBooking && <BookingRescheduler base={base} booking={reschedulingBooking} onSaved={loadBookings} onClose={() => setReschedulingBooking(null)}/>}
       {cancellingBooking && (

@@ -103,6 +103,21 @@ func gatewayHandler(apiURL, webURL *url.URL, hosts map[string]bool) http.Handler
 	web.ErrorHandler = unavailable
 	mux := http.NewServeMux()
 	mux.Handle("/api/v1/", api)
+	// The browser-tab and home-screen icons follow the "favicon" picture when the owner has replaced it in Website images.
+	for _, icon := range []string{"/favicon.ico", "/icon-32.png", "/icon-192.png", "/apple-touch-icon.png"} {
+		mux.HandleFunc(icon, func(w http.ResponseWriter, r *http.Request) {
+			assetOverrides.RLock()
+			replaced := (r.Method == http.MethodGet || r.Method == http.MethodHead) && assetOverrides.paths["favicon.webp"]
+			assetOverrides.RUnlock()
+			if !replaced {
+				web.ServeHTTP(w, r)
+				return
+			}
+			r2 := r.Clone(r.Context())
+			r2.URL.Path, r2.URL.RawPath, r2.URL.RawQuery = "/api/v1/public/site-asset", "", "path=favicon.webp"
+			api.ServeHTTP(w, r2)
+		})
+	}
 	mux.HandleFunc("/site/assets/", func(w http.ResponseWriter, r *http.Request) {
 		p := strings.TrimPrefix(r.URL.Path, "/site/assets/")
 		assetOverrides.RLock()
