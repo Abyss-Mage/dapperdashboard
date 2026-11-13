@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Archive, Check, Inbox, Mail, Phone, RefreshCw, RotateCcw } from 'lucide-react';
+import { Archive, Check, Inbox, Mail, Phone, RefreshCw, RotateCcw, Trash2 } from 'lucide-react';
+import { askConfirm } from '../confirm';
 import styles from './owner.module.css';
 
 type Enquiry = { id: string; name: string; email: string; phone: string; vehicle: string; service: string; message: string; status: 'new' | 'read' | 'archived'; createdAt: string };
@@ -25,6 +26,16 @@ export default function Enquiries({ organizationId, canManage }: { organizationI
   }, [base, status]);
   useEffect(() => { setItems(null); load().catch((e) => setError(e.message)); }, [load]);
 
+  async function remove(id: string, name: string) {
+    if (!(await askConfirm({ title: 'Delete this enquiry?', message: `The message from ${name || 'this person'} is erased for good. This cannot be undone.`, confirmLabel: 'Delete', tone: 'danger' }))) return;
+    setBusy(true); setError('');
+    try {
+      const r = await fetch(`${base}/${id}`, { method: 'DELETE' });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? 'The enquiry could not be deleted.');
+      await load();
+    } catch (e) { setError(e instanceof Error ? e.message : 'The enquiry could not be deleted.'); }
+    finally { setBusy(false); }
+  }
   async function mark(id: string, next: Enquiry['status']) {
     setBusy(true); setError('');
     try {
@@ -74,9 +85,10 @@ export default function Enquiries({ organizationId, canManage }: { organizationI
                 </div>
                 {canManage && (
                   <div className={styles.enqAct}>
-                    {e.status === 'new' && <button type="button" disabled={busy} onClick={() => void mark(e.id, 'read')}><Check size={15} aria-hidden="true" /> Mark as read</button>}
+                    {e.status === 'new' && <button type="button" className="secondary" disabled={busy} onClick={() => void mark(e.id, 'read')}><Check size={15} aria-hidden="true" /> Mark as read</button>}
                     {e.status !== 'archived' && <button type="button" className="secondary" disabled={busy} onClick={() => void mark(e.id, 'archived')}><Archive size={15} aria-hidden="true" /> Archive</button>}
                     {e.status !== 'new' && <button type="button" className="secondary" disabled={busy} onClick={() => void mark(e.id, 'new')}><RotateCcw size={15} aria-hidden="true" /> Move to New</button>}
+                    {e.status === 'archived' && <button type="button" className="secondary" disabled={busy} onClick={() => void remove(e.id, e.name)}><Trash2 size={15} aria-hidden="true" /> Delete</button>}
                   </div>
                 )}
               </div>

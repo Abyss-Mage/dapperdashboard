@@ -263,6 +263,10 @@ func (c Config) Env(home string) []string {
 			env = append(env, k+"="+v)
 		}
 	}
+	// One time zone for the whole app (error404 #111): the services and the web server's own rendering use the business's zone.
+	if c.Site.Timezone != "" {
+		env = append(env, "TZ="+c.Site.Timezone)
+	}
 	if c.Site.RedisURL != "" {
 		env = append(env, "DAPPER_REDIS_URL="+c.Site.RedisURL)
 	}

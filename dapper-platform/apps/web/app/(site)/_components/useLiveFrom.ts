@@ -3,14 +3,15 @@ import { useEffect, useState } from 'react';
 import { SITE_SLUG } from './site';
 
 /* Prices taken live from the dashboard. `from` is the "starting from" price of each vehicle category: the lowest price among the published
-   base (main) services in that category. `price` is each service's own price by service id. Both are dollars. Nothing is returned until the
-   website entry is published and services are priced, so the pages keep their built-in prices as the fallback. Prices are computed by the
+   base (main) services in that category. `price` is each service's own price by service id. Both are dollars. Pages show only these live prices
+   (error404 #105 #106: the built-in ones were out of date), and nothing while they load. Prices are computed by the
    backend; the website only reads them. */
 type SiteService = { serviceId: string; kind: string; category: string };
 type OptionService = { id: string; name: string; kind: string; parentId: string | null; parentIds?: string[]; priceCents: number };
 export type LiveAddon = { id: string; name: string; parentIds: string[]; priceCents: number };
-type Live = { from: Record<string, number>; price: Record<string, number>; addons: LiveAddon[] };
-const none: Live = { from: {}, price: {}, addons: [] };
+// loaded: the live prices have been asked for (true also when that failed), so a page can tell "still loading" from "no price".
+type Live = { from: Record<string, number>; price: Record<string, number>; addons: LiveAddon[]; loaded: boolean };
+const none: Live = { from: {}, price: {}, addons: [], loaded: false };
 
 export function useLiveCatalog(): Live {
   const [live, setLive] = useState<Live>(none);
@@ -28,9 +29,9 @@ export function useLiveCatalog(): Live {
           if (from[s.category] === undefined || dollars < from[s.category]) from[s.category] = dollars;
         }
         const addons = (options.services as OptionService[]).filter((s) => s.kind === 'addon' && s.parentId && s.priceCents > 0).map((s) => ({ id: s.id, name: s.name, parentIds: s.parentIds?.length ? s.parentIds : [s.parentId as string], priceCents: s.priceCents }));
-        if (!off) setLive({ from, price, addons });
+        if (!off) setLive({ from, price, addons, loaded: true });
       })
-      .catch(() => undefined);
+      .catch(() => { if (!off) setLive({ ...none, loaded: true }); });
     return () => { off = true; };
   }, []);
   return live;

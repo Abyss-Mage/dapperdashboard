@@ -29,8 +29,11 @@ func customerUniqueness(err error) error {
 // existingCustomer finds the customer at this franchise with the same email (any case) or the same phone digits, or "".
 func existingCustomer(ctx context.Context, q rowQuerier, org, loc, email, phone string) (string, error) {
 	var id string
+	// The email decides who the customer is (error404 #98): a phone number is only used when no email is given, because several
+	// customers can share one.
 	err := q.QueryRow(ctx, `SELECT id::text FROM customers WHERE organization_id=$1 AND location_id=$2 AND removed_at IS NULL
- AND ((btrim($3)<>'' AND lower(btrim(email))=lower(btrim($3))) OR (regexp_replace($4,'\D','','g')<>'' AND regexp_replace(phone,'\D','','g')=regexp_replace($4,'\D','','g')))
+ AND CASE WHEN btrim($3)<>'' THEN lower(btrim(email))=lower(btrim($3))
+  ELSE regexp_replace($4,'\D','','g')<>'' AND regexp_replace(phone,'\D','','g')=regexp_replace($4,'\D','','g') END
  ORDER BY created_at LIMIT 1`, org, loc, email, phone).Scan(&id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "", nil

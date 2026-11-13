@@ -66,7 +66,7 @@ export default function HomePage() {
   const [rev, setRev] = useState(0);
   const [deckIdx, setDeckIdx] = useState(0);
   const live = useLiveFrom();
-  const priceOf = (c: { key: string; from?: number }) => live[c.key] ?? c.from;
+  const priceOf = (c: { key: string; from?: number }) => live[c.key] as number | undefined;
   const nRev = testimonials.length;
   const goRev = (to: number) => setRev(((to % nRev) + nRev) % nRev);
   const clips = useFilms(transformations.clips);

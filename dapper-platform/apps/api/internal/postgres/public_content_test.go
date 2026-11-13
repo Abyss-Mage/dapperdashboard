@@ -425,8 +425,9 @@ func TestPublicContentPersistence(t *testing.T) {
 	}
 	var stars int
 	var holder string
-	if err = s.pool.QueryRow(ctx, `SELECT count(*),min(service_id::text) FROM service_publications WHERE organization_id=$1 AND location_id=$2 AND category='boat' AND starred`, scope.OrganizationID, scope.LocationID).Scan(&stars, &holder); err != nil || stars != 1 || holder != second.ID {
-		t.Fatalf("a category must have one star, the newest: %v %d %s", err, stars, holder)
+	// error404 #103: both stay bestsellers (one per size tab), so a category can have several.
+	if err = s.pool.QueryRow(ctx, `SELECT count(*),min(service_id::text) FROM service_publications WHERE organization_id=$1 AND location_id=$2 AND category='boat' AND starred`, scope.OrganizationID, scope.LocationID).Scan(&stars, &holder); err != nil || stars != 2 {
+		t.Fatalf("a category keeps every star: %v %d %s", err, stars, holder)
 	}
 	// Leave the website as the checks below expect it.
 	if _, err = s.pool.Exec(ctx, `DELETE FROM service_publications WHERE service_id = ANY($1::uuid[])`, []string{linked.ID, second.ID}); err != nil {

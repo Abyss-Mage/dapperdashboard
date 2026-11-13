@@ -14,6 +14,7 @@ import SmoothScroll from './_components/SmoothScroll';
 import Tracking from './_components/Tracking';
 import RemovedImages from './_components/RemovedImages';
 import SalesStrip from './_components/SalesStrip';
+import TorontoTime from '../TorontoTime';
 import { siteSEO } from './_components/seo';
 
 const indexing = process.env.DAPPER_PUBLIC_INDEXING === 'enabled';
@@ -49,6 +50,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en-CA">
       <body>
+        <TorontoTime />
         <a className="d-skip" href="#main">Skip to content</a>
         <SalesStrip />
         <SiteHeader />

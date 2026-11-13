@@ -70,8 +70,20 @@ func registerEmployeeWorkspaceRoutes(mux *http.ServeMux, store *postgres.Store) 
 			employeeFailure(w, err)
 			return
 		}
+		// error404 #110 #109: the customer gets the booking confirmation, which also issues the invoice their account shows (as a dashboard
+		// booking does).
+		store.AnnounceBooking(r.Context(), data)
 		accountSetupAfterWalkIn(data, requestSession(r).principalID) // error404 #85
 		reply(w, 201, data)
+	})
+	// error404 #100: find a returning customer by email (or phone) for the walk-in form.
+	mux.HandleFunc("GET /api/v1/employee/customers", func(w http.ResponseWriter, r *http.Request) {
+		items, err := store.EmployeeFindCustomers(r.Context(), requestSession(r).principalID, r.URL.Query().Get("q"))
+		if err != nil {
+			employeeFailure(w, err)
+			return
+		}
+		reply(w, 200, map[string]any{"items": items})
 	})
 	mux.HandleFunc("GET /api/v1/employee/services", func(w http.ResponseWriter, r *http.Request) {
 		items, err := store.EmployeeServices(r.Context(), requestSession(r).principalID)

@@ -40,13 +40,15 @@ const INCLUDES: [RegExp, string[]][] = [
   [/vip/i, ['Interior revived and shined', 'Professional steam cleaning', 'Deep seat cleaning', 'Glass and windows cleaned', 'Air freshener treatment']],
   [/exterior/i, ['Thorough hand wash', 'Wheel and tire cleaning', 'Bug and tar removal', 'Door jamb cleaning', '30-day wax protection']],
 ];
+const BLURBS = new Set(categories.map((c) => c.summary.trim()));
+const generic = (summary: string) => GENERIC.test(summary) || BLURBS.has(summary.trim());
 const includes = (name: string, summary: string): { list: string[]; text: string } => {
-  if (summary && !GENERIC.test(summary)) {
+  if (summary && !generic(summary)) {
     const lines = summary.split(/\r?\n|•|;/).map((x) => x.trim()).filter(Boolean);
     return lines.length > 1 ? { list: lines, text: '' } : { list: [], text: summary };
   }
   const hit = INCLUDES.find(([re]) => re.test(name));
-  return { list: hit ? hit[1] : [], text: hit || GENERIC.test(summary) ? '' : summary };
+  return { list: hit ? hit[1] : [], text: hit || generic(summary) ? '' : summary };
 };
 
 function Packages({ category, name }: { category: string; name: string }) {
@@ -119,8 +121,8 @@ export default function VehiclePage({ slug }: { slug: string }) {
   const isOwn = useReplaced();
   const root = useRef<HTMLDivElement>(null);
   const c = categories.find((x) => x.slug === slug)!;
-  const live = useLiveFrom();
-  const fromPrice = live[c.key] ?? c.from;
+  const { from: live, loaded } = useLiveCatalog();
+  const fromPrice = live[c.key];
   const words = c.title.split(' ');
   const last = words.pop();
 
@@ -180,7 +182,8 @@ export default function VehiclePage({ slug }: { slug: string }) {
         <div className="v-buy">
           {fromPrice
             ? <p className="v-price"><small>Starting from</small><b aria-label={'$' + money(fromPrice)}>${money(fromPrice)}</b></p>
-            : <p className="v-price v-price--ask"><small>Pricing</small><b>Ask the team</b></p>}
+            : loaded ? <p className="v-price v-price--ask"><small>Pricing</small><b>Ask the team</b></p>
+            : <p className="v-price" aria-busy="true"><small>Starting from</small><b style={{ opacity: .35 }}>$&nbsp;…</b></p>}
           <a className="s-btn" href={'/book-appointment?category=' + c.key}><span className="s-roll"><span>Book now</span><span aria-hidden="true">Book now</span></span><ArrowRight size={22} aria-hidden="true" /></a>
           <a className="s-close__call" href={'tel:' + contact.tel}>or call <span>+1 {contact.phone}</span></a>
         </div>
@@ -261,7 +264,7 @@ export default function VehiclePage({ slug }: { slug: string }) {
         </div>
         <ScrollRow label="Other vehicle types" tone="light" className="v-cards">
           {other.map((x) => {
-            const f = live[x.key] ?? x.from;
+            const f = live[x.key];
             return (
               <li key={x.slug} className="v-card" data-in>
                 <Link href={'/' + x.slug} className="v-card__img" tabIndex={-1} aria-hidden="true"><span style={{ backgroundImage: 'url(' + x.image + ')' }} /></Link>

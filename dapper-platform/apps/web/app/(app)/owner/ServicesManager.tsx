@@ -528,7 +528,7 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
                   {web.cat && (
                     <label className={styles.parentOpt}>
                       <input type="checkbox" checked={!!web.star} disabled={busy} onChange={(e) => setWeb({ ...web, star: e.target.checked })} />
-                      <span>Bestseller for {websiteCategories.find((x) => x.key === web.cat)?.short ?? 'this category'}. It shows first with a Bestseller label, and replaces any other bestseller in this category.</span>
+                      <span>Bestseller for {websiteCategories.find((x) => x.key === web.cat)?.short ?? 'this category'}. It shows first in its tab with a Bestseller label. Several packages can be bestsellers, for example one per size or vehicle.</span>
                     </label>
                   )}
                   <p className={styles.footnote}>Saved with the service. The name and price on the website always come from this screen.</p>

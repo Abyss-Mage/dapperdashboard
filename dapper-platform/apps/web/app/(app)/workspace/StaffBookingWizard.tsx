@@ -50,9 +50,12 @@ export default function StaffBookingWizard(props: StaffBookingWizardProps) {
       }}
       allowPast={!employee}
       loadAvailability={async (rule, from, days) => json<WizardAvailability>(await fetch(employee ? `/api/v1/employee/walk-in/availability?${query(rule, from, days)}` : `${base}/bookings/availability?${query(rule, from, days)}&past=1`, { cache: 'no-store' }))}
-      findCustomers={employee ? undefined : async (phone): Promise<WizardCustomer[]> => {
+      // error404 #100: find a returning customer by email (by phone only when no email is typed), in the dashboard and the workspace.
+      findCustomers={async (query): Promise<WizardCustomer[]> => {
+        if (employee) return (await json<{ items: WizardCustomer[] }>(await fetch(`/api/v1/employee/customers?q=${encodeURIComponent(query)}`, { cache: 'no-store' }))).items;
         const list = (await json<{ items: WizardCustomer[] }>(await fetch(`${base}/customers`, { cache: 'no-store' }))).items;
-        const d = digits(phone);
+        const q = query.trim().toLowerCase(), d = digits(query);
+        if (/[a-z@]/.test(q)) return list.filter((c) => (c.email ?? '').toLowerCase().includes(q)).sort((a, b) => Number((b.email ?? '').toLowerCase() === q) - Number((a.email ?? '').toLowerCase() === q)).slice(0, 5);
         return list.filter((c) => d.length >= 4 && digits(c.phone ?? '').includes(d)).slice(0, 5);
       }}
       submit={async (b: WizardBooking) => {
@@ -62,10 +65,10 @@ export default function StaffBookingWizard(props: StaffBookingWizardProps) {
         } else {
           let customerId = b.customer.id;
           if (!customerId) {
-            // Each email and phone belongs to one customer: book a returning customer under their existing record.
+            // The email decides who the customer is (error404 #98); the phone is used only when no email is given.
             const list = (await json<{ items: WizardCustomer[] }>(await fetch(`${base}/customers`, { cache: 'no-store' }))).items;
             const email = b.customer.email.trim().toLowerCase(), phone = digits(b.customer.phone);
-            customerId = list.find((c) => (email && (c.email ?? '').toLowerCase() === email) || (phone.length >= 7 && digits(c.phone ?? '') === phone))?.id;
+            customerId = list.find((c) => (email ? (c.email ?? '').toLowerCase() === email : phone.length >= 7 && digits(c.phone ?? '') === phone))?.id;
           }
           if (!customerId) {
             const made = await json<{ id: string }>(await fetch(`${base}/customers`, post({ name: b.customer.name, email: b.customer.email, phone: b.customer.phone })));

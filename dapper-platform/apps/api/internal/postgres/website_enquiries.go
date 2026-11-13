@@ -127,3 +127,23 @@ func (s *Store) SetWebsiteEnquiryStatus(ctx context.Context, actor, org, id, sta
 	}
 	return tx.Commit(ctx)
 }
+
+// DeleteWebsiteEnquiry erases an archived enquiry for good (error404 #108); only archived ones, so a message is never lost by one click.
+func (s *Store) DeleteWebsiteEnquiry(ctx context.Context, actor, org, id string) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	if err = s.enquiryAccess(ctx, tx, actor, org, "marketing.manage"); err != nil {
+		return err
+	}
+	tag, err := tx.Exec(ctx, `DELETE FROM website_enquiries WHERE organization_id=$1 AND id=$2 AND status='archived'`, org, id)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() != 1 {
+		return ErrEnquiryNotFound
+	}
+	return tx.Commit(ctx)
+}

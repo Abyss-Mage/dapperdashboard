@@ -63,12 +63,20 @@ func verifyCustomerManagement(t *testing.T, ctx context.Context, s *Store, a, b 
 	if _, err = s.UpdateCustomer(ctx, b, free.ID, "Foreign edit", "", ""); err == nil {
 		t.Fatal("another franchise edited this customer")
 	}
-	// One customer per email and per phone at a franchise.
+	// One customer per email at a franchise; a phone number may be shared (error404 #98).
 	if _, err = s.CreateCustomer(ctx, a, "Synthetic Same Email", "HISTORY@example.invalid", ""); !errors.Is(err, ErrCustomerDuplicate) {
 		t.Fatal("a second customer with the same email was added", err)
 	}
-	if _, err = s.CreateCustomer(ctx, a, "Synthetic Same Phone", "", "+1 (416) 555-0199"); !errors.Is(err, ErrCustomerDuplicate) {
-		t.Fatal("a second customer with the same phone was added", err)
+	samePhone, err := s.CreateCustomer(ctx, a, "Synthetic Same Phone", "shared-phone@example.invalid", "+1 (416) 555-0199")
+	if err != nil {
+		t.Fatal("a customer sharing a phone number was refused", err)
+	}
+	// The email decides who the customer is; the phone only when no email is given.
+	if id, e := existingCustomer(ctx, s.pool, a.OrganizationID, a.LocationID, "shared-phone@example.invalid", "+14165550199"); e != nil || id != samePhone.ID {
+		t.Fatal("email did not decide the match", id, e)
+	}
+	if id, e := existingCustomer(ctx, s.pool, a.OrganizationID, a.LocationID, "brand-new@example.invalid", "+14165550199"); e != nil || id != "" {
+		t.Fatal("a new email was matched to someone else by phone", id, e)
 	}
 	if _, err = s.UpdateCustomer(ctx, a, used.ID, "Synthetic With History", "renamed@example.invalid", ""); !errors.Is(err, ErrCustomerDuplicate) {
 		t.Fatal("an edit took another customer's email", err)

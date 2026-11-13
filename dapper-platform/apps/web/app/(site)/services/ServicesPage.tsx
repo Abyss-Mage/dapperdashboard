@@ -87,10 +87,10 @@ export default function ServicesPage() {
             <li key={c.slug}>
               <Link href={'/' + c.slug} className="s-tile">
                 <span className="s-tile__img" style={{ backgroundImage: 'url(' + c.image + ')' }} role="img" aria-label={c.photo ? c.title : 'Vehicle detailed by Dapper'} />
-                {(live[c.key] ?? c.from) ? <span className="s-tile__price" aria-label={'Starting from $' + money((live[c.key] ?? c.from)!)}>${money((live[c.key] ?? c.from)!)}</span> : null}
+                {live[c.key] ? <span className="s-tile__price" aria-label={'Starting from $' + money(live[c.key])}>${money(live[c.key])}</span> : null}
                 <span className="s-tile__name">{c.short}</span>
                 {c.photo || isOwn(c.image) ? null : <span className="s-tile__tag">Studio photo</span>}
-                <span className="s-tile__sub">{c.key === 'ceramic' ? 'Coating' : c.key === 'ppf' ? 'Paint protection film' : (live[c.key] ?? c.from) ? 'Detailing' : 'Ask the team'}</span>
+                <span className="s-tile__sub">{c.key === 'ceramic' ? 'Coating' : c.key === 'ppf' ? 'Paint protection film' : 'Detailing'}</span>
               </Link>
             </li>
           ))}

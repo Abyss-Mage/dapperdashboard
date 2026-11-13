@@ -87,4 +87,17 @@ func registerWebsiteEnquiryRoutes(mux *http.ServeMux, store *postgres.Store) {
 		}
 		reply(w, 200, map[string]bool{"saved": true})
 	})
+	// error404 #108: delete an archived enquiry.
+	mux.HandleFunc("DELETE "+base+"/{enquiry}", func(w http.ResponseWriter, r *http.Request) {
+		org, id := r.PathValue("organization"), r.PathValue("enquiry")
+		if !uuid(org) || !uuid(id) {
+			reply(w, 400, map[string]string{"error": "Valid selectors required"})
+			return
+		}
+		if err := store.DeleteWebsiteEnquiry(r.Context(), requestSession(r).principalID, org, id); err != nil {
+			enquiryFailure(w, err)
+			return
+		}
+		reply(w, 200, map[string]bool{"deleted": true})
+	})
 }

@@ -204,7 +204,11 @@ func TestPostgresScopedPersistence(t *testing.T) {
 	if err = s.pool.QueryRow(ctx, `SELECT count(*) FROM audit_events WHERE entity_id=$1 AND action='customer.created'`, c.ID).Scan(&count); err != nil || count != 1 {
 		t.Fatal("transactional audit missing")
 	}
-	// Force an audit insert failure after the customer insert; both must roll back.
+	// Force an audit insert failure after the customer insert; both must roll back. Counted right here, because the checks above add
+	// customers of their own (a new email is a new customer even with a phone already on file, error404 #98).
+	if own, err = s.Customers(ctx, scopeA); err != nil {
+		t.Fatal(err)
+	}
 	before := len(own)
 	if _, err = s.pool.Exec(ctx, `ALTER TABLE audit_events ADD CONSTRAINT test_audit_failure CHECK (action <> 'customer.created') NOT VALID`); err != nil {
 		t.Fatal(err)

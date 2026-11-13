@@ -41,7 +41,8 @@ function ResetPassword() {
         {done ? (
           <>
             <p>Your password was changed. You can sign in with it now.</p>
-            <p><a href="/account" style={{ textDecoration: 'underline' }}>Customer sign-in</a> · <a href="/workspace" style={{ textDecoration: 'underline' }}>Staff sign-in</a> · <a href="/dashboard" style={{ textDecoration: 'underline' }}>Owner sign-in</a></p>
+            {/* error404 #101: customers only see their own sign-in here, not the staff or owner links. */}
+            <p><a className="primary" href="/account">Sign in to your account</a></p>
           </>
         ) : token ? (
           <form onSubmit={confirm} style={{ display: 'grid', gap: 14 }}>

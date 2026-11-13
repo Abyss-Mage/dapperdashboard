@@ -197,15 +197,11 @@ func (s *Store) SaveServicePublication(ctx context.Context, scope Scope, input S
 	if err != nil {
 		return input, err
 	}
-	// One star per category: the new star takes over, and a package that leaves the website gives its star up.
+	// Any number of bestsellers per category (error404 #103: each size or vehicle tab has its own); a package that leaves the website
+	// gives its star up.
 	if !input.Published {
 		off := false
 		input.SetStar = &off
-	}
-	if input.SetStar != nil && *input.SetStar {
-		if _, err = tx.Exec(ctx, `UPDATE service_publications SET starred=false WHERE organization_id=$1 AND location_id=$2 AND category=$3 AND service_id<>$4 AND starred`, scope.OrganizationID, scope.LocationID, input.Category, input.ServiceID); err != nil {
-			return input, err
-		}
 	}
 	var version int
 	if input.Version == 0 {

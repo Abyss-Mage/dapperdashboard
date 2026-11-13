@@ -110,3 +110,6 @@
 @media(prefers-reduced-motion:reduce){.upsellBtn{transition:none}}
 .upsellSave{margin:0;font-weight:800;color:#1f8a4c}
 .check a{color:var(--primary);font-weight:600;text-decoration:underline;text-underline-offset:.2em}
+/* error404 #99: the workspace styles every label as a column (.app label); add-ons and other check rows stay one line: box, name, price. */
+.choices .check{display:flex;align-items:center;gap:12px;font-size:15px;font-weight:600}
+.choices .check .price{margin-left:auto}

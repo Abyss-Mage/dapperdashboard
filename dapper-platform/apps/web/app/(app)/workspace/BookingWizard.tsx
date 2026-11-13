@@ -37,7 +37,8 @@ export type WizardProps = {
   /** Administrators can step back to earlier months to enter a booking that already happened. */
   allowPast?: boolean;
   submit: (booking: WizardBooking) => Promise<void>;
-  findCustomers?: (phone: string) => Promise<WizardCustomer[]>;
+  /** Search by email (or by phone when no email is typed). */
+  findCustomers?: (query: string) => Promise<WizardCustomer[]>;
   timezone: string;
   phoneCheck?: WizardPhoneCheck;
   deposit?: WizardDeposit;
@@ -303,7 +304,7 @@ export default function BookingWizard(p: WizardProps) {
   async function lookup() {
     if (!p.findCustomers) return;
     setError('');
-    try { setFound(await p.findCustomers(me.phone)); } catch (e) { setError(e instanceof Error ? e.message : 'Search failed.'); }
+    try { setFound(await p.findCustomers(me.email.trim() || me.phone)); } catch (e) { setError(e instanceof Error ? e.message : 'Search failed.'); }
   }
   async function save() {
     if (!rule) return;
@@ -448,7 +449,7 @@ export default function BookingWizard(p: WizardProps) {
           <h2 ref={topRef} tabIndex={-1} className={styles.title}>Anything extra?</h2>
           <p className={styles.help}>Optional. You can skip this.</p>
           {upgradeCard()}
-          <div className={styles.choices}>{extras.map((a) => (
+          <div className={`${styles.choices} ${styles.two}`}>{extras.map((a) => (
             <label key={a.serviceId} className={styles.check}>
               <input type="checkbox" checked={picked.includes(a.serviceId)} onChange={(e) => setPicked((cur) => (e.target.checked ? [...cur, a.serviceId] : cur.filter((x) => x !== a.serviceId)))} />
               <span>{a.name}</span>
@@ -489,8 +490,8 @@ export default function BookingWizard(p: WizardProps) {
             <label className={`${styles.field} ${styles.wide}`}>Full name<input value={me.name} onChange={(e) => setMe({ ...me, name: e.target.value })} autoComplete="name" placeholder="Your full name" /></label>
             <label className={`${styles.field} ${styles.half}`}>Mobile number<input type="tel" value={me.phone} onChange={(e) => setMe({ ...me, phone: e.target.value })} autoComplete="tel" placeholder="+1 416 555 0123" /></label>
             <label className={`${styles.field} ${styles.half}`}>Email<input type="email" value={me.email} onChange={(e) => setMe({ ...me, email: e.target.value })} autoComplete="email" placeholder="you@example.com" /></label>
-            {p.findCustomers && <div className={styles.wide}><button type="button" className={styles.back} disabled={me.phone.replace(/\D/g, '').length < 4} onClick={() => void lookup()}>Find an existing customer by phone</button>
-              {found && (found.length ? <div className={styles.choices} style={{ marginTop: 8 }}>{found.map((c) => <button key={c.id} type="button" className={styles.choice} onClick={() => { setMe({ id: c.id, name: c.name, email: c.email, phone: c.phone }); setFound(null); }}><span><strong>{c.name}</strong><small>{c.email || 'No email'} · {c.phone}</small></span></button>)}</div> : <p className={styles.help}>No customer with that number.</p>)}</div>}
+            {p.findCustomers && <div className={styles.wide}><button type="button" className={styles.back} disabled={me.email.trim().length < 3 && me.phone.replace(/\D/g, '').length < 4} onClick={() => void lookup()}>{me.email.trim() ? 'Find an existing customer by email' : 'Find an existing customer (type their email first)'}</button>
+              {found && (found.length ? <div className={styles.choices} style={{ marginTop: 8 }}>{found.map((c) => <button key={c.id} type="button" className={styles.choice} onClick={() => { setMe({ id: c.id, name: c.name, email: c.email, phone: c.phone }); setFound(null); }}><span><strong>{c.name}</strong><small>{c.email || 'No email'} · {c.phone}</small></span></button>)}</div> : <p className={styles.help}>{me.email.trim() ? 'No customer with that email. A new customer will be added.' : 'No customer with that number.'}</p>)}</div>}
             {(p.deposit || p.allowCoupon) && <div className={`${styles.field} ${styles.wide}`}><label htmlFor="coupon-code">Coupon code (optional)</label>
               <div style={{ display: 'flex', gap: 8 }}><input id="coupon-code" value={coupon} maxLength={32} onChange={(e) => { setCoupon(e.target.value.toUpperCase()); setCouponMsg(''); }} autoComplete="off" placeholder="Have a coupon? Enter it here" />
                 {p.checkCoupon && <button type="button" className={styles.back} disabled={couponBusy || !coupon.trim() || !rule} onClick={async () => {
