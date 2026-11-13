@@ -28,6 +28,25 @@ func TestInstalledLockAndSaveOnce(t *testing.T) {
 	if err != nil || loaded.Site.Name != "Test" || loaded.Version != ConfigVersion {
 		t.Fatalf("load failed: %v %+v", err, loaded)
 	}
+	// Settings added to .env by hand afterwards reach the services (owner 2026-11-13): indexing and the Square webhook.
+	f, err := os.OpenFile(ConfigPath(home), os.O_APPEND|os.O_WRONLY, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _ = f.WriteString("DAPPER_PUBLIC_INDEXING=enabled\nDAPPER_SQUARE_WEBHOOK_URL=https://dapper.example.com/api/v1/integrations/square/webhooks\nDAPPER_REDIS_URL=redis://127.0.0.1:6379/0\n")
+	f.Close()
+	if loaded, err = Load(home); err != nil {
+		t.Fatal(err)
+	}
+	env := strings.Join(loaded.Env(home), "\n")
+	for _, want := range []string{"DAPPER_PUBLIC_INDEXING=enabled", "DAPPER_SQUARE_WEBHOOK_URL=https://dapper.example.com/api/v1/integrations/square/webhooks", "DAPPER_REDIS_URL=redis://127.0.0.1:6379/0"} {
+		if !strings.Contains(env, want) {
+			t.Errorf("missing %s", want)
+		}
+	}
+	if strings.Contains(env, "DAPPER_SQUARE_WEBHOOK_SIGNATURE_KEY") {
+		t.Error("an unset optional setting must not appear")
+	}
 }
 
 func TestEnvMapsProxyAndTLS(t *testing.T) {

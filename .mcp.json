@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "dapper-legacy-import": {
+      "command": "python",
+      "args": ["tools/legacy-import-mcp/server.py"]
+    }
+  }
+}

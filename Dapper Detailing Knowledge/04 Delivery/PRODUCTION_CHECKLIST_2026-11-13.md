@@ -96,3 +96,23 @@ Legend: `[x]` done and checked · `[ ]` to do. **Who:** *You* (owner, needs your
 - DNS back to the legacy host (fast while TTL is 300 s).
 - App code: `git checkout pre-production-2026-11-13` and deploy, or restore `.dapper/bin.prev`.
 - Data: `pg_restore` the pre-go-live dump. Bookings taken after it would need re-entering, so note them during the watch window.
+
+---
+
+## Progress (2026-11-13, later)
+- [x] **Legacy import MCP server** (`tools/legacy-import-mcp/server.py`, registered in `.mcp.json` as `dapper-legacy-import`). Owner decisions:
+  - Sign-in to the live site uses a WordPress Application Password in the Windows user environment (`DAPPER_LEGACY_WP_USER`, `DAPPER_LEGACY_WP_APP_PASSWORD`). The live site is only read.
+  - It imports all four groups: catalogue, content and media, customers, and booking and payment history.
+  - Every import is a dry run first, then applied only with the plan's confirm code, in one transaction, under a batch id that can be undone.
+  - Sources:
+    - Catalogue, content and media come from the live site's `dapper-export/v1` API.
+    - Customers, appointments and payments come from the BookingPress export file. The BookingPress REST API is not used: its routes are POST-only and many change data.
+  - Mapping reuses the approved scripts (`import_bookingpress_history.py`, `import_bookingpress_invoices.py`, `cmd/seed-catalogue`). Vehicles are not imported (approved 2026-11-04 history mapping).
+  - Content and media are fetched and saved locally for review. The new site's pages are built in code, so they are placed by hand.
+  - The target is set by `DAPPER_IMPORT_DATABASE_URL`.
+  - Evidence:
+    - 7 unit tests pass.
+    - End-to-end on a throwaway local database with the production schema and the cached export: the plan showed 453 customers, 584 bookings (364 completed, 143 confirmed, 77 cancelled) and 584 billing rows. A wrong confirm and a repeated apply were refused. Undo removed everything. The throwaway database was dropped.
+    - Not verified: live-site sign-in (no Application Password yet) and the catalogue parts against a database.
+- [x] Section 4 code item: `DAPPER_PUBLIC_INDEXING`, `DAPPER_SQUARE_WEBHOOK_URL` and `DAPPER_SQUARE_WEBHOOK_SIGNATURE_KEY` now pass from `.env` to the services (install test). Not deployed yet.
+- [ ] **Blocked:** at about 20:30 on 2026-11-13 every SSH host key of 201.18.205.129 had changed (ED25519 `SHA256:OP/ZS5lF…`, ECDSA `SHA256:WOd4M+1X…`; on record: ED25519 `SHA256:FDOf0C3n…`, ECDSA `SHA256:U52tWOZo…`), and HTTPS no longer answered. Server work (fail2ban, making the old dumps private, adding uploads to the nightly backup, deploy) stopped until the owner confirms the server was rebuilt and its new key fingerprint matches the provider console. The pre-production backups are on the owner's PC, so a rebuilt server can be restored from them.

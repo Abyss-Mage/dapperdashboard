@@ -33,7 +33,14 @@ type Config struct {
 	SMTP     SMTP     `json:"smtp"`
 	Keys     Keys     `json:"keys"`
 	Session  Session  `json:"session"`
+	// Optional holds the extra .env settings in passThrough, copied to the services as they are (owner 2026-11-13).
+	Optional map[string]string `json:"-"`
 }
+
+// passThrough are optional settings added to .env by hand that the services read directly: search-engine indexing (only once the site
+// runs on its real domain) and the Square webhook. Without this they would sit in .env and never reach the app.
+var passThrough = []string{"DAPPER_PUBLIC_INDEXING", "DAPPER_SQUARE_WEBHOOK_URL", "DAPPER_SQUARE_WEBHOOK_SIGNATURE_KEY"}
+
 type Site struct {
 	Name     string `json:"name"`
 	URL      string `json:"url"` // public origin, for example https://dapper.example.com
@@ -168,6 +175,14 @@ func Load(home string) (Config, error) {
 		Keys:     Keys{MFA: e["DAPPER_MFA_KEY"], Invitation: e["DAPPER_INVITATION_ENCRYPTION_KEY"]},
 		Session:  Session{Lifetime: e["DAPPER_SESSION_LIFETIME"]},
 	}
+	for _, k := range passThrough {
+		if v := e[k]; v != "" {
+			if c.Optional == nil {
+				c.Optional = map[string]string{}
+			}
+			c.Optional[k] = v
+		}
+	}
 	if c.Session.Lifetime == "" {
 		c.Session.Lifetime = "8h"
 	}
@@ -242,6 +257,11 @@ func (c Config) Env(home string) []string {
 		"DAPPER_MFA_KEY=" + c.Keys.MFA, "DAPPER_INVITATION_ENCRYPTION_KEY=" + c.Keys.Invitation,
 		"DAPPER_UPLOAD_DIR=" + UploadDir(home), "DAPPER_SOP_DIR=" + filepath.Join(home, "dapper-platform", "apps", "api", "data", "sops"),
 		"DAPPER_LISTEN=" + c.Site.Listen, "DAPPER_PUBLIC_HOST=" + origin.Host, "DAPPER_TIMEZONE=" + c.Site.Timezone, "DAPPER_BUSINESS_NAME=" + c.Site.Name,
+	}
+	for _, k := range passThrough {
+		if v := c.Optional[k]; v != "" {
+			env = append(env, k+"="+v)
+		}
 	}
 	if c.Site.RedisURL != "" {
 		env = append(env, "DAPPER_REDIS_URL="+c.Site.RedisURL)

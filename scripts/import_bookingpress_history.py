@@ -35,6 +35,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--org", required=True); ap.add_argument("--loc", required=True)
     ap.add_argument("--source", default=SRC); ap.add_argument("--out", required=True)
+    ap.add_argument("--batch", default=BATCH)  # one id per import run, so a run can be reviewed or undone (legacy import MCP)
     a = ap.parse_args()
     d = json.load(open(a.source, encoding="utf8"))
     svc = {s["bookingpress_service_id"]: s for s in d["services"]}
@@ -62,7 +63,7 @@ def main():
             f" AND NOT EXISTS(SELECT 1 FROM customers WHERE organization_id={q(a.org)} AND location_id={q(a.loc)} AND lower(btrim(email))={q(email)});")
         # Map to the new row, or to the customer who already had this email.
         out.append(
-            f"INSERT INTO legacy_import_map(source_system,source_kind,source_id,organization_id,target_id,batch,note) SELECT 'bookingpress','customer',{q(cid)},{q(a.org)},id,{q(BATCH)},CASE WHEN id={q(tid)} THEN '' ELSE 'matched an existing customer by email' END "
+            f"INSERT INTO legacy_import_map(source_system,source_kind,source_id,organization_id,target_id,batch,note) SELECT 'bookingpress','customer',{q(cid)},{q(a.org)},id,{q(a.batch)},CASE WHEN id={q(tid)} THEN '' ELSE 'matched an existing customer by email' END "
             f"FROM customers WHERE organization_id={q(a.org)} AND location_id={q(a.loc)} AND lower(btrim(email))={q(email)} ON CONFLICT DO NOTHING;")
         rep["customers"] += 1
     for ap_ in d["appointments"]:
@@ -98,7 +99,7 @@ def main():
             f"FROM legacy_import_map m WHERE m.source_system='bookingpress' AND m.source_kind='customer' AND m.source_id={q(cid)} AND m.organization_id={q(a.org)} "
             f"AND NOT EXISTS(SELECT 1 FROM legacy_import_map WHERE source_system='bookingpress' AND source_kind='booking' AND source_id={q(bid)} AND organization_id={q(a.org)});")
         out.append(
-            f"INSERT INTO legacy_import_map(source_system,source_kind,source_id,organization_id,target_id,batch) SELECT 'bookingpress','booking',{q(bid)},{q(a.org)},id,{q(BATCH)} FROM bookings WHERE id={q(tid)} ON CONFLICT DO NOTHING;")
+            f"INSERT INTO legacy_import_map(source_system,source_kind,source_id,organization_id,target_id,batch) SELECT 'bookingpress','booking',{q(bid)},{q(a.org)},id,{q(a.batch)} FROM bookings WHERE id={q(tid)} ON CONFLICT DO NOTHING;")
         out.append(
             f"INSERT INTO booking_events(booking_id,organization_id,location_id,from_status,to_status,notes) SELECT id,organization_id,location_id,NULL,status,'Imported from BookingPress' FROM bookings WHERE id={q(tid)} AND NOT EXISTS(SELECT 1 FROM booking_events WHERE booking_id={q(tid)});")
         rep["bookings " + st] += 1
