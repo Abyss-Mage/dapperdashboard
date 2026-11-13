@@ -539,7 +539,8 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
         </FormPopup>
       )}
 
-      {slotsFor && <ServiceSlots base={slotsBase} service={slotsFor} onClose={() => setSlotsFor(null)} />}
+      {/* The slot settings open as a popup over the list, like the service form. */}
+      {slotsFor && <FormPopup label={`Slots for ${slotsFor.name}`} width={680} onClose={() => setSlotsFor(null)}><ServiceSlots base={slotsBase} service={slotsFor} onClose={() => setSlotsFor(null)} /></FormPopup>}
 
       {mode === 'franchise' && canManage && available.length > 0 && (
         <section className={styles.resource}>

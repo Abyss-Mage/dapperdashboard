@@ -134,6 +134,8 @@ export default function BookingWizard(p: WizardProps) {
   const [address, setAddress] = useState('');
   const [vehicle, setVehicle] = useState('');
   const [car, setCar] = useState({ year: '', make: '', model: '' });
+  // A customer booking on the website agrees to the terms before booking.
+  const [agreed, setAgreed] = useState(false);
   const [ruleId, setRuleId] = useState('');
   const [picked, setPicked] = useState<string[]>([]);
   const today = new Date();
@@ -284,7 +286,7 @@ export default function BookingWizard(p: WizardProps) {
   const daySlots = starts.get(day) ?? [];
 
   const addressNeeded = where !== 'shop';
-  const detailsOk = me.name.trim().length >= 2 && me.phone.replace(/\D/g, '').length >= 7 && /.+@.+\..+/.test(me.email.trim());
+  const detailsOk = me.name.trim().length >= 2 && me.phone.replace(/\D/g, '').length >= 7 && /.+@.+\..+/.test(me.email.trim()) && (p.audience !== 'customer' || agreed);
   const stepOk = ({
     Welcome: true,
     Service: !!group,
@@ -328,7 +330,7 @@ export default function BookingWizard(p: WizardProps) {
     finally { setBusy(false); }
   }
   function again() {
-    setDone(false); setStep(0); setGroup(''); setWhere('shop'); setAddress(''); setVehicle(''); setCar({ year: '', make: '', model: '' }); setRuleId(''); setUpgradedFrom(''); setPicked([]); setDay(''); setStart(''); setMe({ name: '', email: '', phone: '' }); setNotes(''); setFound(null); setDoneInfo(null); setPayMethod('card'); setCardReady(false); setCode(''); setCodeSent(false); setReturning(null);
+    setDone(false); setStep(0); setGroup(''); setWhere('shop'); setAddress(''); setVehicle(''); setCar({ year: '', make: '', model: '' }); setRuleId(''); setUpgradedFrom(''); setPicked([]); setDay(''); setStart(''); setMe({ name: '', email: '', phone: '' }); setNotes(''); setFound(null); setDoneInfo(null); setPayMethod('card'); setCardReady(false); setAgreed(false); setCode(''); setCodeSent(false); setReturning(null);
   }
 
   async function sendCode() {
@@ -499,6 +501,11 @@ export default function BookingWizard(p: WizardProps) {
                 }}>{couponBusy ? 'Checking…' : 'Apply'}</button>}</div>
               {couponMsg && <span role="status" className={styles.help}>{couponMsg}</span>}</div>}
             <label className={`${styles.field} ${styles.wide}`}>Notes (optional)<textarea rows={3} maxLength={1000} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything we should know?" /></label>
+            {cust && <label className={`${styles.check} ${styles.wide}`}>
+              <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} required />
+              <span>I agree with the <a href="/terms-conditions" target="_blank" rel="noopener noreferrer">terms &amp; conditions</a></span>
+            </label>}
+            {cust && !agreed && <p className={`${styles.help} ${styles.wide}`}>Tick the box to agree to the terms and conditions before you continue.</p>}
           </div>
           {rule && <div className={styles.sum} aria-label="Price summary">
             <div><span>{packName(rule)}</span><span>{price(rule.serviceId) === null ? 'Price not set' : money(price(rule.serviceId) as number)}</span></div>

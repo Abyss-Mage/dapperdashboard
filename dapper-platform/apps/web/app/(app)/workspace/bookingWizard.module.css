@@ -109,3 +109,4 @@
 .upsellBtn:focus-visible{outline:2px solid var(--primary);outline-offset:3px}
 @media(prefers-reduced-motion:reduce){.upsellBtn{transition:none}}
 .upsellSave{margin:0;font-weight:800;color:#1f8a4c}
+.check a{color:var(--primary);font-weight:600;text-decoration:underline;text-underline-offset:.2em}
