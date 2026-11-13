@@ -2,6 +2,8 @@
 
 **Platform (owner decision, 2026-11-13): Ubuntu 26.04 LTS with Apache 2.4** as the HTTPS front door, using Let's Encrypt certificates through certbot. This replaces Caddy, which the dev server used.
 
+**Order (owner, 2026-11-13): set up on the IP address first (https://201.18.205.129, self-signed certificate), and link the domain later** (step 8b). The steps below use 201.18.205.129; replace it if the server has another address.
+
 User direction (2026-11-13): a brand-new server for full production, set up with a **new, clean database**. The legacy website's data comes in through the legacy import MCP server. Claude gets no shell access to this server. Its only way in is the import MCP server, once step 10 is done. Every step below is run by you.
 
 **Conventions**
@@ -13,10 +15,9 @@ The old dev server's data is backed up on your PC (`C:\Users\apexp\DapperBackups
 
 ---
 
-## 0. Before you start (on your PC / domain registrar)
-1. At the registrar, add DNS A records → `NEW_SERVER_IP` for **`dashboard`** and **`workspace`** (TTL 300).
-2. Leave `dapperdetailing.ca` and `www` on the legacy host for now; they move on go-live day.
-3. Make sure you can log in: `ssh root@NEW_SERVER_IP`.
+## 0. Before you start
+1. Make sure you can log in: `ssh root@NEW_SERVER_IP`.
+2. DNS comes later (step 8b). `dapperdetailing.ca` stays on the legacy host until go-live day.
 
 ## 1. Update the system
 ```bash
@@ -80,7 +81,7 @@ Then open http://127.0.0.1:8099 in your browser, enter the code, and fill in:
 
 | Field | Value |
 |---|---|
-| Site address | `https://dashboard.dapperdetailing.ca` (changes to `https://dapperdetailing.ca` on go-live day) |
+| Site address | `https://201.18.205.129` for now. Step 8b changes it to the domain |
 | Listen address | `127.0.0.1:8443` |
 | HTTPS | behind a reverse proxy (`proxy`) |
 | Timezone | `America/Toronto` |
@@ -91,28 +92,42 @@ Then open http://127.0.0.1:8099 in your browser, enter the code, and fill in:
 
 When the wizard says it's finished, it stops by itself. Back on the server:
 ```bash
-echo 'DAPPER_EXTRA_ORIGINS=https://workspace.dapperdetailing.ca' >> /opt/dapper/app/.env
 sudo -u dapper /opt/dapper/app/.dapper/bin/dapper migrate --home /opt/dapper/app
 cp /opt/dapper/app/scripts/server/dapper.service /etc/systemd/system/dapper.service
 systemctl daemon-reload && systemctl enable --now dapper && sleep 15 && curl -s http://127.0.0.1:8443/api/v1/health -H 'Host: 127.0.0.1:8443'
 ```
 
-## 8. HTTPS addresses (Apache + Let's Encrypt)
+## 8a. HTTPS on the IP address (now)
+Let's Encrypt doesn't issue certificates for a bare IP, so make one for this IP. It's valid for 825 days, and browsers will warn until the domain is linked.
 ```bash
-cp /opt/dapper/app/scripts/server/apache-dapper.conf /etc/apache2/sites-available/dapper.conf
-a2ensite dapper && a2dissite 000-default
+install -d -m 700 /etc/dapper/tls
+openssl req -x509 -newkey rsa:3072 -sha256 -days 825 -nodes -keyout /etc/dapper/tls/ip.key -out /etc/dapper/tls/ip.crt -subj "/CN=201.18.205.129" -addext "subjectAltName=IP:201.18.205.129"
+cp /opt/dapper/app/scripts/server/apache-dapper-ip.conf /etc/apache2/sites-available/dapper-ip.conf
+a2ensite dapper-ip && a2dissite 000-default
 apachectl configtest && systemctl reload apache2
-certbot --apache -d dashboard.dapperdetailing.ca -d workspace.dapperdetailing.ca
 ```
-certbot asks for your e-mail (certificate notices) and whether to redirect HTTP to HTTPS. Choose **redirect**. It renews the certificates by itself (`systemctl list-timers | grep certbot`). If it fails, check that DNS points at this server (`dig +short dashboard.dapperdetailing.ca`).
-
-Open **https://dashboard.dapperdetailing.ca** and sign in as the owner. https://workspace.dapperdetailing.ca opens the staff workspace.
+Open **https://201.18.205.129** and accept the browser warning. Then sign in as the owner. The staff workspace is https://201.18.205.129/workspace.
 
 What the Apache site does:
 - keeps the original address (`ProxyPreserveHost On`), because the app refuses addresses it doesn't know
 - allows long requests (`ProxyTimeout 7200`) for photo uploads and owner backups
 - streams `/legacy-import/` unbuffered and uncompressed for the import MCP server
 - sends everything else to the app on `127.0.0.1:8443`
+
+## 8b. Linking the domain (later)
+1. At the registrar: DNS A records `dashboard` and `workspace` → 201.18.205.129. Check with `dig +short dashboard.dapperdetailing.ca`.
+2. On the server:
+```bash
+cp /opt/dapper/app/scripts/server/apache-dapper.conf /etc/apache2/sites-available/dapper.conf
+a2ensite dapper && apachectl configtest && systemctl reload apache2
+certbot --apache -d dashboard.dapperdetailing.ca -d workspace.dapperdetailing.ca      # choose "redirect"
+sed -i 's|^DAPPER_SITE_URL=.*|DAPPER_SITE_URL="https://dashboard.dapperdetailing.ca"|' /opt/dapper/app/.env
+grep -q '^DAPPER_EXTRA_ORIGINS=' /opt/dapper/app/.env || echo 'DAPPER_EXTRA_ORIGINS=https://workspace.dapperdetailing.ca' >> /opt/dapper/app/.env
+systemctl restart dapper dapper-import-mcp
+a2dissite dapper-ip && systemctl reload apache2      # only after both addresses open with a valid certificate
+```
+3. *On your PC*, remove `DAPPER_IMPORT_MCP_URL` and `NODE_EXTRA_CA_CERTS` (step 10c). Then the import connection uses the domain and its real certificate.
+4. Sign-ins are per address, so everyone signs in again once.
 
 ## 9. Backups
 ```bash
@@ -135,15 +150,18 @@ printf 'DAPPER_IMPORT_MCP_TOKEN=%s\nDAPPER_LEGACY_WP_USER=%s\nDAPPER_LEGACY_WP_A
 chmod 600 /etc/dapper/import-mcp.env
 cp /opt/dapper/app/scripts/server/dapper-import-mcp.service /etc/systemd/system/
 systemctl daemon-reload && systemctl enable --now dapper-import-mcp
-curl -s -o /dev/null -w '%{http_code}\n' https://dashboard.dapperdetailing.ca/legacy-import/mcp     # 401 = running and locked
+curl -sk -o /dev/null -w '%{http_code}\n' https://201.18.205.129/legacy-import/mcp     # 401 = running and locked
 echo "$TOKEN"     # copy it for the next step, then: clear
 ```
 
-**c) On your PC** (PowerShell), store the same token, then restart Claude Code:
+**c) On your PC** (PowerShell): copy the server's IP certificate so this PC trusts exactly that certificate, then store the token and the address, and restart Claude Code:
 ```powershell
+scp root@201.18.205.129:/etc/dapper/tls/ip.crt "$env:USERPROFILE\DapperBackups\dapper-ip.crt"
+[Environment]::SetEnvironmentVariable('NODE_EXTRA_CA_CERTS', "$env:USERPROFILE\DapperBackups\dapper-ip.crt", 'User')
+[Environment]::SetEnvironmentVariable('DAPPER_IMPORT_MCP_URL', 'https://201.18.205.129/legacy-import/mcp', 'User')
 [Environment]::SetEnvironmentVariable('DAPPER_IMPORT_MCP_TOKEN', '<the token>', 'User')
 ```
-The project's `.mcp.json` already has `dapper-legacy-import-prod`, pointing at `https://dashboard.dapperdetailing.ca/legacy-import/mcp` with that token. **Tell Claude when this is done.** Claude then runs `legacy_import_status` and checks the sign-in to the live site.
+The project's `.mcp.json` already has `dapper-legacy-import-prod`. It uses `DAPPER_IMPORT_MCP_URL` while it's set, else `https://dashboard.dapperdetailing.ca/legacy-import/mcp`, with that token. **Tell Claude when this is done.** Claude then runs `legacy_import_status` and checks the sign-in to the live site.
 
 ## 11. The BookingPress export (customers, bookings, payments)
 In the live site's admin, download the full BookingPress export (**BookingPress → Settings → Import/Export → Export**). *On your PC*:

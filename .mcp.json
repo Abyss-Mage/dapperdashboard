@@ -6,7 +6,7 @@
     },
     "dapper-legacy-import-prod": {
       "type": "http",
-      "url": "https://dashboard.dapperdetailing.ca/legacy-import/mcp",
+      "url": "${DAPPER_IMPORT_MCP_URL:-https://dashboard.dapperdetailing.ca/legacy-import/mcp}",
       "headers": {
         "Authorization": "Bearer ${DAPPER_IMPORT_MCP_TOKEN}"
       }
