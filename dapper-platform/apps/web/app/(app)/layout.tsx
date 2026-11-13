@@ -9,5 +9,6 @@ import MotionSystem from './motion/MotionSystem';
 import Tooltips from './motion/Tooltips';
 import { ConfirmHost } from './confirm';
 import ShopBar from './ShopBar';
-export const metadata:Metadata={title:'Dapper Detailing · Operations',description:'Dapper Detailing Pros operations and customer services'};
+// The same Dapper icon as the website, on the dashboard, the workspace and the account pages.
+export const metadata:Metadata={title:'Dapper Detailing · Operations',description:'Dapper Detailing Pros operations and customer services',icons:{ icon: [{ url: '/favicon.ico', sizes: '48x48' }, { url: '/icon-32.png', type: 'image/png', sizes: '32x32' }, { url: '/icon-192.png', type: 'image/png', sizes: '192x192' }], shortcut: '/favicon.ico', apple: { url: '/apple-touch-icon.png', sizes: '180x180' } }};
 export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="en"><body><ShopBar />{children}<MotionSystem /><Tooltips /><ConfirmHost /></body></html>}
