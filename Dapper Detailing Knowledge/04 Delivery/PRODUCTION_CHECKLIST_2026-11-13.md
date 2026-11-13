@@ -1,0 +1,98 @@
+# Full production checklist (2026-11-13)
+
+User direction (2026-11-13): move from the dev-production setup (bare IP 201.18.205.129) to full production. Backups first, then this checklist.
+
+Legend: `[x]` done and checked · `[ ]` to do. **Who:** *You* (owner, needs your accounts or passwords) · *Claude* (code or server work I can do) · *Client* (business decision). Facts below were read from the server on 2026-11-13; secret values were never read or recorded.
+
+---
+
+## 0. Backups before any change (done 2026-11-13)
+- [x] Fresh database dump on the server: `/opt/dapper/backups/pre-production-20261113-094233.dump`. Also on the server: the matching `.env` copy, and `pre-production-files-….tar.gz` (uploads, SOP PDFs, the app's own backups folder, Caddyfile, backup cron, dapper.service). All mode 600, owner `dapper`.
+- [x] Copied off the server to `%USERPROFILE%\DapperBackups\pre-production-20261113-094233\` on the owner's PC. SHA-256 matches the server for all three files. The folder is limited to the owner's Windows account. It holds secrets (`.env`): keep it out of the project, cloud-synced folders and chat.
+- [x] Restore tested: the dump was loaded into a throwaway local database and then deleted. It held 152 tables, schema at migration 120, 1 organization, 3 franchises, 605 bookings, 34 invoices and 471 customers.
+- [x] Code: git tag `pre-production-2026-11-13` (commit 66bb97da) pushed to GitHub. The server also keeps the previous Go binaries in `.dapper/bin.prev`.
+- [ ] *You*: download an owner backup from Dashboard → Settings → Backups (encrypted `.dapbk`, your own passphrase). Store it somewhere other than this PC.
+
+## 1. Decisions to make before go-live (Client)
+- [ ] Hosting: keep this VPS (Ubuntu 24.04, 4 vCPU, 15 GB RAM, 4% disk used) as production, or move to a new server. Everything below assumes this one.
+- [ ] Move `dapperdetailing.ca` from the legacy host (88.223.84.117) to this server, and pick the date. The legacy site is not changed or retired without your go-ahead.
+- [ ] Settle the open decisions that change live behaviour (`02 Decisions/OPEN_DECISIONS.md`): prices, durations and resources (DEC-05); deposits, cancellation and no-show (DEC-06); tax rounding (DEC-04); legal issuer and invoice numbering (DEC-03); Square merchants (DEC-08); email accounts (DEC-12, blocked); booking history migration (DEC-13, blocked).
+- [ ] Which current records are real and which are test data (see section 7).
+
+## 2. Server security
+- [x] Firewall: only SSH, 80 and 443 open. PostgreSQL listens on localhost only. Automatic security updates are on.
+- [ ] *You*: change the root password (it was shared in chat on 2026-10-30).
+- [ ] *You + Claude*: turn off SSH password login and direct root login (currently **both on**), keys only. First confirm a second key session works, so you can't be locked out.
+- [ ] *Claude*: install fail2ban for SSH.
+- [ ] *You*: apply the 4 pending updates and **reboot** (kernel 6.8.0-149 is waiting; the server has been up 13 days). *Claude* then checks that `dapper`, `caddy` and `postgresql` all come back on their own. A reboot has never been tested.
+- [ ] *Claude*: make the extra `pre-*.dump` files in `/opt/dapper/backups` private (three are group-readable).
+
+## 3. Domain and HTTPS
+- [ ] *You*: a day before, lower the DNS TTL of `dapperdetailing.ca` to 300 s so a switch or rollback spreads fast.
+- [ ] *You*: DNS A records → 201.18.205.129: `@`, `www`, `dashboard`, `workspace`.
+- [ ] *You/Claude*: Caddy sites for `dapperdetailing.ca`, `www` (redirect to the main site), `dashboard.` and `workspace.`, each with automatic HTTPS. Keep the IP site until DNS has settled.
+- [ ] *Claude*: `.env`: set `DAPPER_SITE_URL=https://dapperdetailing.ca`, which drives email links, invitations, pay links and the sign-in origin. Also `DAPPER_EXTRA_ORIGINS=https://dashboard.dapperdetailing.ca,https://workspace.dapperdetailing.ca`. Then restart.
+- [ ] *Claude*: after all four addresses load with valid certificates, turn on HSTS.
+- [ ] Note: sign-ins are per address, so staff sign in again after the switch.
+
+## 4. App settings
+- [ ] *Claude (code)*: pass `DAPPER_PUBLIC_INDEXING`, `DAPPER_SQUARE_WEBHOOK_URL` and `DAPPER_SQUARE_WEBHOOK_SIGNATURE_KEY` from `.env` to the services. The launcher does not pass them today, so adding them to `.env` alone does nothing.
+- [ ] *Claude*: `DAPPER_PUBLIC_INDEXING=enabled` **only after** the domain is live. Until then the site tells search engines to stay away.
+- [ ] Check: session lifetime 8 h, timezone America/Toronto, website slug `dapper-detailing-pros-peterborough` (all set now).
+- [ ] *You*: Redis (optional cache): install and set `DAPPER_REDIS_URL` (commands in `03 Engineering/SEO_AND_SUBDOMAINS.md`).
+
+## 5. Email
+- [ ] *You*: get email working. The Outlook mail service was failing on 2026-11-13, and dealership invoice emails did not send. Either fix the Outlook account or switch to a transactional provider (e.g. Postmark, SES, Brevo) and update the `DAPPER_SMTP_*` settings.
+- [ ] *You*: SPF, DKIM and DMARC records for the sending domain, so mail doesn't land in spam.
+- [ ] *Claude + You*: send one of each to a real inbox: booking confirmation, reminder, invoice, dealership invoice with PDF and pay link, staff invitation, password reset, quote. Check links point at the real domain.
+
+## 6. Card payments (Square)
+- [ ] *You*: for each franchise, under Card payments → **Live**, paste the Square Application ID and Access token, then choose the Square location.
+- [ ] *You*: in the Square Developer Console, add the webhook `https://dapperdetailing.ca/api/v1/integrations/square/webhooks` and give its signature key to Claude for `.env` (needs the code item in section 4).
+- [ ] *You + Claude*: a real **$1 charge and refund** per franchise: online booking, invoice pay link, dealership portal (new card and saved card), and the staff card reader if used.
+- [ ] *Claude*: confirm no franchise still points at sandbox keys.
+
+## 7. Data
+- [ ] *Client + Claude*: list which bookings, invoices, customers and dealerships are test or synthetic. Remove them or keep them separate before go-live; never relabel them as real.
+- [ ] *Claude*: final booking history import from BookingPress once DEC-13 is unblocked. Reconcile counts and totals against the legacy export.
+- [ ] *You*: check services, prices, add-ons, durations and taxes for every franchise. Set each franchise's invoice and quote starting numbers and its legal details (issuer, address, tax number).
+- [ ] *You*: invite every staff member. Give roles, require two-factor for admins, set shop iPad PINs, upload SOP and policy documents.
+- [ ] *You*: dealership accounts, contact emails and portal logins.
+
+## 8. Website and SEO
+- [ ] *You*: publish services, portfolio and banner, and fill Search & sitemaps (titles, descriptions, keywords, share image).
+- [ ] *Claude*: 301 redirects from the old WordPress addresses to the new pages, so search rankings and bookmarks carry over. This needs the legacy URL list.
+- [ ] *You*: verify Google Search Console and Bing (codes go in Search & sitemaps), then submit the three sitemaps.
+- [ ] *You*: tracking tags (Google Tag, Meta Pixel), the Mailchimp popup, and review of the legal pages.
+
+## 9. Backups and recovery (ongoing)
+- [x] Nightly database and `.env` backup at 03:15, kept 14 days, **same disk only**.
+- [ ] *Claude*: add uploads and SOP files to the nightly backup (it covers the database and `.env` only).
+- [ ] *You*: an off-server copy every day, either by scheduling `scripts/pull-backup.ps1` on an always-on PC or by sending to cloud storage (e.g. Backblaze B2 or S3, encrypted).
+- [ ] *You + Claude*: a restore test every quarter, plus the owner `.dapbk` backup monthly.
+
+## 10. Monitoring
+- [ ] *You*: an external uptime check (e.g. UptimeRobot) on `https://dapperdetailing.ca/` and `/api/v1/health`, alerting your phone.
+- [ ] *Claude*: disk-space and failed-backup alerts by email, and log rotation for `.dapper/logs`.
+- [ ] Keep error404 reports open for testers for the first weeks.
+
+## 11. Go-live day
+1. Announce a short pause for bookings on the legacy site. Take a final legacy export and import it (section 7).
+2. Take a fresh backup (as in section 0).
+3. Switch DNS, update `.env` (section 3) and restart. Wait for certificates.
+4. Smoke test on the real domain:
+   - owner sign-in and two-factor
+   - staff sign-in on the workspace and on the shop iPad
+   - an online booking
+   - an invoice with the $1 card charge and refund
+   - a dealership invoice email, then the portal payment
+   - a photo upload
+   - an SOP acknowledgment
+   - the website pages and sitemaps
+5. Turn on indexing and submit the sitemaps.
+6. Watch logs and error404 for 48 hours.
+
+## 12. Rollback
+- DNS back to the legacy host (fast while TTL is 300 s).
+- App code: `git checkout pre-production-2026-11-13` and deploy, or restore `.dapper/bin.prev`.
+- Data: `pg_restore` the pre-go-live dump. Bookings taken after it would need re-entering, so note them during the watch window.
