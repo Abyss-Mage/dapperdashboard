@@ -78,6 +78,8 @@ func registerServiceRoutes(mux *http.ServeMux, store *postgres.Store) {
 				Version   int      `json:"version"`
 				// Time to complete, in minutes (null or absent = not set).
 				DurationMinutes *int `json:"durationMinutes"`
+				// error404 #112: a franchise's own service has its own price, CAD cents before tax (null = no price).
+				PriceCents *int64 `json:"priceCents"`
 			}
 			if !decode(w, r, &input) {
 				return
@@ -108,7 +110,7 @@ func registerServiceRoutes(mux *http.ServeMux, store *postgres.Store) {
 				reply(w, 422, map[string]any{"errors": fields})
 				return
 			}
-			service, err := store.SaveService(r.Context(), scope, postgres.CatalogService{ID: id, Name: input.Name, Kind: input.Kind, ParentID: input.ParentID, ParentIDs: input.ParentIDs, Version: input.Version, DurationMinutes: input.DurationMinutes})
+			service, err := store.SaveService(r.Context(), scope, postgres.CatalogService{ID: id, Name: input.Name, Kind: input.Kind, ParentID: input.ParentID, ParentIDs: input.ParentIDs, Version: input.Version, DurationMinutes: input.DurationMinutes, PriceCents: input.PriceCents})
 			if err != nil {
 				serviceFailure(w, err)
 				return

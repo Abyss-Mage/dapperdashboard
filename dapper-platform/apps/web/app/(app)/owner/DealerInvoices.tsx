@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { torontoNow } from '../../TorontoTime';
 import { Download, FileText, Pencil, Plus, Trash2 } from 'lucide-react';
 import styles from './owner.module.css';
 import Select from '../GlassSelect';
@@ -84,12 +85,12 @@ export default function DealerInvoices({ base, organizationId, canCreate, canIss
   const blankLine = (dealer: string): Line => { const r = rateOf(dealer); return { description: '', detail: '', quantity: '1', price: r != null ? (r / 100).toFixed(2) : '', vin: '', stockNumber: '' }; };
   const startNew = () => {
     const d = filter.dealershipId || dealers.find((x) => x.active)?.id || '';
-    const today = isoDay(new Date());
+    const today = isoDay(torontoNow());
     setOpen(null);
     setDraft({ version: 0, dealershipId: d, invoiceNumber: '', poNumber: '', invoiceDate: today, dueDate: plusDays(today, 30), discountKind: 'percent', discount: '', notes: '', lines: [blankLine(d)] });
   };
   const fromFull = (f: Full): Draft => ({
-    id: f.id, version: f.version, dealershipId: f.dealershipId, invoiceNumber: f.manualNumber, poNumber: f.poNumber, invoiceDate: f.invoiceDate ?? isoDay(new Date()), dueDate: f.dueDate ?? plusDays(f.invoiceDate ?? isoDay(new Date()), 30),
+    id: f.id, version: f.version, dealershipId: f.dealershipId, invoiceNumber: f.manualNumber, poNumber: f.poNumber, invoiceDate: f.invoiceDate ?? isoDay(torontoNow()), dueDate: f.dueDate ?? plusDays(f.invoiceDate ?? isoDay(torontoNow()), 30),
     discountKind: f.discountCents > 0 && !f.discountPercent ? 'amount' : 'percent', discount: f.discountPercent ? String(f.discountPercent) : f.discountCents > 0 ? (f.discountCents / 100).toFixed(2) : '', notes: f.notes,
     lines: f.lines.map((l) => ({ description: l.description, detail: l.detail, quantity: String(l.quantity), price: (l.unitPriceCents / 100).toFixed(2), vin: l.vin, stockNumber: l.stockNumber })), saved: f,
   });

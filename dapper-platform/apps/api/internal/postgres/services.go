@@ -333,8 +333,16 @@ func (s *Store) DeleteService(ctx context.Context, scope Scope, id string, versi
 		return DeleteResult{Permanent: false, Archived: true, Message: "Service removed from active catalogue; historical records and revisions retained."}, nil
 	}
 
-	if _, err = tx.Exec(ctx, `DELETE FROM catalog_service_revisions WHERE service_id=$1`, id); err != nil {
-		return DeleteResult{}, err
+	// The time to complete is kept as a scheduling rule; an unused service takes its rules with it (error404, 2026-11-14). A rule that
+	// holds a reservation or offer still blocks the delete.
+	for _, q := range []string{
+		`DELETE FROM service_scheduling_revisions WHERE rule_id IN (SELECT id FROM service_scheduling_rules WHERE service_id=$1)`,
+		`DELETE FROM service_scheduling_rules WHERE service_id=$1`,
+		`DELETE FROM catalog_service_revisions WHERE service_id=$1`,
+	} {
+		if _, err = tx.Exec(ctx, q, id); err != nil {
+			return DeleteResult{}, err
+		}
 	}
 	tag, err := tx.Exec(ctx, `DELETE FROM catalog_services WHERE organization_id=$1 AND location_id=$2 AND id=$3`, scope.OrganizationID, scope.LocationID, id)
 	if err != nil {

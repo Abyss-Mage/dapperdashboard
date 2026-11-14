@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
+import { torontoNow } from '../TorontoTime';
 import { createPortal } from 'react-dom';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
@@ -18,6 +19,8 @@ gsap.registerPlugin(useGSAP);
 const reduced = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const pad = (n: number) => String(n).padStart(2, '0');
 const toIso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+// A calendar day's name. The day is built from the device clock, so it is named as that same day (UTC), not moved into Toronto time.
+const dayName = (d: Date, o: Intl.DateTimeFormatOptions) => new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toLocaleDateString('en-CA', { ...o, timeZone: 'UTC' });
 const fromIso = (s: string) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; };
 const addDays = (d: Date, n: number) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -136,7 +139,7 @@ function Trigger({ triggerRef, open, onToggle, onOpenKey, label, placeholder, ic
 type Mode = 'days' | 'months' | 'years';
 
 function CalendarPanel({ value, min, max, ready, required, onPick, onClear }: { value: string; min?: string; max?: string; ready: boolean; required?: boolean; onPick: (iso: string) => void; onClear: () => void }) {
-  const today = toIso(new Date());
+  const today = toIso(torontoNow()); // Toronto's today, wherever the device is (error404, 2026-11-14)
   const selected = fromIso(value);
   const start = selected ?? fromIso(today)!;
   const [view, setView] = useState({ y: start.getFullYear(), m: start.getMonth() });
@@ -226,7 +229,7 @@ function CalendarPanel({ value, min, max, ready, required, onPick, onClear }: { 
               return (
                 <button
                   key={iso} type="button" data-iso={iso} data-pop-item="" disabled={out(iso)} tabIndex={iso === focusIso ? 0 : -1} aria-selected={isSel} aria-current={iso === today ? 'date' : undefined}
-                  aria-label={d.toLocaleDateString('en-CA', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+                  aria-label={dayName(d, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
                   className={`${styles.day} ${inMonth ? '' : styles.dayOut} ${iso === today ? styles.dayToday : ''}`}
                   onFocus={() => { wantFocus.current = false; setFocusIso(iso); }}
                   onClick={() => onPick(iso)}
@@ -262,7 +265,7 @@ export function DatePicker(props: FieldProps & { min?: string; max?: string }) {
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const d = fromIso(current);
-  const label = d ? d.toLocaleDateString('en-CA', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : '';
+  const label = d ? dayName(d, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : '';
   const close = (restore: boolean) => { setOpen(false); if (restore) trigger.current?.focus({ preventScroll: true }); };
   return (
     <div className={base.wrap} data-glass-select="" style={{ minWidth: 196 }}>

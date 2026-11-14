@@ -23,6 +23,10 @@ if (typeof window !== 'undefined' && !(window as unknown as { __dapperZone?: boo
   Intl.DateTimeFormat = Zoned;
 }
 
+/* Now as a Date whose year, month, day and hours are Toronto's wall clock, for calendar-day work (today, last 7 days) done with
+   getDate()/setDate(). Format such a Date only with timeZone 'UTC' or not at all; it is not the real instant. */
+export const torontoNow = () => new Date(new Date().toLocaleString('en-US', { timeZone: ZONE }));
+
 export default function TorontoTime() {
   return null;
 }

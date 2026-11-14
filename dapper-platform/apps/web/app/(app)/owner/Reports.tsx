@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { torontoNow } from '../../TorontoTime';
 import styles from './owner.module.css';
 import Select from '../GlassSelect';
 import { DatePicker } from '../Pickers';
@@ -18,13 +19,13 @@ const STATUSES: Record<Kind, [string, string][]> = {
   revenue: [['', 'All invoices'], ['paid', 'Paid'], ['partially_paid', 'Partly paid'], ['issued', 'Not paid yet']],
 };
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-const daysAgo = (n: number) => { const d = new Date(); d.setDate(d.getDate() - n); return iso(d); };
+const daysAgo = (n: number) => { const d = torontoNow(); d.setDate(d.getDate() - n); return iso(d); };
 const PRESETS: [string, string, () => [string, string]][] = [
-  ['7', 'Last 7 days', () => [daysAgo(6), iso(new Date())]],
-  ['30', 'Last 30 days', () => [daysAgo(29), iso(new Date())]],
-  ['month', 'This month', () => { const n = new Date(); return [iso(new Date(n.getFullYear(), n.getMonth(), 1)), iso(n)]; }],
-  ['lastmonth', 'Last month', () => { const n = new Date(); return [iso(new Date(n.getFullYear(), n.getMonth() - 1, 1)), iso(new Date(n.getFullYear(), n.getMonth(), 0))]; }],
-  ['year', 'This year', () => { const n = new Date(); return [iso(new Date(n.getFullYear(), 0, 1)), iso(n)]; }],
+  ['7', 'Last 7 days', () => [daysAgo(6), iso(torontoNow())]],
+  ['30', 'Last 30 days', () => [daysAgo(29), iso(torontoNow())]],
+  ['month', 'This month', () => { const n = torontoNow(); return [iso(new Date(n.getFullYear(), n.getMonth(), 1)), iso(n)]; }],
+  ['lastmonth', 'Last month', () => { const n = torontoNow(); return [iso(new Date(n.getFullYear(), n.getMonth() - 1, 1)), iso(new Date(n.getFullYear(), n.getMonth(), 0))]; }],
+  ['year', 'This year', () => { const n = torontoNow(); return [iso(new Date(n.getFullYear(), 0, 1)), iso(n)]; }],
 ];
 
 const esc = (v: string) => v.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string);
@@ -34,7 +35,7 @@ const esc = (v: string) => v.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 export default function Reports({ base }: { base: string }) {
   const [kind, setKind] = useState<Kind>('appointments');
   const [from, setFrom] = useState(() => daysAgo(29));
-  const [to, setTo] = useState(() => iso(new Date()));
+  const [to, setTo] = useState(() => iso(torontoNow()));
   const [service, setService] = useState('');
   const [status, setStatus] = useState('');
   const [report, setReport] = useState<Report | null>(null);

@@ -25,6 +25,24 @@ func verifyCatalogServices(t *testing.T, ctx context.Context, s *Store, a, b Sco
 	if err != nil || extra.PriceCents == nil || *extra.PriceCents != 4900 {
 		t.Fatal("franchise service price not saved", extra.PriceCents, err)
 	}
+	// A timed service gets a booking rule per bay; archived and never used, it still deletes for good with its rule.
+	if _, err = s.pool.Exec(ctx, `INSERT INTO scheduling_resources(organization_id,location_id,name,capacity,timezone,rules) VALUES($1,$2,'Synthetic bay',1,'America/Toronto','{}'::jsonb)`, a.OrganizationID, a.LocationID); err != nil {
+		t.Fatal(err)
+	}
+	minutes := 89
+	timed, err := s.SaveService(ctx, a, CatalogService{Name: "Synthetic window tint", Kind: "main", PriceCents: &priced, DurationMinutes: &minutes})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if timed, err = s.ArchiveService(ctx, a, timed.ID, timed.Version); err != nil {
+		t.Fatal(err)
+	}
+	if gone, e := s.DeleteService(ctx, a, timed.ID, timed.Version); e != nil || !gone.Permanent {
+		t.Fatal("an archived, unused timed service was not deleted", gone, e)
+	}
+	if _, err = s.pool.Exec(ctx, `DELETE FROM scheduling_resources WHERE organization_id=$1 AND location_id=$2 AND name='Synthetic bay'`, a.OrganizationID, a.LocationID); err != nil {
+		t.Fatal(err)
+	}
 	negative := int64(-1)
 	if _, err = s.SaveService(ctx, a, CatalogService{Name: "Synthetic negative", Kind: "main", PriceCents: &negative}); !errors.Is(err, ErrServiceInput) {
 		t.Fatal("a negative price was accepted", err)

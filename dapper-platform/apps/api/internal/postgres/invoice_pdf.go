@@ -126,12 +126,9 @@ func (s *Store) InvoicePDF(ctx context.Context, inv Invoice) (string, []byte) {
 	if s.pool.QueryRow(ctx, `SELECT dealership_account_id IS NOT NULL,invoice_date,due_date,po_number,discount_percent::float8,coalesce((SELECT d.address FROM dealership_accounts d WHERE d.id=invoices.dealership_account_id),'') FROM invoices WHERE id=$1`, inv.ID).Scan(&dealer, &invoiceDate, &dueDate, &d.po, &pct, &d.clientAddress) == nil && dealer {
 		kind, d.b2b = dealerPrint, true
 		// The client is the dealership itself, as entered on Dealerships (error404 #117): its linked customer record can carry another
-		// person's name when an email was shared.
-		var name, contact, email, phone string
-		if s.pool.QueryRow(ctx, `SELECT d.account_name,btrim(d.contact_name),btrim(d.contact_email),btrim(coalesce(d.contact_phone,'')) FROM dealership_accounts d JOIN invoices i ON i.dealership_account_id=d.id WHERE i.id=$1`, inv.ID).Scan(&name, &contact, &email, &phone) == nil {
-			if contact != "" && !strings.EqualFold(contact, name) {
-				name += " · Attn: " + contact
-			}
+		// person's name when an email was shared. Only the dealership's name is printed, no contact person (owner 2026-11-14).
+		var name, email, phone string
+		if s.pool.QueryRow(ctx, `SELECT d.account_name,btrim(d.contact_email),btrim(coalesce(d.contact_phone,'')) FROM dealership_accounts d JOIN invoices i ON i.dealership_account_id=d.id WHERE i.id=$1`, inv.ID).Scan(&name, &email, &phone) == nil {
 			d.customer.Name, d.customer.Email, d.customer.Phone = name, email, phone
 		}
 		switch {
