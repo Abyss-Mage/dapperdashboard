@@ -30,7 +30,9 @@ const INCLUDES: [RegExp, string[]][] = [
   [/shield package/i, ['Professional ceramic coating application', 'Complete paint decontamination and surface preparation', 'Hydrophobic water-repelling layer', 'Protection against harmful UV rays', '6-hour professional installation', 'Post-cure care guidance', '3-Year Manufacturer Warranty']],
   [/5 year ceramic/i, ['Professional ceramic coating', 'High-gloss hydrophobic finish', 'Protection against UV rays and contaminants', '5-Year Ceramic Coating Warranty']],
   [/single window/i, ['Replace or upgrade the tint on a single window', 'Ideal for small fixes and privacy', 'Heat and UV protection on a specific window']],
-  [/4-window/i, ['Complete tinting for all four side windows', 'Enhances privacy', 'Reduces interior heat and blocks harmful UV rays', 'A sleek, uniform look']],
+  // Owner-approved wording, 2026-11-14 (the old booking system had none for this package).
+  [/5[- ]window/i, ['Complete tinting for all four side windows and the rear windshield', 'Enhances privacy', 'Reduces interior heat and blocks harmful UV rays', 'A sleek, uniform look']],
+  [/4[- ]window/i, ['Complete tinting for all four side windows', 'Enhances privacy', 'Reduces interior heat and blocks harmful UV rays', 'A sleek, uniform look']],
   [/^(boat|aircraft).*signature/i, ['Full interior detail', 'Full exterior detail', 'Surfaces cleaned, decontaminated and dried', 'Protective wax finish']],
   [/^(boat|aircraft).*paint correction/i, ['Surface washed and decontaminated', 'Machine polishing to reduce swirls and light scratches', 'Gloss restored across the paint']],
   [/^(boat|aircraft).*ceramic/i, ['Surface washed and decontaminated', 'Ceramic coating applied to the exterior', 'A glossy, water-repellent finish']],
