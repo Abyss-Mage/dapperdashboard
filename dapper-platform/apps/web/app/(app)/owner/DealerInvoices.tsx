@@ -47,7 +47,7 @@ export default function DealerInvoices({ base, organizationId, canCreate, canIss
   const [filter, setFilter] = useState({ dealershipId: '', from: '', to: '', status: '' });
   const [draft, setDraft] = useState<Draft | null>(null);
   const [open, setOpen] = useState<Full | null>(null);
-  const [deleting, setDeleting] = useState<Full | null>(null);
+  const [deleting, setDeleting] = useState<{ id: string; invoiceNumber: string; draft: boolean } | null>(null);
   // Recording a payment received outside the portal (error404 #44); the key makes a double click record it once.
   // Card attempts still holding the open invoice's balance (the server could not confirm them with Square).
   const [held, setHeld] = useState<string[]>([]);
@@ -197,6 +197,7 @@ export default function DealerInvoices({ base, organizationId, canCreate, canIss
           <div className={styles.rowBetween}>
             <div className={styles.dlActions}>
               <button className="secondary" disabled={busy || !draft.dealershipId}>{busy ? 'Saving…' : 'Save draft'}</button>
+              {draft.id && canManage && <button type="button" className="secondary" disabled={busy} onClick={() => setDeleting({ id: draft.id!, invoiceNumber: draft.invoiceNumber.trim(), draft: true })}>Delete draft</button>}
               {draft.id && <button type="button" className="secondary" disabled={busy} onClick={() => openPdf(`${url}/${draft.id}/pdf`)}><FileText size={17} aria-hidden="true" /> Download PDF</button>}
               {canIssue && <button type="button" className="primary" disabled={busy || !draft.dealershipId} onClick={() => void issue(draft)}>Issue and email</button>}
             </div>
@@ -251,7 +252,7 @@ export default function DealerInvoices({ base, organizationId, canCreate, canIss
               return `Invoice ${open.invoiceNumber} is a draft again. Make your changes, then Issue and email.`;
             })}><Pencil size={17} aria-hidden="true" /> Edit</button>}
             {canManage && open.status === 'issued' && <button type="button" className="secondary" disabled={busy} onClick={() => void act(async () => { if (!(await askConfirm({ title: `Void invoice ${open.invoiceNumber}?`, message: 'It stays on record as void and can no longer be paid.', confirmLabel: 'Void invoice', tone: 'danger' }))) return; setOpen(await readJson<Full>(await fetch(`${url}/${open.id}/void`, send('POST')))); return 'Invoice voided.'; })}>Void</button>}
-            {canManage && <button type="button" className="secondary" disabled={busy} onClick={() => setDeleting(open)}>Delete permanently</button>}
+            {canManage && <button type="button" className="secondary" disabled={busy} onClick={() => setDeleting({ id: open.id, invoiceNumber: open.invoiceNumber, draft: false })}>Delete permanently</button>}
             <button type="button" className="secondary" onClick={() => { setOpen(null); setPaying(null); }}>Close</button>
           </div>
           {paying && (
@@ -315,9 +316,9 @@ export default function DealerInvoices({ base, organizationId, canCreate, canIss
           <div><button className="secondary" disabled={busy}>Save numbers</button></div>
         </form>
       )}
-      {deleting && <TypedDelete title={`Delete invoice ${deleting.invoiceNumber} permanently?`} word={deleting.invoiceNumber} wordLabel="the invoice number" url={`${url}/${deleting.id}/purge`}
+      {deleting && <TypedDelete title={deleting.draft ? 'Delete this draft invoice?' : `Delete invoice ${deleting.invoiceNumber} permanently?`} word={deleting.invoiceNumber || 'DELETE'} wordLabel={deleting.invoiceNumber ? 'the invoice number' : 'DELETE'} url={`${url}/${deleting.id}/purge`}
         explanation="Owner and administrators only. For test or mistaken invoices: this removes the invoice with its lines, pay links and the payments recorded by hand. Invoices with Square card payments can't be removed this way; void them instead."
-        onClose={() => setDeleting(null)} onDone={async () => { setNotice(`Invoice ${deleting.invoiceNumber} was deleted permanently.`); setDeleting(null); setOpen(null); setPaying(null); await load(); }} />}
+        onClose={() => setDeleting(null)} onDone={async () => { setNotice(deleting.draft ? 'The draft invoice was deleted.' : `Invoice ${deleting.invoiceNumber} was deleted permanently.`); setDeleting(null); setOpen(null); setDraft(null); setPaying(null); await load(); }} />}
     </div>
   );
 }

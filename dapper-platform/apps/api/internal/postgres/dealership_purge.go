@@ -45,7 +45,8 @@ func (s *Store) PurgeDealerInvoice(ctx context.Context, scope Scope, id, typedNu
 	}
 	var number string
 	var square bool
-	err = tx.QueryRow(ctx, `SELECT invoice_number, EXISTS(SELECT 1 FROM square_payment_intents p WHERE p.invoice_id=i.id) FROM invoices i
+	// A draft is confirmed by the number typed on it, or DELETE when it has none (owner 2026-11-14).
+	err = tx.QueryRow(ctx, `SELECT CASE WHEN status='draft' THEN coalesce(nullif(btrim(manual_number),''),'DELETE') ELSE invoice_number END, EXISTS(SELECT 1 FROM square_payment_intents p WHERE p.invoice_id=i.id) FROM invoices i
 	 WHERE organization_id=$1 AND location_id=$2 AND id::text=$3 AND dealership_account_id IS NOT NULL FOR UPDATE`, scope.OrganizationID, scope.LocationID, id).Scan(&number, &square)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrInvoiceNotFound

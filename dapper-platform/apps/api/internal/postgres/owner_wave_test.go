@@ -468,6 +468,10 @@ func TestOwnerWaveFeatures(t *testing.T) {
 			t.Fatal("deleted with the wrong number", err)
 		}
 		must(s.PurgeDealerInvoice(ctx, scope, draft.ID, "prg-1"))
+		// A draft with no number of its own is confirmed by typing DELETE.
+		bare, err := s.CreateDealerInvoice(ctx, scope, DealerInvoiceInput{DealershipID: dealer.ID, Lines: []DealerInvoiceLine{{Description: "Lot detail", Quantity: 1, UnitPriceCents: 4500}}})
+		must(err)
+		must(s.PurgeDealerInvoice(ctx, scope, bare.ID, "delete"))
 		if err = s.PurgeDealership(ctx, scope, dealer.ID, "nope"); !errors.Is(err, ErrPurgeConfirm) {
 			t.Fatal("deleted with the wrong code", err)
 		}
