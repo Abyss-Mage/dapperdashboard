@@ -317,7 +317,7 @@ export default function DealerInvoices({ base, organizationId, canCreate, canIss
         </form>
       )}
       {deleting && <TypedDelete title={deleting.draft ? 'Delete this draft invoice?' : `Delete invoice ${deleting.invoiceNumber} permanently?`} word={deleting.invoiceNumber || 'DELETE'} wordLabel={deleting.invoiceNumber ? 'the invoice number' : 'DELETE'} url={`${url}/${deleting.id}/purge`}
-        explanation="Owner and administrators only. For test or mistaken invoices: this removes the invoice with its lines, pay links and the payments recorded by hand. Invoices with Square card payments can't be removed this way; void them instead."
+        explanation="Owner and administrators only. For test or mistaken invoices: this removes the invoice with its lines, pay links and the payments recorded by hand. Square card payments on it are removed here too; refund them in Square yourself if needed."
         onClose={() => setDeleting(null)} onDone={async () => { setNotice(deleting.draft ? 'The draft invoice was deleted.' : `Invoice ${deleting.invoiceNumber} was deleted permanently.`); setDeleting(null); setOpen(null); setDraft(null); setPaying(null); await load(); }} />}
     </div>
   );

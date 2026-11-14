@@ -12,8 +12,6 @@ import (
 var (
 	// ErrPurgeConfirm: the typed invoice number or dealership code does not match.
 	ErrPurgeConfirm = errors.New("the typed confirmation does not match")
-	// ErrPurgeSquare: a Square card payment was attempted or taken; that history is never removed.
-	ErrPurgeSquare = errors.New("square card payment records exist")
 	// ErrDealershipInUse: the dealership still has invoices, assigned staff or staff photos, which must go first.
 	ErrDealershipInUse = errors.New("the dealership still has invoices, staff or photos")
 )
@@ -32,8 +30,8 @@ func purgeOwner(ctx context.Context, tx pgx.Tx, scope Scope) error {
 }
 
 // PurgeDealerInvoice removes a dealership invoice for good with its items, events, pay links and hand-recorded payments (owner
-// 2026-11-14, error404 #124). Owner and administrators only (organization access.manage), after typing the invoice number. An invoice with
-// any Square card record is refused, because card history must match Square. Recorded in the activity log.
+// 2026-11-14, error404 #124). Owner and administrators only (organization access.manage), after typing the invoice number. Its Square
+// card records go too (#126); refunds in Square are the owner's to handle. Recorded in the activity log.
 func (s *Store) PurgeDealerInvoice(ctx context.Context, scope Scope, id, typedNumber string) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -44,10 +42,9 @@ func (s *Store) PurgeDealerInvoice(ctx context.Context, scope Scope, id, typedNu
 		return err
 	}
 	var number string
-	var square bool
 	// A draft is confirmed by the number typed on it, or DELETE when it has none (owner 2026-11-14).
-	err = tx.QueryRow(ctx, `SELECT CASE WHEN status='draft' THEN coalesce(nullif(btrim(manual_number),''),'DELETE') ELSE invoice_number END, EXISTS(SELECT 1 FROM square_payment_intents p WHERE p.invoice_id=i.id) FROM invoices i
-	 WHERE organization_id=$1 AND location_id=$2 AND id::text=$3 AND dealership_account_id IS NOT NULL FOR UPDATE`, scope.OrganizationID, scope.LocationID, id).Scan(&number, &square)
+	err = tx.QueryRow(ctx, `SELECT CASE WHEN status='draft' THEN coalesce(nullif(btrim(manual_number),''),'DELETE') ELSE invoice_number END FROM invoices i
+	 WHERE organization_id=$1 AND location_id=$2 AND id::text=$3 AND dealership_account_id IS NOT NULL FOR UPDATE`, scope.OrganizationID, scope.LocationID, id).Scan(&number)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrInvoiceNotFound
 	}
@@ -56,9 +53,6 @@ func (s *Store) PurgeDealerInvoice(ctx context.Context, scope Scope, id, typedNu
 	}
 	if !strings.EqualFold(strings.TrimSpace(typedNumber), number) {
 		return ErrPurgeConfirm
-	}
-	if square {
-		return ErrPurgeSquare
 	}
 	if err = purgeInvoiceRows(ctx, tx, `SELECT id FROM invoices WHERE id::text=$1`, id); err != nil {
 		return err
@@ -72,7 +66,12 @@ func (s *Store) PurgeDealerInvoice(ctx context.Context, scope Scope, id, typedNu
 // purgeInvoiceRows deletes the invoices the query selects (one argument, $1) and everything recorded against them.
 func purgeInvoiceRows(ctx context.Context, tx pgx.Tx, invoices string, arg any) error {
 	inv := `(` + invoices + `)`
+	intents := `(SELECT id FROM square_payment_intents WHERE invoice_id IN ` + inv + `)`
 	steps := []string{
+		`DELETE FROM square_payment_allocations WHERE intent_id IN ` + intents,
+		`DELETE FROM square_payment_capture_observations WHERE intent_id IN ` + intents,
+		`DELETE FROM square_payment_intent_events WHERE intent_id IN ` + intents,
+		`DELETE FROM square_payment_intents WHERE invoice_id IN ` + inv,
 		`DELETE FROM payment_refund_adjustments WHERE payment_id IN (SELECT id FROM payments WHERE invoice_id IN ` + inv + `)`,
 		`DELETE FROM payments WHERE invoice_id IN ` + inv,
 		`DELETE FROM coupon_redemptions WHERE invoice_id IN ` + inv,

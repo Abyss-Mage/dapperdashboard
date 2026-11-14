@@ -476,8 +476,6 @@ func registerBookingRoutes(mux *http.ServeMux, store *postgres.Store) {
 			reply(w, 200, map[string]any{"purged": true})
 		case errors.Is(err, postgres.ErrBookingPurgeNumber):
 			reply(w, 422, map[string]string{"error": "That is not this booking's number. Type the number shown on the booking (for example 666)."})
-		case errors.Is(err, postgres.ErrBookingPurgeSquare):
-			reply(w, 409, map[string]string{"error": "A Square card payment was attempted or taken for this booking. Card history has to match Square, so it can't be deleted permanently; refund it in Square and keep it cancelled."})
 		case errors.Is(err, postgres.ErrForbidden):
 			reply(w, 403, map[string]string{"error": "Only the owner and administrators can delete a booking permanently."})
 		case errors.Is(err, postgres.ErrBookingNotFound):

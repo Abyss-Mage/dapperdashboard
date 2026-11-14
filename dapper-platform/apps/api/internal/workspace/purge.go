@@ -31,8 +31,6 @@ func registerPurgeRoutes(mux *http.ServeMux, store *postgres.Store) {
 				reply(w, 200, map[string]any{"purged": true})
 			case errors.Is(err, postgres.ErrPurgeConfirm):
 				reply(w, 422, map[string]string{"error": "That does not match. Type it exactly as shown."})
-			case errors.Is(err, postgres.ErrPurgeSquare):
-				reply(w, 409, map[string]string{"error": "A Square card payment was attempted or taken for this invoice. Card history has to match Square, so it can't be deleted permanently; void it instead."})
 			case errors.Is(err, postgres.ErrDealershipInUse):
 				reply(w, 409, map[string]string{"error": "This dealership still has invoices, staff assigned to it or staff photos. Delete its invoices and move its staff first, or switch it off instead."})
 			case errors.Is(err, postgres.ErrForbidden):

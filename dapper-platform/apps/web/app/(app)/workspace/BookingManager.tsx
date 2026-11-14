@@ -847,7 +847,7 @@ export default function BookingManager({
         <FormPopup label="Delete appointment permanently" onClose={() => { if (!busy) setPurging(null); }} width={520}>
           <form onSubmit={purgeBooking} style={{ display: 'grid', gap: 12 }}>
             <h3 style={{ margin: 0 }}>Delete appointment {bookingRef(purging)} permanently?</h3>
-            <p style={{ margin: 0 }}>For test bookings only. This removes the appointment with its invoice, its recorded payments and their history. It cannot be undone, and the invoice number is not reused. Card payments taken through Square cannot be removed this way.</p>
+            <p style={{ margin: 0 }}>For test bookings only. This removes the appointment with its invoice, its recorded payments and their history. It cannot be undone, and the invoice number is not reused. Card payments taken through Square are removed here too; refund them in Square yourself if needed.</p>
             <label className="form-field" style={{ margin: 0 }}>Type the booking number ({bookingRef(purging).slice(1)}) to confirm
               <input value={purgeNumber} onChange={(e) => setPurgeNumber(e.target.value)} inputMode="numeric" autoComplete="off" disabled={busy} autoFocus />
             </label>

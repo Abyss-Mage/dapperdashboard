@@ -165,8 +165,22 @@ func TestReopenReversesCompletionPayment(t *testing.T) {
 	if err = s.PurgeBooking(ctx, scope, paidBooking, fmt.Sprint(number+1)); err != ErrBookingPurgeNumber {
 		t.Fatal("a wrong booking number was accepted", err)
 	}
+	// error404 #126: a Square card attempt on the booking's invoice no longer blocks the delete; it goes with it.
+	_, err = pool.Exec(ctx, `INSERT INTO square_merchant_binding_revisions(organization_id,location_id,version,environment,merchant_id,square_location_id,credential_reference,reviewed_by) VALUES($1,$2,1,'sandbox','synthetic-merchant','synthetic-provider-location','synthetic-secret-selector',$3)`, org, loc, staff)
+	must(err)
+	var intent string
+	must(pool.QueryRow(ctx, `INSERT INTO square_payment_intents(organization_id,location_id,customer_id,actor_id,invoice_id,binding_version,request_key,request_hash,amount_cents,currency,state) VALUES($1,$2,$3,$4,$5,1,'synthetic-request-key-126',decode(repeat('ab',32),'hex'),5000,'CAD','prepared') RETURNING id::text`, org, loc, customer, staff, inv2.ID).Scan(&intent))
+	_, err = pool.Exec(ctx, `INSERT INTO square_payment_intent_events(organization_id,location_id,intent_id,state) VALUES($1,$2,$3,'prepared')`, org, loc, intent)
+	must(err)
 	if err = s.PurgeBooking(ctx, scope, paidBooking, "#"+fmt.Sprint(number)); err != nil {
 		t.Fatal("permanent delete failed", err)
+	}
+	must(pool.QueryRow(ctx, `SELECT (SELECT count(*) FROM square_payment_intents WHERE id=$1)+(SELECT count(*) FROM square_payment_intent_events WHERE intent_id=$1)`, intent).Scan(&left))
+	if left != 0 {
+		t.Fatal("Square records left after permanent delete", left)
+	}
+	if _, err = pool.Exec(ctx, `DELETE FROM square_merchant_binding_revisions WHERE organization_id=$1`, org); err == nil {
+		t.Fatal("the Square merchant settings history could be deleted")
 	}
 	must(pool.QueryRow(ctx, `SELECT (SELECT count(*) FROM bookings WHERE id=$1)+(SELECT count(*) FROM invoices WHERE booking_id=$1)+(SELECT count(*) FROM payments WHERE invoice_id=$2)+(SELECT count(*) FROM invoice_items WHERE invoice_id=$2)`, paidBooking, inv2.ID).Scan(&left))
 	if left != 0 {

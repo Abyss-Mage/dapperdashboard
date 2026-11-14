@@ -13,14 +13,12 @@ import (
 var (
 	// ErrBookingPurgeNumber: the typed booking number does not match the booking.
 	ErrBookingPurgeNumber = errors.New("the typed booking number does not match")
-	// ErrBookingPurgeSquare: a Square card payment was attempted or taken for this booking; that history is never removed.
-	ErrBookingPurgeSquare = errors.New("the booking has Square card payment records")
 )
 
 // PurgeBooking removes a test booking for good with everything attached to it: its invoices (issued ones too), their items, events and
 // pay links, payments recorded by hand and their refund history, requests, email log and links (owner 2026-11-14, error404 #82 #84 #86).
-// Only the owner and administrators (organization access.manage) may, and only after typing the booking's number. A booking with any
-// Square card record is refused, because card history must match Square. Recorded in the activity log.
+// Only the owner and administrators (organization access.manage) may, and only after typing the booking's number. Square card records
+// are removed too (owner 2026-11-14, #126); refunds in Square are the owner's to handle. Recorded in the activity log.
 func (s *Store) PurgeBooking(ctx context.Context, scope Scope, id, typedNumber string) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -46,19 +44,18 @@ func (s *Store) PurgeBooking(ctx context.Context, scope Scope, id, typedNumber s
 		return ErrBookingPurgeNumber
 	}
 	inv := `(SELECT id FROM invoices WHERE organization_id=$1 AND location_id=$2 AND booking_id::text=$3)`
-	var square bool
-	if err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM square_payment_intents WHERE invoice_id IN `+inv+`)`, scope.OrganizationID, scope.LocationID, id).Scan(&square); err != nil {
-		return err
-	}
-	if square {
-		return ErrBookingPurgeSquare
-	}
 	// Lets the "must be retained" protections allow these deletes, for this transaction only (booking_purge.sql).
 	if _, err = tx.Exec(ctx, `SELECT set_config('dapper.purge_booking','on',true)`); err != nil {
 		return err
 	}
 	pay := `(SELECT id FROM payments WHERE invoice_id IN ` + inv + `)`
+	intents := `(SELECT id FROM square_payment_intents WHERE invoice_id IN ` + inv + `)`
 	steps := []string{
+		// Square card attempts and their history go too (owner 2026-11-14, error404 #126); Square itself is not touched.
+		`DELETE FROM square_payment_allocations WHERE intent_id IN ` + intents,
+		`DELETE FROM square_payment_capture_observations WHERE intent_id IN ` + intents,
+		`DELETE FROM square_payment_intent_events WHERE intent_id IN ` + intents,
+		`DELETE FROM square_payment_intents WHERE invoice_id IN ` + inv,
 		`DELETE FROM payment_refund_adjustments WHERE payment_id IN ` + pay,
 		`DELETE FROM payments WHERE invoice_id IN ` + inv,
 		`DELETE FROM coupon_redemptions WHERE invoice_id IN ` + inv,
