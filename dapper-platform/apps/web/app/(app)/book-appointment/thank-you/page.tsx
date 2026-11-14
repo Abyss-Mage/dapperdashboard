@@ -2,6 +2,7 @@ import '@fontsource-variable/unbounded/index.css';
 import { SiteHeader } from '../../../_chrome/SiteHeader';
 import { SiteFooter } from '../../../_chrome/SiteFooter';
 import Tracking from '../../../(site)/_components/Tracking';
+import TrackingHead from '../../../(site)/_components/TrackingHead';
 import ThankYou from './ThankYou';
 import styles from '../booking.module.css';
 
@@ -11,6 +12,7 @@ export const metadata = { title: 'Booking confirmed | Dapper Detailing Pros', ro
 export default function ThankYouPage() {
   return (
     <div className={styles.page}>
+      <TrackingHead />
       <Tracking />
       <SiteHeader />
       <ThankYou />

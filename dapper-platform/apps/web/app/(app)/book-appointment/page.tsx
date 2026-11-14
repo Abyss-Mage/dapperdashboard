@@ -3,6 +3,7 @@ import { SiteHeader } from '../../_chrome/SiteHeader';
 import { SiteFooter } from '../../_chrome/SiteFooter';
 import PublicBookingWizard from '../workspace/PublicBookingWizard';
 import Tracking from '../../(site)/_components/Tracking';
+import TrackingHead from '../../(site)/_components/TrackingHead';
 import styles from './booking.module.css';
 
 export const metadata = { title: 'Book now | Dapper Detailing Pros', description: 'Choose mobile service or at-shop detailing and pick your date and time with Dapper Detailing Pros in Peterborough.' };
@@ -12,6 +13,7 @@ export const metadata = { title: 'Book now | Dapper Detailing Pros', description
 export default function PublicBookingPortal() {
   return (
     <div className={styles.page}>
+      <TrackingHead />
       <Tracking />
       <SiteHeader />
       <section className={styles.hero} aria-labelledby="book-title">

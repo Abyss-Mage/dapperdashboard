@@ -14,7 +14,7 @@ import (
 )
 
 // sendCustomerAccountSetup gives a customer a sign-in account and emails them a link to choose their password (owner 2026-11-14,
-// error404 #85). With force=false (after a booking) it only emails a customer who had no account; force=true (the staff button) always
+// error404 #85). With force=false (after a booking) it only emails a customer with no account, or one never signed in to (#129); force=true (the staff button) always
 // emails a fresh 72-hour link. It answers "sent", "exists", "no_email", "not_configured" or "failed". Set up with the credential routes.
 var sendCustomerAccountSetup func(ctx context.Context, org, loc, actor, customer string, force bool) (status, email string)
 
@@ -38,7 +38,7 @@ func setUpCustomerAccountSetup(mux *http.ServeMux, store *postgres.Store, auth *
 				log.Printf("Customer %s: the sign-in account could not be finished: %v", customer, err)
 				return "failed", email
 			}
-		} else if !force {
+		} else if !force && !store.AccountNeverUsed(ctx, principal) {
 			return "exists", email
 		}
 		if !emailReady(sender) {
@@ -83,7 +83,7 @@ func setUpCustomerAccountSetup(mux *http.ServeMux, store *postgres.Store, auth *
 	})
 }
 
-// accountSetupAfterWalkIn emails a walk-in customer who has no account yet, in the background so the booking answers at once.
+// accountSetupAfterWalkIn emails a walk-in or website customer who has no account yet (or never used it), in the background so the booking answers at once.
 func accountSetupAfterWalkIn(b postgres.Booking, actor string) {
 	if sendCustomerAccountSetup == nil || b.CustomerID == "" {
 		return
@@ -92,7 +92,7 @@ func accountSetupAfterWalkIn(b postgres.Booking, actor string) {
 		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancel()
 		if status, _ := sendCustomerAccountSetup(ctx, b.OrganizationID, b.LocationID, actor, b.CustomerID, false); status == "failed" || status == "not_configured" {
-			log.Printf("Walk-in booking %s: customer account setup email %s", b.ID, status)
+			log.Printf("Booking %s: customer account setup email %s", b.ID, status)
 		}
 	}()
 }

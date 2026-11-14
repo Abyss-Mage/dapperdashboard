@@ -49,6 +49,8 @@ export default function Tracking() {
     for (const sn of snippets) {
       if (ran.current.has(sn.id) || !pathMatches(sn.paths, pathname)) continue;
       ran.current.add(sn.id);
+      // Already written into the page by the server (TrackingHead): its scripts have run.
+      if (document.querySelector(`[data-dd-custom="${sn.id}"]`)) continue;
       try { runSnippet(sn); } catch { /* a faulty snippet must not break the page */ }
     }
   }, [snippets, pathname]);
@@ -60,9 +62,11 @@ export default function Tracking() {
         if (!live || !s) return;
         // Snippets for every page (such as the Google tag) run before page-specific ones (such as a conversion event that calls gtag),
         // whatever order they were saved in.
-        if (Array.isArray(s.scripts)) setSnippets([...s.scripts].sort((x, y) => Number(x.paths.length > 0) - Number(y.paths.length > 0)));
+        // A pasted copy of the GTM container already loaded from the GTM ID field is skipped (TrackingHead does the same).
+        const gtm = s.gtmId && /^GTM-[A-Z0-9]{4,12}$/.test(s.gtmId) ? s.gtmId : '';
+        if (Array.isArray(s.scripts)) setSnippets([...s.scripts].filter((sn) => !(gtm && sn.code.includes(gtm))).sort((x, y) => Number(x.paths.length > 0) - Number(y.paths.length > 0)));
         const w = window as Win;
-        if (s.gtmId && /^GTM-[A-Z0-9]{4,12}$/.test(s.gtmId)) {
+        if (s.gtmId && /^GTM-[A-Z0-9]{4,12}$/.test(s.gtmId) && !document.getElementById('dd-gtm-inline')) {
           w.dataLayer = w.dataLayer || [];
           w.dataLayer.push({ 'gtm.start': Date.now(), event: 'gtm.js' });
           addScript('https://www.googletagmanager.com/gtm.js?id=' + encodeURIComponent(s.gtmId), 'dd-gtm');

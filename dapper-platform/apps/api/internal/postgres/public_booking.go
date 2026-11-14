@@ -218,6 +218,8 @@ type PublicBookingResult struct {
 	ServiceName   string `json:"serviceName"`
 	// NewCustomer is true when this booking created the customer record (so the address typed is the only claim on it).
 	NewCustomer bool `json:"-"`
+	// CustomerID is the customer the booking is for (for the account setup email, error404 #129).
+	CustomerID string `json:"-"`
 }
 
 func phoneDigits(p string) string {
@@ -324,7 +326,7 @@ func (s *Store) PublicBook(ctx context.Context, slug string, in PublicBookingInp
 		release()
 		return out, err
 	}
-	out = PublicBookingResult{BookingID: bookingID, InvoiceID: issued.ID, InvoiceNumber: issued.InvoiceNumber, TotalCents: issued.TotalCents, ServiceName: serviceName, NewCustomer: newCustomer}
+	out = PublicBookingResult{BookingID: bookingID, InvoiceID: issued.ID, InvoiceNumber: issued.InvoiceNumber, TotalCents: issued.TotalCents, ServiceName: serviceName, NewCustomer: newCustomer, CustomerID: customerID}
 	return out, nil
 }
 

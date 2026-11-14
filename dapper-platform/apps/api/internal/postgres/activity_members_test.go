@@ -209,4 +209,8 @@ func TestActivityLogAndTermination(t *testing.T) {
 			t.Fatal("a customer account is listed among employees")
 		}
 	}
+	// error404 #129: an account nobody has signed in to may be sent the setup link again by a booking; one that was used is not.
+	if !s.AccountNeverUsed(ctx, shopper) || s.AccountNeverUsed(ctx, worker) {
+		t.Fatal("never-used account check wrong", s.AccountNeverUsed(ctx, shopper), s.AccountNeverUsed(ctx, worker))
+	}
 }

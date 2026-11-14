@@ -82,6 +82,16 @@ func (s *Store) PrepareCustomerAccount(ctx context.Context, org, loc, actor, cus
 	return
 }
 
+// AccountNeverUsed is true when the sign-in account has never been signed in to (error404 #129): its owner never chose a password
+// (or the customer record it was made for was deleted and they booked again), so a booking may send the setup link again.
+func (s *Store) AccountNeverUsed(ctx context.Context, principal string) bool {
+	var used bool
+	if err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM activity_log WHERE principal_id::text=$1 AND kind='sign_in')`, principal).Scan(&used); err != nil {
+		return false
+	}
+	return !used
+}
+
 // AccountSetupToken is a one-time link token for a new customer account to choose its first password (AccountSetupLifetime). It uses the
 // password reset mechanism, so /reset-password finishes it.
 func (a *PasswordAuthenticator) AccountSetupToken(ctx context.Context, principal string) (string, error) {

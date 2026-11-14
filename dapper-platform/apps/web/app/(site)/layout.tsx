@@ -12,6 +12,7 @@ import { SiteHeader } from '../_chrome/SiteHeader';
 import { SiteFooter } from '../_chrome/SiteFooter';
 import SmoothScroll from './_components/SmoothScroll';
 import Tracking from './_components/Tracking';
+import TrackingHead, { TrackingNoscript } from './_components/TrackingHead';
 import RemovedImages from './_components/RemovedImages';
 import SalesStrip from './_components/SalesStrip';
 import TorontoTime from '../TorontoTime';
@@ -49,7 +50,9 @@ export const viewport: Viewport = { themeColor: '#f6f4f1', width: 'device-width'
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en-CA">
+      <head><TrackingHead /></head>
       <body>
+        <TrackingNoscript />
         <TorontoTime />
         <a className="d-skip" href="#main">Skip to content</a>
         <SalesStrip />

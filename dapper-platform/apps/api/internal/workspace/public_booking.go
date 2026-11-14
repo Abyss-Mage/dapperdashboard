@@ -279,6 +279,12 @@ func registerPublicBookingRoutes(mux *http.ServeMux, store *postgres.Store, send
 		if emailReady(sender) {
 			go sendBookingEmail(store, sender, origin, res.BookingID, "booking_confirmation")
 		}
+		// And the account setup link, so the customer can sign in and see their booking (owner 2026-11-14, error404 #129).
+		if res.CustomerID != "" {
+			if scope, e := store.PublicBookingScope(r.Context(), site); e == nil {
+				accountSetupAfterWalkIn(postgres.Booking{ID: res.BookingID, OrganizationID: scope.OrganizationID, LocationID: scope.LocationID, CustomerID: res.CustomerID}, scope.ActorID)
+			}
+		}
 		reply(w, 201, map[string]any{"bookingId": res.BookingID, "invoiceNumber": res.InvoiceNumber, "totalCents": res.TotalCents, "depositPaid": paid, "paymentPending": pending, "paidCents": map[bool]int64{true: res.TotalCents, false: 0}[paid], "serviceName": res.ServiceName})
 	})
 }
