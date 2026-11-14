@@ -19,7 +19,7 @@
 .h-tag{margin:0 0 clamp(14px,1.6vw,22px);font:500 15px/1 var(--cd);letter-spacing:.18em;text-transform:uppercase;color:var(--bone);border-left:3px solid var(--red);padding-left:12px}
 .h-light .h-tag{color:var(--ink)}
 
-/* H2 Core values: the studio's roll-up door rolls away to the headline and three counted facts (pinned, wide screen with motion only) */
+/* H2 Core values: the headline and three facts, shown as they are (owner removed the roll-up door, error404 #125) */
 .h-val{position:relative;display:grid;grid-template-columns:minmax(0,1fr);gap:clamp(40px,6vw,80px);padding:clamp(72px,9vw,140px) var(--cg)}
 .h-val__text{display:flex;flex-direction:column;align-items:flex-start;gap:clamp(18px,2vw,28px)}
 .h-val .s-h2{font-size:clamp(31.2px,3.8vw,62.4px)}
@@ -31,19 +31,10 @@
 .h-fact__n i{font-style:normal;color:#c4121f}
 .h-fact__star{width:.62em;height:.62em;color:#c4121f;align-self:center}
 .h-fact__l{font:500 clamp(18px,1.8vw,28px)/1.2 var(--cd);text-align:left}
-.h-door{display:none}
 .sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 @media(min-width:1024px){.h-val{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(32px,4vw,64px);align-items:center}}
 @media(prefers-reduced-motion:no-preference){
   .h-val{min-height:100svh;overflow:hidden;align-content:center;padding:calc(72px + 24px) var(--cg) 48px}
-  .h-door{display:flex;flex-direction:column;position:absolute;inset:0;z-index:3;pointer-events:none}
-  .h-door__slat{flex:1;position:relative;background:#1c1c1e;border-bottom:7px solid #0b0b0c}
-  .h-door__slat:nth-child(odd){background:#212124}
-  .h-door__slat:nth-child(1){z-index:8}.h-door__slat:nth-child(2){z-index:7}.h-door__slat:nth-child(3){z-index:6}.h-door__slat:nth-child(4){z-index:5}
-  .h-door__slat:nth-child(5){z-index:4}.h-door__slat:nth-child(6){z-index:3}.h-door__slat:nth-child(7){z-index:2}.h-door__slat:nth-child(8){z-index:1}
-  .h-door__sign{position:absolute;z-index:9;left:var(--cg);bottom:clamp(40px,8vh,96px);margin:0;color:var(--bone,#efece4);font:500 clamp(32px,6vw,104px)/.98 var(--cd);text-transform:uppercase;letter-spacing:-.02em}
-  .h-door__sign em{font-style:normal;color:#e4202e}
-  .h-door__hint{position:absolute;z-index:9;right:var(--cg);bottom:clamp(40px,8vh,96px);margin:0;color:#b9b6ae;font:500 17px/1.2 var(--cd)}
 }
 
 /* H3 Services: black band, five panels that open on point */
@@ -279,8 +270,6 @@
   .h-val{align-content:center;gap:20px;padding:calc(64px + 20px) var(--cg) calc(104px + env(safe-area-inset-bottom))}
   .h-val__text{gap:14px}
   .h-val__text>p:not(.h-tag){font-size:15px;line-height:1.5}
-  .h-door__sign{bottom:calc(150px + env(safe-area-inset-bottom));font-size:clamp(28px,8.4vw,44px)}
-  .h-door__hint{left:var(--cg);right:auto;bottom:calc(112px + env(safe-area-inset-bottom));font-size:14px}
 }
 @media(max-width:719px){
   .h-val__facts{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}

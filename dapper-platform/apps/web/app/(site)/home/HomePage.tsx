@@ -144,24 +144,6 @@ export default function HomePage() {
       tl.to('.h-deck__bar i', { scaleX: 1, duration: total }, 0);
       return () => setDeckIdx(0);
     });
-    // Core values: the studio's roll-up door covers the section; the scroll rolls it up and the three figures count as the bay opens.
-    // Static (no door, final numbers) on a phone and with reduced motion.
-    mm.add('(prefers-reduced-motion: no-preference)', () => {
-      const slats = gsap.utils.toArray<HTMLElement>('.h-door__slat');
-      const nums = gsap.utils.toArray<HTMLElement>('.h-fact [data-to]');
-      const show = (el: HTMLElement, v: number) => { el.textContent = Math.round(v).toLocaleString('en-CA'); };
-      const c = facts.map(() => ({ v: 0 }));
-      nums.forEach((n) => show(n, 0));
-      const tl = gsap.timeline({ defaults: { ease: 'none' }, scrollTrigger: { trigger: '.h-val', start: 'top top', end: '+=' + Math.round(innerHeight * 2.4), pin: true, scrub: .6, anticipatePin: 1, invalidateOnRefresh: true, refreshPriority: 2 } });
-      // Each slat rises further than the one above it, so the door folds up into the top edge like a real sectional door.
-      slats.forEach((sl, i) => tl.to(sl, { y: () => -(i + 1) * sl.offsetHeight, duration: 1 }, 0));
-      tl.to('.h-door__sign, .h-door__hint', { y: () => -7.5 * slats[0].offsetHeight, duration: 1 }, 0)
-        .fromTo('.h-val__text, .h-val__facts', { y: 48 }, { y: 0, duration: 1 }, 0)
-        .to('.h-door', { autoAlpha: 0, duration: .01 }, 1);
-      facts.forEach((f, i) => tl.to(c[i], { v: f.to, duration: .55, ease: 'power2.out', onUpdate: () => show(nums[i], c[i].v) }, .7 + i * .18));
-      tl.to({}, { duration: .3 });
-      return () => { nums.forEach((n, i) => show(n, facts[i].to)); };
-    });
     document.fonts?.ready.then(() => ScrollTrigger.refresh());
     return () => mm.revert();
   }, { scope: root });
@@ -222,11 +204,6 @@ export default function HomePage() {
             </li>
           ))}
         </ul>
-        <div className="h-door" aria-hidden="true">
-          {Array.from({ length: 8 }, (_, i) => <span className="h-door__slat" key={i} />)}
-          <p className="h-door__sign">Dapper Detailing Pros<br /><em>Step inside.</em></p>
-          <p className="h-door__hint">Scroll to open the bay</p>
-        </div>
       </section>
 
       {/* H3 Services: five panels, the one you point at opens */}
