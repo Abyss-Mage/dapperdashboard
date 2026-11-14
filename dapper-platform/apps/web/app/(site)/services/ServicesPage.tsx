@@ -1,7 +1,6 @@
 'use client';
 import { ScrollRow } from '../_components/ScrollRow';
 import { CtaBand } from '../_components/CtaBand';
-import { useReplaced } from '../_components/useHidden';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
@@ -18,7 +17,6 @@ import { gsap, ScrollTrigger, SplitText, useGSAP } from '../_components/gsapCont
 const Roll = ({ children }: { children: string }) => <span className="s-roll"><span>{children}</span><span aria-hidden="true">{children}</span></span>;
 
 export default function ServicesPage() {
-  const isOwn = useReplaced();
   const live = useLiveFrom();
   const root = useRef<HTMLDivElement>(null);
   const [cur, setCur] = useState(0);
@@ -89,7 +87,6 @@ export default function ServicesPage() {
                 <span className="s-tile__img" style={{ backgroundImage: 'url(' + c.image + ')' }} role="img" aria-label={c.photo ? c.title : 'Vehicle detailed by Dapper'} />
                 {live[c.key] ? <span className="s-tile__price" aria-label={'Starting from $' + money(live[c.key])}>${money(live[c.key])}</span> : null}
                 <span className="s-tile__name">{c.short}</span>
-                {c.photo || isOwn(c.image) ? null : <span className="s-tile__tag">Studio photo</span>}
                 <span className="s-tile__sub">{c.key === 'ceramic' ? 'Coating' : c.key === 'ppf' ? 'Paint protection film' : 'Detailing'}</span>
               </Link>
             </li>

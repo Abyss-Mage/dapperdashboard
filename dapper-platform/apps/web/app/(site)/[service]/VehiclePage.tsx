@@ -9,7 +9,6 @@ import { faqs } from '../faq';
 import { contact, cta, processSteps, proof, testimonials, why } from '../dapper';
 import { usePublished } from '../_components/usePublished';
 import { money, useLiveCatalog, useLiveFrom } from '../_components/useLiveFrom';
-import { useReplaced } from '../_components/useHidden';
 import { gsap, ScrollTrigger, SplitText, useGSAP } from '../_components/gsapContact';
 
 /* One template for every service page, in the same darker "hard" direction as Services.
@@ -120,7 +119,6 @@ function Packages({ category, name }: { category: string; name: string }) {
 }
 
 export default function VehiclePage({ slug }: { slug: string }) {
-  const isOwn = useReplaced();
   const root = useRef<HTMLDivElement>(null);
   const c = categories.find((x) => x.slug === slug)!;
   const { from: live, loaded } = useLiveCatalog();
@@ -180,7 +178,6 @@ export default function VehiclePage({ slug }: { slug: string }) {
           <h1 id="v-title" className="v-h1">{words.join(' ')} <em>{last}.</em></h1>
           <p className="v-lede">{c.summary}</p>
         </div>
-        {c.photo || isOwn(c.image) ? null : <span className="s-tile__tag">Studio photo</span>}
         <div className="v-buy">
           {fromPrice
             ? <p className="v-price"><small>Starting from</small><b aria-label={'$' + money(fromPrice)}>${money(fromPrice)}</b></p>

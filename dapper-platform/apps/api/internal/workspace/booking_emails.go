@@ -3,6 +3,7 @@ package workspace
 import (
 	"context"
 	"log"
+	"strings"
 	"time"
 
 	"dapper.local/platform/internal/email"
@@ -29,9 +30,15 @@ var bookingAlerts = map[string]struct{ template, setting string }{
 	"booking_rescheduled":  {"booking_admin_rescheduled", "rescheduled"},
 }
 
+// adminPrefix marks the business alert's own entry in the email log, so it is sent, retried and marked apart from the customer's email
+// (error404 #128): a customer address that bounces no longer holds back the alert, and a failed alert is tried again.
+const adminPrefix = "admin:"
+
 // deliverBookingEmail writes one booking email from what is saved on the booking and sends it to the address saved on the customer, never one
-// typed into the form. An error means the customer's email did not go out; the business alert follows it, so a retry does not repeat the alert.
+// typed into the form. With adminPrefix it is the business alert instead, sent to the alert addresses. An error means it did not go out.
 func deliverBookingEmail(ctx context.Context, store *postgres.Store, sender postgres.EmailSender, origin, bookingID, kind string) error {
+	admin := strings.HasPrefix(kind, adminPrefix)
+	kind = strings.TrimPrefix(kind, adminPrefix)
 	if kind == "booking_confirmation" {
 		store.IssueBookingDraft(ctx, bookingID)
 	}
@@ -40,27 +47,34 @@ func deliverBookingEmail(ctx context.Context, store *postgres.Store, sender post
 		return err
 	}
 	vars["invoice"] = store.BookingInvoiceText(ctx, bookingID, origin+"/account")
-	if to != "" {
-		subject, body, text := store.RenderEmail(ctx, kind, vars)
-		if kind == "booking_confirmation" || kind == "booking_completed" {
-			_, err = sendWithInvoicePDF(ctx, store, sender, bookingID, to, subject, body, text)
-		} else {
-			_, err = sender.SendEmail(ctx, to, subject, body, text)
+	if admin {
+		alert, ok := bookingAlerts[kind]
+		if !ok {
+			return nil
 		}
-		if err != nil {
-			log.Printf("Booking email %s for booking %s could not be sent; it will be tried again", kind, bookingID)
-			return err
-		}
-	}
-	if alert, ok := bookingAlerts[kind]; ok {
 		subject, body, text := store.RenderEmail(ctx, alert.template, vars)
-		for _, to := range store.AdminNotifyEmails(ctx, alert.setting) {
-			if _, err = sender.SendEmail(ctx, to, subject, body, text); err != nil {
-				log.Print("A business booking alert could not be sent")
+		var failed error
+		for _, addr := range store.AdminNotifyEmails(ctx, alert.setting) {
+			if _, err = sender.SendEmail(ctx, addr, subject, body, text); err != nil {
+				log.Printf("Business alert %s for booking %s could not be sent to %s: %v; it will be tried again", kind, bookingID, addr, err)
+				failed = err
 			}
 		}
+		return failed
 	}
-	return nil
+	if to == "" {
+		return nil
+	}
+	subject, body, text := store.RenderEmail(ctx, kind, vars)
+	if kind == "booking_confirmation" || kind == "booking_completed" {
+		_, err = sendWithInvoicePDF(ctx, store, sender, bookingID, to, subject, body, text)
+	} else {
+		_, err = sender.SendEmail(ctx, to, subject, body, text)
+	}
+	if err != nil {
+		log.Printf("Booking email %s for booking %s could not be sent: %v; it will be tried again", kind, bookingID, err)
+	}
+	return err
 }
 
 func markBookingEmailDelivered(store *postgres.Store, bookingID, kind string) {
@@ -72,14 +86,21 @@ func markBookingEmailDelivered(store *postgres.Store, bookingID, kind string) {
 }
 
 // sendBookingEmail claims the email, so two code paths reporting one change send it once, then sends it.
+// The customer's email and the business alert (when this kind has one) are claimed and sent separately.
 func sendBookingEmail(store *postgres.Store, sender postgres.EmailSender, origin, bookingID, kind string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 40*time.Second)
 	defer cancel()
-	if first, err := store.ClaimBookingEmail(ctx, bookingID, kind); err != nil || !first {
-		return
+	kinds := []string{kind}
+	if _, ok := bookingAlerts[kind]; ok {
+		kinds = append(kinds, adminPrefix+kind)
 	}
-	if deliverBookingEmail(ctx, store, sender, origin, bookingID, kind) == nil {
-		markBookingEmailDelivered(store, bookingID, kind)
+	for _, k := range kinds {
+		if first, err := store.ClaimBookingEmail(ctx, bookingID, k); err != nil || !first {
+			continue
+		}
+		if deliverBookingEmail(ctx, store, sender, origin, bookingID, k) == nil {
+			markBookingEmailDelivered(store, bookingID, k)
+		}
 	}
 }
 

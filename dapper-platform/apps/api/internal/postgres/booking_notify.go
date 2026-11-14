@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"log"
 	"strings"
 	"context"
 )
@@ -60,7 +61,7 @@ func (s *Store) statusOf(ctx context.Context, id string) string {
 // are not repeated within two minutes, so two code paths reporting one change send one email.
 func (s *Store) ClaimBookingEmail(ctx context.Context, bookingID, kind string) (bool, error) {
 	window := "2 minutes"
-	if kind == "booking_cancelled" {
+	if strings.HasSuffix(kind, "booking_cancelled") { // the customer's email and the business alert ("admin:booking_cancelled")
 		window = "100 years"
 	}
 	tag, err := s.pool.Exec(ctx, `INSERT INTO booking_email_log(booking_id,kind) SELECT $1::uuid,$2 WHERE NOT EXISTS(SELECT 1 FROM booking_email_log WHERE booking_id=$1::uuid AND kind=$2 AND sent_at>now()-$3::interval)`, bookingID, kind, window)
@@ -128,6 +129,9 @@ func (s *Store) AdminNotifyEmails(ctx context.Context, kind string) []string {
 	if err := s.pool.QueryRow(ctx, `SELECT coalesce(nullif(m.smtp_notify_email,''),m.smtp_from_address),`+col+` FROM messaging_settings m JOIN public_sites ps ON ps.organization_id=m.organization_id AND ps.slug=$1 LIMIT 1`, mainSiteSlug()).Scan(&to, &on); err != nil || !on {
 		return nil
 	}
-	list, _ := notifyList(to)
+	list, ok := notifyList(to)
+	if !ok || len(list) == 0 {
+		log.Printf("Business %s alert: no valid alert address is saved (Settings → Messaging); nothing was sent", kind)
+	}
 	return list
 }

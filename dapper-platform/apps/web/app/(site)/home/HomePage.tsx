@@ -1,7 +1,6 @@
 'use client';
 import { WhyStack } from '../_components/WhyStack';
 import { CtaBand } from '../_components/CtaBand';
-import { useReplaced } from '../_components/useHidden';
 import { FilmCarousel } from '../_components/FilmCarousel';
 import { useFilms } from '../_components/useFilms';
 import Link from 'next/link';
@@ -26,7 +25,6 @@ const facts = [
 ];
 
 export default function HomePage() {
-  const isOwn = useReplaced();
   const root = useRef<HTMLDivElement>(null);
   // Phones get one short looping film instead of the 288-frame scroll sequence; mounted only there so desktops never download it.
   const [phoneFilm, setPhoneFilm] = useState(false);
@@ -219,9 +217,8 @@ export default function HomePage() {
             {categories.map((c) => (
               <li className="h-hcard" key={c.slug}>
                 <Link href={'/' + c.slug}>
-                  <span className="h-hcard__img" role="img" aria-label={c.photo ? c.title : 'Example photo from Dapper work'}>
+                  <span className="h-hcard__img" role="img" aria-label={c.title}>
                     <span className="h-hcard__ph" style={{ backgroundImage: 'url(' + c.image + ')' }} />
-                    {c.photo || isOwn(c.image) ? null : <span className="h-hcard__note">Example photo</span>}
                   </span>
                   <span className="h-hcard__body">
                     <span className="h-hcard__name">{c.title}</span>
@@ -253,8 +250,7 @@ export default function HomePage() {
             {categories.map((c) => (
               <article className="h-dcard" key={c.slug}>
                 <Link href={'/' + c.slug}>
-                  <span className="h-dcard__img" role="img" aria-label={c.photo ? c.title : 'Example photo from Dapper work'} style={{ backgroundImage: 'url(' + c.image + ')' }} />
-                  {c.photo || isOwn(c.image) ? null : <span className="h-dcard__note">Example photo</span>}
+                  <span className="h-dcard__img" role="img" aria-label={c.title} style={{ backgroundImage: 'url(' + c.image + ')' }} />
                   <span className="h-dcard__cap">
                     <span className="h-dcard__name">{c.title}</span>
                     {priceOf(c) ? <span className="h-dcard__price">from <b>${money(priceOf(c)!)}</b></span> : null}
