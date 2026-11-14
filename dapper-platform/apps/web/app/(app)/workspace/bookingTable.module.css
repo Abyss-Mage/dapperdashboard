@@ -77,6 +77,14 @@
 
 /* Phones: one column of details beside the opener and tick. */
 @media (max-width: 600px) {
-  .row { grid-template-columns: 32px 26px minmax(0, 1fr); }
-  .row > :nth-child(n+3):nth-child(odd), .row > :nth-child(n+4):nth-child(even) { grid-column: 3; }
+  /* error404 #122: opener, tick and number share the first line; everything else uses the card's full width. */
+  .row { grid-template-columns: 26px 22px minmax(0, 1fr); column-gap: 10px; padding-left: 12px; padding-right: 12px; }
+  .row > :nth-child(n+3):nth-child(odd), .row > :nth-child(n+4):nth-child(even) { grid-column: 1 / -1; }
+  .row > :nth-child(3) { grid-column: 3; align-self: center; }
+  .row .status { max-width: none; }
+  .detail { padding: 6px 12px 16px; }
+  .detailTop { flex-direction: column; align-items: stretch; }
+  .detailTop h3 { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .price { margin-left: 0; }
+  .actions > button { flex: 1 1 calc(50% - 4px); }
 }

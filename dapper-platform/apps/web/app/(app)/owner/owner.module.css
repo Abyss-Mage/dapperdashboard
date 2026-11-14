@@ -959,6 +959,15 @@
 /* The time box needs room for its − and + buttons, so this field takes a row of its own when it has to. */
 .inlineForm :global(.form-field):has(.durationRow) { flex: 2 1 290px; }
 @media (max-width: 900px) { .svc, .svc:has(> .foldBtn) { grid-template-columns: minmax(0, 1fr) auto; } .svcCell { display: none; } }
+/* Phones (error404 #120 #121): the name keeps the row's width and wraps; tags and buttons go on their own line and wrap. The !important
+   beats the column list a page sets inline (Taxes). */
+@media (max-width: 760px) {
+  .svc { grid-template-columns: minmax(0, 1fr) !important; gap: 10px; }
+  .svc:has(> .foldBtn) { grid-template-columns: auto minmax(0, 1fr) !important; }
+  .svc > .svcActions, .svc > .svcTags { grid-column: 1 / -1; }
+  .svcActions { flex-wrap: wrap; }
+  .svcName { white-space: normal; overflow-wrap: anywhere; }
+}
 .parentPick { border: 1px solid var(--glass-line); border-radius: 14px; padding: 10px 14px; display: grid; gap: 8px; grid-column: 1 / -1; max-height: 260px; overflow: auto; }
 .parentPick legend { font-weight: 700; padding: 0 6px; }
 .parentOpt { display: flex; gap: 10px; align-items: center; font-size: 13.7px; cursor: pointer; }
@@ -972,6 +981,13 @@
 .custCount { font-size: 13.7px; color: var(--text-muted); white-space: nowrap; }
 .custAddress { grid-column: 1 / -1; font-size: 13.7px; color: var(--text-muted); }
 @media (max-width: 1100px) { .custFilters { grid-template-columns: 1fr 1fr; } .custRow { grid-template-columns: 1fr 1fr; } }
+/* A person or customer card with its buttons beside it; on phones (error404 #123) the details take one column and the buttons go below. */
+.personRow { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+@media (max-width: 640px) {
+  .personRow { grid-template-columns: minmax(0, 1fr); }
+  .custRow { grid-template-columns: minmax(0, 1fr); }
+  .custCount { white-space: normal; }
+}
 /* Forms laid out in a row: a field's own margin must not push the button beside it off the shared bottom line. */
 .inlineForm :global(.form-field) { margin: 0; }
 /* The dashboard already sits each page on its own background, so the glass stage some panels bring is a second, redundant background. */

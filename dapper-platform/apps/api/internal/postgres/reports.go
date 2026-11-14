@@ -132,9 +132,9 @@ const reportBookingFilter = ` AND (b.booking_time AT TIME ZONE $3)::date BETWEEN
 
 func reportAppointments(ctx context.Context, tx pgx.Tx, scope Scope, f ReportFilter, r *Report) error {
 	r.Columns = []string{"ID", "Date", "Customer", "Service", "Status", "Booked", "Total", "Paid"}
-	rows, err := tx.Query(ctx, `SELECT b.id::text, to_char(b.booking_time AT TIME ZONE $3,'YYYY-MM-DD HH24:MI'), c.name, b.service_name, b.status, b.channel, COALESCE(i.total_cents,0), COALESCE(i.paid_cents,0)
+	rows, err := tx.Query(ctx, `SELECT CASE WHEN b.number IS NULL THEN left(b.id::text,6) ELSE b.number::text END, to_char(b.booking_time AT TIME ZONE $3,'YYYY-MM-DD HH24:MI'), c.name, b.service_name, b.status, b.channel, COALESCE(i.total_cents,0), COALESCE(i.paid_cents,0)
  FROM bookings b JOIN customers c ON (c.organization_id,c.location_id,c.id)=(b.organization_id,b.location_id,b.customer_id)
- LEFT JOIN LATERAL (SELECT total_cents,paid_cents FROM invoices i WHERE i.booking_id=b.id AND i.status<>'void' ORDER BY created_at LIMIT 1) i ON true
+ LEFT JOIN LATERAL (SELECT total_cents,paid_cents FROM (SELECT total_cents,paid_cents,0 AS o,created_at FROM invoices WHERE booking_id=b.id AND status<>'void' UNION ALL SELECT total_cents,paid_cents,1,now() FROM legacy_booking_billing WHERE booking_id=b.id AND status<>'void') m ORDER BY o,created_at LIMIT 1) i ON true
  WHERE b.organization_id=$1 AND b.location_id=$2`+reportBookingFilter+` ORDER BY b.booking_time DESC LIMIT `+fmt.Sprint(reportRowLimit+1),
 		scope.OrganizationID, scope.LocationID, f.TZ, f.From, f.To, f.Service, f.Status)
 	if err != nil {
@@ -162,7 +162,7 @@ func reportAppointments(ctx context.Context, tx pgx.Tx, scope Scope, f ReportFil
 		counts[when[:10]]++
 		billed += total
 		paid += got
-		r.Rows = append(r.Rows, []string{"#" + id[:6], when, customer, service, label, channel, reportMoney(total), reportMoney(got)})
+		r.Rows = append(r.Rows, []string{"#" + id, when, customer, service, label, channel, reportMoney(total), reportMoney(got)})
 	}
 	if err = rows.Err(); err != nil {
 		return err
@@ -175,11 +175,18 @@ func reportAppointments(ctx context.Context, tx pgx.Tx, scope Scope, f ReportFil
 func reportRevenue(ctx context.Context, tx pgx.Tx, scope Scope, f ReportFilter, r *Report) error {
 	r.Columns = []string{"Date", "Customer", "Invoice", "Service", "Method", "Amount", "Refunded", "Net"}
 	// A status here is the invoice's status (issued, partially_paid, paid).
-	rows, err := tx.Query(ctx, `SELECT to_char(p.recorded_at AT TIME ZONE $3,'YYYY-MM-DD HH24:MI'), c.name, i.invoice_number, COALESCE(b.service_name,''), p.method, p.amount_cents, p.refunded_cents
+	rows, err := tx.Query(ctx, `SELECT w, name, num, svc, method, amount, back FROM (
+ SELECT p.recorded_at AS at, to_char(p.recorded_at AT TIME ZONE $3,'YYYY-MM-DD HH24:MI') AS w, c.name, i.invoice_number AS num, COALESCE(b.service_name,'') AS svc, p.method, p.amount_cents AS amount, p.refunded_cents AS back
  FROM payments p JOIN invoices i ON i.id=p.invoice_id JOIN customers c ON (c.organization_id,c.location_id,c.id)=(p.organization_id,p.location_id,p.customer_id)
  LEFT JOIN bookings b ON b.id=i.booking_id
  WHERE p.organization_id=$1 AND p.location_id=$2 AND p.status IN ('completed','refunded') AND (p.recorded_at AT TIME ZONE $3)::date BETWEEN $4::date AND $5::date
- AND ($6='' OR b.service_name=$6) AND ($7='' OR i.status=$7) ORDER BY p.recorded_at DESC LIMIT `+fmt.Sprint(reportRowLimit+1),
+ AND ($6='' OR b.service_name=$6) AND ($7='' OR i.status=$7)
+ UNION ALL
+ SELECT b.booking_time, to_char(b.booking_time AT TIME ZONE $3,'YYYY-MM-DD HH24:MI'), c.name, l.invoice_number, b.service_name, CASE WHEN l.payment_method='' THEN 'cash' ELSE l.payment_method END, l.paid_cents, 0::bigint
+ FROM legacy_booking_billing l JOIN bookings b ON b.id=l.booking_id JOIN customers c ON (c.organization_id,c.location_id,c.id)=(b.organization_id,b.location_id,b.customer_id)
+ WHERE l.organization_id=$1 AND l.location_id=$2 AND l.status<>'void' AND l.paid_cents>0 AND (b.booking_time AT TIME ZONE $3)::date BETWEEN $4::date AND $5::date
+ AND ($6='' OR b.service_name=$6) AND ($7='' OR l.status=$7)
+) x ORDER BY at DESC LIMIT `+fmt.Sprint(reportRowLimit+1),
 		scope.OrganizationID, scope.LocationID, f.TZ, f.From, f.To, f.Service, f.Status)
 	if err != nil {
 		return err
@@ -208,10 +215,15 @@ func reportRevenue(ctx context.Context, tx pgx.Tx, scope Scope, f ReportFilter, 
 	}
 	var invoices int
 	var billed, outstanding, discounts, tax int64
-	if err = tx.QueryRow(ctx, `SELECT count(*),COALESCE(sum(i.total_cents),0),COALESCE(sum(i.due_cents),0),COALESCE(sum(i.discount_cents),0),COALESCE(sum(i.tax_cents),0)
+	if err = tx.QueryRow(ctx, `SELECT count(*),COALESCE(sum(total),0),COALESCE(sum(due),0),COALESCE(sum(disc),0),COALESCE(sum(tax),0) FROM (
+ SELECT i.total_cents AS total,i.due_cents AS due,i.discount_cents AS disc,i.tax_cents AS tax
  FROM invoices i LEFT JOIN bookings b ON b.id=i.booking_id
  WHERE i.organization_id=$1 AND i.location_id=$2 AND i.status NOT IN ('draft','void') AND (COALESCE(i.issued_at,i.created_at) AT TIME ZONE $3)::date BETWEEN $4::date AND $5::date
- AND ($6='' OR b.service_name=$6) AND ($7='' OR i.status=$7)`, scope.OrganizationID, scope.LocationID, f.TZ, f.From, f.To, f.Service, f.Status).Scan(&invoices, &billed, &outstanding, &discounts, &tax); err != nil {
+ AND ($6='' OR b.service_name=$6) AND ($7='' OR i.status=$7)
+ UNION ALL
+ SELECT l.total_cents,l.total_cents-l.paid_cents,l.discount_cents,l.tax_cents FROM legacy_booking_billing l JOIN bookings b ON b.id=l.booking_id
+ WHERE l.organization_id=$1 AND l.location_id=$2 AND l.status<>'void' AND (b.booking_time AT TIME ZONE $3)::date BETWEEN $4::date AND $5::date
+ AND ($6='' OR b.service_name=$6) AND ($7='' OR l.status=$7)) x`, scope.OrganizationID, scope.LocationID, f.TZ, f.From, f.To, f.Service, f.Status).Scan(&invoices, &billed, &outstanding, &discounts, &tax); err != nil {
 		return err
 	}
 	r.Stats = []ReportStat{{"Collected (net)", reportMoney(net)}, {"Payments", fmt.Sprint(len(r.Rows))}, {"Refunded", reportMoney(refunded)}, {"Invoices issued", fmt.Sprint(invoices)}, {"Invoiced", reportMoney(billed)}, {"Still owed", reportMoney(outstanding)}, {"Discounts given", reportMoney(discounts)}, {"Tax on invoices", reportMoney(tax)}}
@@ -223,7 +235,7 @@ func reportCustomers(ctx context.Context, tx pgx.Tx, scope Scope, f ReportFilter
 	r.Columns = []string{"Customer", "Email", "Phone", "Appointments", "Completed", "Invoiced", "Paid", "Last appointment"}
 	rows, err := tx.Query(ctx, `SELECT c.name,c.email,c.phone,count(b.id),count(b.id) FILTER (WHERE b.status='completed'),COALESCE(sum(i.total_cents),0),COALESCE(sum(i.paid_cents),0),to_char(max(b.booking_time) AT TIME ZONE $3,'YYYY-MM-DD')
  FROM customers c JOIN bookings b ON (b.organization_id,b.location_id,b.customer_id)=(c.organization_id,c.location_id,c.id)
- LEFT JOIN LATERAL (SELECT total_cents,paid_cents FROM invoices i WHERE i.booking_id=b.id AND i.status<>'void' ORDER BY created_at LIMIT 1) i ON true
+ LEFT JOIN LATERAL (SELECT total_cents,paid_cents FROM (SELECT total_cents,paid_cents,0 AS o,created_at FROM invoices WHERE booking_id=b.id AND status<>'void' UNION ALL SELECT total_cents,paid_cents,1,now() FROM legacy_booking_billing WHERE booking_id=b.id AND status<>'void') m ORDER BY o,created_at LIMIT 1) i ON true
  WHERE c.organization_id=$1 AND c.location_id=$2 AND c.removed_at IS NULL`+reportBookingFilter+` GROUP BY c.id ORDER BY count(b.id) DESC, c.name LIMIT `+fmt.Sprint(reportRowLimit+1),
 		scope.OrganizationID, scope.LocationID, f.TZ, f.From, f.To, f.Service, f.Status)
 	if err != nil {

@@ -232,7 +232,7 @@ export default function CustomerAccount() {
                     {i.dueAt && <> · Due {new Date(i.dueAt).toLocaleDateString('en-CA', { dateStyle: 'medium' })}</>}
                   </p>
                   <button type="button" className="secondary" onClick={() => openInvoice(i.id)}>View or download invoice</button>
-                  {i.dueCents > 0 && !i.id.startsWith('legacy-') && (
+                  {i.dueCents > 0 && i.status !== 'void' && !i.id.startsWith('legacy-') && (
                     <InvoicePaymentForm
                       customerId={selected}
                       invoiceId={i.id}

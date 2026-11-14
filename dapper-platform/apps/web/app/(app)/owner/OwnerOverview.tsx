@@ -166,7 +166,7 @@ export default function OwnerOverview({ base, location, organizationName, onNavi
         <div className={`${styles.dash} ${loading ? styles.refetching : ''}`} aria-busy={loading}>
           <div className={styles.tiles}>
             {tile('Bookings', trends?.bookings ? wholeNumber.format(trends.bookings.total) : null, rangeText, 'bookings', 'calendar', trends?.bookings?.byDay.map((d) => d.count), 'bookings.read')}
-            {tile('Net recorded payments', trends?.payments ? dollars(trends.payments.netCents) : null, rangeText, 'finance', 'finance', trends?.payments?.byDay.map((d) => d.cents), 'payments.read')}
+            {tile('Revenue', trends?.payments ? dollars(trends.payments.netCents) : null, rangeText, 'finance', 'finance', trends?.payments?.byDay.map((d) => d.cents), 'payments.read')}
             {tile('Bookings completed', trends?.bookings ? wholeNumber.format(trends.bookings.completed) : null, `${trends?.bookings?.created ?? 0} made · ${rangeText}`, 'bookings', 'work', trends?.bookings?.completedByDay.map((d) => d.count), 'bookings.read')}
             {tile('Outstanding balance', money('outstandingCents') === null ? null : dollars(money('outstandingCents') as number), 'Approved bookings and unpaid invoices, right now', 'finance', 'finance', undefined, 'invoices.read')}
             {tile('Customers', money('customers') === null ? null : wholeNumber.format(money('customers') as number), 'Recorded at this franchise, all time', 'customers', 'customers', undefined, 'customers.read')}
@@ -189,15 +189,15 @@ export default function OwnerOverview({ base, location, organizationName, onNavi
 
             {trends?.payments ? (
               <>
-                <Card title="Net recorded payments per day" sub={`${rangeText} · completed payments less refunds, and what imported WordPress bookings recorded as paid (on the appointment day) · not bank settlement`} span={2}>
+                <Card title="Revenue per day" sub={`${rangeText} · completed payments less refunds, and what imported WordPress bookings recorded as paid (on the appointment day) · not bank settlement`} span={2}>
                   <LineChart
                     labels={payPts.map((p) => p.date)}
                     series={[{ name: 'Net payments', values: payPts.map((p) => p.cents / 100), cls: 'seriesStroke1', dot: 'seriesFill1' }]}
                     fmt={(n) => '$' + compact.format(n)}
                     wash
-                    ariaLabel={`Net recorded payments per day, ${rangeText}`}
+                    ariaLabel={`Revenue per day, ${rangeText}`}
                   />
-                  <DataTable caption="Net recorded payments per day" head={['Date', 'Net payments']} rows={payPts.map((p) => [p.date, dollars(p.cents)])} />
+                  <DataTable caption="Revenue per day" head={['Date', 'Net payments']} rows={payPts.map((p) => [p.date, dollars(p.cents)])} />
                 </Card>
                 <Card title="Payments by method" sub="Net of refunds">
                   <BarList rows={trends.payments.byMethod.map((x) => ({ label: nice(x.key), value: x.cents, display: dollarsCompact(x.cents), sub: `${x.count} payments` }))} emptyText="No payments in this period." />

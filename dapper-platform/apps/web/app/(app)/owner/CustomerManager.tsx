@@ -194,7 +194,7 @@ export default function CustomerManager({ base, canCreate, canDelete, canExport,
       {items && visible.length === 0 && <p className={styles.status}>{items.length ? 'Nothing matches these filters.' : 'No customers yet.'}</p>}
       <ul className={styles.people}>
         {visible.map((c) => (
-          <li key={c.id} className={styles.person} style={{ gridTemplateColumns: 'minmax(0,1fr) auto', alignItems: 'center' }}>
+          <li key={c.id} className={`${styles.person} ${styles.personRow}`}>
             <button type="button" className={styles.personButton} onClick={() => setOpen(c)} aria-label={`Open ${c.name}`}>
               <span className={styles.custRow}>
                 <strong className={styles.custName}>{c.name}</strong>

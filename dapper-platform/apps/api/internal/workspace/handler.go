@@ -180,6 +180,7 @@ func NewHandlerWithFullServices(store *postgres.Store, origin string, invitation
 	registerAccountRoutes(mux, store)
 	registerSquareWebhookRoutes(mux, store, sqClient, sqWebhookURL, sqSignatureKey)
 	registerDealershipRoutes(mux, store)
+	registerPurgeRoutes(mux, store)
 	registerMarketingRoutes(mux, store)
 	registerOwnerOverviewRoutes(mux, store)
 	registerRoleRoutes(mux, store)

@@ -85,6 +85,10 @@ func (s *Store) SaveService(ctx context.Context, scope Scope, input CatalogServi
 	if n := utf8.RuneCountInString(input.Name); n < 2 || n > 120 {
 		return CatalogService{}, ErrServiceInput
 	}
+	// A franchise's own service carries its own price (error404 #112 #113); linked ones take it from the central catalogue.
+	if input.PriceCents != nil && (*input.PriceCents < 0 || *input.PriceCents > 100_000_000) {
+		return CatalogService{}, ErrServiceInput
+	}
 	if input.DurationMinutes != nil && (*input.DurationMinutes < 1 || *input.DurationMinutes > 10080) {
 		return CatalogService{}, ErrServiceInput
 	}
@@ -155,9 +159,9 @@ func (s *Store) SaveService(ctx context.Context, scope Scope, input CatalogServi
 	}
 	var service CatalogService
 	if input.ID == "" {
-		service, err = scanService(tx.QueryRow(ctx, `INSERT INTO catalog_services(organization_id,location_id,name,kind,parent_id,duration_minutes) VALUES($1,$2,$3,$4,$5,$6) RETURNING `+serviceColumns, scope.OrganizationID, scope.LocationID, input.Name, input.Kind, input.ParentID, input.DurationMinutes))
+		service, err = scanService(tx.QueryRow(ctx, `INSERT INTO catalog_services(organization_id,location_id,name,kind,parent_id,duration_minutes,price_cents) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING `+serviceColumns, scope.OrganizationID, scope.LocationID, input.Name, input.Kind, input.ParentID, input.DurationMinutes, input.PriceCents))
 	} else {
-		service, err = scanService(tx.QueryRow(ctx, `UPDATE catalog_services SET name=$4,kind=$5,parent_id=$6,duration_minutes=$7,version=version+1 WHERE organization_id=$1 AND location_id=$2 AND id=$3 RETURNING `+serviceColumns, scope.OrganizationID, scope.LocationID, input.ID, input.Name, input.Kind, input.ParentID, input.DurationMinutes))
+		service, err = scanService(tx.QueryRow(ctx, `UPDATE catalog_services SET name=$4,kind=$5,parent_id=$6,duration_minutes=$7,price_cents=$8,version=version+1 WHERE organization_id=$1 AND location_id=$2 AND id=$3 RETURNING `+serviceColumns, scope.OrganizationID, scope.LocationID, input.ID, input.Name, input.Kind, input.ParentID, input.DurationMinutes, input.PriceCents))
 	}
 	if err != nil {
 		return CatalogService{}, err

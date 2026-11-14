@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"errors"
 	"context"
 	"testing"
 )
@@ -17,6 +18,16 @@ func verifyCatalogServices(t *testing.T, ctx context.Context, s *Store, a, b Sco
 	main, err := s.SaveService(ctx, a, CatalogService{Name: "Synthetic main", Kind: "main"})
 	if err != nil {
 		t.Fatal(err)
+	}
+	// error404 #112 #113: a franchise's own service keeps the price it is given; a negative price is refused.
+	priced := int64(4900)
+	extra, err := s.SaveService(ctx, a, CatalogService{Name: "Synthetic own extra", Kind: "main", PriceCents: &priced})
+	if err != nil || extra.PriceCents == nil || *extra.PriceCents != 4900 {
+		t.Fatal("franchise service price not saved", extra.PriceCents, err)
+	}
+	negative := int64(-1)
+	if _, err = s.SaveService(ctx, a, CatalogService{Name: "Synthetic negative", Kind: "main", PriceCents: &negative}); !errors.Is(err, ErrServiceInput) {
+		t.Fatal("a negative price was accepted", err)
 	}
 	child, err := s.SaveService(ctx, a, CatalogService{Name: "Synthetic add-on", Kind: "addon", ParentID: &main.ID})
 	if err != nil {

@@ -77,7 +77,7 @@ export default function FranchiseEmployees({ base, franchiseName }: { base: stri
         <h3 style={{ margin: 0, fontSize: 16 }}>Waiting to accept</h3>
         <ul className={styles.people}>
           {invitations.map((i) => (
-            <li key={i.id} className={styles.person} style={{ gridTemplateColumns: 'minmax(0,1fr) auto', alignItems: 'center' }}>
+            <li key={i.id} className={`${styles.person} ${styles.personRow}`}>
               <span><strong className={styles.personName}>{i.email}</strong><span className={styles.personSub} style={{ display: 'block' }}>Email {i.deliveryState}</span></span>
               <button type="button" className="secondary" disabled={busy} onClick={() => void revoke(i)}>Revoke</button>
             </li>
@@ -89,7 +89,7 @@ export default function FranchiseEmployees({ base, franchiseName }: { base: stri
       {employees?.length === 0 && <p className={styles.status}>No employees yet.</p>}
       <ul className={styles.people}>
         {employees?.map((p) => (
-          <li key={p.principalId} className={styles.person} style={{ gridTemplateColumns: 'minmax(0,1fr) auto', alignItems: 'center' }}>
+          <li key={p.principalId} className={`${styles.person} ${styles.personRow}`}>
             <span><strong className={styles.personName}>{p.name || p.email}</strong>{p.name && <span className={styles.personSub} style={{ display: 'block' }}>{[p.email, p.phone].filter(Boolean).join(' · ')}</span>}</span>
             <div className={styles.svcActions} style={{ alignItems: 'center' }}>
               <span className={`${styles.badge} ${p.active ? styles.badge_complete : ''}`}>{p.active ? 'Active' : 'Removed'}</span>

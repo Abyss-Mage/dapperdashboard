@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import styles from './owner.module.css';
 import NumberField from '../NumberField';
 import DealerPortalLogins from './DealerPortalLogins';
+import TypedDelete from '../TypedDelete';
 
 /* Partner dealerships of a franchise: the Owner / Super Admin adds a dealership with its per-car rate and its contact people,
    and can switch one off. Each dealership is also a customer, so its bookings and invoices stay together. */
@@ -32,6 +33,7 @@ export default function Dealerships({ organizationId, locationId, canManage }: {
   const [query, setQuery] = useState('');
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState('');
   const [portalFor, setPortalFor] = useState('');
+  const [deleting, setDeleting] = useState<Dealer | null>(null);
 
   const load = useCallback(async () => {
     const b = await read<{ items: Dealer[] }>(await fetch(`${base}/dealerships`, { cache: 'no-store' }));
@@ -161,11 +163,15 @@ export default function Dealerships({ organizationId, locationId, canManage }: {
               <button type="button" className="secondary" disabled={busy || editing} onClick={() => edit(d)}>Edit</button>
               <button type="button" className="secondary" disabled={busy || editing} onClick={() => void toggle(d)}>{d.active ? 'Switch off' : 'Switch on'}</button>
               <button type="button" className="secondary" aria-expanded={portalFor === d.id} onClick={() => setPortalFor(portalFor === d.id ? '' : d.id)}>Portal logins</button>
+              <button type="button" className="secondary" disabled={busy || editing} onClick={() => setDeleting(d)}>Delete</button>
             </div>}
             {canManage && portalFor === d.id && <DealerPortalLogins base={base} dealership={d} />}
           </li>
         ))}
       </ul>
+      {deleting && <TypedDelete title={`Delete ${deleting.accountName} permanently?`} word={deleting.accountCode} wordLabel="its code" url={`${base}/dealerships/${deleting.id}/purge`}
+        explanation="Owner and administrators only. This removes the dealership with its contacts, tags and portal logins. Its bookings and the customer record stay. A dealership that still has invoices, staff assigned to it or staff photos can't be deleted; delete those invoices first, or switch it off instead."
+        onClose={() => setDeleting(null)} onDone={async () => { setNotice(`${deleting.accountName} was deleted permanently.`); setDeleting(null); await load(); }} />}
     </div>
   );
 }

@@ -117,7 +117,7 @@ export default function SectionDashboard({ section, base }: { section: DashSecti
               <>
                 <div className={styles.tiles}>
                   <Tile label="Invoiced" value={f ? dollars(f.invoicedCents) : null} foot={`Issued ${rangeText}`} spark={f?.invoicedByDay.map((d) => d.cents)} grant="invoices.read" />
-                  <Tile label="Net recorded payments" value={payments ? dollars(payments.netCents) : null} foot={rangeText} spark={payments?.byDay.map((d) => d.cents)} grant="payments.read" />
+                  <Tile label="Revenue" value={payments ? dollars(payments.netCents) : null} foot={rangeText} spark={payments?.byDay.map((d) => d.cents)} grant="payments.read" />
                   <Tile label="Outstanding now" value={f ? dollars(f.aging.reduce((a, k) => a + k.dueCents, 0)) : null} foot={`${f?.aging.reduce((a, k) => a + k.count, 0) ?? 0} invoices with a balance`} grant="invoices.read" />
                   <Tile label="Refunded" value={f && payments ? dollars(f.refundedCents) : null} foot={`On payments recorded ${rangeText}`} grant="payments.read" />
                 </div>
@@ -134,9 +134,9 @@ export default function SectionDashboard({ section, base }: { section: DashSecti
                     </Card>
                   ) : null}
                   {payments ? (
-                    <Card title="Net recorded payments per day" sub={`${rangeText} · completed payments less refunds`} span={2}>
-                      <LineChart labels={payments.byDay.map((p) => p.date)} series={[{ name: 'Net payments', values: payments.byDay.map((p) => p.cents / 100), cls: 'seriesStroke1', dot: 'seriesFill1' }]} fmt={(n) => '$' + compact.format(n)} wash ariaLabel={`Net recorded payments per day, ${rangeText}`} />
-                      <DataTable caption="Net recorded payments per day" head={['Date', 'Net payments']} rows={payments.byDay.map((p) => [p.date, dollars(p.cents)])} />
+                    <Card title="Revenue per day" sub={`${rangeText} · completed payments less refunds`} span={2}>
+                      <LineChart labels={payments.byDay.map((p) => p.date)} series={[{ name: 'Net payments', values: payments.byDay.map((p) => p.cents / 100), cls: 'seriesStroke1', dot: 'seriesFill1' }]} fmt={(n) => '$' + compact.format(n)} wash ariaLabel={`Revenue per day, ${rangeText}`} />
+                      <DataTable caption="Revenue per day" head={['Date', 'Net payments']} rows={payments.byDay.map((p) => [p.date, dollars(p.cents)])} />
                     </Card>
                   ) : <Locked title="Payments" grant="payments.read" />}
                   {payments && (

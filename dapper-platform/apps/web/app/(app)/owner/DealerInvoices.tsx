@@ -8,6 +8,7 @@ import { DatePicker } from '../Pickers';
 import { askConfirm } from '../confirm';
 import { openPdf } from '../workspace/InvoicePrint';
 import FormPopup from '../FormPopup';
+import TypedDelete from '../TypedDelete';
 
 /* Dealership (B2B) invoices: the franchise's invoices to its dealerships, filtered by dealership, date and status, with totals, a PDF per
    invoice and a ZIP of all of them. A draft has an invoice date and due date (calendar), an optional typed invoice number and PO number,
@@ -45,6 +46,7 @@ export default function DealerInvoices({ base, organizationId, canCreate, canIss
   const [filter, setFilter] = useState({ dealershipId: '', from: '', to: '', status: '' });
   const [draft, setDraft] = useState<Draft | null>(null);
   const [open, setOpen] = useState<Full | null>(null);
+  const [deleting, setDeleting] = useState<Full | null>(null);
   // Recording a payment received outside the portal (error404 #44); the key makes a double click record it once.
   // Card attempts still holding the open invoice's balance (the server could not confirm them with Square).
   const [held, setHeld] = useState<string[]>([]);
@@ -248,6 +250,7 @@ export default function DealerInvoices({ base, organizationId, canCreate, canIss
               return `Invoice ${open.invoiceNumber} is a draft again. Make your changes, then Issue and email.`;
             })}><Pencil size={17} aria-hidden="true" /> Edit</button>}
             {canManage && open.status === 'issued' && <button type="button" className="secondary" disabled={busy} onClick={() => void act(async () => { if (!(await askConfirm({ title: `Void invoice ${open.invoiceNumber}?`, message: 'It stays on record as void and can no longer be paid.', confirmLabel: 'Void invoice', tone: 'danger' }))) return; setOpen(await readJson<Full>(await fetch(`${url}/${open.id}/void`, send('POST')))); return 'Invoice voided.'; })}>Void</button>}
+            {canManage && <button type="button" className="secondary" disabled={busy} onClick={() => setDeleting(open)}>Delete permanently</button>}
             <button type="button" className="secondary" onClick={() => { setOpen(null); setPaying(null); }}>Close</button>
           </div>
           {paying && (
@@ -311,6 +314,9 @@ export default function DealerInvoices({ base, organizationId, canCreate, canIss
           <div><button className="secondary" disabled={busy}>Save numbers</button></div>
         </form>
       )}
+      {deleting && <TypedDelete title={`Delete invoice ${deleting.invoiceNumber} permanently?`} word={deleting.invoiceNumber} wordLabel="the invoice number" url={`${url}/${deleting.id}/purge`}
+        explanation="Owner and administrators only. For test or mistaken invoices: this removes the invoice with its lines, pay links and the payments recorded by hand. Invoices with Square card payments can't be removed this way; void them instead."
+        onClose={() => setDeleting(null)} onDone={async () => { setNotice(`Invoice ${deleting.invoiceNumber} was deleted permanently.`); setDeleting(null); setOpen(null); setPaying(null); await load(); }} />}
     </div>
   );
 }

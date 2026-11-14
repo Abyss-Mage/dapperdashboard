@@ -117,4 +117,22 @@ func TestReports(t *testing.T) {
 	if len(people.Rows) != 2 || people.Rows[0][0] != "Ann Report" || people.Rows[0][3] != "2" || people.Stats[1].Value != "2" {
 		t.Fatalf("customers report wrong: %+v", people)
 	}
+
+	// error404 #114: rows show the booking's number, and an imported WordPress booking shows what it recorded as billed and paid; its
+	// payment counts in the revenue report.
+	old := book(ben, "Imported Wash", "completed")
+	_, err = pool.Exec(ctx, `INSERT INTO legacy_booking_billing(booking_id,organization_id,location_id,source_id,invoice_number,status,items,subtotal_cents,tax_cents,total_cents,paid_cents,payment_method) VALUES($1,$2,$3,'77','DDP77','paid','[]',10000,1300,11300,11300,'square_card')`, old, org, loc)
+	must(err)
+	var number int64
+	must(pool.QueryRow(ctx, `SELECT number FROM bookings WHERE id=$1`, old).Scan(&number))
+	imported, err := s.RunReport(ctx, scope, "appointments", ReportFilter{From: day, To: day, TZ: "UTC", Service: "Imported Wash"})
+	must(err)
+	if len(imported.Rows) != 1 || imported.Rows[0][0] != fmt.Sprintf("#%d", number) || imported.Rows[0][6] != "$113.00" || imported.Rows[0][7] != "$113.00" {
+		t.Fatalf("imported booking row wrong: %+v", imported.Rows)
+	}
+	withOld, err := s.RunReport(ctx, scope, "revenue", f)
+	must(err)
+	if len(withOld.Rows) != 2 || withOld.Stats[0].Value != "$263.00" {
+		t.Fatalf("imported payment missing from revenue: %+v", withOld.Stats)
+	}
 }

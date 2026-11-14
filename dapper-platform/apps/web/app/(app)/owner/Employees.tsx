@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import TypedDelete from '../TypedDelete';
 import styles from './owner.module.css';
 import ConfirmDialog from '../workspace/ConfirmDialog';
 import Select from '../GlassSelect';
@@ -43,6 +44,7 @@ export default function Employees({ organizationId, franchiseName = '', onChange
   const [open, setOpen] = useState<Person | null>(null);
   const [newRole, setNewRole] = useState('');
   const [newScope, setNewScope] = useState('organization');
+  const [erasing, setErasing] = useState<Person | null>(null);
   const [confirm, setConfirm] = useState<{ person: Person; action: 'terminate' | 'reinstate' | 'remove' } | null>(null);
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState('');
 
@@ -112,7 +114,7 @@ export default function Employees({ organizationId, franchiseName = '', onChange
       {people && people.length > 0 && shown.length === 0 && <p className={styles.status}>{franchise && !query && !roleFilter && !status ? `No employees at ${franchise} yet.` : 'No one matches these filters.'}</p>}
       <ul className={styles.people}>
         {shown.map((p) => (
-          <li key={p.principalId} className={styles.person} style={{ opacity: p.active ? 1 : 0.65, gridTemplateColumns: 'minmax(0,1fr) auto', alignItems: 'center' }}>
+          <li key={p.principalId} className={`${styles.person} ${styles.personRow}`} style={{ opacity: p.active ? 1 : 0.65 }}>
             <button type="button" className={styles.personButton} onClick={() => { setOpen(p); setNotice(''); }} aria-label={`Open ${p.fullName || p.email}`} style={{ width: '100%' }}>
               <span className={styles.custRow}>
                 <strong className={styles.custName}>{p.fullName || p.email}</strong>
@@ -175,6 +177,8 @@ export default function Employees({ organizationId, franchiseName = '', onChange
               : <button type="button" className="primary" disabled={busy} onClick={() => setConfirm({ person: open, action: 'reinstate' })}>Reinstate employee</button>}
             {/* error404 #90: take them off the team for good; their records stay. */}
             <button type="button" className="secondary" disabled={busy} onClick={() => setConfirm({ person: open, action: 'remove' })} style={{ marginLeft: 8 }}>Remove from team</button>
+            {/* error404 #118: delete the person completely; bookings, invoices and payments stay as "Deleted user". */}
+            <button type="button" className="secondary" disabled={busy} onClick={() => setErasing(open)} style={{ marginLeft: 8 }}>Delete completely</button>
           </div>
         </aside>
       </>}
@@ -183,6 +187,9 @@ export default function Employees({ organizationId, franchiseName = '', onChange
         explanation={confirm?.action === 'terminate' ? 'They are signed out everywhere and cannot sign in again. Everything they did stays in your records. You can reinstate them later.' : confirm?.action === 'remove' ? 'They are signed out, cannot sign in, lose all their roles and leave the Team and Employees lists. Bookings, payments and hours they recorded stay in your records under their name. To have them back, invite them again.' : 'They can sign in again with their existing password and roles.'}
         confirmLabel={confirm?.action === 'terminate' ? 'Terminate' : confirm?.action === 'remove' ? 'Remove from team' : 'Reinstate'}
         onConfirm={async () => { if (confirm) await setActive(confirm.person, confirm.action); }} onCancel={() => { if (!busy) setConfirm(null); }} />
+      {erasing && <TypedDelete title={`Delete ${erasing.fullName || erasing.email} completely?`} word={erasing.email || erasing.fullName} wordLabel={erasing.email ? 'their email' : 'their name'} url={`${base}/members/${erasing.principalId}/erase`}
+        explanation="Owner and administrators only. Their sign-in, password, two-factor, sessions, profile, roles, invitations, availability, uploaded photos and their own clock-in history are erased. Bookings, invoices and payments stay, showing Deleted user where their name was."
+        onClose={() => setErasing(null)} onDone={async () => { setNotice(`${erasing.fullName || erasing.email} was deleted completely.`); setErasing(null); setOpen(null); await load(); }} />}
     </div>
   );
 }

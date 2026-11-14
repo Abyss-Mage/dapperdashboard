@@ -155,4 +155,35 @@ func TestActivityLogAndTermination(t *testing.T) {
 	if status != "revoked" || !hidden {
 		t.Fatal("expired invitation not revoked and hidden", status, hidden)
 	}
+
+	// error404 #118: deleting a person completely erases their sign-in, profile and clock-ins; what they recorded stays as "Deleted user".
+	var gone, site string
+	must(pool.QueryRow(ctx, `INSERT INTO principals(external_subject) VALUES('synthetic:act-gone') RETURNING id::text`).Scan(&gone))
+	_, err = pool.Exec(ctx, `INSERT INTO organization_memberships(organization_id,principal_id) VALUES($1,$2)`, org, gone)
+	must(err)
+	must(auth.SetPassword(ctx, gone, "gone@example.invalid", password))
+	_, err = pool.Exec(ctx, `INSERT INTO member_profiles(principal_id,full_name,phone) VALUES($1,'Gone Person','+14165550100')`, gone)
+	must(err)
+	must(pool.QueryRow(ctx, `INSERT INTO locations(organization_id,name) VALUES($1,'Synthetic erase site') RETURNING id::text`, org).Scan(&site))
+	_, err = pool.Exec(ctx, `INSERT INTO employee_attendance(organization_id,location_id,principal_id,status,clock_in_at) VALUES($1,$2,$3,'clocked_in',now())`, org, site, gone)
+	must(err)
+	auth.RecordSignIn(ctx, "gone@example.invalid", true, "203.0.113.7", "Gone Browser")
+	if err = s.EraseMember(ctx, boss, org, gone, "someone@else.invalid"); !errors.Is(err, ErrPurgeConfirm) {
+		t.Fatal("erased without typing the right email", err)
+	}
+	if err = s.EraseMember(ctx, worker, org, gone, "gone@example.invalid"); !errors.Is(err, ErrForbidden) {
+		t.Fatal("a non-administrator erased someone", err)
+	}
+	must(s.EraseMember(ctx, boss, org, gone, " Gone@Example.invalid "))
+	var traces int
+	var shown string
+	must(pool.QueryRow(ctx, `SELECT (SELECT count(*) FROM password_credentials WHERE principal_id=$1)+(SELECT count(*) FROM employee_attendance WHERE principal_id=$1)
+	 +(SELECT count(*) FROM organization_memberships WHERE principal_id=$1)+(SELECT count(*) FROM activity_log WHERE email='gone@example.invalid' OR ip='203.0.113.7')`, gone).Scan(&traces))
+	must(pool.QueryRow(ctx, `SELECT full_name||phone FROM member_profiles WHERE principal_id=$1`, gone).Scan(&shown))
+	if traces != 0 || shown != "Deleted user" {
+		t.Fatal("personal data left after erase", traces, shown)
+	}
+	if _, err = auth.SignIn(ctx, "gone@example.invalid", password, time.Hour); err == nil {
+		t.Fatal("an erased member can sign in")
+	}
 }

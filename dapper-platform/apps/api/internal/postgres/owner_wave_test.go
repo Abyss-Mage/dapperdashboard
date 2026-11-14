@@ -446,4 +446,36 @@ func TestOwnerWaveFeatures(t *testing.T) {
 		}
 		must(s.ClearSquareAppCredentials(ctx, actor, org, "sandbox"))
 	})
+
+	t.Run("permanent delete of a dealer invoice and a dealership (error404 #116 #124)", func(t *testing.T) {
+		dealer, err := s.CreateDealershipAccount(ctx, scope, CreateDealershipInput{CustomerID: customer.ID, AccountName: "Synthetic Purge Motors", AccountCode: "PURGE", AccountType: "dealership",
+			Contacts: []DealershipContact{{Name: "Synthetic Purge", Email: "purge@example.invalid"}}})
+		must(err)
+		draft, err := s.CreateDealerInvoice(ctx, scope, DealerInvoiceInput{DealershipID: dealer.ID, InvoiceNumber: "PRG-1", Lines: []DealerInvoiceLine{{Description: "Lot detail", Quantity: 1, UnitPriceCents: 4500}}})
+		must(err)
+		issueInvoiceForTest(t, ctx, s, scope, draft.Invoice)
+		_, err = s.CreateDealerPortalUser(ctx, scope, dealer.ID, "Synthetic Purge Buyer", "purge-buyer@example.test", "portal-pass-123")
+		must(err)
+		if err = s.PurgeDealerInvoice(ctx, scope, draft.ID, "PRG-1"); !errors.Is(err, ErrForbidden) {
+			t.Fatal("deleted without access.manage", err)
+		}
+		_, err = pool.Exec(ctx, `INSERT INTO organization_grants(organization_id,principal_id,action) VALUES($1,$2,'access.manage')`, org, actor)
+		must(err)
+		if err = s.PurgeDealership(ctx, scope, dealer.ID, "PURGE"); !errors.Is(err, ErrDealershipInUse) {
+			t.Fatal("a dealership with invoices was deleted", err)
+		}
+		if err = s.PurgeDealerInvoice(ctx, scope, draft.ID, "PRG-2"); !errors.Is(err, ErrPurgeConfirm) {
+			t.Fatal("deleted with the wrong number", err)
+		}
+		must(s.PurgeDealerInvoice(ctx, scope, draft.ID, "prg-1"))
+		if err = s.PurgeDealership(ctx, scope, dealer.ID, "nope"); !errors.Is(err, ErrPurgeConfirm) {
+			t.Fatal("deleted with the wrong code", err)
+		}
+		must(s.PurgeDealership(ctx, scope, dealer.ID, "purge"))
+		var left int
+		must(pool.QueryRow(ctx, `SELECT (SELECT count(*) FROM invoices WHERE id=$1)+(SELECT count(*) FROM dealership_accounts WHERE id=$2)+(SELECT count(*) FROM dealer_portal_users WHERE dealership_account_id=$2)`, draft.ID, dealer.ID).Scan(&left))
+		if left != 0 {
+			t.Fatal("rows left after permanent delete", left)
+		}
+	})
 }

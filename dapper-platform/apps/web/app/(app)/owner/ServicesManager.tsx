@@ -233,7 +233,8 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
   const save = (e: React.FormEvent) => {
     e.preventDefault();
     const was = editing;
-    const fields = { name: name.trim(), kind, ...(mode === 'central' ? { priceCents: price.trim() === '' ? null : Math.round(Number(price) * 100) } : {}), durationMinutes };
+    // Central services and a franchise's own services carry a price (error404 #112 #113); linked franchise copies take the central one.
+    const fields = { name: name.trim(), kind, priceCents: price.trim() === '' ? null : Math.round(Number(price) * 100), durationMinutes };
     void run(async () => {
       if (kind === 'addon') {
         await readJson(await fetch(was === 'new' || !was ? listUrl : `${listUrl}/${was.id}`, send(was === 'new' || !was ? 'POST' : 'PUT', { ...fields, parentIds, ...(was && was !== 'new' ? { version: was.version } : {}) })));
@@ -462,7 +463,7 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
                 <option value="addon">Add-on</option>
               </Select>
             </label>
-            {mode === 'central' && (
+            {(mode === 'central' || editing === 'new' || (editing && !editing.centralServiceId)) && (
               <label className="form-field">Price before tax (CAD)
                 <NumberField inputMode="decimal" min="0" step="0.01" placeholder="Not set" value={price} onChange={(e) => setPrice(e.target.value)} disabled={busy} />
               </label>
@@ -541,7 +542,7 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
             <button className="primary" disabled={busy || name.trim().length < 2 || (kind === 'addon' && parentIds.length === 0) || (price.trim() !== '' && !(Number(price) >= 0)) || (durationMinutes !== null && !(durationMinutes >= 1 && durationMinutes <= 10080))}>{busy ? 'Saving…' : editing === 'new' ? 'Add service' : 'Save revision'}</button>
             <button type="button" className="secondary" disabled={busy} onClick={() => { setEditing(null); setError(''); }}>Cancel</button>
           </div>
-          <p className={styles.footnote}>{mode === 'central' ? 'The price is entered before tax; each franchise adds its own taxes. ' : 'Prices come from the central catalogue. '}Each save keeps a revision; past work orders and invoices keep the name they were created with.</p>
+          <p className={styles.footnote}>{mode === 'central' ? 'The price is entered before tax; each franchise adds its own taxes. ' : 'Services from the central catalogue take its price; a service only this franchise offers has its own price, before tax. '}Each save keeps a revision; past work orders and invoices keep the name they were created with.</p>
         </form>
         </FormPopup>
       )}

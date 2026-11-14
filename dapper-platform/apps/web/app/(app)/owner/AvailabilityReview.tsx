@@ -73,7 +73,7 @@ export default function AvailabilityReview({ organizationId, locationId }: { org
         {people.map((p) => {
           const waiting = p.subs.filter((s) => s.status === 'submitted').length, latest = p.subs[0];
           return (
-            <li key={p.id} className={styles.person} style={{ gridTemplateColumns: 'minmax(0,1fr) auto', alignItems: 'center' }}>
+            <li key={p.id} className={`${styles.person} ${styles.personRow}`}>
               <button type="button" onClick={() => setOpenId(p.id)} style={{ all: 'unset', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }} aria-label={`Open ${p.name}'s availability`}>
                 <strong className={styles.personName}>{p.name}</strong>
                 <span className={styles.personSub}>{p.subs.length} week{p.subs.length === 1 ? '' : 's'} sent · latest: week of {weekLabel(latest.weekStart)}</span>

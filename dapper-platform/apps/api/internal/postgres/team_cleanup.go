@@ -55,7 +55,14 @@ func (s *Store) RemoveMember(ctx context.Context, actor, org, member string) err
 	if !ok {
 		return ErrForbidden
 	}
-	if err = setMemberActiveTx(ctx, tx, actor, org, member, false); err != nil {
+	if err = removeMemberTx(ctx, tx, actor, org, member); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+func removeMemberTx(ctx context.Context, tx pgx.Tx, actor, org, member string) error {
+	if err := setMemberActiveTx(ctx, tx, actor, org, member, false); err != nil {
 		return err
 	}
 	steps := []string{
@@ -67,9 +74,9 @@ func (s *Store) RemoveMember(ctx context.Context, actor, org, member string) err
 		`DELETE FROM organization_memberships WHERE organization_id=$1 AND principal_id=$2 AND $3::uuid IS NOT NULL`,
 	}
 	for _, q := range steps {
-		if _, err = tx.Exec(ctx, q, org, member, actor); err != nil {
+		if _, err := tx.Exec(ctx, q, org, member, actor); err != nil {
 			return err
 		}
 	}
-	return tx.Commit(ctx)
+	return nil
 }

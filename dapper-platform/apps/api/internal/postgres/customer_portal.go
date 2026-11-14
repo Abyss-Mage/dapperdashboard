@@ -172,7 +172,7 @@ func (s *Store) CustomerRecords(ctx context.Context, actor, customer string) (Po
 	if err != nil {
 		return PortalRecords{}, err
 	}
-	rows, err = tx.Query(ctx, `SELECT id::text,invoice_number,status,currency,total_cents,paid_cents,due_cents,COALESCE(booking_id::text,''),issued_at,due_at FROM invoices WHERE organization_id=$1 AND location_id=$2 AND customer_id=$3 AND status IN ('issued','partially_paid','paid','void') ORDER BY created_at DESC,id LIMIT 500`, org, loc, customer)
+	rows, err = tx.Query(ctx, `SELECT id::text,invoice_number,status,currency,total_cents,paid_cents,due_cents,COALESCE(booking_id::text,''),issued_at,due_at FROM invoices WHERE organization_id=$1 AND location_id=$2 AND customer_id=$3 AND status IN ('issued','partially_paid','paid','void') AND NOT (status='void' AND issued_at IS NULL) ORDER BY created_at DESC,id LIMIT 500`, org, loc, customer) // a voided draft was never the customer's invoice (error404 #119)
 	if err != nil {
 		return PortalRecords{}, err
 	}
