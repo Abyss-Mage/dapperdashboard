@@ -186,4 +186,27 @@ func TestActivityLogAndTermination(t *testing.T) {
 	if _, err = auth.SignIn(ctx, "gone@example.invalid", password, time.Hour); err == nil {
 		t.Fatal("an erased member can sign in")
 	}
+
+	// A customer's online account is a member only to sign in; it is not staff and stays out of the team lists.
+	var shopper, buyer string
+	must(pool.QueryRow(ctx, `INSERT INTO customers(organization_id,location_id,name,email,phone) VALUES($1,$2,'Synthetic Shopper','shopper@example.invalid','') RETURNING id::text`, org, site).Scan(&buyer))
+	must(pool.QueryRow(ctx, `INSERT INTO principals(external_subject) VALUES('customer-account:'||$1::text) RETURNING id::text`, buyer).Scan(&shopper))
+	_, err = pool.Exec(ctx, `INSERT INTO organization_memberships(organization_id,principal_id) VALUES($1,$2)`, org, shopper)
+	must(err)
+	_, err = pool.Exec(ctx, `INSERT INTO customer_account_links(principal_id,organization_id,location_id,customer_id) VALUES($1,$2,$3,$4)`, shopper, org, site, buyer)
+	must(err)
+	access, err := s.ManagedAccess(ctx, boss, org)
+	must(err)
+	roster, err := s.PeopleRoster(ctx, boss, org)
+	must(err)
+	for _, m := range access.Members {
+		if m.PrincipalID == shopper {
+			t.Fatal("a customer account is listed as a team member")
+		}
+	}
+	for _, r := range roster {
+		if r.PrincipalID == shopper {
+			t.Fatal("a customer account is listed among employees")
+		}
+	}
 }

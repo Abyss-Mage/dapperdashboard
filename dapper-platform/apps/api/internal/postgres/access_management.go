@@ -190,7 +190,7 @@ func (s *Store) ManagedAccess(ctx context.Context, actor, org string) (AccessMan
 	if err = accessReadGrant(ctx, tx, actor, org); err != nil {
 		return AccessManagement{}, err
 	}
-	rows, err := tx.Query(ctx, `SELECT p.id::text,coalesce(c.email,''),coalesce(mp.full_name,''),p.active FROM organization_memberships m JOIN principals p ON p.id=m.principal_id LEFT JOIN password_credentials c ON c.principal_id=p.id LEFT JOIN member_profiles mp ON mp.principal_id=p.id WHERE m.organization_id=$1 AND p.external_subject NOT LIKE 'system:%' ORDER BY c.email,p.id LIMIT 100`, org)
+	rows, err := tx.Query(ctx, `SELECT p.id::text,coalesce(c.email,''),coalesce(mp.full_name,''),p.active FROM organization_memberships m JOIN principals p ON p.id=m.principal_id LEFT JOIN password_credentials c ON c.principal_id=p.id LEFT JOIN member_profiles mp ON mp.principal_id=p.id WHERE m.organization_id=$1 AND p.external_subject NOT LIKE 'system:%' AND `+notCustomerOnly+` ORDER BY c.email,p.id LIMIT 100`, org)
 	if err != nil {
 		return AccessManagement{}, err
 	}
@@ -338,3 +338,11 @@ func (s *Store) SetLocationGrant(ctx context.Context, actor, org, principal, loc
 	}
 	return tx.Commit(ctx)
 }
+
+// notCustomerOnly leaves out customer accounts (the customer portal sign-in made when a customer sets up an account), which are
+// organization members only so they can sign in. A sign-in linked to a customer record with no staff role or permission is a
+// customer, not staff (error404, owner 2026-11-14). Needs the principal aliased p.
+const notCustomerOnly = `NOT (EXISTS(SELECT 1 FROM customer_account_links cl WHERE cl.principal_id=p.id)
+ AND NOT EXISTS(SELECT 1 FROM organization_grants og2 WHERE og2.principal_id=p.id)
+ AND NOT EXISTS(SELECT 1 FROM location_grants lg2 WHERE lg2.principal_id=p.id)
+ AND NOT EXISTS(SELECT 1 FROM member_role_assignments ra2 WHERE ra2.principal_id=p.id))`

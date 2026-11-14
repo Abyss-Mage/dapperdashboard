@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import styles from './owner.module.css';
 import ConfirmDialog from '../workspace/ConfirmDialog';
+import TypedDelete from '../TypedDelete';
 import type { Role } from './RoleManager';
 import Select from '../GlassSelect';
 
@@ -33,6 +34,7 @@ export default function RoleAssignments({ organizationId, revision, onSaved }: {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [revoke, setRevoke] = useState<Assignment | null>(null);
+  const [erasing, setErasing] = useState<Assignment | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -147,10 +149,12 @@ export default function RoleAssignments({ organizationId, revision, onSaved }: {
       {assignments?.length === 0 && <p className={styles.status}>No roles assigned yet.</p>}
       <ul className={styles.people}>
         {assignments?.map((a) => (
-          <li key={a.id} className={styles.person} style={{ gridTemplateColumns: 'minmax(0,1.2fr) minmax(0,1fr) auto', alignItems: 'center' }}>
-            <div className={styles.personMain}><strong className={styles.personName}>{a.email || a.principalId}</strong></div>
-            <div className={styles.personWork}><span>{a.roleName}</span><span className={styles.personSub}>{scopeText(a)}</span></div>
-            <button type="button" className="secondary" disabled={busy} onClick={() => setRevoke(a)}>Remove</button>
+          <li key={a.id} className={`${styles.person} ${styles.personRow}`}>
+            <div className={styles.personMain}><strong className={styles.personName}>{a.email || a.principalId}</strong><span>{a.roleName}</span><span className={styles.personSub}>{scopeText(a)}</span></div>
+            <div className={styles.svcActions}>
+              <button type="button" className="secondary" disabled={busy} onClick={() => setRevoke(a)}>Remove role</button>
+              {a.email && <button type="button" className="secondary" disabled={busy} onClick={() => setErasing(a)}>Delete person</button>}
+            </div>
           </li>
         ))}
       </ul>
@@ -158,6 +162,9 @@ export default function RoleAssignments({ organizationId, revision, onSaved }: {
       <ConfirmDialog isOpen={revoke !== null} title="Remove role" entityName={revoke ? `${revoke.roleName} · ${revoke.email}` : ''} entityType="Role assignment" actionType="delete" isBusy={busy}
         explanation="The person loses everything this role gave them at that scope straight away. The last organization administrator cannot be removed."
         impactNotice="You can assign the role again at any time." confirmLabel="Remove role" onConfirm={doRevoke} onCancel={() => { if (!busy) setRevoke(null); }} />
+      {erasing && <TypedDelete title={`Delete ${erasing.email} completely?`} word={erasing.email} wordLabel="their email" url={`${base}/members/${erasing.principalId}/erase`}
+        explanation="Owner and administrators only. Their sign-in, password, two-factor, sessions, profile, roles, invitations, availability, uploaded photos and their own clock-in history are erased. Bookings, invoices and payments stay, showing Deleted user where their name was."
+        onClose={() => setErasing(null)} onDone={async () => { setErasing(null); await load(); await onSaved(); }} />}
     </div>
   );
 }
