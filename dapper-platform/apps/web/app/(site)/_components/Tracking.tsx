@@ -58,7 +58,9 @@ export default function Tracking() {
       .then((r) => (r.ok ? r.json() : null))
       .then((s: Settings | null) => {
         if (!live || !s) return;
-        if (Array.isArray(s.scripts)) setSnippets(s.scripts);
+        // Snippets for every page (such as the Google tag) run before page-specific ones (such as a conversion event that calls gtag),
+        // whatever order they were saved in.
+        if (Array.isArray(s.scripts)) setSnippets([...s.scripts].sort((x, y) => Number(x.paths.length > 0) - Number(y.paths.length > 0)));
         const w = window as Win;
         if (s.gtmId && /^GTM-[A-Z0-9]{4,12}$/.test(s.gtmId)) {
           w.dataLayer = w.dataLayer || [];

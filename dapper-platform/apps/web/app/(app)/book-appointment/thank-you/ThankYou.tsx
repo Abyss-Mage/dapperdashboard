@@ -5,7 +5,7 @@ import { CalendarCheck } from 'lucide-react';
 import styles from '../booking.module.css';
 
 type Booked = { bookingId: string; invoiceNumber: string; totalCents: number; paidCents: number; paymentPending?: boolean; serviceName: string; pack: string; start: string; name: string; email: string; phone: string; address: string; shop?: string; notes: string };
-type Win = Window & { dataLayer?: unknown[]; fbq?: (...a: unknown[]) => void };
+type Win = Window & { dataLayer?: unknown[]; fbq?: (...a: unknown[]) => void; gtag?: (...a: unknown[]) => void };
 
 const money = (c: number) => new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(c / 100);
 
@@ -35,12 +35,17 @@ export default function ThankYou() {
     w.dataLayer.push(paid
       ? { event: 'purchase', ecommerce: { transaction_id: mine.bookingId || id, value, currency: 'CAD', items: [item] } }
       : { event: 'generate_lead', value, currency: 'CAD', transaction_id: mine.bookingId || id, items: [item] });
-    // The Meta Pixel is loaded by the page's tag loader a moment after the page opens, so wait for it (up to ten seconds).
-    let tries = 0;
+    // The Meta Pixel and a pasted Google tag (gtag.js, which ignores the dataLayer object above: that one is for Tag Manager) are loaded by
+    // the page's tag loader a moment after the page opens, so wait for each (up to ten seconds).
+    let tries = 0, pixel = false, google = false;
     const t = setInterval(() => {
       tries++;
-      if (w.fbq) { clearInterval(t); w.fbq('track', paid ? 'Purchase' : 'Lead', { value, currency: 'CAD', content_name: mine.pack || mine.serviceName, content_type: 'product' }, { eventID: id }); }
-      else if (tries > 40) clearInterval(t);
+      if (!pixel && w.fbq) { pixel = true; w.fbq('track', paid ? 'Purchase' : 'Lead', { value, currency: 'CAD', content_name: mine.pack || mine.serviceName, content_type: 'product' }, { eventID: id }); }
+      if (!google && w.gtag) {
+        google = true;
+        w.gtag('event', paid ? 'purchase' : 'generate_lead', { transaction_id: mine.bookingId || id, value, currency: 'CAD', items: [item] });
+      }
+      if ((pixel && google) || tries > 40) clearInterval(t);
     }, 250);
     return () => clearInterval(t);
   }, []);
