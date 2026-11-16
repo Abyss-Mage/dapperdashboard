@@ -74,6 +74,9 @@ func registerCentralServiceRoutes(mux *http.ServeMux, store *postgres.Store) {
 				Price json.RawMessage `json:"priceCents"`
 				// Duration is optional like the price: absent = leave unchanged, null = clear, number = minutes to complete.
 				Duration json.RawMessage `json:"durationMinutes"`
+				// The sale, like the price: absent = leave unchanged, null = no sale (error404 #133).
+				Sale     json.RawMessage `json:"salePriceCents"`
+				SaleEnds *string         `json:"saleEndsOn"`
 			}
 			if !decode(w, r, &input) {
 				return
@@ -126,6 +129,10 @@ func registerCentralServiceRoutes(mux *http.ServeMux, store *postgres.Store) {
 					price.PriceCents = &cents
 				}
 			}
+			sale, ok := readSale(w, input.Sale, input.SaleEnds)
+			if !ok {
+				return
+			}
 			var durationSet bool
 			var duration *int
 			if input.Duration != nil {
@@ -150,6 +157,9 @@ func registerCentralServiceRoutes(mux *http.ServeMux, store *postgres.Store) {
 				Version:         input.Version,
 				PriceSet:        price.PriceSet,
 				PriceCents:      price.PriceCents,
+				SaleSet:         sale.set,
+				SalePriceCents:  sale.cents,
+				SaleEndsOn:      sale.ends,
 			})
 			if err != nil {
 				centralServiceFailure(w, err)

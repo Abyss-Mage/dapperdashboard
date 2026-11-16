@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"time"
 	"context"
 	"encoding/json"
 	"errors"
@@ -25,13 +26,23 @@ type CatalogService struct {
 	PriceCents       *int64  `json:"priceCents"` // CAD cents before tax; comes from the central service when linked
 	// DurationMinutes is how long the service takes to complete (nil = not set); comes from the central service when linked.
 	DurationMinutes *int `json:"durationMinutes"`
+	// A sale (error404 #133): the sale price and its last day (YYYY-MM-DD, Toronto; nil = until removed). NowPriceCents is the price
+	// charged today: the sale while it runs, else the regular price (for a linked service, the central service's sale counts).
+	SalePriceCents *int64  `json:"salePriceCents"`
+	SaleEndsOn     *string `json:"saleEndsOn"`
+	NowPriceCents *int64 `json:"nowPriceCents"`
+	// SaleSet says whether the sale fields are part of this save; when false an edit keeps the stored sale.
+	SaleSet bool `json:"-"`
 }
 
-const serviceColumns = `id::text,name,kind,parent_id::text,archived,version,central_service_id::text,price_cents,duration_minutes`
+const serviceColumns = `id::text,name,kind,parent_id::text,archived,version,central_service_id::text,price_cents,duration_minutes,sale_price_cents,sale_ends_on::text,` +
+	// The price today, from this row's own values (the row just saved, in RETURNING) or its central service's sale.
+	`CASE WHEN central_service_id IS NULL THEN sale_or_price(catalog_services.price_cents,catalog_services.sale_price_cents,catalog_services.sale_ends_on)
+	 ELSE coalesce((SELECT sale_or_price(catalog_services.price_cents,cc.sale_price_cents,cc.sale_ends_on) FROM central_catalog_services cc WHERE cc.id=catalog_services.central_service_id),catalog_services.price_cents) END`
 
 func scanService(row pgx.Row) (CatalogService, error) {
 	var service CatalogService
-	err := row.Scan(&service.ID, &service.Name, &service.Kind, &service.ParentID, &service.Archived, &service.Version, &service.CentralServiceID, &service.PriceCents, &service.DurationMinutes)
+	err := row.Scan(&service.ID, &service.Name, &service.Kind, &service.ParentID, &service.Archived, &service.Version, &service.CentralServiceID, &service.PriceCents, &service.DurationMinutes, &service.SalePriceCents, &service.SaleEndsOn, &service.NowPriceCents)
 	return service, err
 }
 func (s *Store) Services(ctx context.Context, scope Scope) ([]CatalogService, error) {
@@ -90,6 +101,9 @@ func (s *Store) SaveService(ctx context.Context, scope Scope, input CatalogServi
 		return CatalogService{}, ErrServiceInput
 	}
 	if input.DurationMinutes != nil && (*input.DurationMinutes < 1 || *input.DurationMinutes > 10080) {
+		return CatalogService{}, ErrServiceInput
+	}
+	if !validSaleEnd(input.SaleEndsOn) {
 		return CatalogService{}, ErrServiceInput
 	}
 	if input.Kind != "main" && input.Kind != "addon" || input.Kind == "main" && (input.ParentID != nil || len(input.ParentIDs) > 0) {
@@ -159,12 +173,17 @@ func (s *Store) SaveService(ctx context.Context, scope Scope, input CatalogServi
 	}
 	var service CatalogService
 	if input.ID == "" {
-		service, err = scanService(tx.QueryRow(ctx, `INSERT INTO catalog_services(organization_id,location_id,name,kind,parent_id,duration_minutes,price_cents) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING `+serviceColumns, scope.OrganizationID, scope.LocationID, input.Name, input.Kind, input.ParentID, input.DurationMinutes, input.PriceCents))
+		service, err = scanService(tx.QueryRow(ctx, `INSERT INTO catalog_services(organization_id,location_id,name,kind,parent_id,duration_minutes,price_cents,sale_price_cents,sale_ends_on) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9::date) RETURNING `+serviceColumns, scope.OrganizationID, scope.LocationID, input.Name, input.Kind, input.ParentID, input.DurationMinutes, input.PriceCents, input.SalePriceCents, input.SaleEndsOn))
 	} else {
-		service, err = scanService(tx.QueryRow(ctx, `UPDATE catalog_services SET name=$4,kind=$5,parent_id=$6,duration_minutes=$7,price_cents=$8,version=version+1 WHERE organization_id=$1 AND location_id=$2 AND id=$3 RETURNING `+serviceColumns, scope.OrganizationID, scope.LocationID, input.ID, input.Name, input.Kind, input.ParentID, input.DurationMinutes, input.PriceCents))
+		service, err = scanService(tx.QueryRow(ctx, `UPDATE catalog_services SET name=$4,kind=$5,parent_id=$6,duration_minutes=$7,price_cents=$8,
+		 sale_price_cents=CASE WHEN $9 THEN $10 ELSE sale_price_cents END,sale_ends_on=CASE WHEN $9 THEN $11::date ELSE sale_ends_on END,version=version+1
+		 WHERE organization_id=$1 AND location_id=$2 AND id=$3 RETURNING `+serviceColumns, scope.OrganizationID, scope.LocationID, input.ID, input.Name, input.Kind, input.ParentID, input.DurationMinutes, input.PriceCents, input.SaleSet, input.SalePriceCents, input.SaleEndsOn))
 	}
 	if err != nil {
 		return CatalogService{}, err
+	}
+	if !saleBelowPrice(service.SalePriceCents, service.PriceCents) {
+		return CatalogService{}, ErrServiceInput
 	}
 	if service.Kind == "addon" {
 		if err = setLocalAddonLinks(ctx, tx, scope, service.ID, input.ParentIDs); err != nil {
@@ -358,4 +377,18 @@ func (s *Store) DeleteService(ctx context.Context, scope Scope, id string, versi
 		return DeleteResult{}, err
 	}
 	return DeleteResult{Permanent: true, Archived: false, Message: "Service permanently deleted from catalogue."}, nil
+}
+
+// saleBelowPrice: a sale needs a regular price and must be lower than it.
+func saleBelowPrice(sale, price *int64) bool {
+	return sale == nil || (price != nil && *sale >= 0 && *sale < *price)
+}
+
+// validSaleEnd accepts no date or a calendar date (YYYY-MM-DD).
+func validSaleEnd(v *string) bool {
+	if v == nil {
+		return true
+	}
+	_, err := time.Parse("2006-01-02", *v)
+	return err == nil
 }

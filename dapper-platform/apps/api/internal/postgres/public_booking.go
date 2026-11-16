@@ -123,6 +123,8 @@ type PublicService struct {
 	ParentID   *string `json:"parentId"`
 	ParentIDs  []string `json:"parentIds,omitempty"`
 	PriceCents int64   `json:"priceCents"`
+	// WasCents is the regular price while a sale runs (PriceCents is then the sale price); 0 = no sale (error404 #133).
+	WasCents int64 `json:"wasCents,omitempty"`
 }
 type PublicBookingOptions struct {
 	Timezone          string                  `json:"timezone"`
@@ -150,7 +152,11 @@ func (s *Store) PublicBookingOptions(ctx context.Context, slug string) (PublicBo
 	priced := map[string]PublicService{}
 	for _, v := range all {
 		if !v.Archived && v.PriceCents != nil {
-			priced[v.ID] = PublicService{ID: v.ID, Name: v.Name, Kind: v.Kind, ParentID: v.ParentID, ParentIDs: v.ParentIDs, PriceCents: *v.PriceCents}
+			ps := PublicService{ID: v.ID, Name: v.Name, Kind: v.Kind, ParentID: v.ParentID, ParentIDs: v.ParentIDs, PriceCents: *v.PriceCents}
+			if v.NowPriceCents != nil && *v.NowPriceCents < *v.PriceCents {
+				ps.PriceCents, ps.WasCents = *v.NowPriceCents, *v.PriceCents
+			}
+			priced[v.ID] = ps
 		}
 	}
 	out := PublicBookingOptions{PhoneVerification: s.phoneVerifier != nil, Rules: []BookingRuleChoice{}, Services: []PublicService{}, Resources: choices.Resources}
@@ -342,7 +348,7 @@ func (s *Store) PublicCouponPreview(ctx context.Context, slug, code, mainService
 // priceBooking prices a rule's main service and each chosen add-on from the catalogue (never from what the browser says).
 func (s *Store) priceBooking(ctx context.Context, scope Scope, ruleID, resourceID string, ruleVersion int, addonIDs []string) (serviceID, serviceName string, items []CreateInvoiceItemInput, subtotal int64, err error) {
 	var mainPrice *int64
-	err = s.pool.QueryRow(ctx, `SELECT c.id::text,c.name,c.price_cents FROM service_scheduling_rules r JOIN catalog_services c ON c.id=r.service_id AND c.organization_id=r.organization_id AND c.location_id=r.location_id WHERE r.organization_id=$1 AND r.location_id=$2 AND r.id=$3 AND r.resource_id=$4 AND r.version=$5 AND c.kind='main' AND NOT c.archived`, scope.OrganizationID, scope.LocationID, ruleID, resourceID, ruleVersion).Scan(&serviceID, &serviceName, &mainPrice)
+	err = s.pool.QueryRow(ctx, `SELECT c.id::text,c.name,service_effective_price(c.id) FROM service_scheduling_rules r JOIN catalog_services c ON c.id=r.service_id AND c.organization_id=r.organization_id AND c.location_id=r.location_id WHERE r.organization_id=$1 AND r.location_id=$2 AND r.id=$3 AND r.resource_id=$4 AND r.version=$5 AND c.kind='main' AND NOT c.archived`, scope.OrganizationID, scope.LocationID, ruleID, resourceID, ruleVersion).Scan(&serviceID, &serviceName, &mainPrice)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "", "", nil, 0, ErrPublicBookingInput
 	}
@@ -357,7 +363,7 @@ func (s *Store) priceBooking(ctx context.Context, scope Scope, ruleID, resourceI
 	for _, id := range addonIDs {
 		var name string
 		var price *int64
-		err = s.pool.QueryRow(ctx, `SELECT name,price_cents FROM catalog_services WHERE organization_id=$1 AND location_id=$2 AND id::text=$3 AND kind='addon' AND catalog_addon_offered_with(id,$4::uuid) AND NOT archived`, scope.OrganizationID, scope.LocationID, id, serviceID).Scan(&name, &price)
+		err = s.pool.QueryRow(ctx, `SELECT name,service_effective_price(id) FROM catalog_services WHERE organization_id=$1 AND location_id=$2 AND id::text=$3 AND kind='addon' AND catalog_addon_offered_with(id,$4::uuid) AND NOT archived`, scope.OrganizationID, scope.LocationID, id, serviceID).Scan(&name, &price)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return "", "", nil, 0, ErrPublicBookingInput
 		}

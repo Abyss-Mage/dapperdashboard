@@ -369,6 +369,12 @@ func TestOwnerWaveFeatures(t *testing.T) {
 		if _, err = s.DealerPortalWho(ctx, session); !errors.Is(err, ErrPortalSession) {
 			t.Fatal("portal session survived sign out")
 		}
+		// error404 #131 #134: the invoice email goes to the first contact, copies to the others, and greets the dealership by name.
+		_, err = pool.Exec(ctx, `INSERT INTO dealership_contacts(organization_id,location_id,dealership_id,position,name,email) VALUES($1,$2,$3,9,'Synthetic Payables','Payables@Example.invalid')`, org, loc, dealer.ID)
+		must(err)
+		if to, name, cc, e := s.DealerContact(ctx, scope, dealer.ID); e != nil || to != "manager@example.invalid" || name != "Synthetic Motors" || len(cc) != 1 || cc[0] != "payables@example.invalid" {
+			t.Fatalf("dealer contact wrong: %s %s %v %v", to, name, cc, e)
+		}
 		current, err := s.DealerSeries(ctx, actor, org)
 		must(err)
 		if current.Prefix != "DLR-" || current.NextNumber != 2 || current.Version != 1 {
@@ -381,6 +387,18 @@ func TestOwnerWaveFeatures(t *testing.T) {
 		must(err)
 		if series.Prefix != "FLEET-" || series.NextNumber != 500 {
 			t.Fatalf("series not saved: %+v", series)
+		}
+		// error404 #135: a typed number in the series, even with leading zeros, moves the automatic number past it.
+		typedZero, err := s.CreateDealerInvoice(ctx, scope, DealerInvoiceInput{DealershipID: dealer.ID, InvoiceNumber: "FLEET-00500", Lines: []DealerInvoiceLine{{Description: "Lot detail", Quantity: 1, UnitPriceCents: 4500}}})
+		must(err)
+		issueInvoiceForTest(t, ctx, s, scope, typedZero.Invoice)
+		if peek, e := s.DealerSeries(ctx, actor, org); e != nil || peek.NextNumber != 501 {
+			t.Fatalf("the next number did not step past a typed one: %+v %v", peek, e)
+		}
+		auto, err := s.CreateDealerInvoice(ctx, scope, DealerInvoiceInput{DealershipID: dealer.ID, Lines: []DealerInvoiceLine{{Description: "Lot detail", Quantity: 1, UnitPriceCents: 4500}}})
+		must(err)
+		if got := issueInvoiceForTest(t, ctx, s, scope, auto.Invoice); got.InvoiceNumber != "FLEET-501" {
+			t.Fatalf("automatic number repeated a used one: %s", got.InvoiceNumber)
 		}
 	})
 

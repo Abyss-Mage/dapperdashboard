@@ -29,7 +29,7 @@ func (s *Store) autoInvoiceDraft(ctx context.Context, tx pgx.Tx, scope Scope, b 
 			return 0
 		}
 		var p int64
-		_ = sp.QueryRow(ctx, `SELECT COALESCE((SELECT price_cents FROM catalog_services WHERE organization_id=$1 AND location_id=$2 AND id=$3),(SELECT price_cents FROM central_catalog_services WHERE organization_id=$1 AND id=$3),0)`,
+		_ = sp.QueryRow(ctx, `SELECT COALESCE((SELECT service_effective_price(id) FROM catalog_services WHERE organization_id=$1 AND location_id=$2 AND id=$3),(SELECT sale_or_price(price_cents,sale_price_cents,sale_ends_on) FROM central_catalog_services WHERE organization_id=$1 AND id=$3),0)`,
 			scope.OrganizationID, scope.LocationID, *id).Scan(&p)
 		return p
 	}

@@ -391,9 +391,11 @@ func (s *Store) DealerSeries(ctx context.Context, actor, org string) (DealerInvo
 	}
 	out := DealerInvoiceSeries{Prefix: "DLR-", NextNumber: 1}
 	err := s.pool.QueryRow(ctx, `SELECT prefix,next_number,version FROM dealer_invoice_series WHERE organization_id=$1`, org).Scan(&out.Prefix, &out.NextNumber, &out.Version)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return out, nil
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return out, err
 	}
+	// The number the next invoice will really get (shown as "Automatic (…)").
+	out.NextNumber, err = pastUsedDealerNumbers(ctx, s.pool, org, out.Prefix, out.NextNumber)
 	return out, err
 }
 
@@ -438,17 +440,39 @@ func dealerNumbering(ctx context.Context, tx pgx.Tx, org, id string) (prefix str
 	if _, err = tx.Exec(ctx, `INSERT INTO dealer_invoice_series(organization_id,prefix,next_number) VALUES($1,'DLR-',1) ON CONFLICT DO NOTHING`, org); err != nil {
 		return "", 0, "", false, err
 	}
-	err = tx.QueryRow(ctx, `SELECT prefix,next_number FROM dealer_invoice_series WHERE organization_id=$1 FOR UPDATE`, org).Scan(&prefix, &next)
+	if err = tx.QueryRow(ctx, `SELECT prefix,next_number FROM dealer_invoice_series WHERE organization_id=$1 FOR UPDATE`, org).Scan(&prefix, &next); err != nil {
+		return "", 0, "", false, err
+	}
+	next, err = pastUsedDealerNumbers(ctx, tx, org, prefix, next)
 	return prefix, next, manual, err == nil, err
 }
 
-// DealerContact is where a dealership invoice email goes: the dealership's primary contact (needs invoices.read in the franchise).
-func (s *Store) DealerContact(ctx context.Context, scope Scope, dealership string) (email, name string, err error) {
-	if err = s.authorize(ctx, scope, "invoices.read"); err != nil {
-		return "", "", err
+// pastUsedDealerNumbers moves a series' next number past every dealership invoice already numbered in it, typed by hand or with
+// leading zeros (DDP00189 uses 189), so the automatic number never repeats one (owner, error404 #135).
+func pastUsedDealerNumbers(ctx context.Context, q interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}, org, prefix string, next int64) (int64, error) {
+	var highest int64
+	err := q.QueryRow(ctx, `SELECT coalesce(max(substr(n,length($2)+1)::numeric),0)::bigint FROM (
+	 SELECT invoice_number AS n FROM invoices WHERE organization_id=$1 AND dealership_account_id IS NOT NULL
+	 UNION ALL SELECT manual_number FROM invoices WHERE organization_id=$1 AND dealership_account_id IS NOT NULL AND status='draft') x
+	 WHERE n LIKE $2||'%' AND substr(n,length($2)+1) ~ '^[0-9]{1,18}$'`, org, prefix).Scan(&highest)
+	if err != nil || highest < next {
+		return next, err
 	}
-	err = s.pool.QueryRow(ctx, `SELECT btrim(contact_email),btrim(contact_name) FROM dealership_accounts WHERE organization_id=$1 AND location_id=$2 AND id::text=$3`, scope.OrganizationID, scope.LocationID, dealership).Scan(&email, &name)
-	return email, name, err
+	return highest + 1, nil
+}
+
+// DealerContact is where a dealership invoice email goes: the dealership's primary contact, with every other contact's email as copies
+// (owner, error404 #131). name is the dealership's own name, which the email greets (#134). Needs invoices.read in the franchise.
+func (s *Store) DealerContact(ctx context.Context, scope Scope, dealership string) (email, name string, cc []string, err error) {
+	if err = s.authorize(ctx, scope, "invoices.read"); err != nil {
+		return "", "", nil, err
+	}
+	err = s.pool.QueryRow(ctx, `SELECT btrim(d.contact_email),btrim(d.account_name),
+	 coalesce((SELECT array_agg(DISTINCT lower(btrim(c.email))) FROM dealership_contacts c WHERE c.dealership_id=d.id AND btrim(c.email)<>'' AND lower(btrim(c.email))<>lower(btrim(d.contact_email))),'{}')
+	 FROM dealership_accounts d WHERE d.organization_id=$1 AND d.location_id=$2 AND d.id::text=$3`, scope.OrganizationID, scope.LocationID, dealership).Scan(&email, &name, &cc)
+	return email, name, cc, err
 }
 
 // ReopenDealerInvoice puts an issued dealership invoice that nothing has been paid on back to a draft, keeping its number, so it can be

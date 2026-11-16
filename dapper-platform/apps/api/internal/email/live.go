@@ -78,3 +78,13 @@ func (l *Live) SendEmailWithAttachment(ctx context.Context, recipient, subject, 
 	}
 	return sender.SendEmailWithAttachment(ctx, recipient, subject, bodyHTML, bodyText, att)
 }
+
+func (l *Live) SendEmailCC(ctx context.Context, recipient string, cc []string, subject, bodyHTML, bodyText string, att *Attachment) (string, error) {
+	l.mu.RLock()
+	sender := l.current
+	l.mu.RUnlock()
+	if sender == nil {
+		return "", ErrNotConfigured
+	}
+	return sender.SendEmailCC(ctx, recipient, cc, subject, bodyHTML, bodyText, att)
+}

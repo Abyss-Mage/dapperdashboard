@@ -43,6 +43,27 @@ func verifyCatalogServices(t *testing.T, ctx context.Context, s *Store, a, b Sco
 	if _, err = s.pool.Exec(ctx, `DELETE FROM scheduling_resources WHERE organization_id=$1 AND location_id=$2 AND name='Synthetic bay'`, a.OrganizationID, a.LocationID); err != nil {
 		t.Fatal(err)
 	}
+	// error404 #133: a sale is the price while it runs, the regular price comes back after its last day, and it must be below the price.
+	sale, past, tooHigh := int64(3900), "2000-01-01", int64(4900)
+	onSale, err := s.SaveService(ctx, a, CatalogService{ID: extra.ID, Version: extra.Version, Name: extra.Name, Kind: "main", PriceCents: &priced, SaleSet: true, SalePriceCents: &sale})
+	if err != nil || onSale.NowPriceCents == nil || *onSale.NowPriceCents != 3900 || *onSale.PriceCents != 4900 {
+		t.Fatal("sale not charged", onSale.NowPriceCents, err)
+	}
+	var charged int64
+	if err = s.pool.QueryRow(ctx, `SELECT service_effective_price($1)`, onSale.ID).Scan(&charged); err != nil || charged != 3900 {
+		t.Fatal("bookings would not be charged the sale price", charged, err)
+	}
+	kept, err := s.SaveService(ctx, a, CatalogService{ID: onSale.ID, Version: onSale.Version, Name: "Synthetic own extra renamed", Kind: "main", PriceCents: &priced})
+	if err != nil || kept.SalePriceCents == nil || *kept.NowPriceCents != 3900 {
+		t.Fatal("an edit without the sale dropped it", err)
+	}
+	ended, err := s.SaveService(ctx, a, CatalogService{ID: kept.ID, Version: kept.Version, Name: kept.Name, Kind: "main", PriceCents: &priced, SaleSet: true, SalePriceCents: &sale, SaleEndsOn: &past})
+	if err != nil || *ended.NowPriceCents != 4900 {
+		t.Fatal("an ended sale was still charged", err)
+	}
+	if _, err = s.SaveService(ctx, a, CatalogService{ID: ended.ID, Version: ended.Version, Name: ended.Name, Kind: "main", PriceCents: &priced, SaleSet: true, SalePriceCents: &tooHigh}); !errors.Is(err, ErrServiceInput) {
+		t.Fatal("a sale at the regular price was accepted", err)
+	}
 	negative := int64(-1)
 	if _, err = s.SaveService(ctx, a, CatalogService{Name: "Synthetic negative", Kind: "main", PriceCents: &negative}); !errors.Is(err, ErrServiceInput) {
 		t.Fatal("a negative price was accepted", err)

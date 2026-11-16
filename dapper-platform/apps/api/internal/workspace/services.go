@@ -1,6 +1,8 @@
 package workspace
 
 import (
+	"time"
+	"encoding/json"
 	"dapper.local/platform/internal/postgres"
 	"errors"
 	"net/http"
@@ -80,6 +82,9 @@ func registerServiceRoutes(mux *http.ServeMux, store *postgres.Store) {
 				DurationMinutes *int `json:"durationMinutes"`
 				// error404 #112: a franchise's own service has its own price, CAD cents before tax (null = no price).
 				PriceCents *int64 `json:"priceCents"`
+				// The sale (error404 #133): absent = leave unchanged, null = no sale.
+				Sale     json.RawMessage `json:"salePriceCents"`
+				SaleEnds *string         `json:"saleEndsOn"`
 			}
 			if !decode(w, r, &input) {
 				return
@@ -110,7 +115,11 @@ func registerServiceRoutes(mux *http.ServeMux, store *postgres.Store) {
 				reply(w, 422, map[string]any{"errors": fields})
 				return
 			}
-			service, err := store.SaveService(r.Context(), scope, postgres.CatalogService{ID: id, Name: input.Name, Kind: input.Kind, ParentID: input.ParentID, ParentIDs: input.ParentIDs, Version: input.Version, DurationMinutes: input.DurationMinutes, PriceCents: input.PriceCents})
+			sale, ok := readSale(w, input.Sale, input.SaleEnds)
+			if !ok {
+				return
+			}
+			service, err := store.SaveService(r.Context(), scope, postgres.CatalogService{SaleSet: sale.set, SalePriceCents: sale.cents, SaleEndsOn: sale.ends, ID: id, Name: input.Name, Kind: input.Kind, ParentID: input.ParentID, ParentIDs: input.ParentIDs, Version: input.Version, DurationMinutes: input.DurationMinutes, PriceCents: input.PriceCents})
 			if err != nil {
 				serviceFailure(w, err)
 				return
@@ -146,4 +155,37 @@ func registerServiceRoutes(mux *http.ServeMux, store *postgres.Store) {
 		}
 		reply(w, 200, res)
 	})
+}
+
+type saleInput struct {
+	set   bool
+	cents *int64
+	ends  *string
+}
+
+// readSale reads an optional sale from a service save: absent leaves the stored sale, null clears it, a number sets it with its
+// optional last day (YYYY-MM-DD). It answers 422 and false for a bad value.
+func readSale(w http.ResponseWriter, raw json.RawMessage, ends *string) (saleInput, bool) {
+	if raw == nil {
+		return saleInput{}, true
+	}
+	out := saleInput{set: true}
+	if string(raw) == "null" {
+		return out, true
+	}
+	var cents int64
+	if err := json.Unmarshal(raw, &cents); err != nil || cents < 0 {
+		reply(w, 422, map[string]any{"errors": map[string]string{"salePriceCents": "Enter a sale price of 0 or more"}})
+		return out, false
+	}
+	out.cents = &cents
+	if ends != nil && strings.TrimSpace(*ends) != "" {
+		day := strings.TrimSpace(*ends)
+		if _, err := time.Parse("2006-01-02", day); err != nil {
+			reply(w, 422, map[string]any{"errors": map[string]string{"saleEndsOn": "Pick the sale's last day"}})
+			return out, false
+		}
+		out.ends = &day
+	}
+	return out, true
 }

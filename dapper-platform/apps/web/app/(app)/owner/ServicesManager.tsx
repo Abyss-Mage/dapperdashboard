@@ -10,8 +10,17 @@ import NumberField from '../NumberField';
 import ServiceSlots from './ServiceSlots';
 import FormPopup from '../FormPopup';
 import { categories as websiteCategories } from '../../(site)/content';
+import { builtInIncludes, generic as genericSummary } from '../../(site)/included';
+import { DatePicker } from '../Pickers';
 
-type Service = { id: string; name: string; kind: string; parentId: string | null; parentIds?: string[]; version: number; archived: boolean; centralServiceId?: string | null; priceCents?: number | null; durationMinutes?: number | null };
+type Service = { id: string; name: string; kind: string; parentId: string | null; parentIds?: string[]; version: number; archived: boolean; centralServiceId?: string | null; priceCents?: number | null; salePriceCents?: number | null; saleEndsOn?: string | null; nowPriceCents?: number | null; durationMinutes?: number | null };
+// The sale price today, if one runs: the server says so for franchise services; central ones carry only the sale and its last day.
+const onSale = (s: Service): number | null => {
+  if (s.priceCents == null) return null;
+  if (s.nowPriceCents != null) return s.nowPriceCents < s.priceCents ? s.nowPriceCents : null;
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Toronto' }).format(new Date());
+  return s.salePriceCents != null && (!s.saleEndsOn || s.saleEndsOn >= today) ? s.salePriceCents : null;
+};
 const money = (c: number) => `$${(c / 100).toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 type Filter = 'active' | 'main' | 'addon' | 'archived';
 type Target = { action: 'delete' | 'archive'; item: Service };
@@ -61,6 +70,8 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
     } catch (e) { setError(e instanceof Error ? e.message : 'The slot settings could not be opened.'); }
   }
   const [price, setPrice] = useState('');
+  // A sale (error404 #133): its price and optional last day; while it runs it is charged everywhere.
+  const [salePrice, setSalePrice] = useState(''), [saleEnds, setSaleEnds] = useState('');
   const [duration, setDuration] = useState('');
   const [unit, setUnit] = useState<Unit>('minutes');
   const durationMinutes = duration.trim() === '' ? null : Math.round(Number(duration) * UNITS[unit]);
@@ -127,7 +138,12 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
       const { local, pub, site } = await websiteLookup(s.id);
       if (!site) setWeb({ state: 'nosite', cat: '', summary: '' });
       else if (!local) setWeb({ state: 'missing', cat: '', summary: '' });
-      else setWeb({ state: 'ready', local, pub, cat: pub?.published ? pub.category : '', summary: pub?.summary ?? '', star: !!pub?.starred });
+      // A package still on the generic line starts from the list the website shows today, so it can be edited (error404 #132).
+      else {
+        const built = builtInIncludes(local.name);
+        const summary = pub?.summary ?? '';
+        setWeb({ state: 'ready', local, pub, cat: pub?.published ? pub.category : '', summary: genericSummary(summary) && built.length ? built.join('\n') : summary, star: !!pub?.starred });
+      }
     } catch { setWeb({ state: 'idle', cat: '', summary: '' }); }
   }
   // After the service itself is saved: put it on (or take it off) its website category.
@@ -211,6 +227,8 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
     setParentId(next === 'new' ? '' : next.parentId ?? '');
     setParentIds(next === 'new' || next.kind !== 'addon' ? [] : parentsOf(next));
     setPrice(next === 'new' || next.priceCents == null ? '' : (next.priceCents / 100).toFixed(2));
+    setSalePrice(next === 'new' || next.salePriceCents == null ? '' : (next.salePriceCents / 100).toFixed(2));
+    setSaleEnds(next === 'new' ? '' : next.saleEndsOn ?? '');
     const u = next === 'new' || next.durationMinutes == null ? 'minutes' : bestUnit(next.durationMinutes);
     setUnit(u);
     setDuration(next === 'new' || next.durationMinutes == null ? '' : String(next.durationMinutes / UNITS[u]));
@@ -234,7 +252,9 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
     e.preventDefault();
     const was = editing;
     // Central services and a franchise's own services carry a price (error404 #112 #113); linked franchise copies take the central one.
-    const fields = { name: name.trim(), kind, priceCents: price.trim() === '' ? null : Math.round(Number(price) * 100), durationMinutes };
+    const pricedHere = mode === 'central' || was === 'new' || (!!was && !was.centralServiceId);
+    const sale = salePrice.trim() === '' ? null : Math.round(Number(salePrice) * 100);
+    const fields = { name: name.trim(), kind, priceCents: price.trim() === '' ? null : Math.round(Number(price) * 100), durationMinutes, ...(pricedHere ? { salePriceCents: sale, saleEndsOn: sale == null ? null : saleEnds || null } : {}) };
     void run(async () => {
       if (kind === 'addon') {
         await readJson(await fetch(was === 'new' || !was ? listUrl : `${listUrl}/${was.id}`, send(was === 'new' || !was ? 'POST' : 'PUT', { ...fields, parentIds, ...(was && was !== 'new' ? { version: was.version } : {}) })));
@@ -336,7 +356,7 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
       )}
       <strong className={styles.svcName} title={s.name}>{canManage && !s.archived && <input type="checkbox" aria-label={`Select ${s.name}`} checked={picked.has(s.id)} onChange={() => togglePick(s.id)} style={{ marginRight: 10, verticalAlign: 'middle' }} />}{s.name}{webTags[s.id] && s.kind === 'main' && <small style={{ marginLeft: 10, padding: '2px 9px', borderRadius: 99, fontSize: 12, fontWeight: 500, background: 'rgba(227,23,43,.12)', color: 'inherit', opacity: webTags[s.id].published ? 1 : .6, whiteSpace: 'nowrap' }}>{webTags[s.id].published ? 'On website: ' + catTitle(webTags[s.id].cat) : 'Hidden on website'}</small>}</strong>
       <span className={styles.svcCell}>{s.archived ? 'Archived' : s.kind === 'addon' ? 'Add-on' : 'Main'}</span>
-      <span className={styles.svcCell}>{s.priceCents != null ? money(s.priceCents) : 'No price'}</span>
+      <span className={styles.svcCell}>{s.priceCents == null ? 'No price' : onSale(s) != null ? <><s>{money(s.priceCents)}</s> {money(onSale(s)!)}</> : money(s.priceCents)}</span>
       <span className={styles.svcCell}>{s.durationMinutes != null ? minutesText(s.durationMinutes) : 'No time'}</span>
       {canManage && s.archived && (
         <div className={styles.svcActions}>
@@ -468,6 +488,16 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
                 <NumberField inputMode="decimal" min="0" step="0.01" placeholder="Not set" value={price} onChange={(e) => setPrice(e.target.value)} disabled={busy} />
               </label>
             )}
+            {(mode === 'central' || editing === 'new' || (editing && !editing.centralServiceId)) && (
+              <label className="form-field">Sale price before tax (optional)
+                <NumberField inputMode="decimal" min="0" step="0.01" placeholder="No sale" value={salePrice} onChange={(e) => setSalePrice(e.target.value)} disabled={busy} />
+              </label>
+            )}
+            {(mode === 'central' || editing === 'new' || (editing && !editing.centralServiceId)) && salePrice.trim() !== '' && (
+              <label className="form-field">Last day of the sale (optional)
+                <DatePicker value={saleEnds} onChange={(e) => setSaleEnds(e.target.value)} aria-label="Last day of the sale" />
+              </label>
+            )}
             {kind === 'main' && (
               <label className="form-field">Time to complete
                 <span className={styles.durationRow}>
@@ -522,8 +552,9 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
                     </Select>
                   </label>
                   {web.cat && (
-                    <label className="form-field">Description on the website
-                      <textarea rows={3} maxLength={2000} value={web.summary} disabled={busy} onChange={(e) => setWeb({ ...web, summary: e.target.value })} />
+                    <label className="form-field">What's included, on the website
+                      <textarea rows={6} maxLength={2000} value={web.summary} disabled={busy} onChange={(e) => setWeb({ ...web, summary: e.target.value })} />
+                      <span className={styles.footnote}>One point per line: each line shows with a tick under &ldquo;What&rsquo;s included&rdquo;. A single line shows as a sentence.</span>
                     </label>
                   )}
                   {web.cat && (

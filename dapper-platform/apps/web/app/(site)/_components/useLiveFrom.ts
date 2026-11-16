@@ -7,11 +7,12 @@ import { SITE_SLUG } from './site';
    (error404 #105 #106: the built-in ones were out of date), and nothing while they load. Prices are computed by the
    backend; the website only reads them. */
 type SiteService = { serviceId: string; kind: string; category: string };
-type OptionService = { id: string; name: string; kind: string; parentId: string | null; parentIds?: string[]; priceCents: number };
+type OptionService = { id: string; name: string; kind: string; parentId: string | null; parentIds?: string[]; priceCents: number; wasCents?: number };
 export type LiveAddon = { id: string; name: string; parentIds: string[]; priceCents: number };
 // loaded: the live prices have been asked for (true also when that failed), so a page can tell "still loading" from "no price".
-type Live = { from: Record<string, number>; price: Record<string, number>; addons: LiveAddon[]; loaded: boolean };
-const none: Live = { from: {}, price: {}, addons: [], loaded: false };
+// was: the regular price of a package on sale (price is then the sale price), error404 #133.
+type Live = { from: Record<string, number>; price: Record<string, number>; was: Record<string, number>; addons: LiveAddon[]; loaded: boolean };
+const none: Live = { from: {}, price: {}, was: {}, addons: [], loaded: false };
 
 export function useLiveCatalog(): Live {
   const [live, setLive] = useState<Live>(none);
@@ -21,7 +22,11 @@ export function useLiveCatalog(): Live {
     Promise.all([get('/api/v1/public/sites/' + SITE_SLUG), get('/api/v1/public/booking/' + SITE_SLUG + '/options')])
       .then(([site, options]) => {
         const price: Record<string, number> = {};
-        for (const s of options.services as OptionService[]) if (s.priceCents > 0) price[s.id] = s.priceCents / 100;
+        const was: Record<string, number> = {};
+        for (const s of options.services as OptionService[]) {
+          if (s.priceCents > 0) price[s.id] = s.priceCents / 100;
+          if (s.wasCents && s.wasCents > s.priceCents) was[s.id] = s.wasCents / 100;
+        }
         const from: Record<string, number> = {};
         for (const s of site.services as SiteService[]) {
           const dollars = price[s.serviceId];
@@ -29,7 +34,7 @@ export function useLiveCatalog(): Live {
           if (from[s.category] === undefined || dollars < from[s.category]) from[s.category] = dollars;
         }
         const addons = (options.services as OptionService[]).filter((s) => s.kind === 'addon' && s.parentId && s.priceCents > 0).map((s) => ({ id: s.id, name: s.name, parentIds: s.parentIds?.length ? s.parentIds : [s.parentId as string], priceCents: s.priceCents }));
-        if (!off) setLive({ from, price, addons, loaded: true });
+        if (!off) setLive({ from, price, was, addons, loaded: true });
       })
       .catch(() => { if (!off) setLive({ ...none, loaded: true }); });
     return () => { off = true; };

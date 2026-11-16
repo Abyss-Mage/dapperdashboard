@@ -121,7 +121,7 @@ func (s *Store) EmployeeInvoiceDraft(ctx context.Context, actor, booking string)
 	price := func(id *string) *int64 {
 		var p *int64
 		if id != nil {
-			_ = tx.QueryRow(ctx, `SELECT price_cents FROM catalog_services WHERE organization_id=$1 AND location_id=$2 AND id=$3`, a.OrganizationID, a.LocationID, *id).Scan(&p)
+			_ = tx.QueryRow(ctx, `SELECT service_effective_price(id) FROM catalog_services WHERE organization_id=$1 AND location_id=$2 AND id=$3`, a.OrganizationID, a.LocationID, *id).Scan(&p)
 		}
 		return p
 	}

@@ -15,7 +15,7 @@ import (
 func TestMessageWithAttachment(t *testing.T) {
 	s := &SMTPSender{fromAddress: "shop@example.test", fromName: "Shop"}
 	file := bytes.Repeat([]byte("%PDF synthetic \xff\x00"), 40)
-	raw := s.message("customer@example.test", "Invoice", "<id@example.test>", "=_b", "<p>Hi</p>", "Hi", &Attachment{Name: "Invoice-1.pdf", ContentType: "application/pdf", Data: file})
+	raw := s.message("customer@example.test", nil, "Invoice", "<id@example.test>", "=_b", "<p>Hi</p>", "Hi", &Attachment{Name: "Invoice-1.pdf", ContentType: "application/pdf", Data: file})
 
 	m, err := mail.ReadMessage(strings.NewReader(raw))
 	if err != nil {
@@ -71,11 +71,23 @@ func TestMessageWithAttachment(t *testing.T) {
 
 func TestMessageWithoutAttachment(t *testing.T) {
 	s := &SMTPSender{fromAddress: "shop@example.test", fromName: "Shop"}
-	m, err := mail.ReadMessage(strings.NewReader(s.message("customer@example.test", "Hello", "<id@example.test>", "=_b", "", "Hi", nil)))
+	m, err := mail.ReadMessage(strings.NewReader(s.message("customer@example.test", nil, "Hello", "<id@example.test>", "=_b", "", "Hi", nil)))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if media, _, err := mime.ParseMediaType(m.Header.Get("Content-Type")); err != nil || media != "multipart/alternative" {
 		t.Fatalf("plain email is %q: %v", media, err)
+	}
+}
+
+// error404 #131: copies show in the Cc line.
+func TestMessageCc(t *testing.T) {
+	s := &SMTPSender{fromAddress: "shop@example.test", fromName: "Shop"}
+	m, err := mail.ReadMessage(strings.NewReader(s.message("first@example.test", []string{"second@example.test", "third@example.test"}, "Invoice", "<id@example.test>", "=_b", "", "Hi", nil)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cc, e := m.Header.AddressList("Cc"); e != nil || len(cc) != 2 || cc[1].Address != "third@example.test" {
+		t.Fatalf("Cc wrong: %v %v", cc, e)
 	}
 }

@@ -246,3 +246,7 @@
 .v-row.is-star .v-row__book{align-self:center;margin-right:clamp(20px,2.4vw,36px);background:#0b0b0c}
 @media(hover:hover) and (pointer:fine){.v-row.is-star .v-row__book:hover{background:var(--red)}}
 @media(max-width:900px){.v-light .v-row.is-star,.v-light .v-row.is-star:hover{grid-template-columns:minmax(0,1fr)}.v-row.is-star .v-row__book{margin:0 clamp(20px,2.4vw,36px) 24px;align-self:stretch}}
+/* A package on sale (error404 #133): the regular price struck through above the sale price, with a small Sale tag. */
+.v-row__was{font:500 15px/1 var(--cd);opacity:.7}
+.v-row__sale{justify-self:start;padding:3px 8px;background:#fff;color:var(--red,#e4202e);font:700 11px/1 var(--cd);letter-spacing:.08em;text-transform:uppercase}
+.v-row:not(.is-star) .v-row__sale{background:var(--red,#e4202e);color:#fff}

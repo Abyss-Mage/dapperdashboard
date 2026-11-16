@@ -167,7 +167,7 @@ func registerDealerInvoiceRoutes(mux *http.ServeMux, store *postgres.Store, emai
 		status, to, why := "not_configured", "", ""
 		if emailReady(emailSender) {
 			var err error
-			if to, _, err = store.DealerContact(r.Context(), scope, inv.DealershipID); err != nil {
+			if to, _, _, err = store.DealerContact(r.Context(), scope, inv.DealershipID); err != nil {
 				status, why = "failed", "the dealership's contact email could not be read ("+err.Error()+")"
 				log.Printf("Dealership invoice %s: %s", inv.ID, why)
 			} else if to == "" {
@@ -350,7 +350,7 @@ func emailDealerInvoice(ctx context.Context, store *postgres.Store, sender postg
 	if !emailReady(sender) {
 		return "not_configured", ""
 	}
-	to, name, err := store.DealerContact(ctx, scope, inv.DealershipID)
+	to, name, cc, err := store.DealerContact(ctx, scope, inv.DealershipID)
 	if err != nil {
 		log.Printf("Dealership invoice %s: the dealership's contact could not be read", inv.ID)
 		return "failed", ""
@@ -375,6 +375,12 @@ func emailDealerInvoice(ctx context.Context, store *postgres.Store, sender postg
 	vars["link"] = strings.TrimRight(origin, "/") + "/pay/" + token
 	subject, body, text := store.RenderEmail(ctx, "dealer_invoice_issued", vars)
 	if s, ok := sender.(interface {
+		SendEmailCC(context.Context, string, []string, string, string, string, *email.Attachment) (string, error)
+	}); ok {
+		// Every contact of the dealership gets it: the first as To, the others as Cc (error404 #131).
+		file, pdf := store.InvoicePDF(ctx, inv.Invoice)
+		_, err = s.SendEmailCC(ctx, to, cc, subject, body, text, &email.Attachment{Name: file, ContentType: "application/pdf", Data: pdf})
+	} else if s, ok := sender.(interface {
 		SendEmailWithAttachment(context.Context, string, string, string, string, *email.Attachment) (string, error)
 	}); ok {
 		file, pdf := store.InvoicePDF(ctx, inv.Invoice)

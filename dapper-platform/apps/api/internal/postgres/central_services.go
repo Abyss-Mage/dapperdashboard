@@ -26,6 +26,9 @@ type CentralService struct {
 	PriceCents *int64  `json:"priceCents"` // CAD cents before tax; nil = not set
 	// DurationMinutes is how long the service takes to complete; nil = not set.
 	DurationMinutes *int `json:"durationMinutes"`
+	// A sale (error404 #133): the sale price and its last day (YYYY-MM-DD, Toronto; nil = until removed).
+	SalePriceCents *int64  `json:"salePriceCents"`
+	SaleEndsOn     *string `json:"saleEndsOn"`
 }
 
 type CentralServiceInput struct {
@@ -42,13 +45,17 @@ type CentralServiceInput struct {
 	// DurationSet says whether DurationMinutes is part of this save; when false an edit leaves the stored duration alone.
 	DurationSet     bool
 	DurationMinutes *int
+	// SaleSet says whether the sale is part of this save; when false an edit keeps the stored sale.
+	SaleSet        bool
+	SalePriceCents *int64
+	SaleEndsOn     *string
 }
 
-const centralServiceColumns = `id::text,name,kind,parent_id::text,archived,version,to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),price_cents,duration_minutes`
+const centralServiceColumns = `id::text,name,kind,parent_id::text,archived,version,to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),price_cents,duration_minutes,sale_price_cents,sale_ends_on::text`
 
 func scanCentralService(row pgx.Row) (CentralService, error) {
 	var s CentralService
-	err := row.Scan(&s.ID, &s.Name, &s.Kind, &s.ParentID, &s.Archived, &s.Version, &s.CreatedAt, &s.PriceCents, &s.DurationMinutes)
+	err := row.Scan(&s.ID, &s.Name, &s.Kind, &s.ParentID, &s.Archived, &s.Version, &s.CreatedAt, &s.PriceCents, &s.DurationMinutes, &s.SalePriceCents, &s.SaleEndsOn)
 	return s, err
 }
 
@@ -206,13 +213,17 @@ func (s *Store) SaveCentralService(ctx context.Context, actor, org string, input
 	var action string
 	if input.ID == "" {
 		action = "central_service.created"
-		svc, err = scanCentralService(tx.QueryRow(ctx, `INSERT INTO central_catalog_services(organization_id,name,kind,parent_id,price_cents,duration_minutes) VALUES($1,$2,$3,$4,$5,$6) RETURNING `+centralServiceColumns, org, input.Name, input.Kind, input.ParentID, input.PriceCents, input.DurationMinutes))
+		svc, err = scanCentralService(tx.QueryRow(ctx, `INSERT INTO central_catalog_services(organization_id,name,kind,parent_id,price_cents,duration_minutes,sale_price_cents,sale_ends_on) VALUES($1,$2,$3,$4,$5,$6,$7,$8::date) RETURNING `+centralServiceColumns, org, input.Name, input.Kind, input.ParentID, input.PriceCents, input.DurationMinutes, input.SalePriceCents, input.SaleEndsOn))
 	} else {
 		action = "central_service.updated"
-		svc, err = scanCentralService(tx.QueryRow(ctx, `UPDATE central_catalog_services SET name=$3,kind=$4,parent_id=$5,price_cents=CASE WHEN $6 THEN $7 ELSE price_cents END,duration_minutes=CASE WHEN $8 THEN $9 ELSE duration_minutes END,version=version+1 WHERE organization_id=$1 AND id=$2 RETURNING `+centralServiceColumns, org, input.ID, input.Name, input.Kind, input.ParentID, input.PriceSet, input.PriceCents, input.DurationSet, input.DurationMinutes))
+		svc, err = scanCentralService(tx.QueryRow(ctx, `UPDATE central_catalog_services SET name=$3,kind=$4,parent_id=$5,price_cents=CASE WHEN $6 THEN $7 ELSE price_cents END,duration_minutes=CASE WHEN $8 THEN $9 ELSE duration_minutes END,
+		 sale_price_cents=CASE WHEN $10 THEN $11 ELSE sale_price_cents END,sale_ends_on=CASE WHEN $10 THEN $12::date ELSE sale_ends_on END,version=version+1 WHERE organization_id=$1 AND id=$2 RETURNING `+centralServiceColumns, org, input.ID, input.Name, input.Kind, input.ParentID, input.PriceSet, input.PriceCents, input.DurationSet, input.DurationMinutes, input.SaleSet, input.SalePriceCents, input.SaleEndsOn))
 	}
 	if err != nil {
 		return CentralService{}, err
+	}
+	if !saleBelowPrice(svc.SalePriceCents, svc.PriceCents) || !validSaleEnd(input.SaleEndsOn) {
+		return CentralService{}, ErrCentralServiceInput
 	}
 	if svc.Kind == "addon" {
 		if err = setCentralAddonLinks(ctx, tx, org, svc.ID, input.ParentIDs); err != nil {

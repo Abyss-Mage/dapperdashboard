@@ -81,12 +81,26 @@ func (s *SMTPSender) SendEmail(ctx context.Context, recipient, subject, bodyHTML
 
 // SendEmailWithAttachment sends the email with a file attached; a nil attachment sends it plain.
 func (s *SMTPSender) SendEmailWithAttachment(ctx context.Context, recipient, subject, bodyHTML, bodyText string, att *Attachment) (string, error) {
+	return s.SendEmailCC(ctx, recipient, nil, subject, bodyHTML, bodyText, att)
+}
+
+// SendEmailCC sends to recipient with copies to cc (shown in the Cc line), and the file attached when there is one (error404 #131).
+func (s *SMTPSender) SendEmailCC(ctx context.Context, recipient string, cc []string, subject, bodyHTML, bodyText string, att *Attachment) (string, error) {
 	if att != nil && (att.Name == "" || strings.ContainsAny(att.Name, "\r\n\"") || strings.ContainsAny(att.ContentType, "\r\n")) {
 		return "", ErrInvalidEmail
 	}
 	recipient = strings.TrimSpace(recipient)
 	if !validMailbox(recipient) || strings.ContainsAny(subject, "\r\n") {
 		return "", ErrInvalidEmail
+	}
+	copies := []string{}
+	for _, c := range cc {
+		if c = strings.TrimSpace(c); c != "" && !strings.EqualFold(c, recipient) {
+			if !validMailbox(c) {
+				return "", ErrInvalidEmail
+			}
+			copies = append(copies, c)
+		}
 	}
 
 	nonce := make([]byte, 8)
@@ -97,14 +111,17 @@ func (s *SMTPSender) SendEmailWithAttachment(ctx context.Context, recipient, sub
 	providerRef := fmt.Sprintf("smtp-%s", hex.EncodeToString(nonce))
 
 	boundary := fmt.Sprintf("=_dapper_%d_%s", time.Now().UnixNano(), hex.EncodeToString(nonce[:4]))
-	return s.deliver(ctx, recipient, providerRef, s.message(recipient, subject, messageID, boundary, bodyHTML, bodyText, att))
+	return s.deliver(ctx, append([]string{recipient}, copies...), providerRef, s.message(recipient, copies, subject, messageID, boundary, bodyHTML, bodyText, att))
 }
 
 // message builds the full email: text and HTML bodies, and the attached file when there is one.
-func (s *SMTPSender) message(recipient, subject, messageID, boundary, bodyHTML, bodyText string, att *Attachment) string {
+func (s *SMTPSender) message(recipient string, cc []string, subject, messageID, boundary, bodyHTML, bodyText string, att *Attachment) string {
 	var msg strings.Builder
 	msg.WriteString(fmt.Sprintf("From: %s\r\n", (&mail.Address{Name: s.fromName, Address: s.fromAddress}).String()))
 	msg.WriteString(fmt.Sprintf("To: <%s>\r\n", recipient))
+	if len(cc) > 0 {
+		msg.WriteString("Cc: <" + strings.Join(cc, ">, <") + ">\r\n")
+	}
 	msg.WriteString(fmt.Sprintf("Subject: %s\r\n", mime.QEncoding.Encode("UTF-8", subject)))
 	msg.WriteString(fmt.Sprintf("Message-ID: %s\r\n", messageID))
 	msg.WriteString(fmt.Sprintf("Date: %s\r\n", time.Now().UTC().Format(time.RFC1123Z)))
@@ -154,7 +171,7 @@ func (s *SMTPSender) message(recipient, subject, messageID, boundary, bodyHTML, 
 	return msg.String()
 }
 
-func (s *SMTPSender) deliver(ctx context.Context, recipient, providerRef, message string) (string, error) {
+func (s *SMTPSender) deliver(ctx context.Context, recipients []string, providerRef, message string) (string, error) {
 	addr := fmt.Sprintf("%s:%d", s.host, s.port)
 	d := net.Dialer{Timeout: 10 * time.Second}
 	conn, err := d.DialContext(ctx, "tcp", addr)
@@ -207,8 +224,10 @@ func (s *SMTPSender) deliver(ctx context.Context, recipient, providerRef, messag
 	if err = c.Mail(s.fromAddress); err != nil {
 		return "", fmt.Errorf("%w: mail from failed: %v", ErrSMTPSend, err)
 	}
-	if err = c.Rcpt(recipient); err != nil {
-		return "", fmt.Errorf("%w: rcpt to failed: %v", ErrSMTPSend, err)
+	for _, recipient := range recipients {
+		if err = c.Rcpt(recipient); err != nil {
+			return "", fmt.Errorf("%w: rcpt to %s failed: %v", ErrSMTPSend, recipient, err)
+		}
 	}
 
 	w, err := c.Data()
