@@ -54,11 +54,12 @@ export const why = [
 ];
 
 // Each step can show a screenshot of the system it happens in: add `shot: '/site/assets/process/step-N.jpg'` once the file is in public/.
+// The four steps have their own pictures (process/), so the dashboard's "How we do it" images change only this section (error404 #144).
 export const processSteps: { title: string; text: string; image: string; view: string; shot?: string }[] = [
-  { title: 'Schedule your booking', text: 'An easy online booking system on our website; choose mobile service or at-shop detailing, pick your date and time in seconds.', image: '/site/assets/portfolio/portfolio-06.jpg', view: 'Online booking' },
-  { title: 'Confirmed & covered', text: 'You get instant confirmation, and our pros show up on time at your location (or welcome you at the shop), fully equipped and ready to go.', image: '/site/assets/portfolio/portfolio-08.jpg', view: 'Appointments dashboard' },
-  { title: 'The Dapper treatment', text: 'We treat your vehicle like it’s our own, using premium products and proven techniques to deliver a flawless, head-turning finish.', image: '/site/assets/portfolio/portfolio-07.jpg', view: 'Job in the workspace' },
-  { title: 'Looking Dapper', text: 'We walk you through the results, make sure you’re thrilled, and send you off riding clean — rebook anytime to keep that fresh look.', image: '/site/assets/portfolio/portfolio-01.jpg', view: 'Invoice and payment' },
+  { title: 'Schedule your booking', text: 'An easy online booking system on our website; choose mobile service or at-shop detailing, pick your date and time in seconds.', image: '/site/assets/process/1-schedule-your-booking.jpg', view: 'Online booking' },
+  { title: 'Confirmed & covered', text: 'You get instant confirmation, and our pros show up on time at your location (or welcome you at the shop), fully equipped and ready to go.', image: '/site/assets/process/2-confirmed-and-covered.jpg', view: 'Appointments dashboard' },
+  { title: 'The Dapper treatment', text: 'We treat your vehicle like it’s our own, using premium products and proven techniques to deliver a flawless, head-turning finish.', image: '/site/assets/process/3-the-dapper-treatment.jpg', view: 'Job in the workspace' },
+  { title: 'Looking Dapper', text: 'We walk you through the results, make sure you’re thrilled, and send you off riding clean — rebook anytime to keep that fresh look.', image: '/site/assets/process/4-looking-dapper.jpg', view: 'Invoice and payment' },
 ];
 
 export const testimonials = [

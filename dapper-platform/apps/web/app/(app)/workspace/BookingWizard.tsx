@@ -521,7 +521,7 @@ export default function BookingWizard(p: WizardProps) {
         {error && <p role="alert" className={styles.err}>{error}</p>}
         <div className={styles.nav}>
           {step > 0 ? <button type="button" className={styles.back} onClick={() => go(step - 1)} disabled={busy}>← Back</button> : p.onBack ? <button type="button" className={styles.back} onClick={p.onBack} disabled={busy}>← Back</button> : <span />}
-          {subtotalNote(name, rule, subtotal, total)}
+          {subtotalNote(name, rule, taxes ? total : subtotal, !!taxes)}
           {step < steps.length - 1
             ? <button type="button" className={styles.next} disabled={!stepOk} onClick={() => go(step + 1)}>{name === 'Welcome' ? 'I’m new, let’s start' : name === 'Extras' && !picked.length ? 'Skip' : 'Continue'} →</button>
             : <button type="button" className={styles.next} disabled={!stepOk || busy} onClick={() => void save()}>{busy ? (p.deposit && payMethod === 'card' ? 'Taking payment…' : 'Saving…') : p.deposit ? (payMethod === 'card' ? `Pay ${money(deposit)} and book` : 'Book now, pay on the day') : 'Save booking'}</button>}
@@ -551,7 +551,8 @@ function taxLabel(taxes: WizardTaxes) {
   return bp ? `Tax (${Number((bp / 100).toFixed(3))}%)` : 'Tax';
 }
 
-function subtotalNote(name: string, rule: WizardRule | undefined, subtotal: number, total: number) {
+// The same figure and words as the summary beside it, on every step (error404 #147).
+function subtotalNote(name: string, rule: WizardRule | undefined, amount: number, withTax: boolean) {
   if (!rule || ['Welcome', 'Service', 'Where', 'Vehicle'].includes(name)) return <span />;
-  return <span className={styles.total}>{name === 'Details' || name === 'Payment' ? 'Total with tax' : 'Total so far'}<strong><AnimatedNumber text={money(name === 'Details' || name === 'Payment' ? total : subtotal)} duration={0.7} /></strong></span>;
+  return <span className={styles.total}>{withTax ? 'Total with tax' : 'Subtotal'}<strong><AnimatedNumber text={money(amount)} duration={0.7} /></strong></span>;
 }

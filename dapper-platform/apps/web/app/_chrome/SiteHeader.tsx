@@ -22,13 +22,12 @@ const icons: Record<string, LucideIcon> = { '2-wheeler': Bike, hatchback: Car, s
 
 /* The one header of the customer site: a white bar floating at the top (logo, centred links, Book now) that slides away while you scroll down
    and comes back as soon as you scroll up. Services opens a white panel under it with every service, its icon and a short line, and a help card.
-   Phones: logo and menu button; the menu lists the services, and a bar along the bottom keeps Services, Book now, Call and Account in reach.
+   Phones: logo and menu button; the menu links to the all-services page, and a bar along the bottom keeps Services, Book now, Call and Account in reach.
    Every "Book now" goes to the booking page, so the ad tags can follow the visit through to the thank-you page. */
 export function SiteHeader() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [mega, setMega] = useState(false);
-  const [svcOpen, setSvcOpen] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const lastY = useRef(0);
@@ -36,7 +35,7 @@ export function SiteHeader() {
   const openMega = () => { setMega((m) => { if (!m) openedAt.current = Date.now(); return true; }); };
   const onVehicle = categories.some((c) => '/' + c.slug === pathname);
 
-  useEffect(() => { setOpen(false); setMega(false); setSvcOpen(false); }, [pathname]);
+  useEffect(() => { setOpen(false); setMega(false); }, [pathname]);
   useEffect(() => {
     if (!mega) return;
     const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setMega(false); };
@@ -109,15 +108,8 @@ export function SiteHeader() {
 
       <div id="site-menu" className={s.menu + (open ? ' ' + s.open : '')} inert={!open}>
         <nav className={s.menuNav} aria-label="Menu">
-          {links.map((l) => l.href === '/services'
-            ? <div key={l.href} className={s.menuSvc}>
-                <button type="button" aria-expanded={svcOpen} onClick={() => setSvcOpen((v) => !v)}>Services<ChevronDown size={24} aria-hidden="true" /></button>
-                {svcOpen && <div className={s.menuSvcList}>
-                  {categories.map((c) => <Link key={c.key} href={'/' + c.slug}>{c.title}</Link>)}
-                  <Link href="/services">All services</Link>
-                </div>}
-              </div>
-            : <Link key={l.href} href={l.href} aria-current={current(l.href)}>{l.label}</Link>)}
+          {/* Services is a plain link to the all-services page on phones (owner, error404 #145). */}
+          {links.map((l) => <Link key={l.href} href={l.href} aria-current={current(l.href)}>{l.label}</Link>)}
           <Link href="/account">My account</Link>
         </nav>
         <div className={s.menuActs}>
