@@ -117,7 +117,7 @@ func (s *Store) CustomerOfferAvailability(ctx context.Context, actor, customer, 
 	request := scheduling.Request{Duration: time.Duration(rule.DurationMinutes) * time.Minute, Before: time.Duration(rule.BeforeMinutes) * time.Minute, After: time.Duration(rule.AfterMinutes) * time.Minute, Units: 1, WorkingTime: rule.WorkingTime}
 	plan.Capacity = rule.Slots // each service has its own number of slots
 	reach := request.Duration + request.After
-	if request.WorkingTime {
+	if request.WorkingTime || scheduling.WholeDays(request) > 0 {
 		reach = 30 * 24 * time.Hour // a working-time job can span many days
 	}
 	rows, err := tx.Query(ctx, `SELECT occupied_start,occupied_end,units,COALESCE(rule_snapshot->>'serviceId','') FROM capacity_reservations WHERE organization_id=$1 AND location_id=$2 AND resource_id=$3 AND cancelled_at IS NULL AND occupied_start<$5 AND occupied_end>$4 LIMIT 1001`, org, loc, resource, from.Add(-request.Before), to.Add(reach))

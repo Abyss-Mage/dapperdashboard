@@ -146,7 +146,7 @@ func init() {
 <div style="background-color: #f9f9f9;padding: 20px;margin: 20px 0;border-radius: 5px">
 <h3 style="margin: 0 0 15px 0;color: #fb1a2b">Service Completion Details:</h3>
 `+detailRows([][2]string{{"Booking ID:", "{{booking_id}}"}, {"Service Date:", "{{date}}"}, {"Service Time:", "{{time}}"}, {"Service:", "{{service}}"}, {"Add-ons:", "{{extras}}"},
-		{"Total Amount Paid:", "{{paid}}"}, {"Payment Method:", "{{payment}}"}, {"Status:", "COMPLETED"}}, map[int]string{5: "font-weight: bold;color: #fb1a2b", 7: "color: #fb1a2b;font-weight: bold"})+`
+		{"Total Amount:", "{{total}}"}, {"Payment:", "{{payment}}"}, {"Status:", "COMPLETED"}}, map[int]string{5: "font-weight: bold;color: #fb1a2b", 7: "color: #fb1a2b;font-weight: bold"})+`
 </div>
 <p>We hope you are satisfied with our service! Your vehicle should now be looking its absolute best.</p>
 <div style="background-color: #f8f9fa;border: 1px solid #dee2e6;padding: 20px;margin: 20px 0;border-radius: 5px;text-align: center">

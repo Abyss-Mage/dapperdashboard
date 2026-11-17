@@ -64,8 +64,21 @@ func (s *Store) ClaimBookingEmail(ctx context.Context, bookingID, kind string) (
 	if strings.HasSuffix(kind, "booking_cancelled") { // the customer's email and the business alert ("admin:booking_cancelled")
 		window = "100 years"
 	}
-	tag, err := s.pool.Exec(ctx, `INSERT INTO booking_email_log(booking_id,kind) SELECT $1::uuid,$2 WHERE NOT EXISTS(SELECT 1 FROM booking_email_log WHERE booking_id=$1::uuid AND kind=$2 AND sent_at>now()-$3::interval)`, bookingID, kind, window)
-	return err == nil && tag.RowsAffected() == 1, err
+	// Two parts of the app may report one change at the same moment (error404 #139: the completion email went twice); the lock makes
+	// the second wait until the first has claimed it, so it sees the claim and sends nothing.
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return false, err
+	}
+	defer tx.Rollback(ctx)
+	if _, err = tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext('booking_email:'||$1||':'||$2))`, bookingID, kind); err != nil {
+		return false, err
+	}
+	tag, err := tx.Exec(ctx, `INSERT INTO booking_email_log(booking_id,kind) SELECT $1::uuid,$2 WHERE NOT EXISTS(SELECT 1 FROM booking_email_log WHERE booking_id=$1::uuid AND kind=$2 AND sent_at>now()-$3::interval)`, bookingID, kind, window)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() == 1, tx.Commit(ctx)
 }
 
 // MarkBookingEmailDelivered records that the claimed email really went out.

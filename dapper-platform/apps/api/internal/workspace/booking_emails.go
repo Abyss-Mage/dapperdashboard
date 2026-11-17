@@ -39,7 +39,8 @@ const adminPrefix = "admin:"
 func deliverBookingEmail(ctx context.Context, store *postgres.Store, sender postgres.EmailSender, origin, bookingID, kind string) error {
 	admin := strings.HasPrefix(kind, adminPrefix)
 	kind = strings.TrimPrefix(kind, adminPrefix)
-	if kind == "booking_confirmation" {
+	// The confirmation and the completion email carry the invoice: a draft is issued first (error404 #138).
+	if kind == "booking_confirmation" || kind == "booking_completed" {
 		store.IssueBookingDraft(ctx, bookingID)
 	}
 	vars, to, err := store.BookingEmailVars(ctx, bookingID, origin)

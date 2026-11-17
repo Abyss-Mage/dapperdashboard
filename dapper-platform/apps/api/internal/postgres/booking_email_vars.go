@@ -77,6 +77,10 @@ func (s *Store) BookingEmailVars(ctx context.Context, bookingID, origin string) 
 		v["status"] = strings.ToUpper(status)
 	}
 	v["total"], v["payment"] = s.BookingPaymentText(ctx, bookingID)
+	// After the work is done nothing is "on the day" any more: an unpaid balance is due (error404 #138).
+	if status == "completed" && v["payment"] == "Pay on the day" && v["total"] != "" {
+		v["payment"] = "Balance due " + v["total"]
+	}
 	var discount, tax, paid, due, refunded int64
 	var coupon string
 	if s.pool.QueryRow(ctx, `SELECT coalesce(i.coupon_code,''),i.discount_cents,i.tax_cents,i.paid_cents,i.due_cents,

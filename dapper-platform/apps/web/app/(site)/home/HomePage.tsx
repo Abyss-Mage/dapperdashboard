@@ -54,11 +54,12 @@ export default function HomePage() {
       STORY.forEach((st, i) => { if (f >= st.at - STORY_SPAN * 1.5) on = i; });
       show(on);
     };
-    const start = () => { show(-1); v.currentTime = 0; wait = window.setTimeout(() => { void v.play().catch(() => {}); }, 3500); };
-    const ended = () => { wait = window.setTimeout(start, 2500); };
+    // The first play starts the moment the visitor is here (error404 #143); the 3.5-second hold on the headline is only between loops.
+    const start = (hold: number) => { show(-1); v.currentTime = 0; wait = window.setTimeout(() => { void v.play().catch(() => {}); }, hold); };
+    const ended = () => { wait = window.setTimeout(() => start(3500), 2500); };
     v.addEventListener('ended', ended);
     v.addEventListener('timeupdate', step);
-    start();
+    start(0);
     return () => { clearTimeout(wait); v.removeEventListener('ended', ended); v.removeEventListener('timeupdate', step); show(-1); };
   }, [phoneFilm]);
   const [rev, setRev] = useState(0);
@@ -153,7 +154,7 @@ export default function HomePage() {
           <source media="(max-width:720px)" srcSet="/site/assets/frames/mobile/0000.webp" />
           <img className="h-hero__img" src="/site/assets/frames/desktop/0000.webp" alt="A dark blue sports car in the Dapper studio (AI-generated image)" fetchPriority="high" />
         </picture>
-        {phoneFilm && <video className="h-hero__img h-seq__film" src="/site/assets/hero-mobile.mp4" poster="/site/assets/frames/mobile/0000.webp" muted playsInline preload="auto" aria-hidden="true" />}
+        {phoneFilm && <video className="h-hero__img h-seq__film" src="/site/assets/hero-mobile.mp4" poster="/site/assets/frames/mobile/0000.webp" muted playsInline autoPlay preload="auto" aria-hidden="true" />}
         <canvas className="h-seq__canvas" aria-hidden="true" />
         <div className="h-hero__shade" aria-hidden="true" />
         <div className="h-hero__in">

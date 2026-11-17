@@ -71,7 +71,7 @@ func (s *Store) RuleAvailability(ctx context.Context, scope Scope, resourceID, r
 		addPastWindows(&plan, out.Timezone, weekly, first, end)
 	}
 	reach := request.Duration + request.After
-	if request.WorkingTime {
+	if request.WorkingTime || scheduling.WholeDays(request) > 0 {
 		reach = 30 * 24 * time.Hour // a working-time job can run across many days
 	}
 	rows, err := tx.Query(ctx, `SELECT occupied_start,occupied_end,units,COALESCE(rule_snapshot->>'serviceId','') FROM capacity_reservations WHERE organization_id=$1 AND location_id=$2 AND resource_id=$3 AND cancelled_at IS NULL AND occupied_start<$5 AND occupied_end>$4 LIMIT 1001`, scope.OrganizationID, scope.LocationID, resourceID, first.Add(-request.Before), end.Add(reach))

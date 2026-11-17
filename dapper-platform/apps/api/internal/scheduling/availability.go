@@ -76,6 +76,15 @@ func Evaluate(plan Plan, request Request) (Decision, error) {
 	if !valid(occupied) {
 		return Decision{}, ErrInput
 	}
+	if days := WholeDays(request); days > 0 {
+		span, ok := wholeDaySpan(plan, request, days)
+		decision := Decision{Occupied: occupied}
+		if !ok {
+			decision.Reason = "outside_open_hours"
+			return decision, nil
+		}
+		return evaluateCapacity(plan, request, span)
+	}
 	if request.WorkingTime {
 		span, ok := workingSpan(plan, request)
 		decision := Decision{Occupied: occupied}
@@ -121,6 +130,70 @@ func Evaluate(plan Plan, request Request) (Decision, error) {
 // workingSpan walks the opening windows (closures removed) from the start, spending request.Duration of working time, and returns
 // the occupied interval including buffers. It fails if the start is not inside open time or the job does not finish inside known windows.
 func workingSpan(plan Plan, request Request) (Interval, bool) {
+	merged := openWindows(plan)
+	first := -1
+	for i, w := range merged {
+		if !request.Start.Before(w.Start) && request.Start.Before(w.End) {
+			first = i
+			break
+		}
+	}
+	if first < 0 || request.Start.Add(-request.Before).Before(merged[first].Start) {
+		return Interval{}, false
+	}
+	remaining := request.Duration
+	cursor := request.Start
+	for i := first; i < len(merged); i++ {
+		if i > first {
+			cursor = merged[i].Start
+		}
+		room := merged[i].End.Sub(cursor)
+		if remaining <= room {
+			end := cursor.Add(remaining)
+			if end.Add(request.After).After(merged[i].End) {
+				return Interval{}, false
+			}
+			return Interval{request.Start.Add(-request.Before), end.Add(request.After)}, true
+		}
+		remaining -= room
+	}
+	return Interval{}, false
+}
+
+// WholeDays is how many whole opening days a job takes (owner 2026-11-16, error404 #142): a job whose time is set in days (a multiple
+// of 24 hours) and not counted as working time books whole business days, from opening on its first day to closing on its last,
+// skipping closed days. 0 for any other job. 24 hours in a row never fits inside opening hours, so these jobs could not be booked.
+func WholeDays(request Request) int {
+	if request.WorkingTime || request.Duration < 24*time.Hour || request.Duration%(24*time.Hour) != 0 {
+		return 0
+	}
+	return int(request.Duration / (24 * time.Hour))
+}
+
+// wholeDaySpan finds the business day that opens at the request's start and the days after it, and returns the time they occupy.
+// A day is the opening windows with gaps under four hours between them (so a lunch break stays inside one day).
+func wholeDaySpan(plan Plan, request Request, days int) (Interval, bool) {
+	var groups []Interval
+	for _, w := range openWindows(plan) {
+		if n := len(groups); n > 0 && w.Start.Sub(groups[n-1].End) < 4*time.Hour {
+			groups[n-1].End = w.End
+		} else {
+			groups = append(groups, w)
+		}
+	}
+	for i, g := range groups {
+		if g.Start.Equal(request.Start) {
+			if i+days > len(groups) {
+				return Interval{}, false
+			}
+			return Interval{request.Start.Add(-request.Before), groups[i+days-1].End.Add(request.After)}, true
+		}
+	}
+	return Interval{}, false
+}
+
+// openWindows is the plan's opening time, merged and sorted, with closures cut out.
+func openWindows(plan Plan) []Interval {
 	open := append([]Interval(nil), plan.Open...)
 	sort.Slice(open, func(i, j int) bool { return open[i].Start.Before(open[j].Start) })
 	merged := []Interval{}
@@ -151,33 +224,7 @@ func workingSpan(plan Plan, request Request) (Interval, bool) {
 		merged = next
 	}
 	sort.Slice(merged, func(i, j int) bool { return merged[i].Start.Before(merged[j].Start) })
-	first := -1
-	for i, w := range merged {
-		if !request.Start.Before(w.Start) && request.Start.Before(w.End) {
-			first = i
-			break
-		}
-	}
-	if first < 0 || request.Start.Add(-request.Before).Before(merged[first].Start) {
-		return Interval{}, false
-	}
-	remaining := request.Duration
-	cursor := request.Start
-	for i := first; i < len(merged); i++ {
-		if i > first {
-			cursor = merged[i].Start
-		}
-		room := merged[i].End.Sub(cursor)
-		if remaining <= room {
-			end := cursor.Add(remaining)
-			if end.Add(request.After).After(merged[i].End) {
-				return Interval{}, false
-			}
-			return Interval{request.Start.Add(-request.Before), end.Add(request.After)}, true
-		}
-		remaining -= room
-	}
-	return Interval{}, false
+	return merged
 }
 
 func evaluateCapacity(plan Plan, request Request, occupied Interval) (Decision, error) {

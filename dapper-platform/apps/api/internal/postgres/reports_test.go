@@ -135,4 +135,19 @@ func TestReports(t *testing.T) {
 	if len(withOld.Rows) != 2 || withOld.Stats[0].Value != "$263.00" {
 		t.Fatalf("imported payment missing from revenue: %+v", withOld.Stats)
 	}
+
+	// error404 #139: several parts of the app reporting one completion at the same moment send its email once.
+	results := make(chan bool, 8)
+	for i := 0; i < 8; i++ {
+		go func() { first, _ := s.ClaimBookingEmail(ctx, b1, "booking_completed"); results <- first }()
+	}
+	claimed := 0
+	for i := 0; i < 8; i++ {
+		if <-results {
+			claimed++
+		}
+	}
+	if claimed != 1 {
+		t.Fatalf("the completion email was claimed %d times", claimed)
+	}
 }
