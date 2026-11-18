@@ -133,12 +133,6 @@ func TestLifecycleControls(t *testing.T) {
 			t.Fatalf("SaveService addon failed: %v", err)
 		}
 
-		// Deleting main service while active child addon exists must be refused
-		_, err = s.DeleteService(ctx, scope, mainSvc.ID, mainSvc.Version)
-		if !errors.Is(err, ErrServiceConflict) {
-			t.Fatalf("expected ErrServiceConflict deleting parent with child add-ons, got: %v", err)
-		}
-
 		// Delete unreferenced add-on permanently
 		delAddon, err := s.DeleteService(ctx, scope, addonSvc.ID, addonSvc.Version)
 		if err != nil {
@@ -156,6 +150,25 @@ func TestLifecycleControls(t *testing.T) {
 		if !delMain.Permanent {
 			t.Fatalf("expected permanent deletion for unreferenced main: %+v", delMain)
 		}
+
+		// error404 #160: deleting (or archiving) a main service that still has an add-on offered only with it is no longer refused:
+		// the add-on is archived, and the main is archived too because that add-on still belongs to it.
+		withAddon, err := s.SaveService(ctx, scope, CatalogService{Name: "Synthetic Main With Add-on", Kind: "main"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		onlyAddon, err := s.SaveService(ctx, scope, CatalogService{Name: "Synthetic Only Add-on", Kind: "addon", ParentID: &withAddon.ID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		kept, err := s.DeleteService(ctx, scope, withAddon.ID, withAddon.Version)
+		if err != nil || !kept.Archived {
+			t.Fatalf("a main with an add-on was not archived: %+v %v", kept, err)
+		}
+		var addonArchived bool
+		if err = s.pool.QueryRow(ctx, `SELECT archived FROM catalog_services WHERE id=$1`, onlyAddon.ID).Scan(&addonArchived); err != nil || !addonArchived {
+			t.Fatal("the add-on offered only with it stayed active", err)
+		}
 	})
 
 	t.Run("Central Service Lifecycle", func(t *testing.T) {
@@ -167,12 +180,6 @@ func TestLifecycleControls(t *testing.T) {
 		centralAddon, err := s.SaveCentralService(ctx, actor, org, CentralServiceInput{Name: "Leather Conditioning", Kind: "addon", ParentID: &centralMain.ID})
 		if err != nil {
 			t.Fatalf("SaveCentralService addon failed: %v", err)
-		}
-
-		// Deleting central main with child addon must be refused
-		_, err = s.DeleteCentralService(ctx, actor, org, centralMain.ID, centralMain.Version)
-		if !errors.Is(err, ErrCentralServiceHasChildren) {
-			t.Fatalf("expected ErrCentralServiceHasChildren, got: %v", err)
 		}
 
 		// Delete unreferenced central addon permanently
@@ -217,6 +224,33 @@ func TestLifecycleControls(t *testing.T) {
 		gone, err := s.DeleteCentralService(ctx, actor, org, timed.ID, 0)
 		if err != nil || !gone.Permanent {
 			t.Fatalf("an unused central service with a timed franchise copy was not deleted: %+v %v", gone, err)
+		}
+
+		// error404 #160: a central service whose franchise copy has the franchise's own add-on can be archived; the add-on goes too.
+		withOwn, err := s.SaveCentralService(ctx, actor, org, CentralServiceInput{Name: "Central With Own Add-on", Kind: "main"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		siteScope := Scope{OrganizationID: org, LocationID: site.ID, ActorID: actor}
+		for _, action := range []string{"catalogue.manage", "catalogue.read"} {
+			if _, err = s.pool.Exec(ctx, `INSERT INTO location_grants(principal_id,organization_id,location_id,action) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING`, actor, org, site.ID, action); err != nil {
+				t.Fatal(err)
+			}
+		}
+		ownCopy, err := s.ImportCentralService(ctx, siteScope, withOwn.ID, withOwn.Version)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ownAddon, err := s.SaveService(ctx, siteScope, CatalogService{Name: "Synthetic Pet Hair", Kind: "addon", ParentID: &ownCopy.ID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err = s.ArchiveCentralService(ctx, actor, org, withOwn.ID, withOwn.Version); err != nil {
+			t.Fatal("a central service whose copy has a franchise add-on could not be archived", err)
+		}
+		var ownArchived bool
+		if err = s.pool.QueryRow(ctx, `SELECT archived FROM catalog_services WHERE id=$1`, ownAddon.ID).Scan(&ownArchived); err != nil || !ownArchived {
+			t.Fatal("the franchise add-on of the archived copy stayed active", err)
 		}
 	})
 }

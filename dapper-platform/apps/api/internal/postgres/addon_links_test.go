@@ -119,7 +119,7 @@ func TestSharedAddons(t *testing.T) {
 		t.Fatalf("the franchise copy did not follow: %+v", addon)
 	}
 
-	// archiving a main service it shares only unlinks it; its sole main service still blocks
+	// archiving a main service it shares only unlinks it; archiving its sole main service archives it too (owner, error404 #160)
 	list, err := s.ListCentralServices(ctx, owner, org)
 	must(err)
 	var bVersion int
@@ -143,8 +143,13 @@ func TestSharedAddons(t *testing.T) {
 			cVersion = sv.Version
 		}
 	}
-	if _, err = s.ArchiveCentralService(ctx, owner, org, c.ID, cVersion); !errors.Is(err, ErrCentralServiceHasChildren) {
-		t.Fatal("the add-on's only main service was archived from under it", err)
+	if _, err = s.ArchiveCentralService(ctx, owner, org, c.ID, cVersion); err != nil {
+		t.Fatal("the add-on's only main service could not be archived", err)
+	}
+	var clayArchived bool
+	must(pool.QueryRow(ctx, `SELECT archived FROM central_catalog_services WHERE id=$1`, clay.ID).Scan(&clayArchived))
+	if !clayArchived {
+		t.Fatal("an add-on offered only with an archived main service stayed active")
 	}
 	// duplicates folded by the migration stay out of the lists
 	_, err = pool.Exec(ctx, `UPDATE central_catalog_services SET merged_into=$2 WHERE id=$1`, a.ID, c.ID)

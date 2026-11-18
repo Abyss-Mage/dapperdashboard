@@ -237,13 +237,8 @@ func (s *Store) ArchiveService(ctx context.Context, scope Scope, id string, vers
 	if err = releaseLocalMain(ctx, tx, scope, id); err != nil {
 		return CatalogService{}, err
 	}
-	var children bool
-	err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM catalog_services WHERE parent_id=$1 AND NOT archived)`, id).Scan(&children)
-	if err != nil {
+	if err = archiveOnlyLocalAddons(ctx, tx, scope, id); err != nil {
 		return CatalogService{}, err
-	}
-	if children {
-		return CatalogService{}, ErrServiceConflict
 	}
 	current, err = scanService(tx.QueryRow(ctx, `UPDATE catalog_services SET archived=true,version=version+1 WHERE id=$1 RETURNING `+serviceColumns, id))
 	if err != nil {
@@ -316,18 +311,14 @@ func (s *Store) DeleteService(ctx context.Context, scope Scope, id string, versi
 	if err = releaseLocalMain(ctx, tx, scope, id); err != nil {
 		return DeleteResult{}, err
 	}
-	var children bool
-	err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM catalog_services WHERE parent_id=$1 AND NOT archived)`, id).Scan(&children)
-	if err != nil {
+	if err = archiveOnlyLocalAddons(ctx, tx, scope, id); err != nil {
 		return DeleteResult{}, err
 	}
-	if children {
-		return DeleteResult{}, ErrServiceConflict
-	}
 
+	// A website listing alone does not keep a service; it goes with it (error404 #161).
 	var referenced bool
 	err = tx.QueryRow(ctx, `SELECT EXISTS(
-		SELECT 1 FROM service_publications WHERE organization_id=$1 AND location_id=$2 AND service_id=$3
+		SELECT 1 FROM catalog_services WHERE parent_id=$3
 		UNION ALL
 		SELECT 1 FROM jobs WHERE organization_id=$1 AND location_id=$2 AND service_id=$3
 		UNION ALL
@@ -360,6 +351,7 @@ func (s *Store) DeleteService(ctx context.Context, scope Scope, id string, versi
 	for _, q := range []string{
 		`DELETE FROM service_scheduling_revisions WHERE rule_id IN (SELECT id FROM service_scheduling_rules WHERE service_id=$1)`,
 		`DELETE FROM service_scheduling_rules WHERE service_id=$1`,
+		`DELETE FROM service_publications WHERE service_id=$1`,
 		`DELETE FROM catalog_service_revisions WHERE service_id=$1`,
 	} {
 		if _, err = tx.Exec(ctx, q, id); err != nil {
@@ -394,4 +386,32 @@ func validSaleEnd(v *string) bool {
 	}
 	_, err := time.Parse("2006-01-02", *v)
 	return err == nil
+}
+
+// archiveOnlyLocalAddons archives the active add-ons offered only with this main service (others were moved to another main by
+// releaseLocalMain), so archiving or deleting the main is not refused (owner, error404 #160). Each keeps a revision.
+func archiveOnlyLocalAddons(ctx context.Context, tx pgx.Tx, scope Scope, main string) error {
+	rows, err := tx.Query(ctx, `UPDATE catalog_services SET archived=true,version=version+1 WHERE organization_id=$1 AND location_id=$2 AND parent_id=$3 AND NOT archived RETURNING `+serviceColumns, scope.OrganizationID, scope.LocationID, main)
+	if err != nil {
+		return err
+	}
+	var done []CatalogService
+	for rows.Next() {
+		svc, e := scanService(rows)
+		if e != nil {
+			rows.Close()
+			return e
+		}
+		done = append(done, svc)
+	}
+	rows.Close()
+	if err = rows.Err(); err != nil {
+		return err
+	}
+	for _, svc := range done {
+		if err = serviceRevision(ctx, tx, scope, svc); err != nil {
+			return err
+		}
+	}
+	return nil
 }

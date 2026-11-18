@@ -104,9 +104,6 @@ func verifyCatalogServices(t *testing.T, ctx context.Context, s *Store, a, b Sco
 	if _, err = s.SaveService(ctx, b, CatalogService{Name: "Foreign parent", Kind: "addon", ParentID: &main.ID}); err != ErrServiceInput {
 		t.Fatal("foreign parent accepted", err)
 	}
-	if _, err = s.ArchiveService(ctx, a, main.ID, main.Version); err != ErrServiceConflict {
-		t.Fatal("parent archived with active children")
-	}
 	if items, err := s.Services(ctx, b); err != nil || len(items) != 0 {
 		t.Fatal("foreign catalogue leaked")
 	}

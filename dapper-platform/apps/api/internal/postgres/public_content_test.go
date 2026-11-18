@@ -385,9 +385,10 @@ func TestPublicContentPersistence(t *testing.T) {
 	if _, err = pool.Exec(ctx, `DROP TRIGGER reject_content_audit ON content_events`); err != nil {
 		t.Fatal(err)
 	}
+	// error404 #161: a listed but never-booked service deletes for good, its website listing with it.
 	deletedPublication, err := s.DeleteService(ctx, scope, service.ID, service.Version)
-	if err != nil || deletedPublication.Permanent || !deletedPublication.Archived {
-		t.Fatal("published service deletion lost metadata or failed retention", err)
+	if err != nil || !deletedPublication.Permanent {
+		t.Fatal("an unused listed service was not deleted", deletedPublication, err)
 	}
 	public, err = s.PublicContent(ctx, site.Slug)
 	if err != nil || len(public.Services) != 0 {
@@ -465,9 +466,8 @@ func TestPublicContentPersistence(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = s.ArchiveCentralService(ctx, actor, org, central.ID, central.Version); !errors.Is(err, ErrCentralServiceHasChildren) {
-		t.Fatal("central archival bypassed location dependency", err)
-	}
+	// error404 #160: a franchise's own add-on offered only with the copy no longer blocks archiving the central service; checked
+	// below where the central service is archived. Here it is archived first, as before.
 	if _, err = s.ArchiveService(ctx, scope, child.ID, child.Version); err != nil {
 		t.Fatal(err)
 	}

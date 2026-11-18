@@ -271,13 +271,11 @@ func (s *Store) ArchiveCentralService(ctx context.Context, actor, org, id string
 	if err = releaseCentralMain(ctx, tx, org, id); err != nil {
 		return CentralService{}, err
 	}
-	var children bool
-	err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM central_catalog_services WHERE parent_id=$1 AND NOT archived)`, id).Scan(&children)
-	if err != nil {
+	if err = archiveOnlyCentralAddons(ctx, tx, actor, org, id); err != nil {
 		return CentralService{}, err
 	}
-	if children {
-		return CentralService{}, ErrCentralServiceHasChildren
+	if err = releaseCopyAddons(ctx, tx, actor, org, id); err != nil {
+		return CentralService{}, err
 	}
 	current, err = scanCentralService(tx.QueryRow(ctx, `UPDATE central_catalog_services SET archived=true,version=version+1 WHERE id=$1 RETURNING `+centralServiceColumns, id))
 	if err != nil {
@@ -369,13 +367,11 @@ func (s *Store) DeleteCentralService(ctx context.Context, actor, org, id string,
 	if err = releaseCentralMain(ctx, tx, org, id); err != nil {
 		return DeleteResult{}, err
 	}
-	var children bool
-	err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM central_catalog_services WHERE parent_id=$1 AND NOT archived)`, id).Scan(&children)
-	if err != nil {
+	if err = archiveOnlyCentralAddons(ctx, tx, actor, org, id); err != nil {
 		return DeleteResult{}, err
 	}
-	if children {
-		return DeleteResult{}, ErrCentralServiceHasChildren
+	if err = releaseCopyAddons(ctx, tx, actor, org, id); err != nil {
+		return DeleteResult{}, err
 	}
 
 	// Franchise copies that were switched on automatically and never used go with it; if any copy is used (bookings, jobs,
@@ -389,6 +385,8 @@ func (s *Store) DeleteCentralService(ctx context.Context, actor, org, id string,
 		`DELETE FROM service_scheduling_revisions WHERE rule_id IN (SELECT r.id FROM service_scheduling_rules r JOIN catalog_services c ON c.id=r.service_id WHERE c.central_service_id=$1)`,
 		`DELETE FROM service_scheduling_rules WHERE service_id IN (SELECT id FROM catalog_services WHERE central_service_id=$1)`,
 		`DELETE FROM catalog_service_revisions WHERE service_id IN (SELECT id FROM catalog_services WHERE central_service_id=$1)`,
+		// Its website listing (error404 #161: a listed, never-booked copy kept the service, and the delete quietly archived it).
+		`DELETE FROM service_publications WHERE service_id IN (SELECT id FROM catalog_services WHERE central_service_id=$1)`,
 		`DELETE FROM catalog_services WHERE central_service_id=$1`,
 	} {
 		if _, err = tx.Exec(ctx, q, id); err != nil {
@@ -421,7 +419,7 @@ func (s *Store) DeleteCentralService(ctx context.Context, actor, org, id string,
 		if err = tx.Commit(ctx); err != nil {
 			return DeleteResult{}, err
 		}
-		return DeleteResult{Permanent: false, Archived: true, Message: "Central service removed from active catalogue; linked location services retain historical records."}, nil
+		return DeleteResult{Permanent: false, Archived: true, Message: "Archived, not deleted: a franchise copy of it has bookings, work orders or quotes, or an archived add-on still belongs to it. Those records keep it."}, nil
 	}
 
 	if _, err = tx.Exec(ctx, `DELETE FROM central_catalog_service_revisions WHERE service_id=$1`, id); err != nil {
@@ -441,4 +439,71 @@ func (s *Store) DeleteCentralService(ctx context.Context, actor, org, id string,
 		return DeleteResult{}, err
 	}
 	return DeleteResult{Permanent: true, Archived: false, Message: "Central service permanently deleted from catalogue."}, nil
+}
+
+// archiveOnlyCentralAddons archives the active add-ons offered only with this main service (those offered with another main were moved
+// to it by releaseCentralMain), so archiving or deleting the main is not refused (owner, error404 #160). Each gets a revision, which
+// archives its franchise copies too; restoring them is done one by one.
+func archiveOnlyCentralAddons(ctx context.Context, tx pgx.Tx, actor, org, main string) error {
+	rows, err := tx.Query(ctx, `UPDATE central_catalog_services SET archived=true,version=version+1 WHERE organization_id=$1 AND parent_id=$2 AND NOT archived RETURNING `+centralServiceColumns, org, main)
+	if err != nil {
+		return err
+	}
+	var done []CentralService
+	for rows.Next() {
+		svc, e := scanCentralService(rows)
+		if e != nil {
+			rows.Close()
+			return e
+		}
+		done = append(done, svc)
+	}
+	rows.Close()
+	if err = rows.Err(); err != nil {
+		return err
+	}
+	for _, svc := range done {
+		snapshot, _ := json.Marshal(svc)
+		if _, err = tx.Exec(ctx, `INSERT INTO central_catalog_service_revisions(service_id,version,actor_id,snapshot) VALUES($1,$2,$3,$4)`, svc.ID, svc.Version, actor, snapshot); err != nil {
+			return centralLinkFailure(err)
+		}
+		if err = centralCatalogueAudit(ctx, tx, actor, org, "central_service.archived", svc.ID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// releaseCopyAddons does, at every franchise copy of this central service, what archiving a franchise service does: an add-on of the
+// franchise's own that is also offered with another main moves to it, one offered only with this copy is archived. Without it the
+// database refuses to archive the central service while a copy has its own active add-ons (error404 #160).
+func releaseCopyAddons(ctx context.Context, tx pgx.Tx, actor, org, central string) error {
+	rows, err := tx.Query(ctx, `SELECT location_id::text,id::text FROM catalog_services WHERE organization_id=$1 AND central_service_id=$2 AND NOT archived`, org, central)
+	if err != nil {
+		return err
+	}
+	type copyRow struct{ loc, id string }
+	var copies []copyRow
+	for rows.Next() {
+		var c copyRow
+		if err = rows.Scan(&c.loc, &c.id); err != nil {
+			rows.Close()
+			return err
+		}
+		copies = append(copies, c)
+	}
+	rows.Close()
+	if err = rows.Err(); err != nil {
+		return err
+	}
+	for _, c := range copies {
+		scope := Scope{OrganizationID: org, LocationID: c.loc, ActorID: actor}
+		if err = releaseLocalMain(ctx, tx, scope, c.id); err != nil {
+			return err
+		}
+		if err = archiveOnlyLocalAddons(ctx, tx, scope, c.id); err != nil {
+			return err
+		}
+	}
+	return nil
 }

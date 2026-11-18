@@ -91,10 +91,7 @@ func verifyCentralServices(t *testing.T, ctx context.Context, s *Store, a, b Sco
 		t.Fatalf("expected ErrCentralServiceConflict on stale edit, got %v", err)
 	}
 
-	// 7. Cannot archive main while active add-on exists
-	if _, err = s.ArchiveCentralService(ctx, a.ActorID, a.OrganizationID, main.ID, 2); err != ErrCentralServiceHasChildren {
-		t.Fatalf("expected ErrCentralServiceHasChildren, got %v", err)
-	}
+	// 7. (error404 #160: archiving the main with the add-on active is now allowed; covered in lifecycle_test.go.)
 
 	// 8. Archive add-on first
 	archivedAddon, err := s.ArchiveCentralService(ctx, a.ActorID, a.OrganizationID, addon.ID, 1)
