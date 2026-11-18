@@ -274,7 +274,7 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
       let changed = 0;
       for (const sv of chosen) {
         const next: Record<string, unknown> = { name: sv.name, kind: sv.kind, parentId: sv.kind === 'addon' ? null : sv.parentId, parentIds: sv.kind === 'addon' ? parentsOf(sv) : undefined, version: sv.version, durationMinutes: sv.durationMinutes ?? null };
-        if (mode === 'central') {
+        if (priced(sv)) {
           let cents = sv.priceCents ?? null;
           const v = Number(bulk.price);
           if (bulk.priceMode === 'set') cents = Math.round(v * 100);
@@ -290,7 +290,11 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
       return `${changed} service${changed === 1 ? '' : 's'} updated.`;
     });
   };
-  const lineOf = (sv: Service) => [sv.name, ...(mode === 'central' ? [sv.priceCents == null ? '' : (sv.priceCents / 100).toFixed(2)] : []), sv.kind === 'main' && sv.durationMinutes != null ? String(sv.durationMinutes) : ''].join(' | ');
+  // Services whose price is set on this screen: every central service, and a franchise's own ones (linked copies take the central price).
+  const priced = (sv: Service) => mode === 'central' || !sv.centralServiceId;
+  const dollars = (c?: number | null) => (c == null ? '' : (c / 100).toFixed(2));
+  // Name | Price | Sale price | Minutes for a priced service (error404 #148 #150), Name | Minutes otherwise. An empty sale price means no sale.
+  const lineOf = (sv: Service) => [sv.name, ...(priced(sv) ? [dollars(sv.priceCents), dollars(sv.salePriceCents)] : []), sv.kind === 'main' && sv.durationMinutes != null ? String(sv.durationMinutes) : ''].join(' | ');
   const openText = () => {
     const rows = (picked.size ? pickedItems() : visible.filter((x) => !x.archived));
     setTextEdit({ rows, text: rows.map(lineOf).join('\n'), problems: [] });
@@ -300,26 +304,34 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
     const lines = textEdit.text.split('\n').map((l) => l.trim()).filter(Boolean);
     const problems: string[] = [];
     if (lines.length !== textEdit.rows.length) problems.push(`There are ${lines.length} lines but ${textEdit.rows.length} services. Keep one line per service, in the same order.`);
-    const changes: { sv: Service; name: string; cents: number | null; minutes: number | null }[] = [];
+    const changes: { sv: Service; name: string; cents: number | null; sale: number | null; minutes: number | null }[] = [];
     if (!problems.length) lines.forEach((line, i) => {
       const sv = textEdit.rows[i];
       const parts = line.split('|').map((x) => x.trim());
       const name = parts[0] ?? '';
-      const priceTxt = mode === 'central' ? (parts[1] ?? '') : '';
-      const minTxt = (mode === 'central' ? parts[2] : parts[1]) ?? '';
+      const own = priced(sv);
+      const priceTxt = own ? (parts[1] ?? '') : '';
+      const saleTxt = own ? (parts[2] ?? '') : '';
+      const minTxt = (own ? parts[3] : parts[1]) ?? '';
+      const toCents = (t: string) => (t === '' ? null : Math.round(Number(t.replace(/[$,\s]/g, '')) * 100));
       if (name.length < 2 || name.length > 120) problems.push(`Line ${i + 1}: the name needs 2 to 120 characters.`);
-      const cents = mode === 'central' ? (priceTxt === '' ? null : Math.round(Number(priceTxt.replace(/[$,\s]/g, '')) * 100)) : sv.priceCents ?? null;
-      if (mode === 'central' && priceTxt !== '' && !(cents != null && cents >= 0)) problems.push(`Line ${i + 1}: the price is not a number.`);
+      const cents = own ? toCents(priceTxt) : sv.priceCents ?? null;
+      if (own && priceTxt !== '' && !(cents != null && cents >= 0)) problems.push(`Line ${i + 1}: the price is not a number.`);
+      const sale = own ? toCents(saleTxt) : sv.salePriceCents ?? null;
+      if (own && saleTxt !== '' && !(sale != null && sale >= 0)) problems.push(`Line ${i + 1}: the sale price is not a number.`);
+      else if (own && sale != null && !(cents != null && sale < cents)) problems.push(`Line ${i + 1}: the sale price must be lower than the price.`);
       const minutes = sv.kind === 'main' ? (minTxt === '' ? null : Math.round(Number(minTxt))) : sv.durationMinutes ?? null;
       if (sv.kind === 'main' && minTxt !== '' && !(minutes != null && minutes > 0)) problems.push(`Line ${i + 1}: the minutes are not a number.`);
-      if (name !== sv.name || cents !== (sv.priceCents ?? null) || minutes !== (sv.durationMinutes ?? null)) changes.push({ sv, name, cents, minutes });
+      if (name !== sv.name || cents !== (sv.priceCents ?? null) || sale !== (sv.salePriceCents ?? null) || minutes !== (sv.durationMinutes ?? null)) changes.push({ sv, name, cents, sale, minutes });
     });
     if (problems.length) { setTextEdit({ ...textEdit, problems }); return; }
     if (!changes.length) { setTextEdit({ ...textEdit, problems: ['Nothing was changed.'] }); return; }
     void run(async () => {
-      for (const { sv, name, cents, minutes } of changes) {
+      for (const { sv, name, cents, sale, minutes } of changes) {
         const next: Record<string, unknown> = { name, kind: sv.kind, parentId: sv.kind === 'addon' ? null : sv.parentId, parentIds: sv.kind === 'addon' ? parentsOf(sv) : undefined, version: sv.version, durationMinutes: minutes };
-        if (mode === 'central') next.priceCents = cents;
+        if (priced(sv)) next.priceCents = cents;
+        // The sale's last day stays as it was; clearing the sale price ends the sale.
+        if (priced(sv) && sale !== (sv.salePriceCents ?? null)) { next.salePriceCents = sale; next.saleEndsOn = sale == null ? null : sv.saleEndsOn ?? null; }
         await readJson(await fetch(`${listUrl}/${sv.id}`, send('PUT', next)));
       }
       setTextEdit(null); setPicked(new Set());
@@ -356,7 +368,7 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
       )}
       <strong className={styles.svcName} title={s.name}>{canManage && !s.archived && <input type="checkbox" aria-label={`Select ${s.name}`} checked={picked.has(s.id)} onChange={() => togglePick(s.id)} style={{ marginRight: 10, verticalAlign: 'middle' }} />}{s.name}{webTags[s.id] && s.kind === 'main' && <small style={{ marginLeft: 10, padding: '2px 9px', borderRadius: 99, fontSize: 12, fontWeight: 500, background: 'rgba(227,23,43,.12)', color: 'inherit', opacity: webTags[s.id].published ? 1 : .6, whiteSpace: 'nowrap' }}>{webTags[s.id].published ? 'On website: ' + catTitle(webTags[s.id].cat) : 'Hidden on website'}</small>}</strong>
       <span className={styles.svcCell}>{s.archived ? 'Archived' : s.kind === 'addon' ? 'Add-on' : 'Main'}</span>
-      <span className={styles.svcCell}>{s.priceCents == null ? 'No price' : onSale(s) != null ? <><s>{money(s.priceCents)}</s> {money(onSale(s)!)}</> : money(s.priceCents)}</span>
+      <span className={styles.svcCell}>{s.priceCents == null ? 'No price' : onSale(s) != null ? <span className={styles.salePrice}><s>{money(s.priceCents)}</s><b>{money(onSale(s)!)}</b></span> : money(s.priceCents)}</span>
       <span className={styles.svcCell}>{s.durationMinutes != null ? minutesText(s.durationMinutes) : 'No time'}</span>
       {canManage && s.archived && (
         <div className={styles.svcActions}>
@@ -424,7 +436,7 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
           </div>
           {bulk && (
             <div style={{ display: 'grid', gap: 12, marginTop: 12 }}>
-              {mode === 'central' && (
+              {pickedItems().some(priced) && (
                 <div className={styles.inlineForm} style={{ alignItems: 'flex-end' }}>
                   <label className="form-field">Price
                     <Select value={bulk.priceMode} onChange={(e) => setBulk({ ...bulk, priceMode: e.target.value as 'keep' | 'set' | 'up' | 'down' })} disabled={busy}>
@@ -460,7 +472,7 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
       {canManage && textEdit && !editing && (
         <div className={styles.resource} role="region" aria-label="Edit services as text">
           <h3>Edit {textEdit.rows.length} service{textEdit.rows.length === 1 ? '' : 's'} as text</h3>
-          <p className={styles.footnote}>One service per line: {mode === 'central' ? 'Name | Price in CAD before tax | Minutes' : 'Name | Minutes'}. Change any words or numbers, keep the same lines in the same order, then apply. Add-ons have no minutes.</p>
+          <p className={styles.footnote}>One service per line: Name | Price in CAD before tax | Sale price (empty for no sale) | Minutes. Services that take the central catalogue's price show only Name | Minutes. Change any words or numbers, keep the same lines in the same order, then apply. Add-ons have no minutes.</p>
           <textarea className={styles.textBulk} value={textEdit.text} rows={Math.min(24, textEdit.rows.length + 2)} spellCheck={false} aria-label="Services as text" disabled={busy} onChange={(e) => setTextEdit({ ...textEdit, text: e.target.value, problems: [] })} />
           {textEdit.problems.map((m) => <p key={m} role="alert" className="field-error">{m}</p>)}
           <div className={styles.svcActions}>

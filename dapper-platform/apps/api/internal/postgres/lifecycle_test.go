@@ -192,5 +192,31 @@ func TestLifecycleControls(t *testing.T) {
 		if !delMain.Permanent {
 			t.Fatalf("expected permanent deletion for unreferenced central main: %+v", delMain)
 		}
+
+		// error404 #151: a franchise copy with a booking rule (from its time to complete) but no bookings does not stop the delete.
+		timed, err := s.SaveCentralService(ctx, actor, org, CentralServiceInput{Name: "Central Timed Test", Kind: "main"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		site, err := s.CreateFranchise(ctx, actor, org, FranchiseInput{Code: "DELT", Name: "Delete Test", Address: testAddress})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var copyID, resource string
+		if err = s.pool.QueryRow(ctx, `INSERT INTO catalog_services(organization_id,location_id,name,kind,central_service_id,duration_minutes) VALUES($1,$2,'Central Timed Test','main',$3,1) ON CONFLICT DO NOTHING RETURNING id::text`, org, site.ID, timed.ID).Scan(&copyID); err != nil {
+			if err = s.pool.QueryRow(ctx, `SELECT id::text FROM catalog_services WHERE central_service_id=$1 AND location_id=$2`, timed.ID, site.ID).Scan(&copyID); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if err = s.pool.QueryRow(ctx, `INSERT INTO scheduling_resources(organization_id,location_id,name,capacity,timezone,rules) VALUES($1,$2,'Synthetic delete bay',1,'America/Toronto','{}'::jsonb) RETURNING id::text`, org, site.ID).Scan(&resource); err != nil {
+			t.Fatal(err)
+		}
+		if _, err = s.pool.Exec(ctx, `INSERT INTO service_scheduling_rules(organization_id,location_id,resource_id,service_id,addon_ids,duration_minutes,before_minutes,after_minutes,units) VALUES($1,$2,$3,$4,'[]'::jsonb,1,0,0,1)`, org, site.ID, resource, copyID); err != nil {
+			t.Fatal(err)
+		}
+		gone, err := s.DeleteCentralService(ctx, actor, org, timed.ID, 0)
+		if err != nil || !gone.Permanent {
+			t.Fatalf("an unused central service with a timed franchise copy was not deleted: %+v %v", gone, err)
+		}
 	})
 }

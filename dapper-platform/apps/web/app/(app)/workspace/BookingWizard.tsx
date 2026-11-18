@@ -10,7 +10,8 @@ import AnimatedNumber from '../motion/AnimatedNumber';
    It only shows what exists in the catalogue: real prices, real durations and real free times. */
 
 export type WizardRule = { id: string; resourceId: string; serviceId: string; serviceName: string; addonIds: string[]; addons: { serviceId: string; name: string }[]; availableAddons?: { serviceId: string; name: string }[]; version: number; durationMinutes: number };
-export type WizardService = { id: string; name: string; kind: string; priceCents?: number | null; archived?: boolean };
+// wasCents (website) or nowPriceCents (dashboard): a service on sale; the price charged is the sale price (error404 #149).
+export type WizardService = { id: string; name: string; kind: string; priceCents?: number | null; archived?: boolean; wasCents?: number; nowPriceCents?: number | null };
 export type WizardTaxes = { rates: { rateBasisPoints: number; active: boolean }[]; settings: { rounding: string | null } } | null;
 export type WizardAvailability = { timezone: string; durationMinutes: number; days: { date: string; starts: string[] }[] };
 export type WizardCustomer = { id?: string; name: string; email: string; phone: string };
@@ -238,7 +239,10 @@ export default function BookingWizard(p: WizardProps) {
     setStep(hit || !merged ? steps.indexOf('Where') : steps.indexOf('Package'));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rules, baseRules, p.preselect]);
-  const price = (id: string) => services.get(id)?.priceCents ?? null;
+  const price = (id: string) => { const sv = services.get(id); return sv?.nowPriceCents ?? sv?.priceCents ?? null; };
+  // The regular price of a service on sale, shown struck through next to the sale price.
+  const was = (id: string) => { const sv = services.get(id); const now = price(id); const regular = sv?.wasCents ?? sv?.priceCents ?? null; return now !== null && regular !== null && regular > now ? regular : null; };
+  const priceTag = (id: string, off = 0) => { const now = price(id); if (now === null) return 'Price not set'; const before = off > 0 ? now : was(id); return before !== null ? <><s className={styles.was}>{money(before)}</s> {money(now - off)}</> : money(now); };
   const subtotal = (rule ? price(rule.serviceId) ?? 0 : 0) + picked.reduce((s, id) => s + (price(id) ?? 0), 0);
   const unpriced = !!rule && (price(rule.serviceId) === null || picked.some((id) => price(id) === null));
   // A checked coupon comes off before tax, and only while the subtotal is the one it was checked against.
@@ -438,7 +442,7 @@ export default function BookingWizard(p: WizardProps) {
           <div className={styles.choices}>{packages.map((r) => (
             <button key={r.id} type="button" className={styles.choice} aria-pressed={ruleId === r.id} onClick={() => { setRuleId(r.id); setPicked([]); setStart(''); setDay(''); }}>
               <span><strong>{packName(r)}</strong><small>About {span(r.durationMinutes)}</small></span>
-              <span className={styles.price}>{price(r.serviceId) === null ? 'Price not set' : money(price(r.serviceId) as number)}</span>
+              <span className={styles.price}>{priceTag(r.serviceId, r.id === rule?.id ? upgradeOff : 0)}</span>
             </button>
           ))}</div>
           {!packages.length && <p className={styles.help}>No packages for this choice yet.</p>}
@@ -509,7 +513,7 @@ export default function BookingWizard(p: WizardProps) {
             {cust && !agreed && <p className={`${styles.help} ${styles.wide}`}>Tick the box to agree to the terms and conditions before you continue.</p>}
           </div>
           {rule && <div className={styles.sum} aria-label="Price summary">
-            <div><span>{packName(rule)}</span><span>{price(rule.serviceId) === null ? 'Price not set' : money(price(rule.serviceId) as number)}</span></div>
+            <div><span>{packName(rule)}</span><span>{priceTag(rule.serviceId)}</span></div>
             {picked.map((id) => <div key={id}><span>{extras.find((a) => a.serviceId === id)?.name}</span><span>{price(id) === null ? '' : money(price(id) as number)}</span></div>)}
             {couponOff > 0 && <div><span>Coupon {couponHit?.code}</span><span>−{money(couponOff)}</span></div>}
             {upgradeOff > 0 && <div><span>Upgrade discount</span><span>−{money(upgradeOff)}</span></div>}
@@ -521,7 +525,7 @@ export default function BookingWizard(p: WizardProps) {
         {error && <p role="alert" className={styles.err}>{error}</p>}
         <div className={styles.nav}>
           {step > 0 ? <button type="button" className={styles.back} onClick={() => go(step - 1)} disabled={busy}>← Back</button> : p.onBack ? <button type="button" className={styles.back} onClick={p.onBack} disabled={busy}>← Back</button> : <span />}
-          {subtotalNote(name, rule, taxes ? total : subtotal, !!taxes)}
+          {subtotalNote(name, rule, taxes ? total : net, !!taxes)}
           {step < steps.length - 1
             ? <button type="button" className={styles.next} disabled={!stepOk} onClick={() => go(step + 1)}>{name === 'Welcome' ? 'I’m new, let’s start' : name === 'Extras' && !picked.length ? 'Skip' : 'Continue'} →</button>
             : <button type="button" className={styles.next} disabled={!stepOk || busy} onClick={() => void save()}>{busy ? (p.deposit && payMethod === 'card' ? 'Taking payment…' : 'Saving…') : p.deposit ? (payMethod === 'card' ? `Pay ${money(deposit)} and book` : 'Book now, pay on the day') : 'Save booking'}</button>}
@@ -535,10 +539,11 @@ export default function BookingWizard(p: WizardProps) {
           {where !== 'shop' && <div><dt>Where</dt><dd>{where === 'mobile' ? (cust ? 'We come to you' : 'We come to them') : cust ? 'Pick-up and drop-off' : 'Valet'}</dd></div>}
           {vehicle && <div><dt>Vehicle</dt><dd>{vehicle}</dd></div>}
           <div><dt>Package</dt><dd>{rule ? packName(rule) : 'Not chosen yet'}</dd></div>
+          {upgradeOff > 0 && <div><dt>Upgrade discount</dt><dd>−{money(upgradeOff)}</dd></div>}
           {picked.length > 0 && <div><dt>Extras</dt><dd>{picked.map((id) => extras.find((e) => e.serviceId === id)?.name).filter(Boolean).join(', ')}</dd></div>}
           {start && <div><dt>When</dt><dd>{new Date(zoned(start, tz).date + 'T12:00:00').toLocaleDateString('en-CA', { weekday: 'short', month: 'short', day: 'numeric' })} at {slotLabel(start, tz)}</dd></div>}
         </dl>
-        {rule && <div className={styles.sideTotal}><span>{taxes ? 'Total with tax' : 'Subtotal'}</span><strong><AnimatedNumber text={money(taxes ? total : subtotal)} duration={0.7} /></strong></div>}
+        {rule && <div className={styles.sideTotal}><span>{taxes ? 'Total with tax' : 'Subtotal'}</span><strong><AnimatedNumber text={money(taxes ? total : net)} duration={0.7} /></strong></div>}
       </aside>
       </div>
     </div>

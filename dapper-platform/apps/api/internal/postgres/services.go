@@ -33,6 +33,9 @@ type CatalogService struct {
 	NowPriceCents *int64 `json:"nowPriceCents"`
 	// SaleSet says whether the sale fields are part of this save; when false an edit keeps the stored sale.
 	SaleSet bool `json:"-"`
+	// KeepPrice leaves the stored price alone on an edit (the save did not include a price), so a bulk or text edit that only
+	// changes names or times cannot erase a franchise's own prices (error404 #150).
+	KeepPrice bool `json:"-"`
 }
 
 const serviceColumns = `id::text,name,kind,parent_id::text,archived,version,central_service_id::text,price_cents,duration_minutes,sale_price_cents,sale_ends_on::text,` +
@@ -175,9 +178,9 @@ func (s *Store) SaveService(ctx context.Context, scope Scope, input CatalogServi
 	if input.ID == "" {
 		service, err = scanService(tx.QueryRow(ctx, `INSERT INTO catalog_services(organization_id,location_id,name,kind,parent_id,duration_minutes,price_cents,sale_price_cents,sale_ends_on) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9::date) RETURNING `+serviceColumns, scope.OrganizationID, scope.LocationID, input.Name, input.Kind, input.ParentID, input.DurationMinutes, input.PriceCents, input.SalePriceCents, input.SaleEndsOn))
 	} else {
-		service, err = scanService(tx.QueryRow(ctx, `UPDATE catalog_services SET name=$4,kind=$5,parent_id=$6,duration_minutes=$7,price_cents=$8,
+		service, err = scanService(tx.QueryRow(ctx, `UPDATE catalog_services SET name=$4,kind=$5,parent_id=$6,duration_minutes=$7,price_cents=CASE WHEN $12 THEN price_cents ELSE $8 END,
 		 sale_price_cents=CASE WHEN $9 THEN $10 ELSE sale_price_cents END,sale_ends_on=CASE WHEN $9 THEN $11::date ELSE sale_ends_on END,version=version+1
-		 WHERE organization_id=$1 AND location_id=$2 AND id=$3 RETURNING `+serviceColumns, scope.OrganizationID, scope.LocationID, input.ID, input.Name, input.Kind, input.ParentID, input.DurationMinutes, input.PriceCents, input.SaleSet, input.SalePriceCents, input.SaleEndsOn))
+		 WHERE organization_id=$1 AND location_id=$2 AND id=$3 RETURNING `+serviceColumns, scope.OrganizationID, scope.LocationID, input.ID, input.Name, input.Kind, input.ParentID, input.DurationMinutes, input.PriceCents, input.SaleSet, input.SalePriceCents, input.SaleEndsOn, input.KeepPrice))
 	}
 	if err != nil {
 		return CatalogService{}, err

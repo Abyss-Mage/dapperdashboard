@@ -954,6 +954,10 @@
 .svc:has(> .foldBtn) { grid-template-columns: auto minmax(0, 1fr) 90px 120px 110px auto; }
 .svcName { font-size: 14.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .svcCell { font-size: 13.7px; white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--text-muted); }
+/* A service on sale (error404 #152): the regular price struck through above the sale price, inside the price column. */
+.salePrice { display: grid; line-height: 1.25; }
+.salePrice s { font-size: 12px; opacity: .7; }
+.salePrice b { color: var(--text); font-weight: 700; }
 .svcActions { flex-wrap: nowrap; }
 .durationRow { display: grid; grid-template-columns: minmax(136px, 1fr) 130px; gap: 10px; align-items: center; }
 /* The time box needs room for its − and + buttons, so this field takes a row of its own when it has to. */

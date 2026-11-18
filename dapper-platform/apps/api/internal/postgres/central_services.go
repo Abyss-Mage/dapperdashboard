@@ -383,8 +383,17 @@ func (s *Store) DeleteCentralService(ctx context.Context, actor, org, id string,
 	if _, err = tx.Exec(ctx, `SAVEPOINT unused_copies`); err != nil {
 		return DeleteResult{}, err
 	}
-	if _, err = tx.Exec(ctx, `DELETE FROM catalog_service_revisions WHERE service_id IN (SELECT id FROM catalog_services WHERE central_service_id=$1)`, id); err == nil {
-		_, err = tx.Exec(ctx, `DELETE FROM catalog_services WHERE central_service_id=$1`, id)
+	// An unused copy's booking rules (made from its time to complete) go with it (error404 #151); a rule holding a reservation still
+	// blocks the delete, and then everything is kept.
+	for _, q := range []string{
+		`DELETE FROM service_scheduling_revisions WHERE rule_id IN (SELECT r.id FROM service_scheduling_rules r JOIN catalog_services c ON c.id=r.service_id WHERE c.central_service_id=$1)`,
+		`DELETE FROM service_scheduling_rules WHERE service_id IN (SELECT id FROM catalog_services WHERE central_service_id=$1)`,
+		`DELETE FROM catalog_service_revisions WHERE service_id IN (SELECT id FROM catalog_services WHERE central_service_id=$1)`,
+		`DELETE FROM catalog_services WHERE central_service_id=$1`,
+	} {
+		if _, err = tx.Exec(ctx, q, id); err != nil {
+			break
+		}
 	}
 	if err != nil {
 		if _, e := tx.Exec(ctx, `ROLLBACK TO SAVEPOINT unused_copies`); e != nil {

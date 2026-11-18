@@ -19,7 +19,7 @@ async function call<T>(url: string, init?: RequestInit): Promise<T> {
 export function SignInDetails({ email }: { email?: string }) {
   const [mode, setMode] = useState<'' | 'email' | 'password'>('');
   const [current, setCurrent] = useState(''), [value, setValue] = useState(''), [again, setAgain] = useState('');
-  const [busy, setBusy] = useState(false), [error, setError] = useState('');
+  const [busy, setBusy] = useState(false), [error, setError] = useState(''), [done, setDone] = useState('');
   const reset = () => { setCurrent(''); setValue(''); setAgain(''); setError(''); };
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -27,7 +27,9 @@ export function SignInDetails({ email }: { email?: string }) {
     setBusy(true); setError('');
     try {
       await call(mode === 'email' ? '/api/v1/account/email' : '/api/v1/account/password', { method: 'PUT', headers: json, body: JSON.stringify(mode === 'email' ? { password: current, email: value } : { current, newPassword: value }) });
-      location.reload();
+      // Say so before the page signs them out (error404 #154: an instant reload looked like nothing was saved).
+      setDone(mode === 'email' ? 'Your email was changed. Sign in again with the new email.' : 'Your password was changed. Sign in again with the new password.');
+      setTimeout(() => location.reload(), 3000);
     } catch (err) { setError(err instanceof Error ? err.message : 'The change could not be saved.'); setBusy(false); }
   }
   if (!mode) return <div style={{ display: 'grid', gap: 10 }}>
@@ -41,7 +43,7 @@ export function SignInDetails({ email }: { email?: string }) {
       : <><label className={glass.field}>New password (at least 15 characters)<input type="password" autoComplete="new-password" required minLength={15} maxLength={1024} value={value} onChange={e => setValue(e.target.value)} disabled={busy} /></label>
         <label className={glass.field}>New password again<input type="password" autoComplete="new-password" required minLength={15} maxLength={1024} value={again} onChange={e => setAgain(e.target.value)} disabled={busy} /></label></>}
     {error && <p role="alert" className="field-error">{error}</p>}
-    <p className={glass.lede}>After saving you will be signed out everywhere and asked to sign in again.</p>
+    {done ? <p role="status"><strong>{done}</strong></p> : <p className={glass.lede}>After saving you will be signed out everywhere and asked to sign in again.</p>}
     <div style={{ display: 'flex', gap: 10 }}><button className="primary" disabled={busy}>{busy ? 'Saving…' : mode === 'email' ? 'Change email' : 'Change password'}</button><button type="button" className="secondary" disabled={busy} onClick={() => setMode('')}>Cancel</button></div>
   </form>;
 }

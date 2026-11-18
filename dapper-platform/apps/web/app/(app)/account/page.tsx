@@ -1,6 +1,6 @@
 'use client';
 
-import {useEffect, useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import InvoicePaymentForm from './InvoicePaymentForm';
 import Select from '../GlassSelect';
 import { SignInDetails } from '../workspace/AccountSecurity';
@@ -54,15 +54,17 @@ export default function CustomerAccount() {
   useEffect(() => { if (records) { setDetailName(records.account.name); setDetailPhone(records.account.phone ?? ''); setDetailAddress(records.account.address ?? ''); } }, [records]);
   async function saveDetails(event: React.FormEvent) {
     event.preventDefault();
-    setBusy(true); setError(''); setNotice('');
+    setBusy(true); setError(''); setNotice(''); setDetailsNote(''); setDetailsError('');
     try {
       const response = await fetch(`/api/v1/portal/accounts/${encodeURIComponent(selected)}/details`, {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({name: detailName, phone: detailPhone, address: detailAddress})});
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error ?? 'Your details could not be saved.');
-      setNotice('Your details were saved.'); setRevision((value) => value + 1);
-    } catch (err) { setError(err instanceof Error ? err.message : 'Your details could not be saved.'); }
+      setDetailsNote('Your details were saved.'); setRevision((value) => value + 1);
+    } catch (err) { setDetailsNote(''); setDetailsError(err instanceof Error ? err.message : 'Your details could not be saved.'); }
     finally { setBusy(false); }
   }
+  // The details form's own result, shown under its button.
+  const [detailsNote, setDetailsNote] = useState(''), [detailsError, setDetailsError] = useState('');
   function openInvoice(invoiceId: string) {
     setError('');
     openPdf(`/api/v1/portal/accounts/${encodeURIComponent(selected)}/invoices/${encodeURIComponent(invoiceId)}/pdf`);
@@ -94,9 +96,13 @@ export default function CustomerAccount() {
     initialize();
   }, []);
 
+  // A save reloads the records in place (error404 #154): clearing them first unmounted the profile, so its "saved" message vanished at
+  // once and every save looked like nothing happened. Only switching account or signing out starts from empty.
+  const shown = useRef('');
   useEffect(() => {
     let current = true;
-    setRecords(null);
+    if (shown.current !== selected || !signedIn) setRecords(null);
+    shown.current = signedIn ? selected : '';
     if (!signedIn || !selected) return;
     setError('');
     async function loadRecords() {
@@ -195,6 +201,8 @@ export default function CustomerAccount() {
             <label className="form-field">Phone<input type="tel" maxLength={30} autoComplete="tel" value={detailPhone} onChange={(e) => setDetailPhone(e.target.value)} disabled={busy} /></label>
             <label className="form-field">Address (for mobile detailing)<input maxLength={300} autoComplete="street-address" value={detailAddress} onChange={(e) => setDetailAddress(e.target.value)} disabled={busy} /></label>
             <button className="primary" disabled={busy}>{busy ? 'Saving…' : 'Save my details'}</button>
+            {detailsError && <p className="field-error" role="alert">{detailsError}</p>}
+            {detailsNote && <p role="status">{detailsNote}</p>}
           </form>
             <section className="panel detail-card"><h3>Email and password</h3><SignInDetails email={records.account.email} /></section>
           </div>

@@ -57,6 +57,10 @@ func verifyCatalogServices(t *testing.T, ctx context.Context, s *Store, a, b Sco
 	if err != nil || kept.SalePriceCents == nil || *kept.NowPriceCents != 3900 {
 		t.Fatal("an edit without the sale dropped it", err)
 	}
+	// error404 #150: an edit that leaves the price out (a bulk or text edit of names and times) keeps it.
+	if kept, err = s.SaveService(ctx, a, CatalogService{ID: kept.ID, Version: kept.Version, Name: kept.Name, Kind: "main", KeepPrice: true}); err != nil || kept.PriceCents == nil || *kept.PriceCents != 4900 {
+		t.Fatal("an edit without a price erased it", err)
+	}
 	ended, err := s.SaveService(ctx, a, CatalogService{ID: kept.ID, Version: kept.Version, Name: kept.Name, Kind: "main", PriceCents: &priced, SaleSet: true, SalePriceCents: &sale, SaleEndsOn: &past})
 	if err != nil || *ended.NowPriceCents != 4900 {
 		t.Fatal("an ended sale was still charged", err)

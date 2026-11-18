@@ -81,7 +81,8 @@ func registerServiceRoutes(mux *http.ServeMux, store *postgres.Store) {
 				// Time to complete, in minutes (null or absent = not set).
 				DurationMinutes *int `json:"durationMinutes"`
 				// error404 #112: a franchise's own service has its own price, CAD cents before tax (null = no price).
-				PriceCents *int64 `json:"priceCents"`
+				// Price is optional on an edit: absent = leave unchanged, null = no price, number = CAD cents before tax.
+				Price json.RawMessage `json:"priceCents"`
 				// The sale (error404 #133): absent = leave unchanged, null = no sale.
 				Sale     json.RawMessage `json:"salePriceCents"`
 				SaleEnds *string         `json:"saleEndsOn"`
@@ -119,7 +120,16 @@ func registerServiceRoutes(mux *http.ServeMux, store *postgres.Store) {
 			if !ok {
 				return
 			}
-			service, err := store.SaveService(r.Context(), scope, postgres.CatalogService{SaleSet: sale.set, SalePriceCents: sale.cents, SaleEndsOn: sale.ends, ID: id, Name: input.Name, Kind: input.Kind, ParentID: input.ParentID, ParentIDs: input.ParentIDs, Version: input.Version, DurationMinutes: input.DurationMinutes, PriceCents: input.PriceCents})
+			var price *int64
+			if input.Price != nil && string(input.Price) != "null" {
+				var cents int64
+				if err := json.Unmarshal(input.Price, &cents); err != nil {
+					reply(w, 422, map[string]any{"errors": map[string]string{"priceCents": "Enter a price of 0 or more"}})
+					return
+				}
+				price = &cents
+			}
+			service, err := store.SaveService(r.Context(), scope, postgres.CatalogService{KeepPrice: input.Price == nil, SaleSet: sale.set, SalePriceCents: sale.cents, SaleEndsOn: sale.ends, ID: id, Name: input.Name, Kind: input.Kind, ParentID: input.ParentID, ParentIDs: input.ParentIDs, Version: input.Version, DurationMinutes: input.DurationMinutes, PriceCents: price})
 			if err != nil {
 				serviceFailure(w, err)
 				return
