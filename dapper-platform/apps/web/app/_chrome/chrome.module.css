@@ -49,7 +49,7 @@
 @media(max-width:1180px){.megaList{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 /* Phone menu */
-.menu{position:fixed;z-index:55;inset:0;display:flex;flex-direction:column;gap:24px;padding:96px 22px calc(110px + env(safe-area-inset-bottom));overflow:auto;background:#fff;color:#141416;opacity:0;visibility:hidden;transition:opacity .3s cubic-bezier(.23,1,.32,1),visibility 0s .3s}
+.menu{position:fixed;z-index:55;inset:0;display:flex;flex-direction:column;gap:24px;padding:calc(96px + var(--banner-left, 0px)) 22px calc(110px + env(safe-area-inset-bottom));overflow:auto;background:#fff;color:#141416;opacity:0;visibility:hidden;transition:opacity .3s cubic-bezier(.23,1,.32,1),visibility 0s .3s}
 .menu.open{opacity:1;visibility:visible;transition:opacity .3s cubic-bezier(.23,1,.32,1)}
 .menuNav{display:grid}
 .menuNav>a,.menuSvc>button{display:flex;align-items:center;justify-content:space-between;width:100%;padding:14px 0;border:0;border-bottom:1px solid #0b0b0c14;background:none;color:#141416;text-align:left;text-decoration:none;cursor:pointer;font:500 clamp(24px,7vw,34px)/1.1 'Unbounded Variable','Unbounded',sans-serif;letter-spacing:-.02em;text-transform:uppercase}
@@ -141,3 +141,4 @@
 .fCols a{color:var(--bone);text-decoration:none;font:600 15px/1.4 'Manrope',sans-serif}
 .fTwo{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 20px}
 @media(max-width:600px){.fCols{grid-template-columns:1fr}}
+/* error404 #155: the sales banner pushes the header down; the menu starts below both, so Home is not hidden under the header. */

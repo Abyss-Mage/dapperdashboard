@@ -275,7 +275,8 @@ WHERE b.organization_id=$1 AND b.location_id=$2 AND b.booking_time >= $3 AND b.b
 		query += fmt.Sprintf(" AND b.status=$%d", len(args)+1)
 		args = append(args, status)
 	}
-	query += fmt.Sprintf(" ORDER BY b.booking_time ASC LIMIT $%d", len(args)+1)
+	// Newest first (owner, error404 #156): the Appointments list opens on the latest bookings, and a limit keeps the newest, not the oldest.
+	query += fmt.Sprintf(" ORDER BY b.booking_time DESC LIMIT $%d", len(args)+1)
 	args = append(args, limit)
 
 	rows, err := tx.Query(ctx, query, args...)
