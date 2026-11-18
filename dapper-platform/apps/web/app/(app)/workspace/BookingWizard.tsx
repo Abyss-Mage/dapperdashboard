@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import styles from './bookingWizard.module.css';
+import { Bike, Bus, Car, CarFront, Plane, Sailboat, Truck, type LucideIcon } from 'lucide-react';
 import Select from '../GlassSelect';
 import gsap from 'gsap';
 import AnimatedNumber from '../motion/AnimatedNumber';
@@ -78,6 +79,17 @@ export function parseName(name: string) {
 // Same order as the website: 2 Wheeler, the four-wheelers by size, then aircraft and boats.
 const VEHICLE_ORDER = ['2 Wheeler', 'Hatchback', 'Sedan', 'SUV', 'Pickup', 'Van', 'Aircraft Small', 'Aircraft Medium', 'Aircraft Large', 'Boat Small', 'Boat Medium', 'Boat Large'];
 const CARS = ['Hatchback', 'Sedan', 'SUV', 'Pickup', 'Van'];
+// The picture on each vehicle tile (owner, error404 #159); the size (Small, Medium, Large) is the word under it.
+function vehicleIcon(v: string): LucideIcon {
+  const n = v.toLowerCase();
+  if (n.includes('aircraft')) return Plane;
+  if (n.includes('boat')) return Sailboat;
+  if (n.includes('wheel') || n.includes('motor')) return Bike;
+  if (n.includes('pickup')) return Truck;
+  if (n.includes('van')) return Bus;
+  if (n.includes('suv')) return CarFront;
+  return Car;
+}
 const byVehicleOrder = (a: string, b: string) => (VEHICLE_ORDER.indexOf(a) + 1 || 99) - (VEHICLE_ORDER.indexOf(b) + 1 || 99);
 const GROUPS = ['Detailing', 'Ceramic coating', 'Paint protection film', 'Window tinting'] as const;
 const GROUP_HELP: Record<string, string> = {
@@ -86,7 +98,7 @@ const GROUP_HELP: Record<string, string> = {
 // The ceramic packages (Shield, Fortress, 3 Stage Paint Correction, Armour Up) all belong to Ceramic coating.
 function groupOf(pack: string) {
   if (/ppf/i.test(pack)) return 'Paint protection film';
-  if (/tint/i.test(pack)) return 'Window tinting';
+  if (/tint|\bwindow\b/i.test(pack)) return 'Window tinting'; // "Full 5 Window Premium Package" has no "tint" in its name
   if (/ceramic|shield|fortress|armou?r up|paint correction/i.test(pack)) return 'Ceramic coating';
   return 'Detailing';
 }
@@ -160,10 +172,11 @@ export default function BookingWizard(p: WizardProps) {
   const topRef = useRef<HTMLHeadingElement>(null);
   const panelRef = useRef<HTMLElement>(null);
   const prevStep = useRef(0);
-  // On the website the second question is the package, with the vehicle's details on the same step; staff keep the longer order.
-  const merged = p.audience === 'customer' && !!p.categories;
+  // The website asks like the dashboard (owner, error404 #158): service (detailing, ceramic, PPF, tint), vehicle type, package, extras,
+  // then shop, mobile or valet, day and time, details and payment. Staff keep their order (where before the vehicle).
+  const customerOrder = p.audience === 'customer';
   useEffect(() => { if (p.deposit?.onlineOff) setPayMethod('cash'); }, [p.deposit?.onlineOff]);
-  const steps = [...(p.phoneCheck ? ['Welcome'] : []), ...(merged ? ['Service', 'Package', 'Where'] : ['Service', 'Where', 'Vehicle', 'Package']), 'Extras', 'Day & time', 'Details', ...(p.deposit ? ['Payment'] : [])];
+  const steps = [...(p.phoneCheck ? ['Welcome'] : []), ...(customerOrder ? ['Service', 'Vehicle', 'Package', 'Extras', 'Where'] : ['Service', 'Where', 'Vehicle', 'Package', 'Extras']), 'Day & time', 'Details', ...(p.deposit ? ['Payment'] : [])];
   const name = steps[step];
   // Saved details fill in once, and never over something already typed.
   useEffect(() => {
@@ -195,7 +208,8 @@ export default function BookingWizard(p: WizardProps) {
   }, [step]);
 
   const cust = p.audience === 'customer';
-  const byCategory = cust && !!p.categories;
+  // Website categories (one per vehicle) only decide where a link from a website page starts; the steps group like the dashboard.
+  const byCategory = false;
   const catKey = (r: WizardRule) => p.categories?.of(r.serviceId) || 'other';
   const baseRules = useMemo(() => (rules ?? []).filter((r) => r.addonIds.length === 0), [rules]);
   const parsed = useMemo(() => new Map(baseRules.map((r) => [r.id, parseName(r.serviceName)])), [baseRules]);
@@ -232,11 +246,13 @@ export default function BookingWizard(p: WizardProps) {
     const pre = p.preselect;
     if (preApplied.current || !pre || !rules) return;
     const hit = pre.serviceId ? baseRules.find((r) => r.serviceId === pre.serviceId) : undefined;
-    if (!hit && !(pre.category && byCategory && custGroups.some((g) => g.key === pre.category))) return;
+    // A website category: coating, film and tint are services of their own; every other category is a vehicle to detail.
+    const fromCategory = pre.category ? ({ ceramic: 'Ceramic coating', ppf: 'Paint protection film', 'window-tint': 'Window tinting' } as Record<string, string>)[pre.category] ?? 'Detailing' : '';
+    if (!hit && !(fromCategory && groups.includes(fromCategory as (typeof groups)[number]))) return;
     preApplied.current = true;
-    if (hit) { setGroup(byCategory ? catKey(hit) : groupOf(parsed.get(hit.id)!.pack)); setVehicle(byCategory ? '' : parsed.get(hit.id)!.vehicle); setRuleId(hit.id); }
-    else setGroup(pre.category!);
-    setStep(hit || !merged ? steps.indexOf('Where') : steps.indexOf('Package'));
+    if (hit) { setGroup(groupOf(parsed.get(hit.id)!.pack)); setVehicle(parsed.get(hit.id)!.vehicle); setRuleId(hit.id); }
+    else setGroup(fromCategory);
+    setStep(steps.indexOf(hit ? (customerOrder ? 'Extras' : 'Where') : 'Vehicle'));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rules, baseRules, p.preselect]);
   const price = (id: string) => { const sv = services.get(id); return sv?.nowPriceCents ?? sv?.priceCents ?? null; };
@@ -433,7 +449,7 @@ export default function BookingWizard(p: WizardProps) {
         {name === 'Vehicle' && <>
           <h2 ref={topRef} tabIndex={-1} className={styles.title}>{cust ? 'Tell us about your vehicle' : 'What are we working on?'}</h2>
           {vehicles.length > 0 && <div className={`${styles.choices} ${styles.tiles}`}>{vehicles.map((v) => (
-            <button key={v} type="button" className={`${styles.choice} ${styles.tile}`} aria-pressed={vehicle === v} onClick={() => { setVehicle(v); setRuleId(''); setPicked([]); }}><strong>{v}</strong></button>
+            <button key={v} type="button" className={`${styles.choice} ${styles.tile}`} aria-pressed={vehicle === v} onClick={() => { setVehicle(v); setRuleId(''); setPicked([]); }}>{(() => { const Icon = vehicleIcon(v); return <Icon className={styles.tileIcon} size={30} strokeWidth={1.6} aria-hidden="true" />; })()}<strong>{v}</strong></button>
           ))}</div>}
           {vehicleFields}
         </>}
@@ -447,7 +463,6 @@ export default function BookingWizard(p: WizardProps) {
           ))}</div>
           {!packages.length && <p className={styles.help}>No packages for this choice yet.</p>}
           {upgradeCard()}
-          {merged && <><h3 className={styles.title} style={{ fontSize: '1.05rem' }}>Your vehicle (optional)</h3>{vehicleFields}</>}
         </>}
         {name === 'Extras' && <>
           <h2 ref={topRef} tabIndex={-1} className={styles.title}>Anything extra?</h2>
@@ -558,6 +573,6 @@ function taxLabel(taxes: WizardTaxes) {
 
 // The same figure and words as the summary beside it, on every step (error404 #147).
 function subtotalNote(name: string, rule: WizardRule | undefined, amount: number, withTax: boolean) {
-  if (!rule || ['Welcome', 'Service', 'Where', 'Vehicle'].includes(name)) return <span />;
+  if (!rule || ['Welcome', 'Service', 'Vehicle'].includes(name)) return <span />;
   return <span className={styles.total}>{withTax ? 'Total with tax' : 'Subtotal'}<strong><AnimatedNumber text={money(amount)} duration={0.7} /></strong></span>;
 }

@@ -41,6 +41,12 @@
 .choice strong{display:block;font-size:15.7px}
 .choice small{display:block;color:var(--text-muted);font-size:13.6px;margin-top:2px}
 .tile{flex-direction:column;justify-content:center;text-align:center;align-items:center;min-height:84px}
+/* Vehicle tiles (error404 #159): an icon over the name; two across on a phone, three on a tablet, four or more on a wide screen. */
+.tile{gap:8px;padding:14px 10px}
+.tile strong{line-height:1.2;overflow-wrap:anywhere}
+.tileIcon{flex:none;color:var(--brand,#e4202e)}
+@media(max-width:600px){.choices.tiles{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.tile{min-height:92px}}
+@media(min-width:601px) and (max-width:979px){.choices.tiles{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .price{font-weight:800;white-space:nowrap}
 /* A sale or an upgrade discount (error404 #149 #153): the earlier price struck through before the price charged. */
 .was{font-weight:500;opacity:.55;margin-right:4px}

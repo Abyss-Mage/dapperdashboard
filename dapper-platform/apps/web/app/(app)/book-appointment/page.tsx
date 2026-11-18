@@ -1,5 +1,7 @@
 import '@fontsource-variable/unbounded/index.css';
 import { SiteHeader } from '../../_chrome/SiteHeader';
+// The dashboard's sales banner shows here too, as on every website page (error404 #157).
+import SalesStrip from '../../(site)/_components/SalesStrip';
 import { SiteFooter } from '../../_chrome/SiteFooter';
 import PublicBookingWizard from '../workspace/PublicBookingWizard';
 import Tracking from '../../(site)/_components/Tracking';
@@ -15,6 +17,7 @@ export default function PublicBookingPortal() {
     <div className={styles.page}>
       <TrackingHead />
       <Tracking />
+      <SalesStrip />
       <SiteHeader />
       <section className={styles.hero} aria-labelledby="book-title">
         <p className={styles.kicker}>Dapper Detailing Pros · Peterborough</p>

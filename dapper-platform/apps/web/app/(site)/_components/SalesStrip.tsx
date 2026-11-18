@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { SITE_SLUG } from './site';
 import { ScrollTrigger } from './gsap';
+import './sales-strip.css';
 
 type Banner = { text: string; linkLabel: string; linkUrl: string; tone: string };
 

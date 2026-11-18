@@ -140,7 +140,7 @@ export default function PublicBookingWizard() {
   return (
     <div className={styles.wiz}>
       <div className={styles.top}>
-        <p className={styles.kicker}>Step 1 of 8 · Location</p>
+        <p className={styles.kicker}>Step 1 of 9 · Location</p>
         <div className={styles.bar} aria-hidden="true"><i className={styles.on} />{Array.from({ length: 7 }, (_, i) => <i key={i} />)}</div>
       </div>
       <div className={styles.layout}>

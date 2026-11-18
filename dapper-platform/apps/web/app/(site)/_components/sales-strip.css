@@ -1,0 +1,9 @@
+/* The sales banner (SalesStrip): loaded by the banner itself, so it looks the same on the website and the booking pages (error404 #157). */
+.sales-strip{position:relative;z-index:61;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:4px 16px;padding:9px clamp(14px,3vw,32px);background:#d10f1f;color:#fff;font:600 14px/1.35 'Manrope','Helvetica Neue',Arial,sans-serif;text-align:center}
+.sales-strip[data-tone="black"]{background:#0b0b0c}
+.sales-strip p{margin:0;text-wrap:balance}
+.sales-strip a{display:inline-flex;align-items:center;gap:6px;min-height:28px;color:#fff;font-weight:700;text-decoration:underline;text-underline-offset:3px}
+.sales-strip a svg{transition:transform .2s cubic-bezier(.23,1,.32,1)}
+@media(hover:hover) and (pointer:fine){.sales-strip a:hover svg{transform:translateX(3px)}}
+.sales-strip a:focus-visible{outline:2px solid #fff;outline-offset:3px;border-radius:4px}
+@media(prefers-reduced-motion:reduce){.sales-strip a svg{transition:none}}
