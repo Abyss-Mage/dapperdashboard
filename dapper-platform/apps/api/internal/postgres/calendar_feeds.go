@@ -191,8 +191,15 @@ func (s *Store) CalendarFeedICS(ctx context.Context, token string) (string, erro
 		return "", err
 	}
 	from, to := time.Now().AddDate(0, 0, -30), time.Now().AddDate(0, 0, 180)
-	query := `SELECT b.id::text,b.service_name,b.status,b.booking_time,COALESCE(r.occupied_end,b.booking_time+interval '1 hour'),c.name,b.service_address
- FROM bookings b JOIN customers c ON (c.organization_id,c.location_id,c.id)=(b.organization_id,b.location_id,b.customer_id)
+	// Each event carries what the team needs on the phone (owner, error404 #162): customer, number, add-ons, payment, place, time, total.
+	query := `SELECT b.id::text,b.service_name,b.status,b.booking_time,COALESCE(r.occupied_end,b.booking_time+interval '1 hour'),c.name,b.service_address,
+ COALESCE(c.phone,''),COALESCE(c.email,''),COALESCE(b.number::text,''),COALESCE(b.notes,''),
+ COALESCE((SELECT string_agg(a->>'name', ', ') FROM jsonb_array_elements(CASE WHEN jsonb_typeof(b.addons)='array' THEN b.addons ELSE '[]'::jsonb END) a),''),
+ COALESCE(inv.total_cents,lb.total_cents,0),COALESCE(inv.paid_cents,lb.paid_cents,0),
+ COALESCE((SELECT p.method FROM payments p WHERE p.invoice_id=inv.id AND p.status IN ('completed','refunded') ORDER BY p.recorded_at DESC LIMIT 1),lb.payment_method,'')
+ FROM bookings b
+ LEFT JOIN LATERAL (SELECT i.id,i.total_cents,i.paid_cents FROM invoices i WHERE i.booking_id=b.id AND i.status<>'void' ORDER BY i.created_at DESC LIMIT 1) inv ON true
+ LEFT JOIN legacy_booking_billing lb ON lb.booking_id=b.id AND lb.status<>'void' JOIN customers c ON (c.organization_id,c.location_id,c.id)=(b.organization_id,b.location_id,b.customer_id)
  LEFT JOIN capacity_reservations r ON r.id=b.reservation_id AND r.cancelled_at IS NULL`
 	args := []any{org, loc, from, to}
 	if kind == "employee" {
@@ -227,9 +234,10 @@ func (s *Store) CalendarFeedICS(ctx context.Context, token string) (string, erro
 	line("X-PUBLISHED-TTL:PT5M")
 	stamp := time.Now().UTC().Format("20060102T150405Z")
 	for rows.Next() {
-		var id, service, status, customer, address string
+		var id, service, status, customer, address, phone, email, number, notes, addons, method string
 		var start, end time.Time
-		if err = rows.Scan(&id, &service, &status, &start, &end, &customer, &address); err != nil {
+		var total, paid int64
+		if err = rows.Scan(&id, &service, &status, &start, &end, &customer, &address, &phone, &email, &number, &notes, &addons, &total, &paid, &method); err != nil {
 			return "", err
 		}
 		if service == "" {
@@ -244,7 +252,7 @@ func (s *Store) CalendarFeedICS(ctx context.Context, token string) (string, erro
 		if address != "" {
 			line("LOCATION:" + icsEscape(address))
 		}
-		line("DESCRIPTION:" + icsEscape("Status: "+status))
+		line("DESCRIPTION:" + icsEscape(feedDetails(start, number, customer, phone, email, addons, address, notes, total, paid, method, status)))
 		line("END:VEVENT")
 	}
 	if err = rows.Err(); err != nil {
@@ -252,4 +260,53 @@ func (s *Store) CalendarFeedICS(ctx context.Context, token string) (string, erro
 	}
 	line("END:VCALENDAR")
 	return out.String(), nil
+}
+
+// feedDetails is the text under a calendar event: one fact per line, in Toronto time.
+func feedDetails(start time.Time, number, customer, phone, email, addons, address, notes string, total, paid int64, method, status string) string {
+	zone, err := time.LoadLocation("America/Toronto")
+	if err != nil {
+		zone = time.UTC
+	}
+	lines := []string{"Booking #" + number, "When: " + start.In(zone).Format("Mon, Jan 2, 2006 at 3:04 PM"), "Customer: " + customer}
+	if number == "" {
+		lines[0] = "Booking"
+	}
+	if phone != "" {
+		lines = append(lines, "Phone: "+phone)
+	}
+	if email != "" {
+		lines = append(lines, "Email: "+email)
+	}
+	if addons == "" {
+		addons = "None"
+	}
+	lines = append(lines, "Add-ons: "+addons, "Where: "+feedPlace(address, notes))
+	pay := "Pay at the appointment"
+	how := map[string]string{"square_card": "online by card", "square_terminal": "by card (reader)", "cash": "in cash", "bank_transfer": "by e-transfer", "cheque": "by cheque"}[method]
+	switch {
+	case total > 0 && paid >= total:
+		pay = strings.TrimSpace("Paid " + how)
+	case paid > 0:
+		pay = strings.TrimSpace("Part paid "+how) + ", " + emailMoney(total-paid) + " due"
+	}
+	lines = append(lines, "Payment: "+pay)
+	if total > 0 {
+		lines = append(lines, "Total: "+emailMoney(total))
+	}
+	lines = append(lines, "Status: "+status)
+	return strings.Join(lines, "\n")
+}
+
+// feedPlace is the shop, mobile or valet line, from the "Service place:" note the booking steps write, else from the address.
+func feedPlace(address, notes string) string {
+	for _, l := range strings.Split(notes, "\n") {
+		if v, ok := strings.CutPrefix(strings.TrimSpace(l), "Service place:"); ok && strings.TrimSpace(v) != "" {
+			return strings.TrimSpace(v)
+		}
+	}
+	if strings.TrimSpace(address) != "" {
+		return "Mobile: " + address
+	}
+	return "At the shop"
 }

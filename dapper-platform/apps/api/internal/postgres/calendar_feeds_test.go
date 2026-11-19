@@ -107,6 +107,13 @@ func TestCalendarFeeds(t *testing.T) {
 			t.Fatalf("calendar is missing %q:\n%s", want, ics)
 		}
 	}
+	// error404 #162: the event notes carry the booking's details (long lines are folded in the file, so read them unfolded).
+	flat := strings.ReplaceAll(ics, "\r\n ", "")
+	for _, want := range []string{`Customer: Synthetic\, Customer`, "Add-ons: None", `Where: Mobile: 12 Test Road\, Peterborough`, "Payment: Pay at the appointment", "When: "} {
+		if !strings.Contains(flat, want) {
+			t.Fatalf("event details missing %q:\n%s", want, flat)
+		}
+	}
 	if strings.Contains(ics, "Synthetic service 1") {
 		t.Fatal("a cancelled booking is in the calendar")
 	}
