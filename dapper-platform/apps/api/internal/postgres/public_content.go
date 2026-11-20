@@ -66,6 +66,8 @@ type SiteBanner struct {
 type PublishedContent struct {
 	Site      PublicSite           `json:"site"`
 	Banner    *SiteBanner          `json:"banner,omitempty"`
+	// QuoteServices is the contact form's "Service to quote" list; empty = the website's own list (error404 #163).
+	QuoteServices []string `json:"quoteServices"`
 	SEO       SiteSEO              `json:"seo"`
 	Upsells   []PackageUpsell      `json:"upsells"`
 	Services  []ServicePublication `json:"services"`
@@ -142,6 +144,49 @@ func (s *Store) SaveSiteBanner(ctx context.Context, scope Scope, b SiteBanner) (
 		return SiteBanner{}, err
 	}
 	return b, tx.Commit(ctx)
+}
+
+// SaveQuoteServices stores the contact form's quote list for the location's website: up to 30 names of 2 to 60 characters, blank
+// lines and repeats dropped. An empty list brings back the website's own list.
+func (s *Store) SaveQuoteServices(ctx context.Context, scope Scope, names []string) ([]string, error) {
+	out, seen := []string{}, map[string]bool{}
+	for _, n := range names {
+		n = strings.TrimSpace(n)
+		if n == "" || seen[strings.ToLower(n)] {
+			continue
+		}
+		if !validContentText(n, 2, 60) {
+			return nil, ErrContentInput
+		}
+		seen[strings.ToLower(n)] = true
+		out = append(out, n)
+	}
+	if len(out) > 30 {
+		return nil, ErrContentInput
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+	if err = authorizeTransaction(ctx, tx, scope, "content.manage"); err != nil {
+		return nil, err
+	}
+	data, err := json.Marshal(out)
+	if err != nil {
+		return nil, err
+	}
+	tag, err := tx.Exec(ctx, `UPDATE public_sites SET quote_services=$3 WHERE organization_id=$1 AND location_id=$2`, scope.OrganizationID, scope.LocationID, data)
+	if err != nil {
+		return nil, err
+	}
+	if tag.RowsAffected() == 0 {
+		return nil, ErrContentNotFound
+	}
+	if err = contentAudit(ctx, tx, scope, "site.quote_services.revised", scope.LocationID, out); err != nil {
+		return nil, err
+	}
+	return out, tx.Commit(ctx)
 }
 
 func (s *Store) SavePublicSite(ctx context.Context, scope Scope, input PublicSite) (PublicSite, error) {
@@ -274,7 +319,8 @@ func (s *Store) PublicContent(ctx context.Context, slug string) (PublishedConten
 func readSiteContent(ctx context.Context, tx pgx.Tx, org, loc string, public bool) (PublishedContent, error) {
 	out := PublishedContent{Services: []ServicePublication{}, Portfolio: []PortfolioImage{}, Dealers: []WebsiteDealer{}, Upsells: []PackageUpsell{}, Limit: 200}
 	var banner SiteBanner
-	err := tx.QueryRow(ctx, `SELECT slug,name,published,version,banner,seo FROM public_sites WHERE organization_id=$1 AND location_id=$2`, org, loc).Scan(&out.Site.Slug, &out.Site.Name, &out.Site.Published, &out.Site.Version, &banner, &out.SEO)
+	out.QuoteServices = []string{}
+	err := tx.QueryRow(ctx, `SELECT slug,name,published,version,banner,seo,quote_services FROM public_sites WHERE organization_id=$1 AND location_id=$2`, org, loc).Scan(&out.Site.Slug, &out.Site.Name, &out.Site.Published, &out.Site.Version, &banner, &out.SEO, &out.QuoteServices)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return out, nil
 	}

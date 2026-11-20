@@ -31,7 +31,8 @@ function Packages({ category, name }: { category: string; name: string }) {
   const types = [...new Set(category === 'ppf' || sized ? items.map((s) => typeOf(s.name)).filter(Boolean) : [])]
     .sort((a, b) => (sized ? order.indexOf(sizeOf(a)) - order.indexOf(sizeOf(b)) : 0));
   const active = types.includes(tab) ? tab : types[0] ?? '';
-  const shown = types.length ? items.filter((s) => typeOf(s.name) === active) : items;
+  // A package with no vehicle in its name ("Coloured PPF & Wraps") is for every vehicle, so it shows under each tab (error404 #164).
+  const shown = types.length ? items.filter((s) => typeOf(s.name) === active || !typeOf(s.name)) : items;
   // Add-ons that belong to any package on this page, once each by name.
   const ids = new Set(items.map((s) => s.serviceId));
   const extras = [...new Map(addons.filter((a) => a.parentIds.some((p) => ids.has(p))).map((a) => [a.name.trim().toLowerCase(), a])).values()].sort((a, b) => a.name.localeCompare(b.name));
@@ -66,7 +67,10 @@ function Packages({ category, name }: { category: string; name: string }) {
               <div className="v-row__inc">
                 {inc.list.length ? <><small>What’s included</small><ul>{inc.list.map((x) => <li key={x}><Check size={16} strokeWidth={3} aria-hidden="true" />{x}</li>)}</ul></> : inc.text ? <p>{inc.text}</p> : null}
               </div>
-              <a className="v-row__book" href={'/book-appointment?package=' + encodeURIComponent(s.serviceId)}>Book now<ArrowRight size={18} aria-hidden="true" /></a>
+              {price[s.serviceId] !== undefined
+                ? <a className="v-row__book" href={'/book-appointment?package=' + encodeURIComponent(s.serviceId)}>Book now<ArrowRight size={18} aria-hidden="true" /></a>
+                // No price set: it cannot be booked online, so it asks for a quote with this package already chosen (error404 #165).
+                : <a className="v-row__book" href={'/contact-us?service=' + encodeURIComponent(s.name.replace(/^.*? - /, '')) + '#enquiry'}>Get a quote<ArrowRight size={18} aria-hidden="true" /></a>}
               </div>
             </li>
           );

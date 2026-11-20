@@ -148,6 +148,16 @@ func TestPublicContentPersistence(t *testing.T) {
 	if managed, err := s.ContentForManagement(ctx, scope); err != nil || managed.Banner == nil || managed.Banner.EndsAt == nil {
 		t.Fatal("the dashboard lost the ended banner", err)
 	}
+	// error404 #163: the contact form's quote list is edited from the dashboard; blanks and repeats are dropped.
+	if _, err = s.SaveQuoteServices(ctx, scope, []string{"x"}); !errors.Is(err, ErrContentInput) {
+		t.Fatal("a one-letter quote service was accepted", err)
+	}
+	if saved, e := s.SaveQuoteServices(ctx, scope, []string{" Coloured PPF & Wraps ", "", "Detailing", "detailing"}); e != nil || len(saved) != 2 {
+		t.Fatal("quote list not saved as given", saved, e)
+	}
+	if public, err = s.PublicContent(ctx, site.Slug); err != nil || len(public.QuoteServices) != 2 || public.QuoteServices[0] != "Coloured PPF & Wraps" {
+		t.Fatal("quote list missing from the website", public.QuoteServices, err)
+	}
 	// Search settings (owner 2026-11-13): access.manage only, checked input, empty page entries dropped, served to the website.
 	seo := SiteSEO{Title: "Synthetic detailing", Description: "Synthetic description", Keywords: "detailing, ceramic", GoogleVerification: "abc_123-XYZ",
 		Pages: map[string]PageSEO{"/services": {Title: "Synthetic services", Hidden: true}, "/about-us": {}}}

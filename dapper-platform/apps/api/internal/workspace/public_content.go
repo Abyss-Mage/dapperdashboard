@@ -212,6 +212,28 @@ func registerPublicContentRoutes(mux *http.ServeMux, store *postgres.Store) {
 		}
 		reply(w, 200, data)
 	})
+	mux.HandleFunc("PUT "+base+"/quote-services", func(w http.ResponseWriter, r *http.Request) {
+		scope, ok := scopeFor(w, r, "content.manage")
+		if !ok {
+			return
+		}
+		var input struct {
+			Services []string `json:"services"`
+		}
+		if !decode(w, r, &input) {
+			return
+		}
+		data, err := store.SaveQuoteServices(r.Context(), scope, input.Services)
+		if errors.Is(err, postgres.ErrContentInput) {
+			reply(w, 422, map[string]string{"error": "Write each service on its own line, 2 to 60 characters, at most 30 services."})
+			return
+		}
+		if err != nil {
+			contentFailure(w, err)
+			return
+		}
+		reply(w, 200, map[string]any{"services": data})
+	})
 	mux.HandleFunc("PUT "+base+"/services/{service}", func(w http.ResponseWriter, r *http.Request) {
 		scope, ok := scopeFor(w, r, "catalogue.manage")
 		if !ok {

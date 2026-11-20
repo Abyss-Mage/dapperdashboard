@@ -6,6 +6,7 @@ import { ArrowRight, Ellipsis, Tag } from 'lucide-react';
 import { weekHours } from '../content';
 import { contact } from '../dapper';
 import { gsap, ScrollTrigger, SplitText, useGSAP } from '../_components/gsapContact';
+import { SITE_SLUG } from '../_components/site';
 
 /* Contact: the owner-approved comps, built in Dapper's own words. The enquiry form saves to the dashboard inbox (an email
    draft is the fallback). Motion is the GSAP demo hub's: split-text headlines, an image mask that slides against its photo,
@@ -44,6 +45,21 @@ export default function ContactPage() {
   const placed = useRef(false);
   const [topic, setTopic] = useState<Topic>('quote');
   const [service, setService] = useState('');
+  // The "Service to quote" list set in the dashboard (error404 #163), else the built-in one. A "Get a quote" link from a package page
+  // arrives with ?service= and that service is chosen (and added to the list if it is not on it) (#165).
+  const [options, setOptions] = useState<string[]>(serviceOptions);
+  const [asked, setAsked] = useState('');
+  useEffect(() => {
+    const want = new URLSearchParams(location.search).get('service')?.trim().slice(0, 80) ?? '';
+    if (want) { setAsked(want); setTopic('quote'); setService(want); }
+    let live = true;
+    fetch('/api/v1/public/sites/' + SITE_SLUG, { cache: 'no-store', headers: { Accept: 'application/json' } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { quoteServices?: string[] } | null) => { if (live && d?.quoteServices?.length) setOptions(d.quoteServices); })
+      .catch(() => {});
+    return () => { live = false; };
+  }, []);
+  const choices = asked && !options.some((o) => o.toLowerCase() === asked.toLowerCase()) ? [asked, ...options] : options;
   const [state, setState] = useState<Send>('idle');
   const [error, setError] = useState('');
   const [open, setOpen] = useState<number | null>(0);
@@ -232,7 +248,7 @@ export default function ContactPage() {
                 <label className="c-field"><span>Service to quote <i aria-hidden="true">*</i></span>
                   <select name="service" required value={service} onChange={(e) => setService(e.target.value)}>
                     <option value="" disabled>Choose a service</option>
-                    {serviceOptions.map((o) => <option key={o}>{o}</option>)}
+                    {choices.map((o) => <option key={o}>{o}</option>)}
                   </select>
                 </label>
               )}

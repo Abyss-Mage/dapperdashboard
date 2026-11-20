@@ -19,6 +19,7 @@ import InvoiceTemplateEditor from '../workspace/InvoiceTemplateEditor';
 import WebsiteTrackingEditor from './WebsiteTrackingEditor';
 import InvoiceIssuerEditor from '../workspace/InvoiceIssuerEditor';
 import Enquiries from './Enquiries';
+import QuoteServices from './QuoteServices';
 import SalesBanner from './SalesBanner';
 import DealerInvoices from './DealerInvoices';
 import UpgradeOffers from './UpgradeOffers';
@@ -606,7 +607,7 @@ export default function OwnerDashboardClient() {
           {hasTabPermission && activeTab === 'invoice-template' && currentOrg && <InvoiceIssuerEditor key={'issuer-' + currentOrg.id} organizationId={currentOrg.id} revision={accessRevision} />}
           {hasTabPermission && activeTab === 'invoice-template' && currentOrg && <InvoiceTemplateEditor key={'template-' + currentOrg.id} organizationId={currentOrg.id} revision={accessRevision} locationId={scope?.locationId} locationName={scope?.locationName} />}
           {hasTabPermission && activeTab === 'messaging' && currentOrg && <MessagingSettings key={'messaging-' + currentOrg.id} organizationId={currentOrg.id} revision={accessRevision} />}
-          {hasTabPermission && activeTab === 'sales-banner' && scope && <SalesBanner key={'banner-' + base} base={base} />}
+          {hasTabPermission && activeTab === 'sales-banner' && scope && <><SalesBanner key={'banner-' + base} base={base} /><QuoteServices key={'quote-' + base} base={base} /></>}
           {hasTabPermission && activeTab === 'website-images' && scope && <WebsiteImages key={'images-' + base} base={base} franchiseName={scope.locationName} franchiseCode="" />}
           {hasTabPermission && activeTab === 'scripts' && currentOrg && <CustomScripts key={'scripts-' + currentOrg.id} organizationId={currentOrg.id} revision={accessRevision} />}
           {hasTabPermission && activeTab === 'tracking' && currentOrg && <WebsiteTrackingEditor key={'tracking-' + currentOrg.id} organizationId={currentOrg.id} revision={accessRevision} />}
