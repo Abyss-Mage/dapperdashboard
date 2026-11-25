@@ -26,7 +26,7 @@ export const legal: Record<'privacy-policy' | 'terms-conditions' | 'refund-and-c
             "p": "Email:\ninfo@dapperdetailing.ca\ndetailingdapper@gmail.com"
           },
           {
-            "p": "Phone:\n+1 (705) 977-6217"
+            "p": "Phone:\n+1 (705) 977-1007"
           },
           {
             "p": "Website:\nhttps://dapperdetailing.ca/"
@@ -327,7 +327,7 @@ export const legal: Record<'privacy-policy' | 'terms-conditions' | 'refund-and-c
             "p": "Email:\ninfo@dapperdetailing.ca\ndetailingdapper@gmail.com"
           },
           {
-            "p": "Phone:\n+1 (705) 977-6217"
+            "p": "Phone:\n+1 (705) 977-1007"
           }
         ]
       }
@@ -354,7 +354,7 @@ export const legal: Record<'privacy-policy' | 'terms-conditions' | 'refund-and-c
             "p": "Email:\ninfo@dapperdetailing.ca\ndetailingdapper@gmail.com"
           },
           {
-            "p": "Phone:\n+1 (705) 977-6217"
+            "p": "Phone:\n+1 (705) 977-1007"
           },
           {
             "p": "Website:\nhttps://dapperdetailing.ca/"
@@ -499,7 +499,7 @@ export const legal: Record<'privacy-policy' | 'terms-conditions' | 'refund-and-c
             "p": "Email: info@dapperdetailing.ca"
           },
           {
-            "p": "Phone: +1 (705) 977-6217"
+            "p": "Phone: +1 (705) 977-1007"
           },
           {
             "p": "Consent\nYour consent to receive SMS messages is not a condition of purchasing any goods or services."
@@ -730,7 +730,7 @@ export const legal: Record<'privacy-policy' | 'terms-conditions' | 'refund-and-c
             "p": "Customer Support Email:\ninfo@dapperdetailing.ca\nThis satisfies the requirement for a customer support contact email."
           },
           {
-            "p": "Phone:\n+1 (705) 977-6217"
+            "p": "Phone:\n+1 (705) 977-1007"
           }
         ]
       }
@@ -1004,7 +1004,7 @@ export const legal: Record<'privacy-policy' | 'terms-conditions' | 'refund-and-c
             "p": "Email:\ninfo@dapperdetailing.ca\ndetailingdapper@gmail.com"
           },
           {
-            "p": "Phone:\n+1 (705) 977-6217"
+            "p": "Phone:\n+1 (705) 977-1007"
           },
           {
             "p": "Website:\nhttps://dapperdetailing.ca/"

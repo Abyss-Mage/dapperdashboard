@@ -44,8 +44,10 @@ export default function BookingRescheduler({base, booking, onClose, onSaved}: {b
   useEffect(() => {const mine = rules.filter(item => item.resourceId === resource); if (resource && !rule && mine.length === 1) setRule(mine[0].id);}, [rules, resource, rule]);
   const selectedRule = rules.find(item => item.id === rule && item.resourceId === resource);
   const zone = resources.find(item => item.id === resource)?.timezone ?? 'America/Toronto';
-  // With no service timing rule to follow, the booking is moved by hand: it gives its calendar slot back and keeps the new time.
-  const detached = !loading && !rules.length;
+  // With no service timing rule to follow (or no bay for it), the booking is moved by hand: it gives its calendar slot back and keeps
+  // the new time. Staff can also choose this themselves, so the popup never leaves them unable to pick a date (error404 #168).
+  const [byHand, setByHand] = useState(false);
+  const detached = !loading && (byHand || !rules.length || !usable.length);
   // With a service timing rule the new time is chosen from the times the calendar can actually offer that day, so a time outside
   // opening hours or on a full slot cannot be picked.
   const [day, setDay] = useState(''), [slots, setSlots] = useState<string[] | null>(null), [picked, setPicked] = useState('');
@@ -101,6 +103,7 @@ export default function BookingRescheduler({base, booking, onClose, onSaved}: {b
             <label>New day<DatePicker value={day} disabled={busy || !selectedRule} onChange={event => setDay(event.target.value)} aria-label="New day"/></label>
             {day && slots === null && <p>Loading the times for that day…</p>}
             {day && slots !== null && slots.length === 0 && <p>No times are open on that day. Pick another day.</p>}
+            <button type="button" className="secondary" disabled={busy} onClick={() => { setByHand(true); setError(''); }} style={{justifySelf: 'start'}}>Pick any date and time instead</button>
             {slots !== null && slots.length > 0 && <div role="group" aria-label="Available times" style={{display:'flex',flexWrap:'wrap',gap:'.4rem'}}>
               {slots.map(t => <button key={t} type="button" className={picked === t ? 'primary' : 'secondary'} aria-pressed={picked === t} disabled={busy} onClick={() => setPicked(t)} style={{minHeight:40,padding:'.35rem .8rem'}}>{slotLabel(t)}</button>)}
             </div>}

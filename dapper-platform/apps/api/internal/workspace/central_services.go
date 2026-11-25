@@ -77,6 +77,8 @@ func registerCentralServiceRoutes(mux *http.ServeMux, store *postgres.Store) {
 				// The sale, like the price: absent = leave unchanged, null = no sale (error404 #133).
 				Sale     json.RawMessage `json:"salePriceCents"`
 				SaleEnds *string         `json:"saleEndsOn"`
+				// The booking category (#166): absent = leave unchanged, "" = from the name.
+				Group *string `json:"bookingGroup"`
 			}
 			if !decode(w, r, &input) {
 				return
@@ -160,6 +162,8 @@ func registerCentralServiceRoutes(mux *http.ServeMux, store *postgres.Store) {
 				SaleSet:         sale.set,
 				SalePriceCents:  sale.cents,
 				SaleEndsOn:      sale.ends,
+				GroupSet:        input.Group != nil,
+				BookingGroup:    strings.TrimSpace(deref(input.Group)),
 			})
 			if err != nil {
 				centralServiceFailure(w, err)

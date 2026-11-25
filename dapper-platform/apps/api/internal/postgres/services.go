@@ -36,16 +36,21 @@ type CatalogService struct {
 	// KeepPrice leaves the stored price alone on an edit (the save did not include a price), so a bulk or text edit that only
 	// changes names or times cannot erase a franchise's own prices (error404 #150).
 	KeepPrice bool `json:"-"`
+	// BookingGroup is the category the service is booked under (empty = from its name); a linked copy shows the central one (#166).
+	BookingGroup string `json:"bookingGroup"`
+	// GroupSet says whether BookingGroup is part of this save; when false an edit keeps the stored one.
+	GroupSet bool `json:"-"`
 }
 
 const serviceColumns = `id::text,name,kind,parent_id::text,archived,version,central_service_id::text,price_cents,duration_minutes,sale_price_cents,sale_ends_on::text,` +
 	// The price today, from this row's own values (the row just saved, in RETURNING) or its central service's sale.
 	`CASE WHEN central_service_id IS NULL THEN sale_or_price(catalog_services.price_cents,catalog_services.sale_price_cents,catalog_services.sale_ends_on)
-	 ELSE coalesce((SELECT sale_or_price(catalog_services.price_cents,cc.sale_price_cents,cc.sale_ends_on) FROM central_catalog_services cc WHERE cc.id=catalog_services.central_service_id),catalog_services.price_cents) END`
+	 ELSE coalesce((SELECT sale_or_price(catalog_services.price_cents,cc.sale_price_cents,cc.sale_ends_on) FROM central_catalog_services cc WHERE cc.id=catalog_services.central_service_id),catalog_services.price_cents) END,` +
+	`COALESCE((SELECT cc.booking_group FROM central_catalog_services cc WHERE cc.id=catalog_services.central_service_id),catalog_services.booking_group)`
 
 func scanService(row pgx.Row) (CatalogService, error) {
 	var service CatalogService
-	err := row.Scan(&service.ID, &service.Name, &service.Kind, &service.ParentID, &service.Archived, &service.Version, &service.CentralServiceID, &service.PriceCents, &service.DurationMinutes, &service.SalePriceCents, &service.SaleEndsOn, &service.NowPriceCents)
+	err := row.Scan(&service.ID, &service.Name, &service.Kind, &service.ParentID, &service.Archived, &service.Version, &service.CentralServiceID, &service.PriceCents, &service.DurationMinutes, &service.SalePriceCents, &service.SaleEndsOn, &service.NowPriceCents, &service.BookingGroup)
 	return service, err
 }
 func (s *Store) Services(ctx context.Context, scope Scope) ([]CatalogService, error) {
@@ -107,6 +112,9 @@ func (s *Store) SaveService(ctx context.Context, scope Scope, input CatalogServi
 		return CatalogService{}, ErrServiceInput
 	}
 	if !validSaleEnd(input.SaleEndsOn) {
+		return CatalogService{}, ErrServiceInput
+	}
+	if input.BookingGroup = strings.TrimSpace(input.BookingGroup); !validBookingGroup(input.BookingGroup) {
 		return CatalogService{}, ErrServiceInput
 	}
 	if input.Kind != "main" && input.Kind != "addon" || input.Kind == "main" && (input.ParentID != nil || len(input.ParentIDs) > 0) {
@@ -176,11 +184,12 @@ func (s *Store) SaveService(ctx context.Context, scope Scope, input CatalogServi
 	}
 	var service CatalogService
 	if input.ID == "" {
-		service, err = scanService(tx.QueryRow(ctx, `INSERT INTO catalog_services(organization_id,location_id,name,kind,parent_id,duration_minutes,price_cents,sale_price_cents,sale_ends_on) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9::date) RETURNING `+serviceColumns, scope.OrganizationID, scope.LocationID, input.Name, input.Kind, input.ParentID, input.DurationMinutes, input.PriceCents, input.SalePriceCents, input.SaleEndsOn))
+		service, err = scanService(tx.QueryRow(ctx, `INSERT INTO catalog_services(organization_id,location_id,name,kind,parent_id,duration_minutes,price_cents,sale_price_cents,sale_ends_on,booking_group) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9::date,$10) RETURNING `+serviceColumns, scope.OrganizationID, scope.LocationID, input.Name, input.Kind, input.ParentID, input.DurationMinutes, input.PriceCents, input.SalePriceCents, input.SaleEndsOn, input.BookingGroup))
 	} else {
 		service, err = scanService(tx.QueryRow(ctx, `UPDATE catalog_services SET name=$4,kind=$5,parent_id=$6,duration_minutes=$7,price_cents=CASE WHEN $12 THEN price_cents ELSE $8 END,
-		 sale_price_cents=CASE WHEN $9 THEN $10 ELSE sale_price_cents END,sale_ends_on=CASE WHEN $9 THEN $11::date ELSE sale_ends_on END,version=version+1
-		 WHERE organization_id=$1 AND location_id=$2 AND id=$3 RETURNING `+serviceColumns, scope.OrganizationID, scope.LocationID, input.ID, input.Name, input.Kind, input.ParentID, input.DurationMinutes, input.PriceCents, input.SaleSet, input.SalePriceCents, input.SaleEndsOn, input.KeepPrice))
+		 sale_price_cents=CASE WHEN $9 THEN $10 ELSE sale_price_cents END,sale_ends_on=CASE WHEN $9 THEN $11::date ELSE sale_ends_on END,
+		 booking_group=CASE WHEN $13 THEN $14 ELSE booking_group END,version=version+1
+		 WHERE organization_id=$1 AND location_id=$2 AND id=$3 RETURNING `+serviceColumns, scope.OrganizationID, scope.LocationID, input.ID, input.Name, input.Kind, input.ParentID, input.DurationMinutes, input.PriceCents, input.SaleSet, input.SalePriceCents, input.SaleEndsOn, input.KeepPrice, input.GroupSet, input.BookingGroup))
 	}
 	if err != nil {
 		return CatalogService{}, err
@@ -414,4 +423,10 @@ func archiveOnlyLocalAddons(ctx context.Context, tx pgx.Tx, scope Scope, main st
 		}
 	}
 	return nil
+}
+
+// validBookingGroup: empty (worked out from the name) or 2 to 40 characters.
+func validBookingGroup(g string) bool {
+	n := utf8.RuneCountInString(g)
+	return n == 0 || n >= 2 && n <= 40 && !strings.ContainsAny(g, "\r\n<>")
 }

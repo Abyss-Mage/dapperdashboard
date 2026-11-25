@@ -86,6 +86,8 @@ func registerServiceRoutes(mux *http.ServeMux, store *postgres.Store) {
 				// The sale (error404 #133): absent = leave unchanged, null = no sale.
 				Sale     json.RawMessage `json:"salePriceCents"`
 				SaleEnds *string         `json:"saleEndsOn"`
+				// The booking category (#166): absent = leave unchanged, "" = from the name.
+				Group *string `json:"bookingGroup"`
 			}
 			if !decode(w, r, &input) {
 				return
@@ -129,7 +131,7 @@ func registerServiceRoutes(mux *http.ServeMux, store *postgres.Store) {
 				}
 				price = &cents
 			}
-			service, err := store.SaveService(r.Context(), scope, postgres.CatalogService{KeepPrice: input.Price == nil, SaleSet: sale.set, SalePriceCents: sale.cents, SaleEndsOn: sale.ends, ID: id, Name: input.Name, Kind: input.Kind, ParentID: input.ParentID, ParentIDs: input.ParentIDs, Version: input.Version, DurationMinutes: input.DurationMinutes, PriceCents: price})
+			service, err := store.SaveService(r.Context(), scope, postgres.CatalogService{GroupSet: input.Group != nil, BookingGroup: deref(input.Group), KeepPrice: input.Price == nil, SaleSet: sale.set, SalePriceCents: sale.cents, SaleEndsOn: sale.ends, ID: id, Name: input.Name, Kind: input.Kind, ParentID: input.ParentID, ParentIDs: input.ParentIDs, Version: input.Version, DurationMinutes: input.DurationMinutes, PriceCents: price})
 			if err != nil {
 				serviceFailure(w, err)
 				return
@@ -198,4 +200,11 @@ func readSale(w http.ResponseWriter, raw json.RawMessage, ends *string) (saleInp
 		out.ends = &day
 	}
 	return out, true
+}
+
+func deref(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
 }

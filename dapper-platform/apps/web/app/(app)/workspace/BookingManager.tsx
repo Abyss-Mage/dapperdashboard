@@ -334,6 +334,29 @@ export default function BookingManager({
     } catch (e) { setMoveError(e instanceof Error ? e.message : 'The time could not be changed.'); }
     finally { setMoveBusy(false); }
   }
+  // Change an open booking's package and add-ons: an upgrade, another service, add-ons on or off (owner, error404 #167).
+  const [changing, setChanging] = useState<Booking | null>(null);
+  const [changeService, setChangeService] = useState(''), [changeAddons, setChangeAddons] = useState<string[]>([]);
+  const [changeBusy, setChangeBusy] = useState(false), [changeError, setChangeError] = useState('');
+  const offeredWith = (a: Service, main: string) => a.kind === 'addon' && (a.parentIds?.includes(main) ?? a.parentId === main);
+  function openChange(b: Booking) {
+    setChangeError(''); setChangeService(b.serviceId ?? ''); setChangeAddons(b.addons.map((a) => a.serviceId)); setChanging(b);
+    void loadChoices();
+  }
+  async function saveChange() {
+    if (!changing || !changeService) return;
+    setChangeBusy(true); setChangeError('');
+    try {
+      const addonIds = changeAddons.filter((id) => services.some((a) => a.id === id && offeredWith(a, changeService)));
+      const r = await fetch(`${base}/bookings/${changing.id}/service`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ serviceId: changeService, addonIds }) });
+      const body = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(body.error ?? 'The package could not be changed.');
+      setChanging(null);
+      setNotice(body.invoiceReplaced ? 'The package was changed. Its invoice was replaced by a new draft at the new prices: issue and send it again.' : 'The package was changed and its invoice updated.');
+      await Promise.all([loadBookings(), loadInvoices()]);
+    } catch (e) { setChangeError(e instanceof Error ? e.message : 'The package could not be changed.'); }
+    finally { setChangeBusy(false); }
+  }
   // A coupon can be put on an invoice that is still a draft (before it is issued), from the appointment.
   const [couponCodes, setCouponCodes] = useState<Record<string, string>>({});
   const [couponBusy, setCouponBusy] = useState(false);
@@ -774,6 +797,7 @@ export default function BookingManager({
                       {canManage && !final && b.status !== 'pending' && <button className="primary" disabled={busy} onClick={() => { setCompleteError(''); void loadInvoices().then(() => setCompleting(b)); }}>Mark completed</button>}
                       {canManage && !final && !b.reservationId && <button className="secondary" disabled={busy} onClick={() => { setMoveError(''); setMoveTime(''); setMoving(b); }}>Reschedule</button>}
                       {canManage && !final && b.reservationId && <button className="secondary" disabled={busy} onClick={(event) => { rescheduleTrigger.current = event.currentTarget; setReschedulingBooking(b); }}>Reschedule</button>}
+                      {canManage && !final && <button className="secondary" disabled={busy} onClick={() => openChange(b)}>Change package</button>}
                       {canManage && !final && <button className="secondary" disabled={busy} onClick={(event) => { cancellationTrigger.current = event.currentTarget; setCancellationReason(''); setError(''); setCancellingBooking(b); }}>Cancel</button>}
                       {canManage && <button className="secondary" disabled={busy} onClick={() => { setError(''); setErasing(b); }}>Delete</button>}
                       {canPurge && <button className="secondary" disabled={busy} onClick={() => { setPurgeNumber(''); setPurgeError(''); setPurging(b); }}>Delete permanently</button>}
@@ -822,6 +846,35 @@ export default function BookingManager({
             <div className="form-actions" style={{ justifyContent: 'flex-start' }}>
               <button className="primary" disabled={moveBusy || !moveTime} onClick={() => void saveMove()}>{moveBusy ? 'Saving…' : 'Move appointment'}</button>
               <button className="secondary" disabled={moveBusy} onClick={() => setMoving(null)}>Back</button>
+            </div>
+          </div>
+        </FormPopup>
+      )}
+      {changing && (
+        <FormPopup label="Change package" width={560} onClose={() => { if (!changeBusy) setChanging(null); }}>
+          <div style={{ display: 'grid', gap: 14 }}>
+            <h3 style={{ margin: 0 }}>Change package for {bookingRef(changing)}</h3>
+            <p style={{ margin: 0 }}>Now: {changing.serviceName}{changing.addons.length ? ` with ${changing.addons.map((a) => a.name).join(', ')}` : ''}. The time stays the same; an unpaid invoice is redone at the new prices.</p>
+            <label className="form-field">Package
+              <Select disabled={changeBusy} value={changeService} onChange={(e) => setChangeService(e.target.value)}>
+                <option value="">Choose a package</option>
+                {services.filter((s) => s.kind === 'main').map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </Select>
+            </label>
+            {changeService && services.some((a) => offeredWith(a, changeService)) && (
+              <fieldset disabled={changeBusy} style={{ margin: 0 }}>
+                <legend>Add-ons</legend>
+                {services.filter((a) => offeredWith(a, changeService)).map((a) => (
+                  <label key={a.id} className="form-field"><span>
+                    <input type="checkbox" checked={changeAddons.includes(a.id)} onChange={(e) => setChangeAddons((prev) => e.target.checked ? [...prev, a.id] : prev.filter((id) => id !== a.id))} /> {a.name}
+                  </span></label>
+                ))}
+              </fieldset>
+            )}
+            {changeError && <p role="alert" className="field-error">{changeError}</p>}
+            <div className="form-actions" style={{ justifyContent: 'flex-start' }}>
+              <button className="primary" disabled={changeBusy || !changeService} onClick={() => void saveChange()}>{changeBusy ? 'Saving…' : 'Save package'}</button>
+              <button className="secondary" disabled={changeBusy} onClick={() => setChanging(null)}>Back</button>
             </div>
           </div>
         </FormPopup>

@@ -215,7 +215,7 @@ func init() {
 		append([]string{"name", "number", "total", "due_date", "link"}, companyPlaceholders...))
 
 	// #73 Quotation, in the same card.
-	set("quotation_issued", cardEmail(`<p style="margin: 0 0 24px 0">{{name}}</p><p style="margin: 0">Your quotation {{reference}} for {{total}} is attached to this email.</p><p style="margin: 12px 0 0 0;font-size: 14px;color: #666">{{valid_until}}</p>`, "Call us to go ahead", "tel:+17059776217"),
+	set("quotation_issued", cardEmail(`<p style="margin: 0 0 24px 0">{{name}}</p><p style="margin: 0">Your quotation {{reference}} for {{total}} is attached to this email.</p><p style="margin: 12px 0 0 0;font-size: 14px;color: #666">{{valid_until}}</p>`, "Call us to go ahead", "tel:+17059771007"),
 		append([]string{"name", "reference", "total", "valid_until"}, companyPlaceholders...))
 
 	// #72 Password reset and team invitation, in the same card.

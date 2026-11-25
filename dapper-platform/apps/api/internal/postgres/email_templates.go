@@ -59,7 +59,7 @@ var emailDefaults = map[string]emailDefault{
 	"booking_confirmation": {
 		label:        "Booking: to the customer",
 		subject:      "Your Dapper Detailing booking is confirmed",
-		body:         "Hi {{name}},\n\nThank you for booking with Dapper Detailing Pros. Your booking is confirmed and we are holding your time.\n\nService: {{service}}\nWhen: {{when}}\nWhere: {{where}}\nTotal, tax included: {{total}}\nPayment: {{payment}}\n\n{{invoice}}\n\nIf anything needs to change, call us on (705) 977-6217.",
+		body:         "Hi {{name}},\n\nThank you for booking with Dapper Detailing Pros. Your booking is confirmed and we are holding your time.\n\nService: {{service}}\nWhen: {{when}}\nWhere: {{where}}\nTotal, tax included: {{total}}\nPayment: {{payment}}\n\n{{invoice}}\n\nIf anything needs to change, call us on (705) 977-1007.",
 		placeholders: []string{"name", "service", "when", "where", "total", "payment", "invoice"},
 	},
 	"booking_admin": {
@@ -83,32 +83,32 @@ var emailDefaults = map[string]emailDefault{
 	"booking_cancelled": {
 		label:        "Booking cancelled",
 		subject:      "Your Dapper Detailing booking was cancelled",
-		body:         "Hi {{name}},\n\nYour booking has been cancelled.\n\nService: {{service}}\nWas booked for: {{when}}\n\nIf this is a mistake, call us on (705) 977-6217.",
+		body:         "Hi {{name}},\n\nYour booking has been cancelled.\n\nService: {{service}}\nWas booked for: {{when}}\n\nIf this is a mistake, call us on (705) 977-1007.",
 		placeholders: []string{"name", "service", "when"},
 	},
 	"booking_completed": {
 		label:        "Booking completed",
 		subject:      "Thank you for choosing Dapper Detailing",
-		body:         "Hi {{name}},\n\nYour service is complete. Thank you for choosing Dapper Detailing Pros.\n\nService: {{service}}\nDone on: {{when}}\n\n{{invoice}}\n\nIf anything is not right, call us on (705) 977-6217 and we will make it right.",
+		body:         "Hi {{name}},\n\nYour service is complete. Thank you for choosing Dapper Detailing Pros.\n\nService: {{service}}\nDone on: {{when}}\n\n{{invoice}}\n\nIf anything is not right, call us on (705) 977-1007 and we will make it right.",
 		placeholders: []string{"name", "service", "when", "invoice"},
 	},
 	"quotation_issued": {
 		label:        "Quotation sent to customer",
 		subject:      "Your Dapper Detailing quotation {{reference}}",
-		body:         "Hi {{name}},\n\nYour quotation {{reference}} is attached.\n\nTotal: {{total}}\n{{valid_until}}\n\nTo go ahead or ask a question, call us on (705) 977-6217.",
+		body:         "Hi {{name}},\n\nYour quotation {{reference}} is attached.\n\nTotal: {{total}}\n{{valid_until}}\n\nTo go ahead or ask a question, call us on (705) 977-1007.",
 		placeholders: []string{"name", "reference", "total", "valid_until"},
 	},
 	"dealer_invoice_issued": {
 		label:        "Dealership invoice sent",
 		subject:      "Invoice {{number}} from Dapper Detailing Pros",
-		body:         "Hi {{name}},\n\nInvoice {{number}} is attached.\n\nTotal: {{total}}\nDue by: {{due_date}}\n\nView, download and pay it online (no sign-in needed): {{link}}\n\nQuestions about this invoice? Call us on (705) 977-6217.",
+		body:         "Hi {{name}},\n\nInvoice {{number}} is attached.\n\nTotal: {{total}}\nDue by: {{due_date}}\n\nView, download and pay it online (no sign-in needed): {{link}}\n\nQuestions about this invoice? Call us on (705) 977-1007.",
 		placeholders: []string{"name", "number", "total", "due_date", "link"},
 		needsLink:    true,
 	},
 	"booking_rescheduled": {
 		label:        "Booking rescheduled",
 		subject:      "Your Dapper Detailing booking has a new time",
-		body:         "Hi {{name}},\n\nYour booking has been moved to a new time.\n\nService: {{service}}\nNew time: {{when}}\nWhere: {{where}}\n\nIf this does not suit you, call us on (705) 977-6217.",
+		body:         "Hi {{name}},\n\nYour booking has been moved to a new time.\n\nService: {{service}}\nNew time: {{when}}\nWhere: {{where}}\n\nIf this does not suit you, call us on (705) 977-1007.",
 		placeholders: []string{"name", "service", "when", "where"},
 	},
 }

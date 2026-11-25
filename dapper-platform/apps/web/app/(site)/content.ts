@@ -30,8 +30,8 @@ export const timeline = [
 ];
 
 export const studio = {
-  phone: '(705) 977-6217',
-  tel: '+17059776217',
+  phone: '(705) 977-1007',
+  tel: '+17059771007',
   email: 'info@dapperdetailing.ca',
   street: '660 The Kingsway',
   city: 'Peterborough, ON K9J 7C8',

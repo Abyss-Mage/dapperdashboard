@@ -29,6 +29,8 @@ type CentralService struct {
 	// A sale (error404 #133): the sale price and its last day (YYYY-MM-DD, Toronto; nil = until removed).
 	SalePriceCents *int64  `json:"salePriceCents"`
 	SaleEndsOn     *string `json:"saleEndsOn"`
+	// BookingGroup is the category it is booked under (empty = from its name), error404 #166.
+	BookingGroup string `json:"bookingGroup"`
 }
 
 type CentralServiceInput struct {
@@ -49,13 +51,16 @@ type CentralServiceInput struct {
 	SaleSet        bool
 	SalePriceCents *int64
 	SaleEndsOn     *string
+	// GroupSet says whether BookingGroup is part of this save; when false an edit keeps the stored one.
+	GroupSet     bool
+	BookingGroup string
 }
 
-const centralServiceColumns = `id::text,name,kind,parent_id::text,archived,version,to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),price_cents,duration_minutes,sale_price_cents,sale_ends_on::text`
+const centralServiceColumns = `id::text,name,kind,parent_id::text,archived,version,to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),price_cents,duration_minutes,sale_price_cents,sale_ends_on::text,booking_group`
 
 func scanCentralService(row pgx.Row) (CentralService, error) {
 	var s CentralService
-	err := row.Scan(&s.ID, &s.Name, &s.Kind, &s.ParentID, &s.Archived, &s.Version, &s.CreatedAt, &s.PriceCents, &s.DurationMinutes, &s.SalePriceCents, &s.SaleEndsOn)
+	err := row.Scan(&s.ID, &s.Name, &s.Kind, &s.ParentID, &s.Archived, &s.Version, &s.CreatedAt, &s.PriceCents, &s.DurationMinutes, &s.SalePriceCents, &s.SaleEndsOn, &s.BookingGroup)
 	return s, err
 }
 
@@ -213,16 +218,17 @@ func (s *Store) SaveCentralService(ctx context.Context, actor, org string, input
 	var action string
 	if input.ID == "" {
 		action = "central_service.created"
-		svc, err = scanCentralService(tx.QueryRow(ctx, `INSERT INTO central_catalog_services(organization_id,name,kind,parent_id,price_cents,duration_minutes,sale_price_cents,sale_ends_on) VALUES($1,$2,$3,$4,$5,$6,$7,$8::date) RETURNING `+centralServiceColumns, org, input.Name, input.Kind, input.ParentID, input.PriceCents, input.DurationMinutes, input.SalePriceCents, input.SaleEndsOn))
+		svc, err = scanCentralService(tx.QueryRow(ctx, `INSERT INTO central_catalog_services(organization_id,name,kind,parent_id,price_cents,duration_minutes,sale_price_cents,sale_ends_on,booking_group) VALUES($1,$2,$3,$4,$5,$6,$7,$8::date,$9) RETURNING `+centralServiceColumns, org, input.Name, input.Kind, input.ParentID, input.PriceCents, input.DurationMinutes, input.SalePriceCents, input.SaleEndsOn, input.BookingGroup))
 	} else {
 		action = "central_service.updated"
 		svc, err = scanCentralService(tx.QueryRow(ctx, `UPDATE central_catalog_services SET name=$3,kind=$4,parent_id=$5,price_cents=CASE WHEN $6 THEN $7 ELSE price_cents END,duration_minutes=CASE WHEN $8 THEN $9 ELSE duration_minutes END,
-		 sale_price_cents=CASE WHEN $10 THEN $11 ELSE sale_price_cents END,sale_ends_on=CASE WHEN $10 THEN $12::date ELSE sale_ends_on END,version=version+1 WHERE organization_id=$1 AND id=$2 RETURNING `+centralServiceColumns, org, input.ID, input.Name, input.Kind, input.ParentID, input.PriceSet, input.PriceCents, input.DurationSet, input.DurationMinutes, input.SaleSet, input.SalePriceCents, input.SaleEndsOn))
+		 sale_price_cents=CASE WHEN $10 THEN $11 ELSE sale_price_cents END,sale_ends_on=CASE WHEN $10 THEN $12::date ELSE sale_ends_on END,
+		 booking_group=CASE WHEN $13 THEN $14 ELSE booking_group END,version=version+1 WHERE organization_id=$1 AND id=$2 RETURNING `+centralServiceColumns, org, input.ID, input.Name, input.Kind, input.ParentID, input.PriceSet, input.PriceCents, input.DurationSet, input.DurationMinutes, input.SaleSet, input.SalePriceCents, input.SaleEndsOn, input.GroupSet, input.BookingGroup))
 	}
 	if err != nil {
 		return CentralService{}, err
 	}
-	if !saleBelowPrice(svc.SalePriceCents, svc.PriceCents) || !validSaleEnd(input.SaleEndsOn) {
+	if !saleBelowPrice(svc.SalePriceCents, svc.PriceCents) || !validSaleEnd(input.SaleEndsOn) || !validBookingGroup(svc.BookingGroup) {
 		return CentralService{}, ErrCentralServiceInput
 	}
 	if svc.Kind == "addon" {

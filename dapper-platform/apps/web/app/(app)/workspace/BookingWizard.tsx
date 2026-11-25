@@ -12,7 +12,7 @@ import AnimatedNumber from '../motion/AnimatedNumber';
 
 export type WizardRule = { id: string; resourceId: string; serviceId: string; serviceName: string; addonIds: string[]; addons: { serviceId: string; name: string }[]; availableAddons?: { serviceId: string; name: string }[]; version: number; durationMinutes: number };
 // wasCents (website) or nowPriceCents (dashboard): a service on sale; the price charged is the sale price (error404 #149).
-export type WizardService = { id: string; name: string; kind: string; priceCents?: number | null; archived?: boolean; wasCents?: number; nowPriceCents?: number | null };
+export type WizardService = { id: string; name: string; kind: string; priceCents?: number | null; archived?: boolean; wasCents?: number; nowPriceCents?: number | null; bookingGroup?: string };
 export type WizardTaxes = { rates: { rateBasisPoints: number; active: boolean }[]; settings: { rounding: string | null } } | null;
 export type WizardAvailability = { timezone: string; durationMinutes: number; days: { date: string; starts: string[] }[] };
 export type WizardCustomer = { id?: string; name: string; email: string; phone: string };
@@ -219,8 +219,11 @@ export default function BookingWizard(p: WizardProps) {
     return present.has('other') ? [...out, { key: 'other', title: 'More services' }] : out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baseRules, p.categories]);
-  const groups = useMemo(() => GROUPS.filter((g) => baseRules.some((r) => groupOf(parsed.get(r.id)!.pack) === g)), [baseRules, parsed]);
-  const inGroup = useMemo(() => baseRules.filter((r) => (byCategory ? (p.categories!.of(r.serviceId) || 'other') === group : groupOf(parsed.get(r.id)!.pack) === group)), [baseRules, parsed, group, byCategory, p.categories]);
+  // The category a package is booked under: the one chosen on the service (owner, error404 #166), else worked out from its name.
+  const groupFor = useCallback((r: WizardRule) => services.get(r.serviceId)?.bookingGroup?.trim() || groupOf(parsed.get(r.id)!.pack), [services, parsed]);
+  // The four standard categories first, then any the owner named (e.g. "Tire services"), in the order first seen.
+  const groups = useMemo(() => { const present = baseRules.map(groupFor); return [...GROUPS.filter((g) => present.includes(g)), ...[...new Set(present)].filter((g) => !(GROUPS as readonly string[]).includes(g))]; }, [baseRules, groupFor]);
+  const inGroup = useMemo(() => baseRules.filter((r) => (byCategory ? (p.categories!.of(r.serviceId) || 'other') === group : groupFor(r) === group)), [baseRules, parsed, groupFor, group, byCategory, p.categories]);
   // Packages without a vehicle in their name (the ceramic packages, window tint) are for cars, so they open up the car types.
   const vehicles = useMemo(() => {
     if (byCategory) return [] as string[];
@@ -248,9 +251,9 @@ export default function BookingWizard(p: WizardProps) {
     const hit = pre.serviceId ? baseRules.find((r) => r.serviceId === pre.serviceId) : undefined;
     // A website category: coating, film and tint are services of their own; every other category is a vehicle to detail.
     const fromCategory = pre.category ? ({ ceramic: 'Ceramic coating', ppf: 'Paint protection film', 'window-tint': 'Window tinting' } as Record<string, string>)[pre.category] ?? 'Detailing' : '';
-    if (!hit && !(fromCategory && groups.includes(fromCategory as (typeof groups)[number]))) return;
+    if (!hit && !(fromCategory && groups.includes(fromCategory))) return;
     preApplied.current = true;
-    if (hit) { setGroup(groupOf(parsed.get(hit.id)!.pack)); setVehicle(parsed.get(hit.id)!.vehicle); setRuleId(hit.id); }
+    if (hit) { setGroup(groupFor(hit)); setVehicle(parsed.get(hit.id)!.vehicle); setRuleId(hit.id); }
     else setGroup(fromCategory);
     setStep(steps.indexOf(hit ? (customerOrder ? 'Extras' : 'Where') : 'Vehicle'));
     // eslint-disable-next-line react-hooks/exhaustive-deps

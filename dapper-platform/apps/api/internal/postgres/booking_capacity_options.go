@@ -65,7 +65,7 @@ func (s *Store) bookingCapacityChoices(ctx context.Context, scope Scope, actions
  FROM service_scheduling_rules sr JOIN catalog_services c ON (c.organization_id,c.location_id,c.id)=(sr.organization_id,sr.location_id,sr.service_id)
  WHERE sr.organization_id=$1 AND sr.location_id=$2 AND c.kind='main' AND NOT c.archived
  AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements_text(sr.addon_ids) aid(value) WHERE NOT EXISTS(SELECT 1 FROM catalog_services a WHERE a.organization_id=sr.organization_id AND a.location_id=sr.location_id AND a.id::text=aid.value AND a.kind='addon' AND catalog_addon_offered_with(a.id,sr.service_id) AND NOT a.archived))
- ORDER BY c.name,sr.id LIMIT 100`, scope.OrganizationID, scope.LocationID)
+ ORDER BY c.name,sr.id LIMIT 2000`, scope.OrganizationID, scope.LocationID) // 100 cut off the rules of services late in the alphabet (error404 #168)
 	if err != nil {
 		return result, err
 	}

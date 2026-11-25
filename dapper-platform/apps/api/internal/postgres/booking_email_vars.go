@@ -10,7 +10,7 @@ import (
 // The business details every email signs off with.
 const (
 	CompanyName    = "Dapper Detailing Pros"
-	CompanyPhone   = "+1 (705) 977-6217"
+	CompanyPhone   = "+1 (705) 977-1007"
 	CompanyWebsite = "https://dapperdetailing.ca"
 	CompanyEmail   = "info@dapperdetailing.ca"
 	ReviewLink     = "https://share.google/avpHywVq7AkU0QNas"

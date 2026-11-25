@@ -130,4 +130,31 @@ func verifyBookingReschedule(t *testing.T, ctx context.Context, s *Store, a, b S
 	if _, err = s.pool.Exec(ctx, `INSERT INTO location_grants(principal_id,organization_id,location_id,action) VALUES($1,$2,$3,'scheduling.release')`, a.ActorID, a.OrganizationID, a.LocationID); err != nil {
 		t.Fatal(err)
 	}
+
+	// error404 #167: changing the package keeps the time; the calendar hold follows the new package's length, and a package without a
+	// timing rule gives the hold back.
+	longer, err := s.SaveService(ctx, a, CatalogService{Name: "Synthetic longer package", Kind: "main"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = s.SaveSchedulingRule(ctx, a, SchedulingRule{ResourceID: resources[0].ID, ServiceID: longer.ID, DurationMinutes: 120, Units: 1}); err != nil {
+		t.Fatal(err)
+	}
+	held := create("synthetic-change-service-001", 0, start.Add(8*time.Hour))
+	upgraded, _, err := s.ChangeBookingService(ctx, a, held.ID, longer.ID, nil)
+	if err != nil || upgraded.ServiceName != "Synthetic longer package" || upgraded.ReservationID == nil || !upgraded.BookingTime.Equal(held.BookingTime) {
+		t.Fatalf("package change with a calendar hold failed: %+v %v", upgraded, err)
+	}
+	var occupiedEnd time.Time
+	if err = s.pool.QueryRow(ctx, `SELECT occupied_end FROM capacity_reservations WHERE id=$1`, *upgraded.ReservationID).Scan(&occupiedEnd); err != nil || !occupiedEnd.Equal(held.BookingTime.Add(2*time.Hour)) {
+		t.Fatal("the calendar hold did not follow the new package's length", occupiedEnd, err)
+	}
+	plain, err := s.SaveService(ctx, a, CatalogService{Name: "Synthetic untimed package", Kind: "main"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	released, _, err := s.ChangeBookingService(ctx, a, held.ID, plain.ID, nil)
+	if err != nil || released.ReservationID != nil {
+		t.Fatalf("a package without timing kept the calendar hold: %+v %v", released, err)
+	}
 }

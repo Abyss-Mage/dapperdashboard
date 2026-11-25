@@ -125,6 +125,8 @@ type PublicService struct {
 	PriceCents int64   `json:"priceCents"`
 	// WasCents is the regular price while a sale runs (PriceCents is then the sale price); 0 = no sale (error404 #133).
 	WasCents int64 `json:"wasCents,omitempty"`
+	// BookingGroup is the booking category chosen for it (empty = from its name), error404 #166.
+	BookingGroup string `json:"bookingGroup,omitempty"`
 }
 type PublicBookingOptions struct {
 	Timezone          string                  `json:"timezone"`
@@ -152,7 +154,7 @@ func (s *Store) PublicBookingOptions(ctx context.Context, slug string) (PublicBo
 	priced := map[string]PublicService{}
 	for _, v := range all {
 		if !v.Archived && v.PriceCents != nil {
-			ps := PublicService{ID: v.ID, Name: v.Name, Kind: v.Kind, ParentID: v.ParentID, ParentIDs: v.ParentIDs, PriceCents: *v.PriceCents}
+			ps := PublicService{ID: v.ID, Name: v.Name, Kind: v.Kind, ParentID: v.ParentID, ParentIDs: v.ParentIDs, PriceCents: *v.PriceCents, BookingGroup: v.BookingGroup}
 			if v.NowPriceCents != nil && *v.NowPriceCents < *v.PriceCents {
 				ps.PriceCents, ps.WasCents = *v.NowPriceCents, *v.PriceCents
 			}

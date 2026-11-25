@@ -79,7 +79,7 @@ export const cta = {
 };
 
 export const contact = {
-  phone: '(705) 977-6217', tel: '+17059776217', email: 'info@dapperdetailing.ca',
+  phone: '(705) 977-1007', tel: '+17059771007', email: 'info@dapperdetailing.ca',
   street: '660 The Kingsway', city: 'Peterborough, ON K9J 7C8', country: 'Canada',
   directions: 'https://share.google/qmWu43MCkVzDXTZ34',
   instagram: 'https://www.instagram.com/dapperdetailingpros', youtube: 'https://www.youtube.com/@DapperDetailingPros',

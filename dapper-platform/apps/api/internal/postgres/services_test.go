@@ -68,6 +68,53 @@ func verifyCatalogServices(t *testing.T, ctx context.Context, s *Store, a, b Sco
 	if _, err = s.SaveService(ctx, a, CatalogService{ID: ended.ID, Version: ended.Version, Name: ended.Name, Kind: "main", PriceCents: &priced, SaleSet: true, SalePriceCents: &tooHigh}); !errors.Is(err, ErrServiceInput) {
 		t.Fatal("a sale at the regular price was accepted", err)
 	}
+	// error404 #166: a service can be booked under a category the owner names; other edits keep it, and a one-letter name is refused.
+	tires, err := s.SaveService(ctx, a, CatalogService{Name: "Synthetic Tire Changeover", Kind: "main", BookingGroup: "Tire services", GroupSet: true})
+	if err != nil || tires.BookingGroup != "Tire services" {
+		t.Fatal("booking category not saved", tires.BookingGroup, err)
+	}
+	if tires, err = s.SaveService(ctx, a, CatalogService{ID: tires.ID, Version: tires.Version, Name: "Synthetic Tire Changeover - On Rim", Kind: "main"}); err != nil || tires.BookingGroup != "Tire services" {
+		t.Fatal("an edit without the category dropped it", tires.BookingGroup, err)
+	}
+	if _, err = s.SaveService(ctx, a, CatalogService{ID: tires.ID, Version: tires.Version, Name: tires.Name, Kind: "main", BookingGroup: "x", GroupSet: true}); !errors.Is(err, ErrServiceInput) {
+		t.Fatal("a one-letter booking category was accepted", err)
+	}
+	// error404 #167: an open booking's package and add-ons can be changed; its unpaid invoice is redone; a paid one is refused.
+	if _, err = s.pool.Exec(ctx, `INSERT INTO location_grants(principal_id,organization_id,location_id,action) VALUES($1,$2,$3,'bookings.manage'),($1,$2,$3,'invoices.create') ON CONFLICT DO NOTHING`, a.ActorID, a.OrganizationID, a.LocationID); err != nil {
+		t.Fatal(err)
+	}
+	upPrice, extraPrice := int64(20000), int64(3000)
+	upgrade, err := s.SaveService(ctx, a, CatalogService{Name: "Synthetic Upgrade Package", Kind: "main", PriceCents: &upPrice})
+	if err != nil {
+		t.Fatal(err)
+	}
+	extraOne, err := s.SaveService(ctx, a, CatalogService{Name: "Synthetic Pet Hair", Kind: "addon", ParentID: &upgrade.ID, PriceCents: &extraPrice})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var bookingID string
+	if err = s.pool.QueryRow(ctx, `INSERT INTO bookings(organization_id,location_id,customer_id,service_id,service_name,channel,status,booking_time) VALUES($1,$2,$3,$4,'Synthetic own extra','internal','confirmed',now()+interval '3 days') RETURNING id::text`, a.OrganizationID, a.LocationID, customerID, extra.ID).Scan(&bookingID); err != nil {
+		t.Fatal(err)
+	}
+	autoInvoiceEnabled = true
+	changed, _, err := s.ChangeBookingService(ctx, a, bookingID, upgrade.ID, []string{extraOne.ID})
+	autoInvoiceEnabled = false
+	if err != nil || changed.ServiceName != "Synthetic Upgrade Package" || len(changed.Addons) != 1 || changed.Addons[0].Name != "Synthetic Pet Hair" {
+		t.Fatalf("booking not changed: %+v %v", changed, err)
+	}
+	var draftSubtotal int64
+	if err = s.pool.QueryRow(ctx, `SELECT subtotal_cents FROM invoices WHERE booking_id=$1 AND status='draft'`, bookingID).Scan(&draftSubtotal); err != nil || draftSubtotal != 23000 {
+		t.Fatal("the new draft invoice is not at the new prices", draftSubtotal, err)
+	}
+	if _, err = s.pool.Exec(ctx, `UPDATE invoices SET paid_cents=1000,due_cents=total_cents-1000 WHERE booking_id=$1 AND status='draft'`, bookingID); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err = s.ChangeBookingService(ctx, a, bookingID, extra.ID, nil); !errors.Is(err, ErrBookingPaid) {
+		t.Fatal("a booking with a payment was changed", err)
+	}
+	if _, _, err = s.ChangeBookingService(ctx, a, bookingID, extraOne.ID, nil); !errors.Is(err, ErrBookingPaid) && !errors.Is(err, ErrBookingInput) {
+		t.Fatal("an add-on was accepted as the package", err)
+	}
 	negative := int64(-1)
 	if _, err = s.SaveService(ctx, a, CatalogService{Name: "Synthetic negative", Kind: "main", PriceCents: &negative}); !errors.Is(err, ErrServiceInput) {
 		t.Fatal("a negative price was accepted", err)

@@ -55,6 +55,40 @@ func registerBookingRoutes(mux *http.ServeMux, store *postgres.Store) {
 		}
 		reply(w, 200, choices)
 	})
+	// Change an open booking's package and add-ons (owner, error404 #167). Unpaid invoices are redone; a paid booking is refused.
+	mux.HandleFunc("POST "+base+"/{booking}/service", func(w http.ResponseWriter, r *http.Request) {
+		org, loc, id := r.PathValue("organization"), r.PathValue("location"), r.PathValue("booking")
+		if !uuid(org) || !uuid(loc) || !uuid(id) {
+			reply(w, 400, map[string]string{"error": "Valid selectors required"})
+			return
+		}
+		var in struct {
+			ServiceID string   `json:"serviceId"`
+			AddonIDs  []string `json:"addonIds"`
+		}
+		if !decode(w, r, &in) {
+			return
+		}
+		if !uuid(in.ServiceID) || len(in.AddonIDs) > 30 {
+			reply(w, 422, map[string]string{"error": "Choose a package"})
+			return
+		}
+		b, replaced, err := store.ChangeBookingService(r.Context(), postgres.Scope{OrganizationID: org, LocationID: loc, ActorID: requestSession(r).principalID}, id, in.ServiceID, in.AddonIDs)
+		switch {
+		case err == nil:
+			reply(w, 200, map[string]any{"booking": b, "invoiceReplaced": replaced})
+		case errors.Is(err, postgres.ErrBookingPaid):
+			reply(w, 409, map[string]string{"error": "Money has already been taken on this booking, so its package can't be changed here. Adjust its invoice instead, or refund and book again."})
+		case errors.Is(err, postgres.ErrBookingInput):
+			reply(w, 422, map[string]string{"error": "That package or add-on is not available here, or an add-on is not offered with that package."})
+		case errors.Is(err, postgres.ErrReservationConflict), errors.Is(err, postgres.ErrReservationInput):
+			reply(w, 409, map[string]string{"error": "The new package doesn't fit at this booking's time (it runs longer than the free time). Reschedule the booking first, then change the package."})
+		case errors.Is(err, postgres.ErrBookingTransition):
+			reply(w, 409, map[string]string{"error": "A completed or cancelled booking can't be changed."})
+		default:
+			bookingFailure(w, err)
+		}
+	})
 	mux.HandleFunc("POST "+base+"/{booking}/move", func(w http.ResponseWriter, r *http.Request) {
 		org, loc, id := r.PathValue("organization"), r.PathValue("location"), r.PathValue("booking")
 		if !uuid(org) || !uuid(loc) || !uuid(id) {

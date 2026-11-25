@@ -13,7 +13,7 @@ import { categories as websiteCategories } from '../../(site)/content';
 import { builtInIncludes, generic as genericSummary } from '../../(site)/included';
 import { DatePicker } from '../Pickers';
 
-type Service = { id: string; name: string; kind: string; parentId: string | null; parentIds?: string[]; version: number; archived: boolean; centralServiceId?: string | null; priceCents?: number | null; salePriceCents?: number | null; saleEndsOn?: string | null; nowPriceCents?: number | null; durationMinutes?: number | null };
+type Service = { id: string; name: string; kind: string; parentId: string | null; parentIds?: string[]; version: number; archived: boolean; centralServiceId?: string | null; priceCents?: number | null; salePriceCents?: number | null; saleEndsOn?: string | null; nowPriceCents?: number | null; bookingGroup?: string; durationMinutes?: number | null };
 // The sale price today, if one runs: the server says so for franchise services; central ones carry only the sale and its last day.
 const onSale = (s: Service): number | null => {
   if (s.priceCents == null) return null;
@@ -72,6 +72,8 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
   const [price, setPrice] = useState('');
   // A sale (error404 #133): its price and optional last day; while it runs it is charged everywhere.
   const [salePrice, setSalePrice] = useState(''), [saleEnds, setSaleEnds] = useState('');
+  // The category it is booked under (owner, error404 #166): empty = worked out from the name.
+  const [bookingGroup, setBookingGroup] = useState('');
   const [duration, setDuration] = useState('');
   const [unit, setUnit] = useState<Unit>('minutes');
   const durationMinutes = duration.trim() === '' ? null : Math.round(Number(duration) * UNITS[unit]);
@@ -229,6 +231,7 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
     setPrice(next === 'new' || next.priceCents == null ? '' : (next.priceCents / 100).toFixed(2));
     setSalePrice(next === 'new' || next.salePriceCents == null ? '' : (next.salePriceCents / 100).toFixed(2));
     setSaleEnds(next === 'new' ? '' : next.saleEndsOn ?? '');
+    setBookingGroup(next === 'new' ? '' : next.bookingGroup ?? '');
     const u = next === 'new' || next.durationMinutes == null ? 'minutes' : bestUnit(next.durationMinutes);
     setUnit(u);
     setDuration(next === 'new' || next.durationMinutes == null ? '' : String(next.durationMinutes / UNITS[u]));
@@ -254,7 +257,7 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
     // Central services and a franchise's own services carry a price (error404 #112 #113); linked franchise copies take the central one.
     const pricedHere = mode === 'central' || was === 'new' || (!!was && !was.centralServiceId);
     const sale = salePrice.trim() === '' ? null : Math.round(Number(salePrice) * 100);
-    const fields = { name: name.trim(), kind, priceCents: price.trim() === '' ? null : Math.round(Number(price) * 100), durationMinutes, ...(pricedHere ? { salePriceCents: sale, saleEndsOn: sale == null ? null : saleEnds || null } : {}) };
+    const fields = { name: name.trim(), kind, priceCents: price.trim() === '' ? null : Math.round(Number(price) * 100), durationMinutes, ...(pricedHere ? { salePriceCents: sale, saleEndsOn: sale == null ? null : saleEnds || null } : {}), ...(pricedHere && kind === 'main' ? { bookingGroup: bookingGroup.trim() } : {}) };
     void run(async () => {
       if (kind === 'addon') {
         await readJson(await fetch(was === 'new' || !was ? listUrl : `${listUrl}/${was.id}`, send(was === 'new' || !was ? 'POST' : 'PUT', { ...fields, parentIds, ...(was && was !== 'new' ? { version: was.version } : {}) })));
@@ -503,6 +506,13 @@ export default function ServicesManager({ mode, listUrl, organizationId, canMana
             {(mode === 'central' || editing === 'new' || (editing && !editing.centralServiceId)) && (
               <label className="form-field">Sale price before tax (optional)
                 <NumberField inputMode="decimal" min="0" step="0.01" placeholder="No sale" value={salePrice} onChange={(e) => setSalePrice(e.target.value)} disabled={busy} />
+              </label>
+            )}
+            {(mode === 'central' || editing === 'new' || (editing && !editing.centralServiceId)) && kind === 'main' && (
+              <label className="form-field">Booking category
+                <input list="booking-groups" maxLength={40} placeholder="Automatic (from the name)" value={bookingGroup} onChange={(e) => setBookingGroup(e.target.value)} disabled={busy} />
+                <datalist id="booking-groups">{[...new Set(['Detailing', 'Ceramic coating', 'Paint protection film', 'Window tinting', ...(items ?? []).map((x) => x.bookingGroup ?? '').filter(Boolean)])].map((g) => <option key={g} value={g} />)}</datalist>
+                <span className={styles.footnote}>Where it is listed when booking. Pick one, or type a new one (e.g. Tire services) to give it its own choice. Leave empty to decide from the name.</span>
               </label>
             )}
             {(mode === 'central' || editing === 'new' || (editing && !editing.centralServiceId)) && salePrice.trim() !== '' && (

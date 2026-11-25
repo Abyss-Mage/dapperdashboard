@@ -44,7 +44,7 @@ type InvoicePrintTemplate struct {
 }
 
 // brandBusinessDetails belong to the Dapper-owned business, so a franchisee outlet never prints them (see loadEffectivePrintTemplate).
-const brandBusinessDetails = "(705) 977-6217  |  info@dapperdetailing.ca\ndapperdetailing.ca\nOCN: 1001610344"
+const brandBusinessDetails = "(705) 977-1007  |  info@dapperdetailing.ca\ndapperdetailing.ca\nOCN: 1001610344"
 
 // InvoicePrintTemplateState is what the API returns: the template plus its revision (0 = built-in default, never saved).
 type InvoicePrintTemplateState struct {
