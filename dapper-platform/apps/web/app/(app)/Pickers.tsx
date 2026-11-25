@@ -65,6 +65,18 @@ function Popover({ open, anchorRef, onClose, width, label, children }: { open: b
         const maxH = Math.max(200, Math.min(natural, up ? above : below));
         next = up ? { sheet: false, above: true, left, bottom: vh - r.top + 8, width: w, maxH } : { sheet: false, above: false, left, top: r.bottom + 8, width: w, maxH };
       }
+      // A transformed or filtered ancestor (e.g. a popup's entrance animation) makes position:fixed relative to it, not the screen,
+      // which put the picker in the wrong place (error404 #172, #173). Measure that frame with a probe and correct for it.
+      const probe = document.createElement('div');
+      probe.style.cssText = 'position:fixed;inset:0;visibility:hidden;pointer-events:none';
+      (pop.parentElement ?? document.body).appendChild(probe);
+      const cb = probe.getBoundingClientRect();
+      probe.remove();
+      if (!next.sheet) {
+        next.left -= cb.left;
+        if (next.top !== undefined) next.top -= cb.top;
+        if (next.bottom !== undefined) next.bottom -= vh - cb.bottom;
+      }
       setPos((p) => (p && p.sheet === next.sheet && p.above === next.above && p.left === next.left && p.top === next.top && p.bottom === next.bottom && p.width === next.width && p.maxH === next.maxH ? p : next));
     };
     place();
