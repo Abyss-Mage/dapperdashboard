@@ -152,6 +152,11 @@ select{font:inherit}.vehicle-form{max-width:650px;padding-top:12px}.form-field s
 .booking-reschedule textarea { min-height: 5rem; resize: vertical; }
 .booking-reschedule p, .booking-reschedule h3 { margin: 0; overflow-wrap: anywhere; }
 .booking-reschedule { max-height: calc(100dvh - 2rem); box-sizing: border-box; overflow-x: hidden; overflow-y: auto; } /* error404 #83: no sideways scroll; the date picker opens outside the popup */
+/* Checkbox lists (add-ons): box and name on one line, two columns where there is room (error404 #170). */
+.check-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); gap: .55rem 1rem; padding: .9rem 1rem 1rem; }
+.check-list legend { padding: 0 .4rem; }
+.check-row { display: flex; align-items: center; gap: .6rem; cursor: pointer; font-size: .95rem; line-height: 1.3; }
+.check-row input[type="checkbox"] { flex: none; width: 18px; height: 18px; margin: 0; }
 .booking-reschedule::backdrop { background: rgb(0 0 0 / 35%); }
 
 /* Dialogs and the controls inside them follow the theme (light and dark). */

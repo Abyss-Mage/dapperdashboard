@@ -91,7 +91,7 @@ export default function BookingRescheduler({base, booking, onClose, onSaved}: {b
     finally {setBusy(false);}
   }
   return <><div aria-hidden="true" onClick={() => { if (!busy) onClose(); }} style={{position:'fixed',inset:0,zIndex:1400,background:'rgb(0 0 0 / 45%)'}} />
-  <dialog className="booking-reschedule" ref={dialog} aria-labelledby="reschedule-booking-title" style={{position:'fixed',zIndex:1500,top:'50%',left:'50%',transform:'translate(-50%,-50%)',margin:0,width:'min(34rem, calc(100vw - 2rem))',padding:'1.5rem'}}>
+  <dialog className="booking-reschedule" ref={dialog} aria-labelledby="reschedule-booking-title" style={{position:'fixed',zIndex:1500,inset:0,margin:'auto',height:'fit-content',width:'min(34rem, calc(100vw - 2rem))',padding:'1.5rem'}}>
     <form onSubmit={save} style={{display:'grid',gap:'.85rem'}}>
       <h3 id="reschedule-booking-title">Move this booking</h3>
       <p><strong>{booking.customerName}</strong> · {booking.serviceName}</p><p>Now booked for {new Date(booking.bookingTime).toLocaleString('en-CA', {weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: zone}).replace(/\.$/, '')}.{detached ? '' : ' If the move cannot be made, the current time stays reserved.'}</p>

@@ -687,13 +687,12 @@ export default function BookingManager({
           </div>
 
           {serviceId && services.some((s) => s.kind === 'addon' && (s.parentIds?.includes(serviceId) ?? s.parentId === serviceId)) && (
-            <fieldset disabled={busy} style={{margin: '1rem 0'}}>
+            <fieldset disabled={busy} className="check-list" style={{margin: '1rem 0'}}>
               <legend>Select add-ons</legend>
               {services
                 .filter((s) => s.kind === 'addon' && (s.parentIds?.includes(serviceId) ?? s.parentId === serviceId))
                 .map((addon) => (
-                  <label key={addon.id} className="form-field">
-                    <span>
+                  <label key={addon.id} className="check-row">
                       <input
                         type="checkbox"
                         checked={addonIds.includes(addon.id)}
@@ -703,8 +702,7 @@ export default function BookingManager({
                           )
                         }
                       />
-                      {addon.name}
-                    </span>
+                      <span>{addon.name}</span>
                   </label>
                 ))}
             </fieldset>
@@ -862,12 +860,12 @@ export default function BookingManager({
               </Select>
             </label>
             {changeService && services.some((a) => offeredWith(a, changeService)) && (
-              <fieldset disabled={changeBusy} style={{ margin: 0 }}>
+              <fieldset disabled={changeBusy} className="check-list" style={{ margin: 0 }}>
                 <legend>Add-ons</legend>
                 {services.filter((a) => offeredWith(a, changeService)).map((a) => (
-                  <label key={a.id} className="form-field"><span>
-                    <input type="checkbox" checked={changeAddons.includes(a.id)} onChange={(e) => setChangeAddons((prev) => e.target.checked ? [...prev, a.id] : prev.filter((id) => id !== a.id))} /> {a.name}
-                  </span></label>
+                  <label key={a.id} className="check-row">
+                    <input type="checkbox" checked={changeAddons.includes(a.id)} onChange={(e) => setChangeAddons((prev) => e.target.checked ? [...prev, a.id] : prev.filter((id) => id !== a.id))} /><span>{a.name}</span>
+                  </label>
                 ))}
               </fieldset>
             )}
