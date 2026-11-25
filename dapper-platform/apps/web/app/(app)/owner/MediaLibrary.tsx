@@ -139,7 +139,10 @@ export default function MediaLibrary({ base }: { base: string }) {
       else if (item.kind === 'video') await readJson(await fetch(`${assets}?path=${encodeURIComponent(item.path!)}`, { method: 'PUT', body: file }));
       else {
         const logo = item.group === 'logos' || brandMark(item.path);
-        const body = await fitImage(file, logo ? { logo } : { ratio: await shapeOf(item.src) });
+        // Car service pictures are wide (16:10) whatever the old one was, so a wide photo is not cut down to a tall one; only the 2-wheeler
+        // picture keeps its tall shape (owner, error404 #174). Every other picture keeps the shape of the one it replaces.
+        const wide = item.path!.startsWith('services/') && !item.path!.startsWith('services/2-wheeler');
+        const body = await fitImage(file, logo ? { logo } : { ratio: wide ? 16 / 10 : await shapeOf(item.src) });
         await readJson(await fetch(`${assets}?path=${encodeURIComponent(item.path!)}`, { method: 'PUT', body }));
       }
     }, `${item.name} replaced.`);
