@@ -20,6 +20,7 @@ import WebsiteTrackingEditor from './WebsiteTrackingEditor';
 import InvoiceIssuerEditor from '../workspace/InvoiceIssuerEditor';
 import Enquiries from './Enquiries';
 import QuoteServices from './QuoteServices';
+import BookingPlaces from './BookingPlaces';
 import SalesBanner from './SalesBanner';
 import DealerInvoices from './DealerInvoices';
 import UpgradeOffers from './UpgradeOffers';
@@ -111,7 +112,7 @@ const TABS: TabDefinition[] = [
   { id: 'reports', label: 'Reports', icon: 'overview', description: 'Appointments, revenue and customers', show: (c) => has(c, 'bookings.read', 'payments.read', 'customers.read') },
   { id: 'coupons', label: 'Coupons', icon: 'marketing', description: 'Discount codes for your customers', show: (c) => has(c, 'marketing.read') },
   { id: 'enquiries', label: 'Enquiries', icon: 'marketing', description: 'Messages from the website contact form', show: (c) => org(c, 'marketing.read') },
-  { id: 'sales-banner', label: 'Sales banner', icon: 'marketing', description: 'A strip above the website header for a sale or offer', show: (c) => has(c, 'content.manage') },
+  { id: 'sales-banner', label: 'Sales banner', icon: 'marketing', description: 'A strip above the website header for a sale or offer, the quote form list, and where customers can book online', show: (c) => has(c, 'content.manage') },
   { id: 'website-images', label: 'Website images', icon: 'marketing', description: 'Portfolio photos shown on the website', show: (c) => has(c, 'content.manage') },
   { id: 'search', label: 'Search & sitemaps', icon: 'marketing', description: 'SEO keywords and descriptions, and the XML sitemaps', show: (c) => org(c, 'access.manage') },
   { id: 'scripts', label: 'Custom scripts', icon: 'marketing', description: 'Extra code for the public website', show: (c) => org(c, 'access.manage') },
@@ -607,7 +608,7 @@ export default function OwnerDashboardClient() {
           {hasTabPermission && activeTab === 'invoice-template' && currentOrg && <InvoiceIssuerEditor key={'issuer-' + currentOrg.id} organizationId={currentOrg.id} revision={accessRevision} />}
           {hasTabPermission && activeTab === 'invoice-template' && currentOrg && <InvoiceTemplateEditor key={'template-' + currentOrg.id} organizationId={currentOrg.id} revision={accessRevision} locationId={scope?.locationId} locationName={scope?.locationName} />}
           {hasTabPermission && activeTab === 'messaging' && currentOrg && <MessagingSettings key={'messaging-' + currentOrg.id} organizationId={currentOrg.id} revision={accessRevision} />}
-          {hasTabPermission && activeTab === 'sales-banner' && scope && <><SalesBanner key={'banner-' + base} base={base} /><QuoteServices key={'quote-' + base} base={base} /></>}
+          {hasTabPermission && activeTab === 'sales-banner' && scope && <><SalesBanner key={'banner-' + base} base={base} /><QuoteServices key={'quote-' + base} base={base} /><BookingPlaces key={'places-' + base} base={base} /></>}
           {hasTabPermission && activeTab === 'website-images' && scope && <WebsiteImages key={'images-' + base} base={base} franchiseName={scope.locationName} franchiseCode="" />}
           {hasTabPermission && activeTab === 'scripts' && currentOrg && <CustomScripts key={'scripts-' + currentOrg.id} organizationId={currentOrg.id} revision={accessRevision} />}
           {hasTabPermission && activeTab === 'tracking' && currentOrg && <WebsiteTrackingEditor key={'tracking-' + currentOrg.id} organizationId={currentOrg.id} revision={accessRevision} />}

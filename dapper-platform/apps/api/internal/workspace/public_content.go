@@ -212,6 +212,22 @@ func registerPublicContentRoutes(mux *http.ServeMux, store *postgres.Store) {
 		}
 		reply(w, 200, data)
 	})
+	mux.HandleFunc("PUT "+base+"/booking-places", func(w http.ResponseWriter, r *http.Request) {
+		scope, ok := scopeFor(w, r, "content.manage")
+		if !ok {
+			return
+		}
+		var input postgres.BookingPlaces
+		if !decode(w, r, &input) {
+			return
+		}
+		data, err := store.SaveBookingPlaces(r.Context(), scope, input)
+		if err != nil {
+			contentFailure(w, err)
+			return
+		}
+		reply(w, 200, data)
+	})
 	mux.HandleFunc("PUT "+base+"/quote-services", func(w http.ResponseWriter, r *http.Request) {
 		scope, ok := scopeFor(w, r, "content.manage")
 		if !ok {

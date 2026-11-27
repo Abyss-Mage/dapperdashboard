@@ -68,6 +68,8 @@ type PublishedContent struct {
 	Banner    *SiteBanner          `json:"banner,omitempty"`
 	// QuoteServices is the contact form's "Service to quote" list; empty = the website's own list (error404 #163).
 	QuoteServices []string `json:"quoteServices"`
+	// BookingPlaces says which places besides the shop the online booking offers (error404 #175).
+	BookingPlaces BookingPlaces `json:"bookingPlaces"`
 	SEO       SiteSEO              `json:"seo"`
 	Upsells   []PackageUpsell      `json:"upsells"`
 	Services  []ServicePublication `json:"services"`
@@ -144,6 +146,35 @@ func (s *Store) SaveSiteBanner(ctx context.Context, scope Scope, b SiteBanner) (
 		return SiteBanner{}, err
 	}
 	return b, tx.Commit(ctx)
+}
+
+// BookingPlaces: whether the online booking offers mobile work and valet pick-up and drop-off.
+type BookingPlaces struct {
+	Mobile bool `json:"mobile"`
+	Valet  bool `json:"valet"`
+}
+
+// SaveBookingPlaces switches mobile and valet on or off for the location's online booking.
+func (s *Store) SaveBookingPlaces(ctx context.Context, scope Scope, in BookingPlaces) (BookingPlaces, error) {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return in, err
+	}
+	defer tx.Rollback(ctx)
+	if err = authorizeTransaction(ctx, tx, scope, "content.manage"); err != nil {
+		return in, err
+	}
+	tag, err := tx.Exec(ctx, `UPDATE public_sites SET offer_mobile=$3,offer_valet=$4 WHERE organization_id=$1 AND location_id=$2`, scope.OrganizationID, scope.LocationID, in.Mobile, in.Valet)
+	if err != nil {
+		return in, err
+	}
+	if tag.RowsAffected() == 0 {
+		return in, ErrContentNotFound
+	}
+	if err = contentAudit(ctx, tx, scope, "site.booking_places.revised", scope.LocationID, in); err != nil {
+		return in, err
+	}
+	return in, tx.Commit(ctx)
 }
 
 // SaveQuoteServices stores the contact form's quote list for the location's website: up to 30 names of 2 to 60 characters, blank
@@ -320,7 +351,8 @@ func readSiteContent(ctx context.Context, tx pgx.Tx, org, loc string, public boo
 	out := PublishedContent{Services: []ServicePublication{}, Portfolio: []PortfolioImage{}, Dealers: []WebsiteDealer{}, Upsells: []PackageUpsell{}, Limit: 200}
 	var banner SiteBanner
 	out.QuoteServices = []string{}
-	err := tx.QueryRow(ctx, `SELECT slug,name,published,version,banner,seo,quote_services FROM public_sites WHERE organization_id=$1 AND location_id=$2`, org, loc).Scan(&out.Site.Slug, &out.Site.Name, &out.Site.Published, &out.Site.Version, &banner, &out.SEO, &out.QuoteServices)
+	out.BookingPlaces = BookingPlaces{Mobile: true, Valet: true}
+	err := tx.QueryRow(ctx, `SELECT slug,name,published,version,banner,seo,quote_services,offer_mobile,offer_valet FROM public_sites WHERE organization_id=$1 AND location_id=$2`, org, loc).Scan(&out.Site.Slug, &out.Site.Name, &out.Site.Published, &out.Site.Version, &banner, &out.SEO, &out.QuoteServices, &out.BookingPlaces.Mobile, &out.BookingPlaces.Valet)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return out, nil
 	}

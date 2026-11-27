@@ -39,6 +39,7 @@ export default function StaffBookingWizard(props: StaffBookingWizardProps) {
   return (
     <BookingWizard
       timezone={props.timezone}
+      staffExtras
       upsells={upsells}
       allowCoupon={!employee}
       checkCoupon={employee ? undefined : async (code, serviceId, subtotalCents) => json(await fetch(`${base}/bookings/coupon-check`, post({ code, serviceId, subtotalCents })))}
@@ -60,7 +61,9 @@ export default function StaffBookingWizard(props: StaffBookingWizardProps) {
       }}
       submit={async (b: WizardBooking) => {
         if (employee) {
-          const body = { name: b.customer.name, email: b.customer.email, phone: b.customer.phone, ruleId: b.rule.id, ruleVersion: b.rule.version, resourceId: b.rule.resourceId, localStart: b.localStart, ...(b.addonIds.length ? { addonIds: b.addonIds } : {}), notes: b.notes, serviceAddress: b.serviceAddress };
+          // A custom service holds no bay, so it is sent by name instead of a timing rule (error404 #176).
+          const service = b.customService ? { customService: b.customService } : { ruleId: b.rule.id, ruleVersion: b.rule.version, resourceId: b.rule.resourceId, ...(b.addonIds.length ? { addonIds: b.addonIds } : {}) };
+          const body = { name: b.customer.name, email: b.customer.email, phone: b.customer.phone, ...service, localStart: b.localStart, notes: b.notes, serviceAddress: b.serviceAddress, ...(b.customPriceCents !== undefined ? { customPriceCents: b.customPriceCents } : {}) };
           await json(await fetch('/api/v1/employee/walk-in', post({ ...body, requestKey: keyFor(body) })));
         } else {
           let customerId = b.customer.id;
@@ -76,8 +79,14 @@ export default function StaffBookingWizard(props: StaffBookingWizardProps) {
             // A new customer with an email gets a link to set up their account password (error404 #85); the booking does not wait for it.
             if (b.customer.email.trim()) void fetch(`${base}/customers/${made.id}/account-setup`, post({ onlyIfNew: true })).catch(() => undefined);
           }
-          const body = { customerId, vehicleId: null, resourceId: b.rule.resourceId, ruleId: b.rule.id, ruleVersion: b.rule.version, start: b.startIso, channel: 'walk_in', notes: b.notes, serviceAddress: b.serviceAddress, ...(b.addonIds.length ? { addonIds: b.addonIds } : {}), ...(b.couponCode ? { couponCode: b.couponCode } : {}) };
-          await json(await fetch(`${base}/bookings/reserve`, post({ ...body, requestKey: keyFor(body) })));
+          const custom = b.customPriceCents !== undefined ? { customPriceCents: b.customPriceCents } : {};
+          if (b.customService) {
+            // A custom service: booked by name at the chosen time, without holding a bay (error404 #176).
+            await json(await fetch(`${base}/bookings`, post({ customerId, serviceName: b.customService, bookingTime: b.startIso, channel: 'walk_in', notes: b.notes, serviceAddress: b.serviceAddress, ...custom })));
+          } else {
+            const body = { customerId, vehicleId: null, resourceId: b.rule.resourceId, ruleId: b.rule.id, ruleVersion: b.rule.version, start: b.startIso, channel: 'walk_in', notes: b.notes, serviceAddress: b.serviceAddress, ...(b.addonIds.length ? { addonIds: b.addonIds } : {}), ...(b.couponCode ? { couponCode: b.couponCode } : {}), ...custom };
+            await json(await fetch(`${base}/bookings/reserve`, post({ ...body, requestKey: keyFor(body) })));
+          }
         }
         await props.onBooked();
       }}

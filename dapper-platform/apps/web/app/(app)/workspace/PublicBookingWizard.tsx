@@ -14,7 +14,7 @@ type Place = { slug: string; name: string; address: string };
 const niceName = (n: string) => n.replace(/^Dapper Detailing Pros\s*/i, '') || n;
 const SHOP_FALLBACK = '660 The Kingsway, Peterborough, ON K9J 7C8';
 
-type Options = { timezone: string; phoneVerification: boolean; rules: WizardRule[]; services: (WizardService & { priceCents: number })[]; taxes: NonNullable<WizardTaxes> };
+type Options = { timezone: string; phoneVerification: boolean; places?: { mobile: boolean; valet: boolean }; rules: WizardRule[]; services: (WizardService & { priceCents: number })[]; taxes: NonNullable<WizardTaxes> };
 
 async function json<T>(r: Response): Promise<T> {
   const body = await r.json().catch(() => ({}));
@@ -76,6 +76,7 @@ function BookingFlow({ site, place, onBack }: { site: string; place: Place; onBa
       extraSteps={1}
       onBack={onBack}
       shopAddress={shopAddress}
+      places={options.places}
       locationLabel={niceName(place.name) + (shopAddress ? ' · ' + shopAddress : '')}
       checkCoupon={async (code, serviceId, subtotalCents) => json(await fetch(`${api}/coupon`, post({ code, serviceId, subtotalCents })))}
       preselect={preselect}

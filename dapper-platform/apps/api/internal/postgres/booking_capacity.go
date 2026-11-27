@@ -45,6 +45,8 @@ type ReserveBookingInput struct {
 	ServiceAddress string `json:"serviceAddress"`
 	// AddonIDs attach add-ons to a base rule (a rule that already lists its add-ons cannot take more).
 	AddonIDs []string `json:"addonIds"`
+	// CustomPriceCents: a price staff set for the package on this booking (error404 #176); the website never sends it.
+	CustomPriceCents *int64 `json:"customPriceCents"`
 }
 
 // ReserveBooking shares the authoritative scheduling/booking helpers and writes
@@ -126,7 +128,7 @@ func (s *Store) ReserveBooking(ctx context.Context, scope Scope, input ReserveBo
 		}
 		addons = append([]string{}, input.AddonIDs...)
 	}
-	booking, err := s.createBookingInTransaction(ctx, tx, scope, Booking{CustomerID: input.CustomerID, VehicleID: input.VehicleID, ServiceID: &rule.ServiceID, AddonIDs: addons, ReservationID: &reservation.ID, Channel: input.Channel, Status: "confirmed", BookingTime: reservation.Request.Start, Notes: input.Notes, ServiceAddress: input.ServiceAddress})
+	booking, err := s.createBookingInTransaction(ctx, tx, scope, Booking{CustomerID: input.CustomerID, VehicleID: input.VehicleID, ServiceID: &rule.ServiceID, AddonIDs: addons, ReservationID: &reservation.ID, Channel: input.Channel, Status: "confirmed", BookingTime: reservation.Request.Start, Notes: input.Notes, ServiceAddress: input.ServiceAddress, CustomPriceCents: input.CustomPriceCents})
 	if err != nil {
 		return Booking{}, bookingWriteError(err)
 	}

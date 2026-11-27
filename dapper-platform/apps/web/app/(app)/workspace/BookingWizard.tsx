@@ -6,6 +6,7 @@ import { Bike, Bus, Car, CarFront, Plane, Sailboat, Truck, type LucideIcon } fro
 import Select from '../GlassSelect';
 import gsap from 'gsap';
 import AnimatedNumber from '../motion/AnimatedNumber';
+import { zonedIso } from './BookingRescheduler';
 
 /* One guided booking flow, one question at a time. Used by the Workspace (walk-ins) and Master (new booking).
    It only shows what exists in the catalogue: real prices, real durations and real free times. */
@@ -18,6 +19,8 @@ export type WizardAvailability = { timezone: string; durationMinutes: number; da
 export type WizardCustomer = { id?: string; name: string; email: string; phone: string };
 export type WizardBooking = {
   customer: WizardCustomer; rule: WizardRule; startIso: string; localStart: string; addonIds: string[]; notes: string; serviceAddress: string; couponCode: string; upgradeFrom: string;
+  /** Staff only (error404 #176): a service not in the list (booked by name, no bay held) and a price instead of the listed one. */
+  customService?: string; customPriceCents?: number;
   deposit?: { method: 'card' | 'cash'; sourceId?: string };
 };
 /* Customer-facing extras: a phone check for returning customers, and a deposit step with a card form. */
@@ -67,6 +70,10 @@ export type WizardProps = {
   prefill?: { name: string; email: string; phone: string; addresses: { id: string; label: string; address: string; isDefault: boolean }[] };
   /** Switched-on upgrade offers: after a package is chosen, the bigger one for the same vehicle is suggested with its extra cost. */
   upsells?: WizardUpsell[];
+  /** Online booking: whether mobile work and valet pick-up and drop-off are offered (switched in the dashboard, error404 #175). */
+  places?: { mobile: boolean; valet: boolean };
+  /** Staff booking (error404 #176): book without an email, a custom service, or a custom price. */
+  staffExtras?: boolean;
 };
 
 const VEHICLE = /^(hatchback|sedan|suv|pickup|van|2 wheeler|aircraft (?:small|medium|large)|boat (?:small|medium|large))\s*-\s*(.+)$/i;
@@ -126,6 +133,10 @@ const slotLabel = (iso: string, tz: string) => new Date(iso).toLocaleTimeString(
 const ymd = (y: number, m: number, d: number) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 
 type Where = 'shop' | 'mobile' | 'valet';
+const CUSTOM = 'Custom service';
+const CUSTOM_ID = '__custom';
+// "120", "120.50" or "$1,200" as cents; null when blank or not a price.
+const toCents = (v: string) => { const t = v.replace(/[$,\s]/g, ''); return /^\d{1,6}(\.\d{1,2})?$/.test(t) ? Math.round(Number(t) * 100) : null; };
 
 export default function BookingWizard(p: WizardProps) {
   const [rules, setRules] = useState<WizardRule[] | null>(null);
@@ -152,6 +163,8 @@ export default function BookingWizard(p: WizardProps) {
   const [agreed, setAgreed] = useState(false);
   const [ruleId, setRuleId] = useState('');
   const [picked, setPicked] = useState<string[]>([]);
+  // Staff extras (error404 #176): a custom service's name and time, a custom price, and booking a customer who gives no email.
+  const [customName, setCustomName] = useState(''), [customPrice, setCustomPrice] = useState(''), [customLocal, setCustomLocal] = useState(''), [noEmail, setNoEmail] = useState(false);
   const today = new Date();
   const [month, setMonth] = useState({ y: today.getFullYear(), m: today.getMonth() });
   const [avail, setAvail] = useState<WizardAvailability | null>(null);
@@ -176,7 +189,10 @@ export default function BookingWizard(p: WizardProps) {
   // then shop, mobile or valet, day and time, details and payment. Staff keep their order (where before the vehicle).
   const customerOrder = p.audience === 'customer';
   useEffect(() => { if (p.deposit?.onlineOff) setPayMethod('cash'); }, [p.deposit?.onlineOff]);
-  const steps = [...(p.phoneCheck ? ['Welcome'] : []), ...(customerOrder ? ['Service', 'Vehicle', 'Package', 'Extras', 'Where'] : ['Service', 'Where', 'Vehicle', 'Package', 'Extras']), 'Day & time', 'Details', ...(p.deposit ? ['Payment'] : [])];
+  const isCustom = group === CUSTOM;
+  // The website asks where only while mobile or valet is switched on (error404 #175).
+  const placeChoice = !p.places || p.places.mobile || p.places.valet;
+  const steps = [...(p.phoneCheck ? ['Welcome'] : []), ...(isCustom ? ['Service', 'Where', 'Custom'] : customerOrder ? ['Service', 'Vehicle', 'Package', 'Extras', ...(placeChoice ? ['Where'] : [])] : ['Service', 'Where', 'Vehicle', 'Package', 'Extras']), 'Day & time', 'Details', ...(p.deposit ? ['Payment'] : [])];
   const name = steps[step];
   // Saved details fill in once, and never over something already typed.
   useEffect(() => {
@@ -213,6 +229,7 @@ export default function BookingWizard(p: WizardProps) {
   const catKey = (r: WizardRule) => p.categories?.of(r.serviceId) || 'other';
   const baseRules = useMemo(() => (rules ?? []).filter((r) => r.addonIds.length === 0), [rules]);
   const parsed = useMemo(() => new Map(baseRules.map((r) => [r.id, parseName(r.serviceName)])), [baseRules]);
+  const parsedOf = (r: WizardRule) => parsed.get(r.id) ?? { vehicle: '', pack: r.serviceName };
   const custGroups = useMemo(() => {
     const present = new Set(baseRules.map((r) => p.categories?.of(r.serviceId) || 'other'));
     const out = (p.categories?.list ?? []).filter((c) => present.has(c.key));
@@ -220,22 +237,23 @@ export default function BookingWizard(p: WizardProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baseRules, p.categories]);
   // The category a package is booked under: the one chosen on the service (owner, error404 #166), else worked out from its name.
-  const groupFor = useCallback((r: WizardRule) => services.get(r.serviceId)?.bookingGroup?.trim() || groupOf(parsed.get(r.id)!.pack), [services, parsed]);
+  const groupFor = useCallback((r: WizardRule) => services.get(r.serviceId)?.bookingGroup?.trim() || groupOf((parsed.get(r.id) ?? parseName(r.serviceName)).pack), [services, parsed]);
   // The four standard categories first, then any the owner named (e.g. "Tire services"), in the order first seen.
   const groups = useMemo(() => { const present = baseRules.map(groupFor); return [...GROUPS.filter((g) => present.includes(g)), ...[...new Set(present)].filter((g) => !(GROUPS as readonly string[]).includes(g))]; }, [baseRules, groupFor]);
   const inGroup = useMemo(() => baseRules.filter((r) => (byCategory ? (p.categories!.of(r.serviceId) || 'other') === group : groupFor(r) === group)), [baseRules, parsed, groupFor, group, byCategory, p.categories]);
   // Packages without a vehicle in their name (the ceramic packages, window tint) are for cars, so they open up the car types.
   const vehicles = useMemo(() => {
     if (byCategory) return [] as string[];
-    const named = inGroup.map((r) => parsed.get(r.id)!.vehicle);
+    const named = inGroup.map((r) => parsedOf(r).vehicle);
     return [...new Set([...named.filter(Boolean), ...(named.some((v) => !v) ? CARS : [])])].sort(byVehicleOrder);
   }, [inGroup, parsed, byCategory]);
   // Highest price first (owner, error404 #21); unpriced last.
-  const packages = useMemo(() => (byCategory ? [...inGroup] : inGroup.filter((r) => { const v = parsed.get(r.id)!.vehicle; return !vehicle || (v ? v === vehicle : CARS.includes(vehicle)); }))
+  const packages = useMemo(() => (byCategory ? [...inGroup] : inGroup.filter((r) => { const v = parsedOf(r).vehicle; return !vehicle || (v ? v === vehicle : CARS.includes(vehicle)); }))
     .sort((a, b) => (services.get(b.serviceId)?.priceCents ?? -1) - (services.get(a.serviceId)?.priceCents ?? -1)), [inGroup, parsed, vehicle, byCategory, services]);
-  const rule = baseRules.find((r) => r.id === ruleId);
+  const rule: WizardRule | undefined = isCustom ? { id: CUSTOM_ID, resourceId: '', serviceId: CUSTOM_ID, serviceName: customName.trim() || CUSTOM, addonIds: [], addons: [], version: 0, durationMinutes: 0 } : baseRules.find((r) => r.id === ruleId);
+  const customCents = p.staffExtras ? toCents(customPrice) : null;
   // In a category the vehicle prefix is dropped when it is the category itself ("Sedan - Exterior Wash" under Sedan); aircraft, boats and film keep the whole name because the size or vehicle matters.
-  const packName = (r: WizardRule) => (byCategory && ['aircraft', 'boat', 'ppf', 'other'].includes(catKey(r)) ? r.serviceName : parsed.get(r.id)!.pack);
+  const packName = (r: WizardRule) => (byCategory && ['aircraft', 'boat', 'ppf', 'other'].includes(catKey(r)) ? r.serviceName : parsedOf(r).pack);
   const extras = rule?.availableAddons ?? [];
   const vehicleFields = (
 <div className={styles.fields}>
@@ -253,7 +271,7 @@ export default function BookingWizard(p: WizardProps) {
     const fromCategory = pre.category ? ({ ceramic: 'Ceramic coating', ppf: 'Paint protection film', 'window-tint': 'Window tinting' } as Record<string, string>)[pre.category] ?? 'Detailing' : '';
     if (!hit && !(fromCategory && groups.includes(fromCategory))) return;
     preApplied.current = true;
-    if (hit) { setGroup(groupFor(hit)); setVehicle(parsed.get(hit.id)!.vehicle); setRuleId(hit.id); }
+    if (hit) { setGroup(groupFor(hit)); setVehicle(parsedOf(hit).vehicle); setRuleId(hit.id); }
     else setGroup(fromCategory);
     setStep(steps.indexOf(hit ? (customerOrder ? 'Extras' : 'Where') : 'Vehicle'));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -262,14 +280,16 @@ export default function BookingWizard(p: WizardProps) {
   // The regular price of a service on sale, shown struck through next to the sale price.
   const was = (id: string) => { const sv = services.get(id); const now = price(id); const regular = sv?.wasCents ?? sv?.priceCents ?? null; return now !== null && regular !== null && regular > now ? regular : null; };
   const priceTag = (id: string, off = 0) => { const now = price(id); if (now === null) return 'Price not set'; const before = off > 0 ? now : was(id); return before !== null ? <><s className={styles.was}>{money(before)}</s> {money(now - off)}</> : money(now); };
-  const subtotal = (rule ? price(rule.serviceId) ?? 0 : 0) + picked.reduce((s, id) => s + (price(id) ?? 0), 0);
-  const unpriced = !!rule && (price(rule.serviceId) === null || picked.some((id) => price(id) === null));
+  // A custom price (staff) replaces the listed price of the package.
+  const mainPrice = rule ? customCents ?? price(rule.serviceId) : null;
+  const subtotal = (mainPrice ?? 0) + picked.reduce((s, id) => s + (price(id) ?? 0), 0);
+  const unpriced = !!rule && (mainPrice === null || picked.some((id) => price(id) === null));
   // A checked coupon comes off before tax, and only while the subtotal is the one it was checked against.
   const couponOff = couponHit && couponHit.subtotal === subtotal && couponHit.code === coupon.trim() ? couponHit.discount : 0;
   // The upgrade offer's discount (error404 #34) comes off the upgraded package when the customer took the offer; a coupon replaces it.
-  const takenOffer = upgradedFrom && rule ? p.upsells?.find((u) => u.fromPack.trim().toLowerCase() === upgradedFrom.trim().toLowerCase() && u.toPack.trim().toLowerCase() === parsed.get(rule.id)!.pack.trim().toLowerCase()) : undefined;
+  const takenOffer = upgradedFrom && rule ? p.upsells?.find((u) => u.fromPack.trim().toLowerCase() === upgradedFrom.trim().toLowerCase() && u.toPack.trim().toLowerCase() === parsedOf(rule).pack.trim().toLowerCase()) : undefined;
   const offerOff = (u: WizardUpsell | undefined, packCents: number) => !u ? 0 : Math.min(packCents, u.discountPercent ? Math.round(packCents * u.discountPercent / 100) : u.discountCents ?? 0);
-  const upgradeOff = couponOff ? 0 : offerOff(takenOffer, rule ? price(rule.serviceId) ?? 0 : 0);
+  const upgradeOff = couponOff || customCents !== null ? 0 : offerOff(takenOffer, rule ? price(rule.serviceId) ?? 0 : 0);
   const net = Math.max(0, subtotal - couponOff - upgradeOff);
   const tax = taxOn(net, taxes);
   const total = net + tax;
@@ -278,8 +298,8 @@ export default function BookingWizard(p: WizardProps) {
   const tz = avail?.timezone || p.timezone;
   // The upgrade offer for the chosen package: the named bigger package for the same vehicle, if it exists and costs more.
   const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
-  const offer = rule ? p.upsells?.find((u) => same(u.fromPack, parsed.get(rule.id)!.pack)) : undefined;
-  const target = offer && rule ? baseRules.find((r) => same(parsed.get(r.id)!.pack, offer.toPack) && parsed.get(r.id)!.vehicle === parsed.get(rule.id)!.vehicle) : undefined;
+  const offer = rule ? p.upsells?.find((u) => same(u.fromPack, parsedOf(rule).pack)) : undefined;
+  const target = offer && rule ? baseRules.find((r) => same(parsedOf(r).pack, offer.toPack) && parsedOf(r).vehicle === parsedOf(rule).vehicle) : undefined;
   const offerSave = offer && target ? offerOff(offer, price(target.serviceId) ?? 0) : 0;
   const more = target && rule && price(target.serviceId) !== null && price(rule.serviceId) !== null ? (price(target.serviceId) as number) - (price(rule.serviceId) as number) - offerSave : null;
   const upgradeCard = () => (offer && target && more !== null && more > 0 ? (
@@ -291,13 +311,13 @@ export default function BookingWizard(p: WizardProps) {
       {offerSave > 0 && <p className={styles.upsellSave}>Save {money(offerSave)} when you upgrade now{offer.discountPercent ? ` (${offer.discountPercent}% off)` : ''}.</p>}
       {offer.pitch && <p>{offer.pitch}</p>}
       {offer.perks.length > 0 && <ul>{offer.perks.map((k) => <li key={k}>{k}</li>)}</ul>}
-      <button type="button" className={styles.upsellBtn} onClick={() => { const from = parsed.get(rule!.id)!.pack; setRuleId(target.id); setUpgradedFrom(from); setPicked([]); setStart(''); setDay(''); }}>Upgrade for {money(more)} more</button>
+      <button type="button" className={styles.upsellBtn} onClick={() => { const from = parsedOf(rule!).pack; setRuleId(target.id); setUpgradedFrom(from); setPicked([]); setStart(''); setDay(''); }}>Upgrade for {money(more)} more</button>
     </aside>
   ) : null);
 
   const monthDays = new Date(month.y, month.m + 1, 0).getDate();
   const loadAvail = useCallback(async () => {
-    if (!rule) return;
+    if (!rule || isCustom) return;
     setAvailBusy(true); setAvailError('');
     try { setAvail(await p.loadAvailability(rule, ymd(month.y, month.m, 1), monthDays)); }
     catch (e) { setAvail(null); setAvailError(e instanceof Error ? e.message : 'Times could not be loaded.'); }
@@ -310,7 +330,7 @@ export default function BookingWizard(p: WizardProps) {
   const daySlots = starts.get(day) ?? [];
 
   const addressNeeded = where !== 'shop';
-  const detailsOk = me.name.trim().length >= 2 && me.phone.replace(/\D/g, '').length >= 7 && /.+@.+\..+/.test(me.email.trim()) && (p.audience !== 'customer' || agreed);
+  const detailsOk = me.name.trim().length >= 2 && me.phone.replace(/\D/g, '').length >= 7 && (noEmail || /.+@.+\..+/.test(me.email.trim())) && (p.audience !== 'customer' || agreed);
   const stepOk = ({
     Welcome: true,
     Service: !!group,
@@ -318,6 +338,7 @@ export default function BookingWizard(p: WizardProps) {
     Vehicle: !vehicles.length || !!vehicle,
     Package: !!ruleId,
     Extras: true,
+    Custom: customName.trim().length >= 2 && customCents !== null,
     'Day & time': !!start,
     Details: detailsOk,
     Payment: payMethod === 'cash' || cardReady,
@@ -327,7 +348,7 @@ export default function BookingWizard(p: WizardProps) {
   async function lookup() {
     if (!p.findCustomers) return;
     setError('');
-    try { setFound(await p.findCustomers(me.email.trim() || me.phone)); } catch (e) { setError(e instanceof Error ? e.message : 'Search failed.'); }
+    try { setFound(await p.findCustomers((noEmail ? '' : me.email.trim()) || me.phone)); } catch (e) { setError(e instanceof Error ? e.message : 'Search failed.'); }
   }
   async function save() {
     if (!rule) return;
@@ -346,7 +367,7 @@ export default function BookingWizard(p: WizardProps) {
           deposit = { method: 'card', sourceId: await tokenizer.current() };
         } else deposit = { method: 'cash' };
       }
-      await p.submit({ customer: { ...me, name: me.name.trim(), email: me.email.trim(), phone: me.phone.trim() }, rule, startIso: start, localStart: `${z.date}T${z.time}`, addonIds: picked, notes: lines.join('\n'), serviceAddress: where === 'shop' ? '' : address.trim(), couponCode: coupon.trim(), upgradeFrom: upgradeOff > 0 ? upgradedFrom : '', deposit });
+      await p.submit({ customer: { ...me, name: me.name.trim(), email: noEmail ? '' : me.email.trim(), phone: me.phone.trim() }, rule, startIso: start, ...(isCustom ? { customService: customName.trim() } : {}), ...(customCents !== null ? { customPriceCents: customCents } : {}), localStart: `${z.date}T${z.time}`, addonIds: picked, notes: lines.join('\n'), serviceAddress: where === 'shop' ? '' : address.trim(), couponCode: coupon.trim(), upgradeFrom: upgradeOff > 0 ? upgradedFrom : '', deposit });
       const when = `${new Date(`${z.date}T12:00:00`).toLocaleDateString('en-CA', { weekday: 'long', month: 'long', day: 'numeric' })} at ${slotLabel(start, tz)}`;
       setDoneInfo(p.doneNote ? p.doneNote({ name: me.name.trim(), pack: packName(rule), when, deposit: deposit?.method }) : null);
       setDone(true);
@@ -354,7 +375,7 @@ export default function BookingWizard(p: WizardProps) {
     finally { setBusy(false); }
   }
   function again() {
-    setDone(false); setStep(0); setGroup(''); setWhere('shop'); setAddress(''); setVehicle(''); setCar({ year: '', make: '', model: '' }); setRuleId(''); setUpgradedFrom(''); setPicked([]); setDay(''); setStart(''); setMe({ name: '', email: '', phone: '' }); setNotes(''); setFound(null); setDoneInfo(null); setPayMethod('card'); setCardReady(false); setAgreed(false); setCode(''); setCodeSent(false); setReturning(null);
+    setDone(false); setStep(0); setGroup(''); setWhere('shop'); setAddress(''); setVehicle(''); setCar({ year: '', make: '', model: '' }); setRuleId(''); setUpgradedFrom(''); setPicked([]); setDay(''); setStart(''); setMe({ name: '', email: '', phone: '' }); setNotes(''); setFound(null); setDoneInfo(null); setPayMethod('card'); setCardReady(false); setAgreed(false); setCode(''); setCodeSent(false); setReturning(null); setCustomName(''); setCustomPrice(''); setCustomLocal(''); setNoEmail(false);
   }
 
   async function sendCode() {
@@ -436,13 +457,15 @@ export default function BookingWizard(p: WizardProps) {
             return <button key={g.key} type="button" className={styles.choice} aria-pressed={group === g.key} onClick={() => { setGroup(g.key); setVehicle(''); setRuleId(''); setPicked([]); }}><span><strong>{g.title}</strong>{low.length > 0 && <small>From {money(Math.min(...low))}</small>}</span></button>;
           })}</div>
           : <div className={styles.choices}>{groups.map((g) => (
-            <button key={g} type="button" className={styles.choice} aria-pressed={group === g} onClick={() => { setGroup(g); setVehicle(''); setRuleId(''); setPicked([]); }}><span><strong>{g}</strong><small>{GROUP_HELP[g]}</small></span></button>
-          ))}</div>}
+            <button key={g} type="button" className={styles.choice} aria-pressed={group === g} onClick={() => { setGroup(g); setVehicle(''); setRuleId(''); setPicked([]); setCustomPrice(''); }}><span><strong>{g}</strong><small>{GROUP_HELP[g]}</small></span></button>
+          ))}
+            {p.staffExtras && <button type="button" className={styles.choice} aria-pressed={isCustom} onClick={() => { setGroup(CUSTOM); setVehicle(''); setRuleId(''); setPicked([]); setStart(''); setDay(''); setCustomPrice(''); }}><span><strong>{CUSTOM}</strong><small>Something not in the service list, at a price you set</small></span></button>}
+          </div>}
         </>}
         {name === 'Where' && <>
           <h2 ref={topRef} tabIndex={-1} className={styles.title}>{cust ? 'Where would you like the work done?' : 'Where will the work happen?'}</h2>
           <div className={`${styles.choices} ${styles.two}`}>
-            {((cust ? [['shop', 'In the shop', p.shopAddress ? `You bring your vehicle to ${p.shopAddress}` : 'You bring your vehicle to us'], ['mobile', 'We come to you', 'Our team travels to your address'], ['valet', 'Pick-up and drop-off', 'We collect your vehicle and bring it back']] : [['shop', 'In the shop', 'The customer brings the vehicle in'], ['mobile', 'We come to them', 'Our team travels to the customer'], ['valet', 'Valet', 'We pick up and drop off the vehicle']]) as [Where, string, string][]).map(([id, t, h]) => (
+            {((cust ? [['shop', 'In the shop', p.shopAddress ? `You bring your vehicle to ${p.shopAddress}` : 'You bring your vehicle to us'], ['mobile', 'We come to you', 'Our team travels to your address'], ['valet', 'Pick-up and drop-off', 'We collect your vehicle and bring it back']] : [['shop', 'In the shop', 'The customer brings the vehicle in'], ['mobile', 'We come to them', 'Our team travels to the customer'], ['valet', 'Valet', 'We pick up and drop off the vehicle']]) as [Where, string, string][]).filter(([id]) => id === 'shop' || !p.places || p.places[id]).map(([id, t, h]) => (
               <button key={id} type="button" className={styles.choice} aria-pressed={where === id} onClick={() => setWhere(id)}><span><strong>{t}</strong><small>{h}</small></span></button>
             ))}
           </div>
@@ -459,13 +482,15 @@ export default function BookingWizard(p: WizardProps) {
         {name === 'Package' && <>
           <h2 ref={topRef} tabIndex={-1} className={styles.title}>Choose the package</h2>
           <div className={styles.choices}>{packages.map((r) => (
-            <button key={r.id} type="button" className={styles.choice} aria-pressed={ruleId === r.id} onClick={() => { setRuleId(r.id); setPicked([]); setStart(''); setDay(''); }}>
+            <button key={r.id} type="button" className={styles.choice} aria-pressed={ruleId === r.id} onClick={() => { setRuleId(r.id); setPicked([]); setStart(''); setDay(''); setCustomPrice(''); }}>
               <span><strong>{packName(r)}</strong><small>About {span(r.durationMinutes)}</small></span>
               <span className={styles.price}>{priceTag(r.serviceId, r.id === rule?.id ? upgradeOff : 0)}</span>
             </button>
           ))}</div>
           {!packages.length && <p className={styles.help}>No packages for this choice yet.</p>}
-          {upgradeCard()}
+          {p.staffExtras && rule && <label className={styles.field}>Custom price for this booking (optional)<input inputMode="decimal" value={customPrice} onChange={(e) => setCustomPrice(e.target.value)} placeholder={price(rule.serviceId) === null ? 'e.g. 150' : `Listed ${money(price(rule.serviceId) as number)}`} />
+            <small className={styles.help}>{customPrice.trim() && customCents === null ? 'Type a price like 150 or 149.99.' : 'Leave empty to charge the listed price. Before tax.'}</small></label>}
+          {customCents === null && upgradeCard()}
         </>}
         {name === 'Extras' && <>
           <h2 ref={topRef} tabIndex={-1} className={styles.title}>Anything extra?</h2>
@@ -480,7 +505,22 @@ export default function BookingWizard(p: WizardProps) {
           ))}</div>
           {!extras.length && <p className={styles.help}>No extras for this package.</p>}
         </>}
-        {name === 'Day & time' && <>
+        {name === 'Custom' && <>
+          <h2 ref={topRef} tabIndex={-1} className={styles.title}>Describe the custom service</h2>
+          <p className={styles.help}>For work that is not in the service list. It is booked without holding a bay, so check the calendar is free when you pick the time.</p>
+          <div className={styles.fields}>
+            <label className={`${styles.field} ${styles.wide}`}>Service name<input value={customName} maxLength={120} onChange={(e) => setCustomName(e.target.value)} placeholder="e.g. Headlight restoration" /></label>
+            <label className={`${styles.field} ${styles.half}`}>Price, before tax<input inputMode="decimal" value={customPrice} onChange={(e) => setCustomPrice(e.target.value)} placeholder="e.g. 150" /></label>
+          </div>
+          {customPrice.trim() && customCents === null && <p className={styles.help}>Type a price like 150 or 149.99.</p>}
+          {vehicleFields}
+        </>}
+        {name === 'Day & time' && isCustom && <>
+          <h2 ref={topRef} tabIndex={-1} className={styles.title}>Pick a day and time</h2>
+          <label className={styles.field}>Date and time<input type="datetime-local" value={customLocal} onChange={(e) => { setCustomLocal(e.target.value); setStart(zonedIso(e.target.value, tz) ?? ''); }} /></label>
+          <p className={styles.help}>Times are in the shop&rsquo;s time zone ({tz}).</p>
+        </>}
+        {name === 'Day & time' && !isCustom && <>
           <h2 ref={topRef} tabIndex={-1} className={styles.title}>Pick a day and time</h2>
           <div className={styles.calHead}>
             <button type="button" disabled={isCurrentMonth && !p.allowPast} onClick={() => { setMonth((c) => (c.m === 0 ? { y: c.y - 1, m: 11 } : { y: c.y, m: c.m - 1 })); setDay(''); setStart(''); }} aria-label="Earlier month">‹</button>
@@ -511,10 +551,11 @@ export default function BookingWizard(p: WizardProps) {
           <div className={styles.fields}>
             <label className={`${styles.field} ${styles.wide}`}>Full name<input value={me.name} onChange={(e) => setMe({ ...me, name: e.target.value })} autoComplete="name" placeholder="Your full name" /></label>
             <label className={`${styles.field} ${styles.half}`}>Mobile number<input type="tel" value={me.phone} onChange={(e) => setMe({ ...me, phone: e.target.value })} autoComplete="tel" placeholder="+1 416 555 0123" /></label>
-            <label className={`${styles.field} ${styles.half}`}>Email<input type="email" value={me.email} onChange={(e) => setMe({ ...me, email: e.target.value })} autoComplete="email" placeholder="you@example.com" /></label>
+            <label className={`${styles.field} ${styles.half}`}>Email<input type="email" value={noEmail ? '' : me.email} disabled={noEmail} onChange={(e) => setMe({ ...me, email: e.target.value })} autoComplete="email" placeholder={noEmail ? 'No email' : 'you@example.com'} /></label>
+            {p.staffExtras && <label className={`${styles.check} ${styles.wide}`}><input type="checkbox" checked={noEmail} onChange={(e) => { setNoEmail(e.target.checked); setFound(null); }} /><span>The customer won&rsquo;t give an email. They get no confirmation email and are found again by phone.</span></label>}
             {p.findCustomers && <div className={styles.wide}><button type="button" className={styles.back} disabled={me.email.trim().length < 3 && me.phone.replace(/\D/g, '').length < 4} onClick={() => void lookup()}>{me.email.trim() ? 'Find an existing customer by email' : 'Find an existing customer (type their email first)'}</button>
               {found && (found.length ? <div className={styles.choices} style={{ marginTop: 8 }}>{found.map((c) => <button key={c.id} type="button" className={styles.choice} onClick={() => { setMe({ id: c.id, name: c.name, email: c.email, phone: c.phone }); setFound(null); }}><span><strong>{c.name}</strong><small>{c.email || 'No email'} · {c.phone}</small></span></button>)}</div> : <p className={styles.help}>{me.email.trim() ? 'No customer with that email. A new customer will be added.' : 'No customer with that number.'}</p>)}</div>}
-            {(p.deposit || p.allowCoupon) && <div className={`${styles.field} ${styles.wide}`}><label htmlFor="coupon-code">Coupon code (optional)</label>
+            {(p.deposit || p.allowCoupon) && !isCustom && <div className={`${styles.field} ${styles.wide}`}><label htmlFor="coupon-code">Coupon code (optional)</label>
               <div style={{ display: 'flex', gap: 8 }}><input id="coupon-code" value={coupon} maxLength={32} onChange={(e) => { setCoupon(e.target.value.toUpperCase()); setCouponMsg(''); }} autoComplete="off" placeholder="Have a coupon? Enter it here" />
                 {p.checkCoupon && <button type="button" className={styles.back} disabled={couponBusy || !coupon.trim() || !rule} onClick={async () => {
                   setCouponBusy(true); setCouponMsg('');
@@ -531,7 +572,7 @@ export default function BookingWizard(p: WizardProps) {
             {cust && !agreed && <p className={`${styles.help} ${styles.wide}`}>Tick the box to agree to the terms and conditions before you continue.</p>}
           </div>
           {rule && <div className={styles.sum} aria-label="Price summary">
-            <div><span>{packName(rule)}</span><span>{priceTag(rule.serviceId)}</span></div>
+            <div><span>{packName(rule)}</span><span>{customCents !== null ? money(customCents) : priceTag(rule.serviceId)}</span></div>
             {picked.map((id) => <div key={id}><span>{extras.find((a) => a.serviceId === id)?.name}</span><span>{price(id) === null ? '' : money(price(id) as number)}</span></div>)}
             {couponOff > 0 && <div><span>Coupon {couponHit?.code}</span><span>−{money(couponOff)}</span></div>}
             {upgradeOff > 0 && <div><span>Upgrade discount</span><span>−{money(upgradeOff)}</span></div>}

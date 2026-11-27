@@ -61,7 +61,7 @@ func registerEmployeeWorkspaceRoutes(mux *http.ServeMux, store *postgres.Store) 
 		if !decode(w, r, &input) {
 			return
 		}
-		if !uuid(input.RuleID) || !uuid(input.ResourceID) {
+		if strings.TrimSpace(input.CustomService) == "" && (!uuid(input.RuleID) || !uuid(input.ResourceID)) { // a custom service holds no bay (error404 #176)
 			reply(w, 422, map[string]string{"error": "Choose a configured service and resource"})
 			return
 		}

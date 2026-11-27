@@ -192,6 +192,21 @@ func verifyPublicBookFlow(t *testing.T, ctx context.Context, s *Store, a Scope, 
 	}
 	start := avail.Days[0].Starts[2]
 	in := PublicBookingInput{RequestKey: "public-booking-key-0001", ResourceID: res.ID, RuleID: rule.ID, RuleVersion: rule.Version, Start: start, AddonIDs: []string{addon.ID}, Name: "Synthetic Web Guest", Email: "web.guest@example.invalid", Phone: "+1 705 555 0166", Notes: "Vehicle: Sedan"}
+	// error404 #175: with mobile and valet switched off the website offers only the shop, and refuses an address.
+	if _, err := s.SaveBookingPlaces(ctx, a, BookingPlaces{}); err != nil {
+		t.Fatal(err)
+	}
+	if o, err := s.PublicBookingOptions(ctx, slug); err != nil || o.Places.Mobile || o.Places.Valet {
+		t.Fatal("places switched off are still offered", o.Places, err)
+	}
+	mobile := in
+	mobile.ServiceAddress = "12 Synthetic Road, Peterborough"
+	if _, err := s.PublicBook(ctx, slug, mobile); !errors.Is(err, ErrPublicBookingInput) {
+		t.Fatal("a mobile booking was taken while mobile and valet are off", err)
+	}
+	if p, err := s.SaveBookingPlaces(ctx, a, BookingPlaces{Mobile: true, Valet: true}); err != nil || !p.Mobile || !p.Valet {
+		t.Fatal(p, err)
+	}
 	// With the automatic draft on (as in the live app) the website invoice must still end up issued, so a card can be charged against it.
 	autoInvoiceEnabled = true
 	got, err := s.PublicBook(ctx, slug, in)
@@ -302,6 +317,26 @@ func verifyPublicBookFlow(t *testing.T, ctx context.Context, s *Store, a Scope, 
 	couponRes, err := s.PublicBook(ctx, slug, withCoupon)
 	if err != nil || couponRes.TotalCents != 20340 {
 		t.Fatalf("a website booking with a coupon failed or priced wrong (want 20340): %+v %v", couponRes, err)
+	}
+	// error404 #176: staff book a service not in the list at their own price; the automatic invoice bills that price.
+	var custID string
+	if err = s.pool.QueryRow(ctx, `SELECT customer_id::text FROM bookings WHERE id=$1`, got.BookingID).Scan(&custID); err != nil {
+		t.Fatal(err)
+	}
+	custom := int64(12345)
+	autoInvoiceEnabled = true
+	cb, err := s.CreateBooking(ctx, a, Booking{CustomerID: custID, ServiceName: "Synthetic headlight restoration", Channel: "walk_in", BookingTime: start.Add(72 * time.Hour), CustomPriceCents: &custom})
+	autoInvoiceEnabled = false
+	if err != nil || cb.ServiceID != nil || cb.ServiceName != "Synthetic headlight restoration" {
+		t.Fatal("a custom service booking failed", cb, err)
+	}
+	var customSub int64
+	if err = s.pool.QueryRow(ctx, `SELECT subtotal_cents FROM invoices WHERE booking_id=$1 AND status='draft'`, cb.ID).Scan(&customSub); err != nil || customSub != 12345 {
+		t.Fatal("the custom price was not invoiced", customSub, err)
+	}
+	negative := int64(-1)
+	if _, err = s.CreateBooking(ctx, a, Booking{CustomerID: custID, ServiceName: "Synthetic bad price", Channel: "walk_in", BookingTime: start.Add(96 * time.Hour), CustomPriceCents: &negative}); !errors.Is(err, ErrBookingInput) {
+		t.Fatal("a negative custom price was accepted", err)
 	}
 	// The website's pictures belong to the main site's location only.
 	png := []byte{0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0x0d, 'I', 'H', 'D', 'R', 0, 0, 0, 1, 0, 0, 0, 1, 8, 6, 0, 0, 0, 0x1f, 0x15, 0xc4, 0x89}

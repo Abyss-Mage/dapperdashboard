@@ -37,7 +37,11 @@ func (s *Store) autoInvoiceDraft(ctx context.Context, tx pgx.Tx, scope Scope, b 
 		desc  string
 		price int64
 	}
-	lines := []line{{strings.TrimSpace(b.ServiceName), priceOf(b.ServiceID)}}
+	main := priceOf(b.ServiceID)
+	if b.CustomPriceCents != nil {
+		main = *b.CustomPriceCents
+	}
+	lines := []line{{strings.TrimSpace(b.ServiceName), main}}
 	for _, a := range b.Addons {
 		id := a.ServiceID
 		lines = append(lines, line{strings.TrimSpace(a.Name), priceOf(&id)})

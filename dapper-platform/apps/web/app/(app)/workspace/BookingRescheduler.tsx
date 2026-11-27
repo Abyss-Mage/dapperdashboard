@@ -8,7 +8,7 @@ type Rule = {id: string; resourceId: string; serviceId: string; addonIds: string
 type Resource = {id: string; name: string; timezone: string};
 
 // A clock time typed for the shop, turned into the exact moment in the shop's own time zone.
-function zonedIso(local: string, zone: string): string | null {
+export function zonedIso(local: string, zone: string): string | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(local);
   if (!m) return null;
   const wall = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]);

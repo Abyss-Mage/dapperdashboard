@@ -18,6 +18,10 @@ func TestEmployeeContactFormats(t *testing.T) {
 			t.Fatal("bad contact accepted", v, e)
 		}
 	}
+	// A customer who will not give an email is booked without one (error404 #176).
+	if _, email, _, err := normalizeEmployeeContact("Real Name", "  ", "+14165550123"); err != nil || email != "" {
+		t.Fatal("a walk-in without an email was refused", email, err)
+	}
 	for _, v := range []string{"2026-03-08T02:30", "2026-11-01T01:30", "2026-02-30T10:00"} {
 		if _, e := employeeLocalStart(v, "America/Toronto"); !errors.Is(e, ErrEmployeeLocalTime) {
 			t.Fatal("invalid or ambiguous local time", v, e)
@@ -88,6 +92,17 @@ func verifyEmployeeWalkIn(t *testing.T, ctx context.Context, s *Store, owner Sco
 	changed.RequestKey = "synthetic-walkin-conflict"
 	if _, e = s.CreateEmployeeWalkIn(ctx, actor, changed); !errors.Is(e, ErrReservationConflict) {
 		t.Fatal("capacity doublebooked", e)
+	}
+	// error404 #176: a service not in the list, for a customer who gives no email: booked by name, no bay held.
+	custom := input
+	custom.RequestKey, custom.CustomService, custom.RuleID, custom.ResourceID, custom.RuleVersion, custom.AddonIDs = "synthetic-walkin-custom-01", "Synthetic custom job", "", "", 0, nil
+	custom.Name, custom.Email, custom.Phone = "No Email Walkin", "", "+14165550199"
+	if cb, e := s.CreateEmployeeWalkIn(ctx, actor, custom); e != nil || cb.ID == "" || cb.ReservationID != nil {
+		t.Fatal("a custom walk-in without an email failed", cb, e)
+	}
+	var customName string
+	if e = s.pool.QueryRow(ctx, `SELECT b.service_name FROM bookings b JOIN customers c ON c.id=b.customer_id WHERE c.organization_id=$1 AND c.name='No Email Walkin' AND c.email=''`, owner.OrganizationID).Scan(&customName); e != nil || customName != "Synthetic custom job" {
+		t.Fatal("the custom walk-in was not saved by name", customName, e)
 	}
 	var customers int
 	if e = s.pool.QueryRow(ctx, `SELECT count(*) FROM customers WHERE organization_id=$1 AND email='employee-walkin@example.invalid'`, owner.OrganizationID).Scan(&customers); e != nil || customers != 1 {

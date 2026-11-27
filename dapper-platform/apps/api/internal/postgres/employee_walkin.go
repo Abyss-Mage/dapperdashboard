@@ -36,6 +36,10 @@ type EmployeeWalkInInput struct {
 	Notes string `json:"notes"`
 	// ServiceAddress is where mobile or valet work happens (empty for in-shop work).
 	ServiceAddress string `json:"serviceAddress"`
+	// CustomService books a service that is not in the catalogue, by name and without a calendar hold (error404 #176).
+	CustomService string `json:"customService"`
+	// CustomPriceCents bills the main service at this price instead of the catalogue price (error404 #176).
+	CustomPriceCents *int64 `json:"customPriceCents"`
 }
 
 func normalizeEmployeeContact(name, email, phone string) (string, string, string, error) {
@@ -48,12 +52,15 @@ func normalizeEmployeeContact(name, email, phone string) (string, string, string
 			return "", "", "", ErrEmployeeContact
 		}
 	}
-	address, err := mail.ParseAddress(email)
-	at := strings.LastIndexByte(email, '@')
-	if err != nil || address.Address != email || address.Name != "" || at < 1 || !employeeDomain.MatchString(email[at+1:]) || strings.ContainsAny(email, "\r\n\t ") {
-		return "", "", "", ErrEmployeeContact
+	// No email when the customer will not give one (error404 #176); they are then found again by phone.
+	if email != "" {
+		address, err := mail.ParseAddress(email)
+		at := strings.LastIndexByte(email, '@')
+		if err != nil || address.Address != email || address.Name != "" || at < 1 || !employeeDomain.MatchString(email[at+1:]) || strings.ContainsAny(email, "\r\n\t ") {
+			return "", "", "", ErrEmployeeContact
+		}
+		email = email[:at+1] + strings.ToLower(email[at+1:])
 	}
-	email = email[:at+1] + strings.ToLower(email[at+1:])
 	var out strings.Builder
 	for _, c := range phone {
 		switch {
@@ -120,7 +127,10 @@ func (s *Store) CreateEmployeeWalkIn(ctx context.Context, actor string, input Em
 	if utf8.RuneCountInString(input.Notes) > 2000 {
 		return Booking{}, ErrBookingInput
 	}
-	if !employeeRequestKey.MatchString(input.RequestKey) || input.RuleID == "" || input.ResourceID == "" || input.RuleVersion < 1 {
+	input.CustomService = strings.TrimSpace(input.CustomService)
+	custom := input.CustomService != ""
+	if !employeeRequestKey.MatchString(input.RequestKey) || !custom && (input.RuleID == "" || input.ResourceID == "" || input.RuleVersion < 1) ||
+		custom && (utf8.RuneCountInString(input.CustomService) < 2 || utf8.RuneCountInString(input.CustomService) > 120 || len(input.AddonIDs) > 0) || !validCustomPrice(input.CustomPriceCents) {
 		return Booking{}, ErrBookingInput
 	}
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
@@ -173,12 +183,14 @@ func (s *Store) CreateEmployeeWalkIn(ctx context.Context, actor string, input Em
 	if !start.After(time.Now()) {
 		return Booking{}, ErrEmployeeLocalTime
 	}
-	reservation, err := s.writeReservationInTransaction(ctx, tx, scope, input.ResourceID, "", 0, scheduling.Request{Start: start}, &reservationRuleChoice{ID: input.RuleID, Version: input.RuleVersion})
-	if err != nil {
-		return Booking{}, err
-	}
-	if reservation.Rule == nil {
-		return Booking{}, ErrSchedulingRule
+	var reservation CapacityReservation
+	if !custom {
+		if reservation, err = s.writeReservationInTransaction(ctx, tx, scope, input.ResourceID, "", 0, scheduling.Request{Start: start}, &reservationRuleChoice{ID: input.RuleID, Version: input.RuleVersion}); err != nil {
+			return Booking{}, err
+		}
+		if reservation.Rule == nil {
+			return Booking{}, ErrSchedulingRule
+		}
 	}
 	// One customer per email and phone at a franchise: a returning walk-in is booked under their existing record.
 	customer, err := existingCustomer(ctx, tx, a.OrganizationID, a.LocationID, input.Email, input.Phone)
@@ -193,23 +205,29 @@ func (s *Store) CreateEmployeeWalkIn(ctx context.Context, actor string, input Em
 			return Booking{}, err
 		}
 	}
-	rule := reservation.Rule
-	addons := rule.AddonIDs
-	if len(input.AddonIDs) > 0 {
-		if len(rule.AddonIDs) > 0 || len(input.AddonIDs) > 20 {
-			return Booking{}, ErrBookingInput
-		}
-		seen := map[string]bool{}
-		for _, id := range input.AddonIDs {
-			var ok bool
-			if seen[id] || tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM catalog_services WHERE organization_id=$1 AND location_id=$2 AND id::text=$3 AND kind='addon' AND catalog_addon_offered_with(id,$4::uuid) AND NOT archived)`, a.OrganizationID, a.LocationID, id, rule.ServiceID).Scan(&ok) != nil || !ok {
+	booking := Booking{CustomerID: customer, Channel: "walk_in", Status: "confirmed", BookingTime: start, Notes: input.Notes, ServiceAddress: strings.TrimSpace(input.ServiceAddress), CustomPriceCents: input.CustomPriceCents}
+	if custom {
+		booking.ServiceName = input.CustomService
+	} else {
+		rule := reservation.Rule
+		addons := rule.AddonIDs
+		if len(input.AddonIDs) > 0 {
+			if len(rule.AddonIDs) > 0 || len(input.AddonIDs) > 20 {
 				return Booking{}, ErrBookingInput
 			}
-			seen[id] = true
+			seen := map[string]bool{}
+			for _, id := range input.AddonIDs {
+				var ok bool
+				if seen[id] || tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM catalog_services WHERE organization_id=$1 AND location_id=$2 AND id::text=$3 AND kind='addon' AND catalog_addon_offered_with(id,$4::uuid) AND NOT archived)`, a.OrganizationID, a.LocationID, id, rule.ServiceID).Scan(&ok) != nil || !ok {
+					return Booking{}, ErrBookingInput
+				}
+				seen[id] = true
+			}
+			addons = append([]string{}, input.AddonIDs...)
 		}
-		addons = append([]string{}, input.AddonIDs...)
+		booking.ServiceID, booking.AddonIDs, booking.ReservationID = &rule.ServiceID, addons, &reservation.ID
 	}
-	b, err := s.createBookingInTransaction(ctx, tx, scope, Booking{CustomerID: customer, ServiceID: &rule.ServiceID, AddonIDs: addons, ReservationID: &reservation.ID, Channel: "walk_in", Status: "confirmed", BookingTime: start, Notes: input.Notes, ServiceAddress: strings.TrimSpace(input.ServiceAddress)})
+	b, err := s.createBookingInTransaction(ctx, tx, scope, booking)
 	if err != nil {
 		return Booking{}, bookingWriteError(err)
 	}

@@ -341,6 +341,8 @@ func registerBookingRoutes(mux *http.ServeMux, store *postgres.Store) {
 			BookingTime    string   `json:"bookingTime"`
 			Notes          string   `json:"notes"`
 			ServiceAddress string   `json:"serviceAddress"`
+			// A price for this booking's service instead of the catalogue one, or for a custom service (error404 #176).
+			CustomPriceCents *int64 `json:"customPriceCents"`
 		}
 		if !decode(w, r, &input) {
 			return
@@ -389,6 +391,7 @@ func registerBookingRoutes(mux *http.ServeMux, store *postgres.Store) {
 			BookingTime:    t,
 			Notes:          input.Notes,
 			ServiceAddress: input.ServiceAddress,
+			CustomPriceCents: input.CustomPriceCents,
 		})
 		if err != nil {
 			bookingFailure(w, err)

@@ -135,6 +135,8 @@ type PublicBookingOptions struct {
 	Services          []PublicService         `json:"services"`
 	Taxes             FranchiseTaxes          `json:"taxes"`
 	Resources         []BookingResourceChoice `json:"resources"`
+	// Places: whether mobile work and valet pick-up and drop-off are offered (error404 #175).
+	Places BookingPlaces `json:"places"`
 }
 
 // PublicBookingOptions lists what can be booked online: base services that have a price, their priced add-ons and the franchise taxes.
@@ -162,6 +164,9 @@ func (s *Store) PublicBookingOptions(ctx context.Context, slug string) (PublicBo
 		}
 	}
 	out := PublicBookingOptions{PhoneVerification: s.phoneVerifier != nil, Rules: []BookingRuleChoice{}, Services: []PublicService{}, Resources: choices.Resources}
+	if out.Places, err = s.bookingPlaces(ctx, scope); err != nil {
+		return PublicBookingOptions{}, err
+	}
 	if len(choices.Resources) > 0 {
 		out.Timezone = choices.Resources[0].Timezone
 	}
@@ -256,6 +261,16 @@ func (s *Store) PublicBook(ctx context.Context, slug string, in PublicBookingInp
 	scope, err := s.websiteScope(ctx, slug)
 	if err != nil {
 		return out, err
+	}
+	// An address means mobile or valet work: refused while both are switched off for this website (error404 #175).
+	if strings.TrimSpace(in.ServiceAddress) != "" {
+		places, err := s.bookingPlaces(ctx, scope)
+		if err != nil {
+			return out, err
+		}
+		if !places.Mobile && !places.Valet {
+			return out, ErrPublicBookingInput
+		}
 	}
 	serviceID, serviceName, items, subtotal, err := s.priceBooking(ctx, scope, in.RuleID, in.ResourceID, in.RuleVersion, in.AddonIDs)
 	if err != nil {
@@ -615,4 +630,14 @@ func (s *Store) PublicBookingLocations(ctx context.Context) ([]BookingLocation, 
 		out = append(out, b)
 	}
 	return out, rows.Err()
+}
+
+// bookingPlaces reads which places besides the shop the location's online booking offers.
+func (s *Store) bookingPlaces(ctx context.Context, scope Scope) (BookingPlaces, error) {
+	out := BookingPlaces{Mobile: true, Valet: true}
+	err := s.pool.QueryRow(ctx, `SELECT offer_mobile,offer_valet FROM public_sites WHERE organization_id=$1 AND location_id=$2`, scope.OrganizationID, scope.LocationID).Scan(&out.Mobile, &out.Valet)
+	if errors.Is(err, pgx.ErrNoRows) {
+		err = nil
+	}
+	return out, err
 }

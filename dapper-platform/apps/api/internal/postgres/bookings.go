@@ -45,6 +45,9 @@ type Booking struct {
 	CustomerName       string     `json:"customerName,omitempty"`
 	CustomerEmail      string     `json:"customerEmail,omitempty"`
 	CustomerPhone      string     `json:"customerPhone,omitempty"`
+	// CustomPriceCents is a price staff set for the main service when booking (error404 #176); it bills the automatic invoice
+	// instead of the catalogue price. Not stored on the booking: the invoice holds it.
+	CustomPriceCents *int64 `json:"-"`
 }
 
 type BookingEvent struct {
@@ -128,7 +131,7 @@ func (s *Store) createBookingInTransaction(ctx context.Context, tx pgx.Tx, scope
 	default:
 		return Booking{}, ErrBookingInput
 	}
-	if len(input.AddonIDs) > 100 || len(input.AddonIDs) > 0 && input.ServiceID == nil {
+	if len(input.AddonIDs) > 100 || len(input.AddonIDs) > 0 && input.ServiceID == nil || !validCustomPrice(input.CustomPriceCents) {
 		return Booking{}, ErrBookingInput
 	}
 
@@ -245,7 +248,9 @@ SELECT $1,$2,$3,NULL,p.id FROM principals p WHERE p.id=NULLIF($4,'')::uuid ON CO
 	if err != nil {
 		return Booking{}, err
 	}
+	created.CustomPriceCents = input.CustomPriceCents
 	s.autoInvoiceDraft(ctx, tx, scope, created)
+	created.CustomPriceCents = nil
 
 	return created, nil
 }
@@ -462,3 +467,6 @@ func (s *Store) UpdateBookingStatus(ctx context.Context, scope Scope, id string,
 	}
 	return b, err
 }
+
+// validCustomPrice: no custom price, or 0 to $100,000.
+func validCustomPrice(p *int64) bool { return p == nil || *p >= 0 && *p <= 10_000_000 }
