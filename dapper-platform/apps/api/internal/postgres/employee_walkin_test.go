@@ -97,7 +97,12 @@ func verifyEmployeeWalkIn(t *testing.T, ctx context.Context, s *Store, owner Sco
 	custom := input
 	custom.RequestKey, custom.CustomService, custom.RuleID, custom.ResourceID, custom.RuleVersion, custom.AddonIDs = "synthetic-walkin-custom-01", "Synthetic custom job", "", "", 0, nil
 	custom.Name, custom.Email, custom.Phone = "No Email Walkin", "", "+14165550199"
-	if cb, e := s.CreateEmployeeWalkIn(ctx, actor, custom); e != nil || cb.ID == "" || cb.ReservationID != nil {
+	// Three days later, out of the way of the one-day calendar check that follows.
+	if later, e := time.Parse("2006-01-02T15:04", input.LocalStart); e == nil {
+		custom.LocalStart = later.AddDate(0, 0, 3).Format("2006-01-02T15:04")
+	}
+	cb, e := s.CreateEmployeeWalkIn(ctx, actor, custom)
+	if e != nil || cb.ID == "" || cb.ReservationID != nil {
 		t.Fatal("a custom walk-in without an email failed", cb, e)
 	}
 	var customName string
